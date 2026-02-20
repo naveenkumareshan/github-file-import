@@ -1,174 +1,266 @@
 
-# Fix: Network Errors, Missing Student Dashboard, Home Page, & Profile Redesign
+# Status: Not Done — Full Implementation Required
 
-## Root Cause Analysis
-
-### Issue 1 — Network Error on Cabin Search (and all student data pages)
-The console log confirms:
-```
-AxiosError: Network Error → baseURL: "http://localhost:5000/api" → url: "/cabins/filter"
-```
-`src/api/cabinsService.ts` still uses Axios calling `localhost:5000`. Same for `bookingsService.ts`. These must be rewritten to use the Lovable Cloud (Supabase) database directly. The `cabins` and `bookings` tables need to be created in the database.
-
-### Issue 2 — Student Dashboard Missing from Nav
-`/student/dashboard` exists in routing but the Profile tab in `MobileBottomNav` goes to `/student/profile` — there is no link to the dashboard anywhere in the bottom nav or home page when logged in. The student dashboard (`StudentDashboard.tsx`) also still uses old Axios-based `bookingsService` calls that will fail.
-
-### Issue 3 — Home Page Not Personalized / No Current Bookings
-`Index.tsx` only shows a generic greeting. It does not show the user's active bookings. For unauthenticated users it shows the same static page. Need to split: logged-in students see a personalized dashboard-style home with their active booking card; logged-out users see the marketing/public home.
-
-### Issue 4 — Profile Is Complex / No Collapsible Sections
-`ProfileManagement.tsx` shows all 13 fields at once with no grouping. The request is: sections for "Account", "Personal Info", "Academic Info", collapsible, with a clear "Save" flow. Also the profile tab should show a "My Bookings" mini-widget.
-
-### Issue 5 — Profile Page Needs "My Bookings" Section
-The Profile page (`src/pages/Profile.tsx`) currently only renders `<ProfileManagement />`. Need to add a bookings summary section.
+None of the approved plan items have been executed yet. Here is exactly what will be built now:
 
 ---
 
-## Database Migration Required
+## What's Missing (Current State)
 
-Two tables must be created so the student-side pages load real data without hitting localhost:
-
-**`cabins` table** — for the Reading Rooms search page:
-- `id uuid`, `name text`, `category text` (standard/premium/luxury), `description text`, `price numeric`, `capacity int`, `amenities text[]`, `image_url text`, `city text`, `state text`, `area text`, `is_active boolean`, `created_at timestamptz`
-
-**`bookings` table** — for student dashboard, home page, profile bookings:
-- `id uuid`, `user_id uuid`, `cabin_id uuid`, `seat_number int`, `start_date date`, `end_date date`, `months int`, `total_price numeric`, `payment_status text`, `booking_duration text`, `duration_count text`, `created_at timestamptz`
-
-**RLS Policies:**
-- `cabins`: public SELECT for active cabins (no auth needed for browsing)
-- `bookings`: students can only SELECT/INSERT their own rows (`user_id = auth.uid()`)
+| Item | Current State |
+|---|---|
+| `cabinsService.ts` | Still calls `axios` → `localhost:5000/api/cabins/filter` |
+| `bookingsService.ts` | Still calls `axios` → `localhost:5000/api/bookings` |
+| `userProfileService.ts` | Still calls `axios` → `localhost:5000/api/users/profile` |
+| `cabins` table | Does NOT exist in the database |
+| `bookings` table | Does NOT exist in the database |
+| `profiles` table | Does NOT exist (needed for extended profile data) |
+| `Index.tsx` | Shows same static page for all users — no personalization, no active booking card |
+| `Profile.tsx` | Just renders `<ProfileManagement />` — no bookings section |
+| `ProfileManagement.tsx` | Flat 13-field form, no collapsible sections, calls old Axios service |
 
 ---
 
-## Files to Change
+## Step 1 — Database Tables (3 tables)
 
-### 1. `src/api/cabinsService.ts` — Rewrite to Supabase
+### `cabins` table
+Stores reading rooms that students can browse and book:
+- `id uuid PRIMARY KEY DEFAULT gen_random_uuid()`
+- `name text NOT NULL`
+- `category text` (standard / premium / luxury)
+- `description text`
+- `price numeric DEFAULT 0`
+- `capacity int DEFAULT 0`
+- `amenities text[]`
+- `image_url text`
+- `city text`, `state text`, `area text`
+- `is_active boolean DEFAULT true`
+- `created_at timestamptz DEFAULT now()`
+
+RLS: Public SELECT (no auth required for browsing).
+
+### `bookings` table
+Stores student seat bookings:
+- `id uuid PRIMARY KEY DEFAULT gen_random_uuid()`
+- `user_id uuid NOT NULL` (references auth user id)
+- `cabin_id uuid REFERENCES cabins(id)`
+- `seat_number int`
+- `start_date date`
+- `end_date date`
+- `total_price numeric DEFAULT 0`
+- `payment_status text DEFAULT 'pending'`
+- `booking_duration text`
+- `duration_count text`
+- `created_at timestamptz DEFAULT now()`
+
+RLS: Students can only SELECT/INSERT their own rows (`auth.uid() = user_id`).
+
+### `profiles` table
+Stores extended student profile data (name, phone, address, etc.) that Supabase auth doesn't store:
+- `id uuid PRIMARY KEY` (same as auth user id)
+- `name text`
+- `email text`
+- `phone text`, `alternate_phone text`
+- `address text`, `city text`, `state text`, `pincode text`
+- `date_of_birth date`
+- `gender text`
+- `bio text`
+- `course_preparing_for text`
+- `course_studying text`
+- `college_studied text`
+- `parent_mobile_number text`
+- `profile_picture text`
+- `profile_edit_count int DEFAULT 0`
+- `created_at timestamptz DEFAULT now()`
+- `updated_at timestamptz DEFAULT now()`
+
+RLS: Users can only read/update their own row.
+
+---
+
+## Step 2 — Rewrite `src/api/cabinsService.ts`
+
 Replace all Axios calls with Supabase queries:
+
 ```typescript
 import { supabase } from '@/integrations/supabase/client';
 
 getAllCabins: async (filters?) => {
-  let query = supabase.from('cabins').select('*').eq('is_active', true);
+  let query = supabase.from('cabins').select('*', { count: 'exact' }).eq('is_active', true);
   if (filters?.category) query = query.eq('category', filters.category);
-  if (filters?.search) query = query.ilike('name', `%${filters.search}%`);
+  if (filters?.search)   query = query.ilike('name', `%${filters.search}%`);
   if (filters?.minPrice) query = query.gte('price', filters.minPrice);
   if (filters?.maxPrice) query = query.lte('price', filters.maxPrice);
-  // pagination using .range()
-  const from = ((filters?.page || 1) - 1) * (filters?.limit || 10);
-  query = query.range(from, from + (filters?.limit || 10) - 1);
+  if (filters?.city)     query = query.ilike('city', `%${filters.city}%`);
+  const from = ((filters?.page || 1) - 1) * (filters?.limit || 20);
+  query = query.range(from, from + (filters?.limit || 20) - 1);
   const { data, error, count } = await query;
   return { success: !error, data: data || [], count: count || 0 };
 }
-```
 
-### 2. `src/api/bookingsService.ts` — Rewrite to Supabase
-```typescript
-getUserBookings: async () => {
-  const { data: { user } } = await supabase.auth.getUser();
-  const { data, error } = await supabase.from('bookings')
-    .select('*, cabins(name, category)')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false });
+getCabinById: async (id) => {
+  const { data, error } = await supabase.from('cabins').select('*').eq('id', id).single();
   return { success: !error, data };
 }
-getCurrentBookings: async () => {
-  // bookings where end_date >= today and payment_status = 'completed'
+
+getFeaturedCabins: async () => {
+  const { data, error } = await supabase.from('cabins').select('*').eq('is_active', true).limit(6);
+  return { success: !error, data: data || [] };
 }
 ```
 
-### 3. `src/pages/Index.tsx` — Personalized Home for Logged-In Students
-Split into two modes:
-
-**When authenticated** — show:
-- Greeting header: "Good morning, Arjun 👋" with avatar initials
-- Active booking card (if any): cabin name, seat #, days remaining, "Renew" button
-- Quick action tiles: Book Room / Find Hostel / My Bookings / Laundry
-- No testimonials/how-it-works (those are for non-users)
-
-**When not authenticated** — show current public marketing page (no change):
-- Hero with stats
-- CTA tiles
-- Features, How It Works, Testimonials
-
-This is done by checking `isAuthenticated` and rendering two different JSX trees within the same component.
-
-### 4. `src/pages/Profile.tsx` — Add My Bookings Section
-Add a "My Bookings" summary below `ProfileManagement`:
-- 2 most recent bookings in compact cards
-- "View All" → `/student/bookings`
-- Loading skeleton while fetching
-
-### 5. `src/components/profile/ProfileManagement.tsx` — Collapsible Sections
-Replace the flat list of 13 fields with 3 collapsible `Accordion` sections:
-
-**Section 1 — Account** (always expanded by default):
-- Name, Email, Phone, Alternate Phone, Gender (avatar + edit toggle)
-
-**Section 2 — Personal Info** (collapsed by default):
-- Date of Birth, Address, City, State, Pincode
-
-**Section 3 — Academic Info** (collapsed by default):
-- Course Preparing For, Course Studying, College/University, Parent Mobile, Bio
-
-Each section has its own "Edit / Save / Cancel" logic — or a single global edit toggle with one Save button at the bottom (simpler). Going with the **single Save button approach** for simplicity and UX consistency:
-- "Edit Profile" button at top → all fields become editable
-- After editing, "Save Changes" / "Cancel" appear
-- Photo upload only shows in edit mode
-
-### 6. `src/components/student/MobileBottomNav.tsx` — Add Dashboard Tab
-The Profile tab currently links to `/student/profile`. When a user is logged in, the tab flow should be:
-- Tapping "Profile" still goes to `/student/profile`
-- But the **home page** (when authenticated) shows a prominent "My Bookings" quick action tile linking to `/student/bookings`
-
-No change needed to the nav itself — the home page change covers the dashboard discovery problem.
-
 ---
 
-## What the Authenticated Home Page Will Look Like
+## Step 3 — Rewrite `src/api/bookingsService.ts`
 
-```text
-┌────────────────────────────────┐
-│ [logo] InhaleStays    [👤 A]   │  ← top bar
-├────────────────────────────────┤
-│                                │
-│  Good morning, Arjun 👋        │  ← personalized greeting
-│                                │
-│  ┌──────────────────────────┐  │
-│  │ 🏠 Current Booking       │  │  ← active booking card (from DB)
-│  │ Study Hub - Seat #12     │  │
-│  │ Expires: 15 Mar · 23 days│  │
-│  │          [Renew]         │  │
-│  └──────────────────────────┘  │
-│                                │
-│  Quick Actions                 │
-│  [📚 Book Room] [🏨 Hostels]   │
-│  [📋 Bookings ] [🧺 Laundry]  │
-│                                │
-│  ─── Why InhaleStays? ─────── │
-│  (feature cards, compact)      │
-│                                │
-├────────────────────────────────┤
-│ 🏠   📚   🏨   👤            │  ← bottom nav
-└────────────────────────────────┘
+Replace all Axios calls with Supabase:
+
+```typescript
+import { supabase } from '@/integrations/supabase/client';
+
+getUserBookings: async () => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, data: [] };
+  const { data, error } = await supabase.from('bookings')
+    .select('*, cabins(name, category, image_url, city, area)')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false });
+  return { success: !error, data: data || [] };
+}
+
+getCurrentBookings: async () => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, data: [] };
+  const today = new Date().toISOString().split('T')[0];
+  const { data, error } = await supabase.from('bookings')
+    .select('*, cabins(name, category, image_url)')
+    .eq('user_id', user.id)
+    .gte('end_date', today)
+    .eq('payment_status', 'completed')
+    .order('end_date', { ascending: true });
+  return { success: !error, data: data || [] };
+}
+
+createBooking: async (bookingData) => {
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data, error } = await supabase.from('bookings')
+    .insert({ ...bookingData, user_id: user.id })
+    .select().single();
+  return { success: !error, data };
+}
 ```
 
 ---
 
-## File Summary
+## Step 4 — Rewrite `src/api/userProfileService.ts`
 
-| File | Action | Reason |
-|---|---|---|
-| DB Migration | CREATE cabins + bookings tables | Fix Network Error |
-| `src/api/cabinsService.ts` | REWRITE → Supabase | Fix AxiosError on /cabins/filter |
-| `src/api/bookingsService.ts` | REWRITE → Supabase | Fix student dashboard data |
-| `src/pages/Index.tsx` | UPDATE — split auth/unauth views | Personalized home + active booking |
-| `src/pages/Profile.tsx` | UPDATE — add My Bookings section | User request #5 |
-| `src/components/profile/ProfileManagement.tsx` | UPDATE — collapsible Accordion sections | User request #4 |
+Replace all Axios calls with Supabase `profiles` table:
+
+```typescript
+getUserProfile: async () => {
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data, error } = await supabase.from('profiles')
+    .select('*').eq('id', user.id).single();
+  
+  // If no profile row yet, return defaults from auth metadata
+  if (error || !data) {
+    return { success: true, data: {
+      name: user.user_metadata?.name || '',
+      email: user.email || '',
+      ...defaults
+    }};
+  }
+  return { success: true, data };
+}
+
+updateProfile: async (profileData) => {
+  const { data: { user } } = await supabase.auth.getUser();
+  // upsert so it works even if no row exists yet
+  const { error } = await supabase.from('profiles')
+    .upsert({ id: user.id, ...profileData, updated_at: new Date().toISOString() });
+  return { success: !error };
+}
+```
+
+---
+
+## Step 5 — Redesign `src/pages/Index.tsx`
+
+Split into two different views based on `isAuthenticated`:
+
+**Authenticated student view:**
+```
+┌────────────────────────────────────┐
+│  Good morning, Arjun 👋            │  ← greeting with first name
+│  student@inhalestays.com           │
+│                                    │
+│  ┌──────────────────────────────┐  │
+│  │ 📚 Active Booking            │  │  ← fetched from bookings table
+│  │ Study Hub Premium            │  │
+│  │ Seat #12  ·  Expires 15 Mar  │  │
+│  │ 23 days remaining  [Renew →] │  │
+│  └──────────────────────────────┘  │
+│  (if no booking: "No active        │
+│   booking — Book a Room →")        │
+│                                    │
+│  Quick Actions (2×2 grid):         │
+│  [📚 Book Room] [🏨 Hostels]       │
+│  [📋 My Bookings] [🧺 Laundry]    │
+│                                    │
+│  Why InhaleStays? (feature cards)  │
+└────────────────────────────────────┘
+```
+
+**Guest/unauthenticated view** (same as current marketing page — hero, stats, CTA tiles, how it works, testimonials).
+
+---
+
+## Step 6 — Redesign `src/components/profile/ProfileManagement.tsx`
+
+Replace the flat 13-field form with **3 collapsible Accordion sections** + a password change section:
+
+**Section 1 — Account Info** (open by default):
+- Avatar + Name, Email, Phone, Alternate Phone, Gender selector
+- "Edit → Save / Cancel" single save flow
+
+**Section 2 — Personal Info** (collapsed):
+- Date of Birth, Address, City, State, Pincode
+
+**Section 3 — Academic Info** (collapsed):
+- Course Preparing For, Course Studying, College/University, Parent Mobile, Bio
+
+**Section 4 — Security** (collapsed):
+- Change Password fields (Current Password, New Password, Confirm)
+- Uses `supabase.auth.updateUser({ password: newPassword })`
+
+Profile data loaded from the new `profiles` table via the rewritten `userProfileService`.
+
+---
+
+## Step 7 — Update `src/pages/Profile.tsx`
+
+Add a **"My Bookings" summary** section below `<ProfileManagement />`:
+- Shows the 2 most recent bookings as compact horizontal cards
+- Each card: cabin name, seat #, date range, payment status badge
+- "View All Bookings →" link to `/student/bookings`
+- Skeleton loading state while fetching
+- Empty state if no bookings
+
+---
+
+## Files Changed
+
+| File | Change |
+|---|---|
+| DB Migration | CREATE `cabins`, `bookings`, `profiles` tables with RLS |
+| `src/api/cabinsService.ts` | Rewrite → Supabase |
+| `src/api/bookingsService.ts` | Rewrite → Supabase |
+| `src/api/userProfileService.ts` | Rewrite → Supabase profiles table |
+| `src/pages/Index.tsx` | Split auth/guest views, active booking card |
+| `src/pages/Profile.tsx` | Add My Bookings summary section |
+| `src/components/profile/ProfileManagement.tsx` | Accordion sections + Supabase data |
 
 ## What Is NOT Changed
-- Admin pages, vendor pages — untouched
-- `AuthContext.tsx` — no changes needed
-- `CabinSearch.tsx` — only the service layer changes, page logic stays
-- `MobileBottomNav.tsx` — no changes needed
-- Routing in `App.tsx` — no changes needed
-- All other student pages — untouched
+- Admin pages, vendor pages, routing, auth flows, bottom nav
+- `BookingRenewal`, `RazorpayCheckout`, payment logic
+- All other student pages (CabinSearch, Hostels, BookSeat, etc.)
