@@ -1,113 +1,135 @@
 
-# Fix Network Error: Replace Express API Calls with Lovable Cloud Backend
+# Fix: Slow Pages & Network Errors — Full Data Layer Migration to Lovable Cloud
 
-## Root Cause
+## Root Cause Analysis
 
-Every page you visit after logging in calls the old Express backend at `localhost:5000`, which doesn't exist in the cloud. The login itself works (using Lovable Cloud auth), but once you're inside the admin dashboard, every data widget tries to fetch from `localhost:5000/api/admin/bookings`, `localhost:5000/api/seats`, etc., and gets "Network Error".
+The app has **two layers of problems** causing slowness and errors:
 
-This is not just the dashboard — every page in the app has this issue.
+**Problem 1 — Every data API call still goes to the dead Express backend (`localhost:5000`).**
+- `adminBookingsService.ts` → axios → `localhost:5000/api/admin/bookings` → Network Error
+- `adminCabinsService.ts` → axios → `localhost:5000/api/cabins` → Network Error
+- `adminSeatsService.ts` → axios → `localhost:5000/api/seats` → Network Error
+- `OccupancyChart`, `RevenueChart`, `DashboardExpiringBookings`, `DynamicStatisticsCards` all fail silently or show toast errors
+- `SeatTransferManagement` (the current page) — confirmed broken in console logs
 
-## The Strategy
+**Problem 2 — AuthContext causes double role-fetch on every page load.**
+- `onAuthStateChange` fires AND `getSession()` fires → `buildUser()` is called twice → two sequential Supabase queries on every navigation
 
-Since the app was previously MongoDB-backed and had complex data (bookings, seats, rooms, hostels, transactions, etc.), the cleanest path is to:
+**Problem 3 — The admin dashboard loads 6 separate API calls in parallel** (stats, residents, top rooms, monthly revenue, monthly occupancy, expiring bookings) — all hitting localhost and all failing.
 
-1. **Create all the needed database tables in Lovable Cloud** (bookings, cabins/rooms, seats, transactions, hostels, laundry orders, etc.)
-2. **Rewrite the frontend API service files** to call Lovable Cloud directly using the SDK instead of axios → localhost
-3. **Update the dashboard components** to use the new services
+## What Will Be Fixed
 
-This will make the entire app work in the cloud with no separate backend needed.
+### Database Migration — Core Tables
 
-## Database Tables to Create
+A single migration will create all the tables needed so the Lovable Cloud backend has real data to serve:
 
-The following tables will be created to mirror the MongoDB collections:
+| Table | Maps From | Key Columns |
+|---|---|---|
+| `profiles` | MongoDB `User` | `user_id`, `name`, `phone`, `gender`, `role` |
+| `cabins` | MongoDB `Cabin` | `name`, `category`, `price`, `capacity`, `is_active`, `floors` |
+| `seats` | MongoDB `Seat` | `cabin_id`, `number`, `floor`, `price`, `is_available`, `position` |
+| `bookings` | MongoDB `Booking` | `user_id`, `cabin_id`, `seat_id`, `start_date`, `end_date`, `status`, `payment_status`, `total_price` |
+| `transactions` | MongoDB `Transaction` | `booking_id`, `user_id`, `amount`, `payment_status`, `type` |
+| `hostels` | MongoDB `Hostel` | `name`, `location`, `price_per_month`, `is_active` |
+| `hostel_rooms` | MongoDB `HostelRoom` | `hostel_id`, `name`, `capacity`, `price` |
+| `hostel_beds` | MongoDB `HostelBed` | `room_id`, `bed_number`, `is_available` |
+| `hostel_bookings` | MongoDB `HostelBooking` | `user_id`, `hostel_id`, `room_id`, `bed_id`, `status` |
+| `laundry_menu_items` | MongoDB `LaundryMenuItem` | `name`, `price`, `icon` |
+| `laundry_orders` | MongoDB `LaundryOrder` | `user_id`, `items`, `status`, `total_amount` |
+| `locations` | MongoDB `Location` | `state`, `city`, `area` |
+| `coupons` | MongoDB `Coupon` | `code`, `discount_type`, `discount_value`, `is_active` |
 
-### Core Tables
+Plus a `dashboard_stats` database function (RPC) that computes all dashboard numbers in a single query — no more 6 separate calls.
 
-| Table | Purpose |
-|---|---|
-| `cabins` | Reading rooms/cabins with name, category, price, capacity, amenities |
-| `seats` | Individual seats inside a cabin with availability, price, position |
-| `bookings` | All student bookings (start/end date, seat, price, status) |
-| `transactions` | Payment records linked to bookings |
-| `hostels` | Hostel properties |
-| `hostel_rooms` | Rooms within hostels |
-| `hostel_beds` | Individual beds in hostel rooms |
-| `hostel_bookings` | Hostel bed/room bookings |
-| `laundry_orders` | Laundry service orders |
-| `profiles` | Extended user info (name, phone, gender) |
-| `locations` | State/city/area data for filtering |
-| `coupons` | Discount coupons |
+RLS policies will be set on all tables:
+- Admins and super_admins: full access via `has_role()` check
+- Students: read/write own rows only (`user_id = auth.uid()`)
+- Public: read active cabins, hostels, seats
 
-### RLS Policies
+### 1. `src/api/adminBookingsService.ts` — Full Rewrite
+Replace ALL axios calls with Supabase queries:
+- `getAllBookings(filters)` → `supabase.from('bookings').select(...).range(offset, end)` with pagination
+- `getBookingStats()` → `supabase.rpc('get_dashboard_stats')`
+- `getRevenueByTransaction()` → `supabase.rpc('get_dashboard_stats')`
+- `getTopFillingRooms()` → Supabase join on `cabins` + `bookings` count
+- `getExpiringBookings(days)` → `supabase.from('bookings').select(...).lte('end_date', threshold)`
+- `getMonthlyRevenue(year)` → `supabase.rpc('get_monthly_revenue', { year })`
+- `getMonthlyOccupancy(year)` → `supabase.rpc('get_monthly_occupancy', { year })`
+- `getActiveResidents()` → `supabase.rpc('get_dashboard_stats')`
+- `updateBooking()`, `cancelBooking()` → `supabase.from('bookings').update(...)`
+- `updateTransferBooking()` → Supabase update for seat transfer
 
-- **Students** can only read/create their own bookings and transactions
-- **Admins** can read/write everything
-- **Vendors** can read cabins and bookings scoped to their vendor ID
-- Public can read active cabins, hostels, and seats
+### 2. `src/api/adminCabinsService.ts` — Full Rewrite
+- `getAllCabins()` → `supabase.from('cabins').select('*')`
+- `getCabinById()` → `.eq('id', id).single()`
+- `createCabin()` → `.insert(data)`
+- `updateCabin()` → `.update(data).eq('id', id)`
+- `deleteCabin()` → `.update({ is_active: false }).eq('id', id)` (soft delete)
+
+### 3. `src/api/adminSeatsService.ts` — Full Rewrite
+- `getAllSeats()` → `supabase.from('seats').select('*')`
+- `getSeatsByCabin(cabinId, floor)` → `.eq('cabin_id', cabinId).eq('floor', floor)`
+- `createSeat()`, `updateSeat()`, `deleteSeat()` → Supabase insert/update/delete
+- `getActiveSeatsCountSeats()` → `.count()` on seats table
+
+### 4. `src/api/adminRoomsService.ts` — Full Rewrite
+Replace all calls to use the `cabins` table (same data, same structure).
+
+### 5. `src/api/adminUsersService.ts` — Full Rewrite
+- `getUsers()` → `supabase.from('profiles').select('*, user_roles(role)')`
+- `updateUser()` → `supabase.from('profiles').update(data)`
+- `getBookingsByUserId()` → `supabase.from('bookings').select(...).eq('user_id', userId)`
+
+### 6. `src/api/adminLaundryService.ts` — Full Rewrite
+- `getAllMenuItems()` → `supabase.from('laundry_menu_items').select('*')`
+- `getAllOrders()` → `supabase.from('laundry_orders').select('*')`
+- `updateOrderStatus()` → `supabase.from('laundry_orders').update(...)`
+
+### 7. `src/api/hostelService.ts` — Full Rewrite
+- `getAllHostels()` → `supabase.from('hostels').select('*')`
+- `getHostelById()` → `.eq('id', id).single()`
+
+### 8. `src/api/bookingsService.ts` — Full Rewrite (Student facing)
+- `getMyBookings()` → `supabase.from('bookings').select('*').eq('user_id', auth.uid())`
+- `createBooking()` → `supabase.from('bookings').insert(data)`
+
+### 9. `src/contexts/AuthContext.tsx` — Fix Double Fetch
+Current code fires role fetch TWICE on login (once via `onAuthStateChange`, once via `getSession`). Fix: use `onAuthStateChange` only as the source of truth. `getSession` only handles the "no session" case to set loading=false. This eliminates the redundant database call on every page load.
+
+### 10. `src/hooks/use-dashboard-statistics.ts` — Use RPC
+Replace 3 separate axios calls with 1 `supabase.rpc('get_dashboard_stats')` call that returns all values in one query. This will make the dashboard load ~3x faster.
+
+## Performance Gains
+
+| Component | Before | After |
+|---|---|---|
+| Admin Dashboard | 6 failing network calls, infinite spinner | 1 RPC call, data loads in <1s |
+| SeatTransferManagement | Network Error, no data | Supabase query, instant load |
+| RevenueChart | Network Error, blank | Monthly revenue from DB |
+| OccupancyChart | Network Error, blank | Monthly occupancy from DB |
+| ProtectedRoute auth check | Sometimes 2x role queries | 1x, cached in context |
+| All admin pages | Network Error on every data widget | Real data from Lovable Cloud |
 
 ## Files to Create/Modify
 
-### 1. Database Migration (NEW)
-`supabase/migrations/..._create_core_tables.sql`
-- Creates all tables listed above with proper columns, foreign keys, indexes
-- Sets up RLS policies for each table
-- Adds helper views for dashboard statistics (revenue totals, occupancy rates)
-
-### 2. Replace `src/api/adminBookingsService.ts`
-Replace all axios calls to `/admin/bookings/*` with direct Lovable Cloud queries on the `bookings` table.
-
-Key functions to rewrite:
-- `getAllBookings()` → `supabase.from('bookings').select(...)` with filters
-- `getBookingStats()` → Supabase aggregate queries
-- `getTopFillingRooms()` → Join cabins + bookings, count active
-- `getExpiringBookings(days)` → Filter bookings where `end_date` is within N days
-- `getMonthlyRevenue()` → Group transactions by month
-- `getMonthlyOccupancy()` → Group bookings by month
-- `getActiveResidents()` → Count active bookings
-- `getRevenueByTransaction()` → Sum transaction amounts
-
-### 3. Replace `src/api/adminSeatsService.ts`
-Replace seat management calls with Supabase queries on `seats` table.
-
-### 4. Replace `src/api/adminRoomsService.ts`
-Replace cabin/room management calls with Supabase queries on `cabins` table.
-
-### 5. Replace `src/api/adminUsersService.ts`
-Replace user management calls — query `profiles` and `user_roles` tables.
-
-### 6. Replace `src/api/adminLaundryService.ts`
-Replace laundry order calls with Supabase queries on `laundry_orders` table.
-
-### 7. Replace `src/api/hostelService.ts`
-Replace hostel API calls with Supabase queries on `hostels` table.
-
-### 8. Replace `src/api/bookingsService.ts`
-Replace student-facing booking calls with Supabase queries.
-
-### 9. Update `src/api/axiosConfig.ts`
-Keep the file intact (many places import it) but note that going forward the new service files won't use it.
-
-## What the Dashboard Will Show After
-
-The admin dashboard widgets will display:
-- **Total Revenue**: Sum from `transactions` table
-- **Active Residents**: Count of bookings where `end_date > now()` and `status = 'active'`
-- **Seat Availability**: Count of seats where `is_available = true`
-- **Pending Payments**: Count/sum of bookings with `payment_status = 'pending'`
-- **Monthly Revenue Chart**: Grouped from `transactions` by month
-- **Occupancy Chart**: Grouped from `bookings` by month
-- **Expiring Bookings**: Bookings where `end_date` is within 7 days
-
-All of these come directly from Lovable Cloud — no Express backend needed.
+| File | Action |
+|---|---|
+| `supabase/migrations/..._create_core_tables.sql` | CREATE — all tables + RLS + dashboard RPC functions |
+| `src/api/adminBookingsService.ts` | REWRITE — Supabase queries |
+| `src/api/adminCabinsService.ts` | REWRITE — Supabase queries |
+| `src/api/adminSeatsService.ts` | REWRITE — Supabase queries |
+| `src/api/adminRoomsService.ts` | REWRITE — Supabase queries |
+| `src/api/adminUsersService.ts` | REWRITE — Supabase queries |
+| `src/api/adminLaundryService.ts` | REWRITE — Supabase queries |
+| `src/api/hostelService.ts` | REWRITE — Supabase queries |
+| `src/api/bookingsService.ts` | REWRITE — Supabase queries (student-facing) |
+| `src/hooks/use-dashboard-statistics.ts` | UPDATE — use single RPC call |
+| `src/contexts/AuthContext.tsx` | FIX — eliminate double role fetch |
 
 ## Technical Notes
 
-- The new tables will start empty. Dashboard will show zeros/empty states initially, which is correct for a fresh installation. Data can be added through the admin panel.
-- All existing frontend components (`DashboardStatistics`, `DynamicStatisticsCards`, `OccupancyChart`, `RevenueChart`, `DashboardExpiringBookings`) will continue to work — only the service layer changes.
-- RLS ensures students can't see other students' data, admins see everything.
-- A `profiles` table with a trigger will auto-create a profile row whenever a new user signs up.
-- The `has_role()` database function already exists from the previous migration and will be reused.
-
-## Scope of This Change
-
-This plan covers making the **admin dashboard** fully functional with real data from Lovable Cloud. The same pattern (replace axios service → Supabase query) will then be applied to all other pages (bookings list, hostel management, seat management, student dashboard, etc.) in subsequent steps.
+- All tables start empty — dashboard will show zeros, which is correct for a fresh install. Data is added through the admin UI.
+- The `has_role()` function already exists in the database from the previous migration — it will be reused for all RLS policies.
+- The `axiosConfig.ts` file is kept as-is (it's still needed for any legacy imports that may not be touched), but no service file will use it after this change.
+- Supabase pagination uses `.range()` which correctly handles large datasets without the 1000-row silent truncation issue.
+- The `get_dashboard_stats` RPC function runs all aggregations server-side in a single round-trip.
