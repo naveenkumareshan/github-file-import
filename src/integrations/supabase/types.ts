@@ -14,6 +14,176 @@ export type Database = {
   }
   public: {
     Tables: {
+      bookings: {
+        Row: {
+          booking_duration: string | null
+          cabin_id: string | null
+          created_at: string | null
+          duration_count: string | null
+          end_date: string | null
+          id: string
+          payment_status: string | null
+          seat_number: number | null
+          start_date: string | null
+          total_price: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          booking_duration?: string | null
+          cabin_id?: string | null
+          created_at?: string | null
+          duration_count?: string | null
+          end_date?: string | null
+          id?: string
+          payment_status?: string | null
+          seat_number?: number | null
+          start_date?: string | null
+          total_price?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          booking_duration?: string | null
+          cabin_id?: string | null
+          created_at?: string | null
+          duration_count?: string | null
+          end_date?: string | null
+          id?: string
+          payment_status?: string | null
+          seat_number?: number | null
+          start_date?: string | null
+          total_price?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookings_cabin_id_fkey"
+            columns: ["cabin_id"]
+            isOneToOne: false
+            referencedRelation: "cabins"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cabins: {
+        Row: {
+          amenities: string[] | null
+          area: string | null
+          capacity: number | null
+          category: string | null
+          city: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean | null
+          name: string
+          price: number | null
+          state: string | null
+        }
+        Insert: {
+          amenities?: string[] | null
+          area?: string | null
+          capacity?: number | null
+          category?: string | null
+          city?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          name: string
+          price?: number | null
+          state?: string | null
+        }
+        Update: {
+          amenities?: string[] | null
+          area?: string | null
+          capacity?: number | null
+          category?: string | null
+          city?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          name?: string
+          price?: number | null
+          state?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          address: string | null
+          alternate_phone: string | null
+          bio: string | null
+          city: string | null
+          college_studied: string | null
+          course_preparing_for: string | null
+          course_studying: string | null
+          created_at: string | null
+          date_of_birth: string | null
+          email: string | null
+          gender: string | null
+          id: string
+          name: string | null
+          parent_mobile_number: string | null
+          phone: string | null
+          pincode: string | null
+          profile_edit_count: number | null
+          profile_picture: string | null
+          state: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          alternate_phone?: string | null
+          bio?: string | null
+          city?: string | null
+          college_studied?: string | null
+          course_preparing_for?: string | null
+          course_studying?: string | null
+          created_at?: string | null
+          date_of_birth?: string | null
+          email?: string | null
+          gender?: string | null
+          id: string
+          name?: string | null
+          parent_mobile_number?: string | null
+          phone?: string | null
+          pincode?: string | null
+          profile_edit_count?: number | null
+          profile_picture?: string | null
+          state?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          alternate_phone?: string | null
+          bio?: string | null
+          city?: string | null
+          college_studied?: string | null
+          course_preparing_for?: string | null
+          course_studying?: string | null
+          created_at?: string | null
+          date_of_birth?: string | null
+          email?: string | null
+          gender?: string | null
+          id?: string
+          name?: string | null
+          parent_mobile_number?: string | null
+          phone?: string | null
+          pincode?: string | null
+          profile_edit_count?: number | null
+          profile_picture?: string | null
+          state?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string

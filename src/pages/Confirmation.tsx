@@ -21,7 +21,7 @@ const Confirmation = () => {
         const response = await bookingsService.getBookingById(bookingId);
 
         if (response.success && response.data) {
-          setBooking(response.data.data);
+          setBooking(response.data);
         } else {
           toast({
             title: "Error",

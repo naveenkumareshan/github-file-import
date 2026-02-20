@@ -60,16 +60,17 @@ const Booking = () => {
         if (response.success && response.data) {
           console.log("Cabin data received:", response.data);
           
+          const d = response.data;
           setCabin({
-            _id: response.data._id || response.data.id,
-            id: response.data._id || response.data.id,
-            name: response.data.name,
-            description: response.data.description,
-            price: response.data.price,
-            amenities: response.data.amenities || [],
-            capacity: response.data.capacity || 1,
-            category: response.data.category || 'standard',
-            imageSrc: response.data.imageSrc || 'https://images.unsplash.com/photo-1626948683838-3be9a4e90737?q=80&w=1470&auto=format&fit=crop'
+            _id: d.id,
+            id: d.id,
+            name: d.name,
+            description: d.description || '',
+            price: d.price || 0,
+            amenities: d.amenities || [],
+            capacity: d.capacity || 1,
+            category: d.category || 'standard',
+            imageSrc: d.image_url || 'https://images.unsplash.com/photo-1626948683838-3be9a4e90737?q=80&w=1470&auto=format&fit=crop'
           });
         } else {
           console.error("Error in cabin response:", response);
@@ -131,17 +132,14 @@ const Booking = () => {
     // Create the booking first
     try {
       const bookingData = {
-        cabinId: cabin.id.toString(),
-        seatId: selectedSeat.id.toString(),
-        startDate: format(bookingDate, 'yyyy-MM-dd'),
-        endDate: format(endDate, 'yyyy-MM-dd'),
-        totalPrice: totalPrice,
-        seatPrice: cabin.price,
-        bookingDuration: 'monthly' as const,
-        durationCount: 1,
-        paymentMethod: '',
-        isRenewal: false,
-        keyDeposit: cabin.lockerPrice ?? 500
+        cabin_id: cabin.id.toString(),
+        seat_number: selectedSeat.number,
+        start_date: format(bookingDate, 'yyyy-MM-dd'),
+        end_date: format(endDate, 'yyyy-MM-dd'),
+        total_price: totalPrice,
+        payment_status: 'pending',
+        booking_duration: 'monthly',
+        duration_count: '1',
       };
       
       const response = await bookingsService.createBooking(bookingData);

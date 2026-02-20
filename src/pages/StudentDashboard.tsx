@@ -67,17 +67,13 @@ const StudentDashboard: React.FC = () => {
       setLoading(true);
       
       const currentResponse = await bookingsService.getCurrentBookings();
-      if (currentResponse.success && currentResponse.data) {
-        if(currentResponse.data.data.length > 0){
-          setCurrentBookings(currentResponse.data.data);
-        }
+      if (currentResponse.success && Array.isArray(currentResponse.data)) {
+        setCurrentBookings(currentResponse.data as any);
       }
       
       const historyResponse = await bookingsService.getBookingHistory();
-      if (historyResponse.success && historyResponse.data) {
-        if(historyResponse.data.data.length > 0){
-          setBookingHistory(historyResponse.data.data);
-        }
+      if (historyResponse.success && Array.isArray(historyResponse.data)) {
+        setBookingHistory(historyResponse.data as any);
       }
     } catch (error) {
       console.error('Error fetching booking data:', error);

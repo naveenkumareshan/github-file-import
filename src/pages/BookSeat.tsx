@@ -94,33 +94,23 @@ const BookSeat = () => {
       const response = await cabinsService.getCabinById(cabinId);
 
       if (response.success && response.data) {
+        const d = response.data;
         setCabin({
-          _id: response.data._id || response.data.id,
-          id: response.data._id || response.data.id,
-          name: response.data.name,
-          description: response.data.description,
-          price: response.data.price,
-          amenities: response.data.amenities || [],
-          capacity: response.data.capacity || 1,
-          // images: response.data.images.legth > 0 ? response.data.images.legth  : [response.data.imageSrc],
-          images: response.data.images || [response.data.imageSrc],
-          imageSrc: response.data.imageSrc,
-          floors : response.data.floors,
-          lockerPrice: response.data.lockerPrice,
-          isBookingActive: response.data.isBookingActive,
-          category: response.data.category || "standard",
-          imageUrl:
-            response.data.imageUrl ||
-            "https://images.unsplash.com/photo-1626948683838-3be9a4e90737?q=80&w=1470&auto=format&fit=crop",
+          _id: d.id,
+          id: d.id,
+          name: d.name,
+          description: d.description || '',
+          price: d.price || 0,
+          amenities: d.amenities || [],
+          capacity: d.capacity || 1,
+          images: d.image_url ? [d.image_url] : [],
+          imageSrc: d.image_url || '',
+          floors: [],
+          lockerPrice: 500,
+          isBookingActive: d.is_active,
+          category: (d.category as 'standard' | 'premium' | 'luxury') || 'standard',
+          imageUrl: d.image_url || 'https://images.unsplash.com/photo-1626948683838-3be9a4e90737?q=80&w=1470&auto=format&fit=crop',
         });
-
-        // Save room elements if available
-        if (
-          response.data.roomElements &&
-          Array.isArray(response.data.roomElements)
-        ) {
-          setRoomElements(response.data.roomElements);
-        }
       } else {
         console.error("Error in cabin response:", response);
         toast({
