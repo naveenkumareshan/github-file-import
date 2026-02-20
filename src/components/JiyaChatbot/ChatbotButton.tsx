@@ -5,14 +5,18 @@ import { ChatbotDialog } from './ChatbotDialog';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Baby } from 'lucide-react';
 
-const ChatbotButton: React.FC = () => {
+interface ChatbotButtonProps {
+  className?: string;
+}
+
+const ChatbotButton: React.FC<ChatbotButtonProps> = ({ className }) => {
   const [isOpen, setIsOpen] = useState(false);
   
   return (
     <>
       <Button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 rounded-full shadow-lg bg-primary h-14 w-14 p-0"
+        className={`fixed ${className ?? 'bottom-6'} right-6 rounded-full shadow-lg bg-primary h-14 w-14 p-0`}
         aria-label="Open Jiya chatbot"
       >
         <Avatar className="h-12 w-12">
