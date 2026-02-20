@@ -316,11 +316,12 @@ const VendorApproval: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Host Management</h1>
-          <p className="text-muted-foreground">Review and manage Host applications</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Admin Panel / Hosts</p>
+          <h1 className="text-lg font-semibold">Host Management</h1>
+          <p className="text-sm text-muted-foreground">Review and manage host applications</p>
         </div>
         <div className="flex gap-2">
           <Button
@@ -368,17 +369,13 @@ const VendorApproval: React.FC = () => {
               </div>
               
               <div>
-                <Label>Business Type</Label>
+                <Label className="text-xs">Business Type</Label>
                 <Select value={filters.businessType} onValueChange={(value) => handleFilterChange('businessType', value)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {/* <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="individual">Individual</SelectItem>
-                    <SelectItem value="company">Company</SelectItem>
-                    <SelectItem value="partnership">Partnership</SelectItem> */}
-                    <SelectItem value="cabin">Cabin</SelectItem>
+                    <SelectItem value="reading_room">Reading Room</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

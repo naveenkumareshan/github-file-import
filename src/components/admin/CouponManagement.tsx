@@ -302,11 +302,12 @@ export function CouponManagement() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold">Coupon Management</h2>
-          <p className="text-muted-foreground">
+          <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Admin Panel / Promotions</p>
+          <h1 className="text-lg font-semibold">Coupon Management</h1>
+          <p className="text-sm text-muted-foreground">
             {user?.role === 'vendor' ? 'Manage your coupon discounts' : 'Manage discount coupons for bookings'}
           </p>
         </div>
@@ -447,8 +448,8 @@ export function CouponManagement() {
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cabin">Cabin Only</SelectItem>
+                  <SelectContent>
+                      <SelectItem value="cabin">Reading Room</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
