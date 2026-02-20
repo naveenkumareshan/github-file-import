@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
+import DemoCredentials, { DemoAccount } from '@/components/auth/DemoCredentials';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +10,23 @@ import { AlertCircle, Eye, EyeOff, Building2 } from 'lucide-react';
 import { authService } from '@/api/authService';
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from '@/hooks/use-toast';
+
+const VENDOR_DEMO_ACCOUNTS: DemoAccount[] = [
+  {
+    label: 'Host (Vendor)',
+    email: 'host@inhalestays.com',
+    password: 'Host@123',
+    description: 'Property owner / Host account',
+    accessRights: ['Dashboard', 'Hostel Mgmt', 'Reading Rooms', 'Bookings', 'Seat Transfer', 'Employees', 'Payouts', 'Reviews', 'Profile'],
+  },
+  {
+    label: 'Host Employee',
+    email: 'employee@inhalestays.com',
+    password: 'Employee@123',
+    description: 'Host staff with role-based permissions',
+    accessRights: ['Dashboard (if permitted)', 'Bookings (if permitted)', 'Seat Map (if permitted)', 'Reports (if permitted)'],
+  },
+];
 
 const VendorLogin: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -109,109 +127,115 @@ const VendorLogin: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1 text-center">
-          <div className="flex justify-center mb-4">
-            <div className="p-3 bg-primary rounded-full">
-              <Building2 className="h-6 w-6 text-primary-foreground" />
+    <div className="min-h-screen flex items-center justify-center bg-accent/30 p-4">
+      <div className="w-full max-w-md">
+        <Card>
+          <CardHeader className="space-y-1 text-center">
+            <div className="flex justify-center mb-4">
+              <div className="p-3 bg-primary rounded-full">
+                <Building2 className="h-6 w-6 text-primary-foreground" />
+              </div>
             </div>
-          </div>
-          <CardTitle className="text-2xl font-bold">Host Portal</CardTitle>
-          <p className="text-muted-foreground">
-            Sign in to manage your properties and bookings
-          </p>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="Enter your email"
-                value={formData.email}
-                onChange={handleInputChange}
-                className={errors.email ? 'border-red-500' : ''}
-                disabled={isLoading}
-              />
-              {errors.email && (
-                <div className="flex items-center gap-1 text-sm text-red-600">
-                  <AlertCircle className="h-4 w-4" />
-                  {errors.email}
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
+            <CardTitle className="text-2xl font-bold">Host Portal</CardTitle>
+            <p className="text-muted-foreground">
+              Sign in to manage your properties and bookings
+            </p>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email Address</Label>
                 <Input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Enter your password"
-                  value={formData.password}
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={formData.email}
                   onChange={handleInputChange}
-                  className={errors.password ? 'border-red-500' : ''}
+                  className={errors.email ? 'border-destructive' : ''}
                   disabled={isLoading}
                 />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                  onClick={() => setShowPassword(!showPassword)}
-                  disabled={isLoading}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  )}
-                </Button>
+                {errors.email && (
+                  <div className="flex items-center gap-1 text-sm text-destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    {errors.email}
+                  </div>
+                )}
               </div>
-              {errors.password && (
-                <div className="flex items-center gap-1 text-sm text-red-600">
-                  <AlertCircle className="h-4 w-4" />
-                  {errors.password}
+
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    name="password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Enter your password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    className={errors.password ? 'border-destructive' : ''}
+                    disabled={isLoading}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                    onClick={() => setShowPassword(!showPassword)}
+                    disabled={isLoading}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
                 </div>
-              )}
-            </div>
+                {errors.password && (
+                  <div className="flex items-center gap-1 text-sm text-destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    {errors.password}
+                  </div>
+                )}
+              </div>
 
-            <div className="flex items-center justify-between">
-              <Link 
-                to="/forgot-password" 
-                className="text-sm text-primary hover:underline"
+              <div className="flex items-center justify-between">
+                <Link 
+                  to="/forgot-password" 
+                  className="text-sm text-primary hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              </div>
+
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={isLoading}
               >
-                Forgot password?
-              </Link>
-            </div>
+                {isLoading ? 'Signing in...' : 'Sign In'}
+              </Button>
 
-            <Button 
-              type="submit" 
-              className="w-full" 
-              disabled={isLoading}
-            >
-              {isLoading ? 'Signing in...' : 'Sign In'}
-            </Button>
+              <div className="text-center text-sm text-muted-foreground">
+                New Host?{' '}
+                <Link to="/host/register" className="text-primary hover:underline">
+                  Apply for partnership
+                </Link>
+              </div>
 
-            <div className="text-center text-sm text-muted-foreground">
-              New Host?{' '}
-              <Link to="/host/register" className="text-primary hover:underline">
-                Apply for partnership
-              </Link>
-            </div>
-
-            <div className="text-center text-sm">
-              <Link to="/login" className="text-muted-foreground hover:text-primary">
-                Student/Admin Login
-              </Link>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+              <div className="text-center text-sm">
+                <Link to="/login" className="text-muted-foreground hover:text-primary">
+                  Student/Admin Login
+                </Link>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+        <DemoCredentials
+          accounts={VENDOR_DEMO_ACCOUNTS}
+          onSelect={(email, password) => setFormData({ email, password })}
+        />
+      </div>
     </div>
   );
 };

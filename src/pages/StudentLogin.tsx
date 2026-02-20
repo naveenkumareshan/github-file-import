@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Navigation } from "../components/Navigation";
+import DemoCredentials, { DemoAccount } from "@/components/auth/DemoCredentials";
 import {
   Card,
   CardContent,
@@ -18,6 +19,16 @@ import { useAuth } from "../contexts/AuthContext";
 import { Separator } from "@/components/ui/separator";
 import { SocialLoginButtons } from "@/components/auth/SocialLoginButtons";
 import { AlertCircle, Eye, EyeOff } from "lucide-react";
+
+const STUDENT_DEMO_ACCOUNTS: DemoAccount[] = [
+  {
+    label: 'Student',
+    email: 'student@inhalestays.com',
+    password: 'Student@123',
+    description: 'Student / Customer account',
+    accessRights: ['My Dashboard', 'My Bookings', 'Book Seat', 'Book Hostel', 'Laundry Request', 'Profile', 'Reviews'],
+  },
+];
 
 const StudentLogin = () => {
   const navigate = useNavigate();
@@ -238,6 +249,10 @@ const StudentLogin = () => {
               </p>
             </CardFooter>
           </Card>
+          <DemoCredentials
+            accounts={STUDENT_DEMO_ACCOUNTS}
+            onSelect={(email, password) => setFormData({ email, password })}
+          />
         </div>
       </div>
     </div>
