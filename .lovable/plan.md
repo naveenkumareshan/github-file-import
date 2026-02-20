@@ -1,117 +1,113 @@
 
-# Connect App to Supabase & Make It Fully Runnable
+# Fix Network Error: Replace Express API Calls with Lovable Cloud Backend
 
-## The Core Problem
+## Root Cause
 
-Your app currently has two layers:
-1. **Frontend** (React) — runs in Lovable's cloud preview at the URL you see
-2. **Backend** (Express + MongoDB in `/backend` folder) — needs a separate server to run
+Every page you visit after logging in calls the old Express backend at `localhost:5000`, which doesn't exist in the cloud. The login itself works (using Lovable Cloud auth), but once you're inside the admin dashboard, every data widget tries to fetch from `localhost:5000/api/admin/bookings`, `localhost:5000/api/seats`, etc., and gets "Network Error".
 
-The "Network Error" happens because the frontend tries to call `http://localhost:5000/api` — a local address that doesn't exist in Lovable's cloud environment. There is no localhost here.
+This is not just the dashboard — every page in the app has this issue.
 
-You already have a Supabase project connected (the client is configured at `src/integrations/supabase/client.ts`). The goal is to wire up the frontend authentication to use Supabase directly, so the app works completely without needing the Express/MongoDB backend to be running.
+## The Strategy
 
-## What Will Be Changed
+Since the app was previously MongoDB-backed and had complex data (bookings, seats, rooms, hostels, transactions, etc.), the cleanest path is to:
 
-### 1. AuthContext — Swap to Supabase Auth
+1. **Create all the needed database tables in Lovable Cloud** (bookings, cabins/rooms, seats, transactions, hostels, laundry orders, etc.)
+2. **Rewrite the frontend API service files** to call Lovable Cloud directly using the SDK instead of axios → localhost
+3. **Update the dashboard components** to use the new services
 
-`src/contexts/AuthContext.tsx` currently calls `authService.login()` which hits `http://localhost:5000/api/auth/login`. This will be replaced with `supabase.auth.signInWithPassword()` which works immediately from the browser.
+This will make the entire app work in the cloud with no separate backend needed.
 
-- `login()` → `supabase.auth.signInWithPassword()`
-- `registerUser()` → `supabase.auth.signUp()`
-- `logout()` → `supabase.auth.signOut()`
-- `isAuthenticated` → derived from `supabase.auth.getSession()`
-- Session persistence handled automatically by Supabase (no more `localStorage.setItem('token')`)
+## Database Tables to Create
 
-### 2. User Roles — Stored Securely in Supabase
+The following tables will be created to mirror the MongoDB collections:
 
-Following the security requirement, roles will be stored in a separate `user_roles` table, NOT on the user profile. A Supabase database migration will create:
+### Core Tables
 
-```sql
--- Role enum
-create type public.app_role as enum ('admin', 'student', 'vendor', 'vendor_employee', 'hostel_manager', 'super_admin');
+| Table | Purpose |
+|---|---|
+| `cabins` | Reading rooms/cabins with name, category, price, capacity, amenities |
+| `seats` | Individual seats inside a cabin with availability, price, position |
+| `bookings` | All student bookings (start/end date, seat, price, status) |
+| `transactions` | Payment records linked to bookings |
+| `hostels` | Hostel properties |
+| `hostel_rooms` | Rooms within hostels |
+| `hostel_beds` | Individual beds in hostel rooms |
+| `hostel_bookings` | Hostel bed/room bookings |
+| `laundry_orders` | Laundry service orders |
+| `profiles` | Extended user info (name, phone, gender) |
+| `locations` | State/city/area data for filtering |
+| `coupons` | Discount coupons |
 
--- Roles table (separate from profiles, prevents privilege escalation)
-create table public.user_roles (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users(id) on delete cascade not null,
-  role app_role not null,
-  unique (user_id, role)
-);
+### RLS Policies
 
--- Security definer function to check roles (prevents RLS recursion)
-create or replace function public.has_role(_user_id uuid, _role app_role)
-returns boolean language sql stable security definer set search_path = public as $$
-  select exists (select 1 from public.user_roles where user_id = _user_id and role = _role)
-$$;
-```
-
-RLS on `user_roles`:
-- Users can only read their own role
-- Only service role (admins) can insert/update roles
-
-### 3. Demo Accounts — Created in Supabase Auth
-
-The demo accounts shown on login pages need to actually exist in Supabase Auth. They will be created via a Supabase migration (insert into auth.users via a seed approach), with roles assigned in `user_roles`:
-
-| Email | Password | Role |
-|---|---|---|
-| admin@inhalestays.com | Admin@123 | admin |
-| superadmin@inhalestays.com | Super@123 | super_admin |
-| student@inhalestays.com | Student@123 | student |
-| host@inhalestays.com | Host@123 | vendor |
-| employee@inhalestays.com | Employee@123 | vendor_employee |
-
-### 4. ProtectedRoute — Role Check via Supabase
-
-`src/components/ProtectedRoute.tsx` currently reads `user.role` from the stored user object (which was set by the Express backend). After the change, the role will be fetched from the `user_roles` table using the Supabase client, so the role check is always server-validated and cannot be spoofed.
-
-### 5. axiosConfig — No Changes Needed for Auth
-
-The axios config (`src/api/axiosConfig.ts`) and all the Express API service files will remain untouched for now. The focus is getting **authentication and role-based routing** working fully via Supabase. All the booking/hostel/laundry data APIs can be connected to a backend later once deployed.
+- **Students** can only read/create their own bookings and transactions
+- **Admins** can read/write everything
+- **Vendors** can read cabins and bookings scoped to their vendor ID
+- Public can read active cabins, hostels, and seats
 
 ## Files to Create/Modify
 
-| File | Action | What Changes |
-|---|---|---|
-| `supabase/migrations/...create_roles.sql` | CREATE | Creates `app_role` enum, `user_roles` table, `has_role()` function, RLS policies |
-| `src/contexts/AuthContext.tsx` | MODIFY | Replace Express-based auth calls with Supabase Auth calls; fetch role from `user_roles` table |
-| `src/components/ProtectedRoute.tsx` | MODIFY | Use role from AuthContext (which now comes from Supabase, not localStorage) |
-| `src/pages/AdminLogin.tsx` | MINOR UPDATE | Ensure redirect-after-login still works correctly with the new auth flow |
-| `src/pages/StudentLogin.tsx` | MINOR UPDATE | Same |
-| `src/pages/vendor/VendorLogin.tsx` | MINOR UPDATE | Same |
+### 1. Database Migration (NEW)
+`supabase/migrations/..._create_core_tables.sql`
+- Creates all tables listed above with proper columns, foreign keys, indexes
+- Sets up RLS policies for each table
+- Adds helper views for dashboard statistics (revenue totals, occupancy rates)
 
-## How It Will Work After
+### 2. Replace `src/api/adminBookingsService.ts`
+Replace all axios calls to `/admin/bookings/*` with direct Lovable Cloud queries on the `bookings` table.
 
-```text
-User clicks "Use" on Admin demo credential
-  → Email/password filled into form
-  → User clicks Login
-  → supabase.auth.signInWithPassword() called
-  → Supabase validates credentials
-  → Session returned (JWT stored securely by Supabase SDK)
-  → AuthContext fetches role from user_roles table
-  → user.role = 'admin'
-  → ProtectedRoute checks role → PASS
-  → User lands on /admin/dashboard ✓
-```
+Key functions to rewrite:
+- `getAllBookings()` → `supabase.from('bookings').select(...)` with filters
+- `getBookingStats()` → Supabase aggregate queries
+- `getTopFillingRooms()` → Join cabins + bookings, count active
+- `getExpiringBookings(days)` → Filter bookings where `end_date` is within N days
+- `getMonthlyRevenue()` → Group transactions by month
+- `getMonthlyOccupancy()` → Group bookings by month
+- `getActiveResidents()` → Count active bookings
+- `getRevenueByTransaction()` → Sum transaction amounts
 
-## What Will Work Immediately
+### 3. Replace `src/api/adminSeatsService.ts`
+Replace seat management calls with Supabase queries on `seats` table.
 
-- All login pages (admin, student, vendor) — fully functional
-- Role-based routing (admin goes to `/admin/dashboard`, student to `/student/dashboard`)
-- Demo accounts — click "Use" then Login and it will actually authenticate
-- Session persistence — refreshing the page keeps you logged in
-- Logout — properly clears Supabase session
+### 4. Replace `src/api/adminRoomsService.ts`
+Replace cabin/room management calls with Supabase queries on `cabins` table.
 
-## What Still Requires the Backend
+### 5. Replace `src/api/adminUsersService.ts`
+Replace user management calls — query `profiles` and `user_roles` tables.
 
-The data pages (bookings list, hostel data, laundry orders, etc.) still call the Express API at `localhost:5000`. They will show "Network Error" on data load, but navigation and auth will work. Connecting that data layer requires deploying the Express backend to a service like Railway, which is a separate step.
+### 6. Replace `src/api/adminLaundryService.ts`
+Replace laundry order calls with Supabase queries on `laundry_orders` table.
+
+### 7. Replace `src/api/hostelService.ts`
+Replace hostel API calls with Supabase queries on `hostels` table.
+
+### 8. Replace `src/api/bookingsService.ts`
+Replace student-facing booking calls with Supabase queries.
+
+### 9. Update `src/api/axiosConfig.ts`
+Keep the file intact (many places import it) but note that going forward the new service files won't use it.
+
+## What the Dashboard Will Show After
+
+The admin dashboard widgets will display:
+- **Total Revenue**: Sum from `transactions` table
+- **Active Residents**: Count of bookings where `end_date > now()` and `status = 'active'`
+- **Seat Availability**: Count of seats where `is_available = true`
+- **Pending Payments**: Count/sum of bookings with `payment_status = 'pending'`
+- **Monthly Revenue Chart**: Grouped from `transactions` by month
+- **Occupancy Chart**: Grouped from `bookings` by month
+- **Expiring Bookings**: Bookings where `end_date` is within 7 days
+
+All of these come directly from Lovable Cloud — no Express backend needed.
 
 ## Technical Notes
 
-- Supabase is already connected (client configured at `src/integrations/supabase/client.ts`)
-- No new packages needed — `@supabase/supabase-js` is already installed
-- The `onAuthStateChange` listener will be set up before `getSession()` as required
-- Roles are never stored in localStorage — always fetched live from Supabase on session restore
-- The `has_role()` function uses `SECURITY DEFINER` to prevent RLS recursion
+- The new tables will start empty. Dashboard will show zeros/empty states initially, which is correct for a fresh installation. Data can be added through the admin panel.
+- All existing frontend components (`DashboardStatistics`, `DynamicStatisticsCards`, `OccupancyChart`, `RevenueChart`, `DashboardExpiringBookings`) will continue to work — only the service layer changes.
+- RLS ensures students can't see other students' data, admins see everything.
+- A `profiles` table with a trigger will auto-create a profile row whenever a new user signs up.
+- The `has_role()` database function already exists from the previous migration and will be reused.
+
+## Scope of This Change
+
+This plan covers making the **admin dashboard** fully functional with real data from Lovable Cloud. The same pattern (replace axios service → Supabase query) will then be applied to all other pages (bookings list, hostel management, seat management, student dashboard, etc.) in subsequent steps.
