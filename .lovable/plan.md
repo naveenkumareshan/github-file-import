@@ -1,124 +1,103 @@
 
-## Two Issues — Root Cause & Fix Plan
+## Admin Panel UI Polish — Complete Plan
+
+### What the User Wants
+All admin pages should have:
+- **Smaller, proportional headings** (not giant `text-3xl font-bold` H1s everywhere)
+- **Better visual hierarchy** — data tables stand out, headings recede
+- **Consistent theme-based colours** for badges and status indicators
+- **Clean, compact layouts** with proper spacing
+- **Good wording** — professional but concise labels
+
+The reference image shows the problem: huge dark `text-3xl font-bold` headings dominate the screen, while actual data is hard to read. The target look is smaller headings, cleaner filter areas, better badge colors, and data-forward layouts.
 
 ---
 
-### Issue 1: "Failed to remove image" — `Cannot read properties of undefined (reading 'startsWith')`
+### Pages / Components to Update
 
-**Root Cause:**
+| File | Current Problem | Fix |
+|---|---|---|
+| `src/pages/admin/DepositAndRestrictionManagement.tsx` | `text-3xl font-bold` heading, `grid w-full grid-cols-3` tab (too wide) | Reduce to `text-xl font-semibold`, compact tab list, add breadcrumb |
+| `src/components/admin/DepositManagement.tsx` | `text-2xl sm:text-3xl font-bold` heading, oversized filter card, `Cabin` column header | Reduce heading, compact filter row, rename `Cabin` → `Reading Room` in table header |
+| `src/components/admin/RefundManagement.tsx` | Same large heading pattern | Same fixes |
+| `src/pages/AdminBookings.tsx` | Already improved from previous work — just verify breadcrumb and description are compact | Minor: verify text sizes consistent |
+| `src/components/admin/SeatTransferManagement.tsx` | Missing page heading; filter card is large; booking list cards are dense | Add compact page header, tighten filter layout, add subtle row styling |
+| `src/components/admin/SeatTransferManagementHistory.tsx` | Same issues | Same fixes |
+| `src/pages/admin/ManualBookingManagement.tsx` | `text-2xl font-semibold` raw heading with no breadcrumb; raw `<h2>` for User Bookings section; raw `<table>` with plain styling | Add breadcrumb header, compact card-based layout, replace raw table with styled Table component for bookings list |
+| `src/pages/AdminStudents.tsx` | Large `text-xl font-bold` heading OK, but `border-cabin-wood` spinner class, `text-3xl` inside dialogs | Fix spinner class, tighten dialog heading sizes |
+| `src/components/admin/CouponManagement.tsx` | Missing page header with breadcrumb; "Cabin Only" in Applicable For filter | Add compact page header; rename filter label "Reading Room" |
+| `src/components/admin/VendorApproval.tsx` | `text-3xl font-bold` heading; "Cabin" in Business Type filter value label | Reduce heading size, rename Business Type option label |
+| `src/pages/admin/ReviewsManagement.tsx` | `text-2xl font-bold` heading; review cards have no compact mode; `Select cabin` placeholder text | Compact heading, `Select reading room` placeholder, tighter review cards |
+| `src/pages/AdminDashboard.tsx` | Already improved — verify sizes | Minor check |
 
-In `src/components/admin/CabinEditor.tsx`, the `allImages` array is computed on line 213 as:
-```js
-Array.from(new Set([cabin.imageSrc, ...(cabin.images || [])]))
+---
+
+### Design Rules Applied Consistently
+
+**Headings hierarchy:**
+```
+Page title:      text-lg font-semibold   (was text-2xl/3xl font-bold)
+Card titles:     text-sm font-semibold text-muted-foreground uppercase tracking-wide
+Section labels:  text-xs font-medium text-muted-foreground
 ```
 
-When creating a new room, `cabin.imageSrc` is `undefined` (the state initializer `existingCabin?.images.length > 0 ? existingCabin?.images[0] : existingCabin?.imageSrc` returns `undefined` for new rooms). This spreads `undefined` into the Set, so `allImages = [undefined, "/path/to/image.jpg"]`.
-
-In `ImageUpload.tsx`, the thumbnail grid renders `allImages.map((img) => ...)` and when the user clicks "Remove" on the first item, it calls `handleRemove(undefined)`. On line 111 of `ImageUpload.tsx`:
-```js
-if (!url.startsWith('blob:')) {  // ← crashes: url is undefined
+**Breadcrumb pattern (applied to all pages missing it):**
+```
+Admin Panel / Key Deposits
 ```
 
-**Two-layer fix:**
+**Badge colour system:**
+```
+completed / approved / active → green (bg-green-100 text-green-700)
+pending                       → amber (bg-amber-100 text-amber-700)  
+failed / rejected / inactive  → red   (bg-red-100 text-red-700)
+refunded                      → blue  (bg-blue-100 text-blue-700)
+```
 
-1. **`CabinEditor.tsx`** — Filter out falsy values from `allImages`:
-   ```js
-   const allImages = cabin.imageUrl !== '/placeholder.svg'
-     ? Array.from(new Set([cabin.imageSrc, ...(cabin.images || [])])).filter(Boolean)
-     : (cabin.images || []).filter(Boolean);
-   ```
+**Filter areas:**
+- Compact inline grid (`gap-3` not `gap-6`)
+- Labels are `text-xs` not `text-sm`
+- Filter card uses `CardContent className="p-4"` not default padding
 
-2. **`ImageUpload.tsx`** — Add a defensive guard in `handleRemove`:
-   ```js
-   const handleRemove = async (url: string) => {
-     if (!url || !onRemove) return;
-     try {
-       if (!url.startsWith('blob:')) { ... }
-   ```
-
-   Also filter `existingImages` to remove any `undefined`/falsy entries in the `allImages` calculation inside `ImageUpload.tsx`:
-   ```js
-   const allImages = [
-     ...existingImages.filter(Boolean), 
-     ...uploadedImages.filter(img => !existingImages.includes(img))
-   ];
-   ```
+**Tables:**
+- `TableHead` uses `text-xs font-medium uppercase tracking-wide text-muted-foreground`
+- Alternating row colors: `bg-muted/20` on even rows
+- Compact `py-2` cells
 
 ---
 
-### Issue 2: Admin Panel UI Beautification
+### Specific Text/Label Fixes
 
-This is a UI-only polish across all admin pages. No data, logic, variable names, routes, or API calls are changed. The improvements are:
-
-#### A. `AdminSidebar.tsx` — Sidebar header & nav polish
-- Replace plain `<Building>` icon with the InhaleStays logo image (already at `src/assets/inhalestays-logo.png`)
-- Add a subtle gradient background to the header area
-- Improve user role badge display with color-coded pill (Admin = blue, Host = green, Employee = orange)
-- Add a thin separator between nav groups with group labels
-
-#### B. `AdminDashboard.tsx` — Dashboard page header
-- Add a proper page subtitle: "Welcome back, {name} — here's your operational overview."
-- Move the tab buttons into a proper `TabsList` styled group instead of standalone buttons
-- Replace the plain "Logout" destructive button in the header — logout already exists in sidebar footer, remove it from dashboard header to reduce clutter
-- Add a breadcrumb-like "Admin Panel / Dashboard" path indicator
-
-#### C. `AdminBookings.tsx` — Bookings Management
-- Add page description: "View and manage all seat reservations across reading rooms."
-- Wrap the status filter in a proper `<Select>` component instead of a raw `<select>` tag for visual consistency
-- Improve status badge variants: use proper Shadcn `<Badge variant>` instead of raw className color strings
-- Add column header tooltips for clarity ("Payment Status" → shows tooltip explaining difference from booking status)
-- Make "Mark Complete" and "Cancel" buttons more descriptive with icons
-
-#### D. `AdminStudents.tsx` — User Management
-- Add page description: "Manage student accounts, view booking history, and update user details."
-- Style the filter row more consistently with proper label alignment
-- Improve the student detail dialog with section dividers and icons for each info category (Profile, Bookings, Contact)
-
-#### E. `RoomManagement.tsx` (already exists) — Reading Room Management
-- Add page subtitle: "Configure and manage your reading room inventory."
-- Improve the search bar with a proper icon-input combo styled card
-- Add total count display: "Showing X of Y reading rooms"
-
-#### F. `CabinEditor.tsx` — Add/Edit Reading Room Form
-- Replace the plain tab list with better-styled tab triggers with subtle icons
-- Improve section headings within tabs (e.g., bold "Room Configuration" sub-heading before the form grid)
-- Add a sticky save footer on the form with the Save/Cancel buttons visible at all times
-
-#### G. `CabinItem.tsx` — Reading Room Cards
-- Improve the card layout: vendor badge and code on same line instead of stacked `<br>` tags
-- Add a subtle hover shadow animation to cards
-- Improve the action buttons area with a proper divider above buttons
-
-#### H. `DashboardStatistics.tsx` — Stats section
-- Add section descriptions under chart headings
-- Style the "Top Filling Reading Rooms" table with alternating row colors
-
-#### I. `AdminLayout.tsx` — Overall layout
-- Add a top header bar with breadcrumbs showing the current page section
+| Location | Old Text | New Text |
+|---|---|---|
+| `DepositManagement.tsx` table header | `Cabin` | `Reading Room` |
+| `CouponManagement.tsx` filter | `Cabin Only` | `Reading Room` |
+| `VendorApproval.tsx` filter | `Cabin` | `Reading Room` |
+| `ManualBookingManagement.tsx` tab content | `Cabin` type badge in bookings | `Reading Room` |
+| `ReviewsManagement.tsx` | `Select cabin` placeholder | `Select reading room` |
+| `DepositManagement.tsx` heading | `{type} Management` (rendered as `"Deposits Management"`) | Removed — the tab already says "Deposits", heading becomes redundant sub-label |
+| `ManualBookingManagement.tsx` label | `key Deposite` | `Key Deposit` |
+| `SeatTransferManagement.tsx` | Missing page-level heading | Add: "Seat Transfer · Manage and track seat changes" |
+| `SeatTransferManagementHistory.tsx` | Missing page heading | Add: "Transfer History" |
 
 ---
 
-### Files to Change
+### Files to Edit
 
-| File | Change |
-|---|---|
-| `src/components/ImageUpload.tsx` | Bug fix: guard against undefined url + filter falsy images |
-| `src/components/admin/CabinEditor.tsx` | Bug fix: filter undefined from allImages |
-| `src/components/admin/AdminSidebar.tsx` | Logo, role badge, group labels |
-| `src/pages/AdminDashboard.tsx` | Subtitle, tab polish, remove redundant logout |
-| `src/pages/AdminBookings.tsx` | Description, Select for status filter, better badge styles, icons on action buttons |
-| `src/pages/AdminStudents.tsx` | Description, dialog sections with icons |
-| `src/pages/RoomManagement.tsx` | Subtitle, count display |
-| `src/components/admin/CabinEditor.tsx` | Tab icons, section headings, sticky footer |
-| `src/components/admin/CabinItem.tsx` | Card layout, hover effects, button area |
-| `src/components/admin/DashboardStatistics.tsx` | Section descriptions, alternating row colors |
-| `src/components/AdminLayout.tsx` | Breadcrumb top bar |
+1. `src/pages/admin/DepositAndRestrictionManagement.tsx` — heading size, tab width fix
+2. `src/components/admin/DepositManagement.tsx` — heading size, filter compaction, table header rename
+3. `src/pages/AdminBookings.tsx` — verify/minor badge class polish
+4. `src/components/admin/SeatTransferManagement.tsx` — add page header, compact filter, styled table rows
+5. `src/components/admin/SeatTransferManagementHistory.tsx` — same as above
+6. `src/pages/admin/ManualBookingManagement.tsx` — breadcrumb header, label typo fix, bookings table styling
+7. `src/pages/AdminStudents.tsx` — fix spinner class, tighten dialog
+8. `src/components/admin/CouponManagement.tsx` — add page header, fix filter label
+9. `src/components/admin/VendorApproval.tsx` — reduce heading, fix Business Type filter label
+10. `src/pages/admin/ReviewsManagement.tsx` — reduce heading, fix placeholder, compact review cards
 
----
-
-### What is NOT changed
-- No variable names, API calls, routes, or data
-- No backend code
-- No field values or form logic
-- No component imports that would break existing flow
-- Sidebar menu items remain exactly as defined (only visual styling of the sidebar shell changes)
+### What is NOT Changed
+- No logic, API calls, variable names, or routes
+- No field names or form values
+- No backend files
+- No component names or file names
+- All existing functionality preserved exactly
