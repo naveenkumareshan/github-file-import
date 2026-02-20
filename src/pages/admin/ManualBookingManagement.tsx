@@ -665,7 +665,7 @@ useEffect(() => {
             </div>
             
             <div>
-              <Label htmlFor="keyDeposite">key Deposite</Label>
+              <Label htmlFor="keyDeposite">Key Deposit</Label>
               <Input type="number" id="keyDeposite" value={keyDeposite} onChange={handleKeyDepositeChange} />
             </div>
              <div>
@@ -744,32 +744,32 @@ useEffect(() => {
   };
  const renderBookingManagement = () => (
     <div className="mb-4">
-      <h2 className="text-xl font-semibold mb-2">User Bookings</h2>
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-2">User Bookings</h2>
       {bookings.length > 0 ? (
-        <div className="mt-4 overflow-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div className="mt-2 overflow-auto rounded-xl border border-border/60 shadow-sm">
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-muted/30">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Booking ID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Price</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Booking ID</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Type</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Start Date</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">End Date</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Total Price</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Payment Status</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {bookings.map((booking) => (
-                <tr key={booking._id}>
-                  <td className="px-6 py-4 whitespace-nowrap">{booking._id}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{booking.cabinId ? 'Cabin' : 'Hostel'}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{new Date(booking.startDate).toLocaleDateString()}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{new Date(booking.endDate).toLocaleDateString()}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">₹{booking.totalPrice}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{booking.paymentStatus}</td>
-                  <td className="px-6 py-4 whitespace-nowrap space-x-2">
-                    <Button size="sm" variant="outline" onClick={()=>viewBookings(booking._id)}>View</Button>
+            <tbody className="divide-y divide-border">
+              {bookings.map((booking, idx) => (
+                <tr key={booking._id} className={idx % 2 === 0 ? "bg-background" : "bg-muted/20"}>
+                  <td className="px-4 py-3 text-xs whitespace-nowrap font-mono">{booking._id}</td>
+                  <td className="px-4 py-3 text-xs whitespace-nowrap">{booking.cabinId ? 'Reading Room' : 'Hostel'}</td>
+                  <td className="px-4 py-3 text-xs whitespace-nowrap">{new Date(booking.startDate).toLocaleDateString()}</td>
+                  <td className="px-4 py-3 text-xs whitespace-nowrap">{new Date(booking.endDate).toLocaleDateString()}</td>
+                  <td className="px-4 py-3 text-xs whitespace-nowrap">₹{booking.totalPrice}</td>
+                  <td className="px-4 py-3 text-xs whitespace-nowrap">{booking.paymentStatus}</td>
+                  <td className="px-4 py-3 text-xs whitespace-nowrap">
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => viewBookings(booking._id)}>View</Button>
                   </td>
                 </tr>
               ))}
@@ -777,24 +777,48 @@ useEffect(() => {
           </table>
         </div>
       ) : (
-        <p className="text-muted-foreground">No bookings found for the selected user</p>
+        <p className="text-sm text-muted-foreground">No bookings found for the selected user</p>
       )}
     </div>
   );
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-semibold mb-4">Manual Booking Management</h1>
+    <div className="flex flex-col gap-4">
+      {/* Page Header */}
+      <div>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+          <span>Admin Panel</span><span>/</span>
+          <span className="text-foreground font-medium">Manual Booking</span>
+        </div>
+        <h1 className="text-lg font-semibold tracking-tight">Manual Booking</h1>
+        <p className="text-xs text-muted-foreground mt-0.5">Create bookings on behalf of students.</p>
+      </div>
+
+      {/* Step Indicator */}
+      <div className="flex items-center gap-2">
+        {(['select-user','select-cabin','select-dates','select-seat','booking-details'] as const).map((s, idx) => {
+          const labels = ['Select User','Select Room','Select Dates','Select Seat','Booking Details'];
+          const currentIdx = ['select-user','select-cabin','select-dates','select-seat','booking-details'].indexOf(step);
+          return (
+            <React.Fragment key={s}>
+              <div className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold transition-colors ${idx <= currentIdx ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                {idx + 1}
+              </div>
+              <span className={`text-xs hidden sm:inline ${idx === currentIdx ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>{labels[idx]}</span>
+              {idx < 4 && <div className={`flex-1 h-px ${idx < currentIdx ? 'bg-primary' : 'bg-border'}`} />}
+            </React.Fragment>
+          );
+        })}
+      </div>
 
       {error && (
-        <div className="mb-4 p-3 bg-red-50 text-red-500 border border-red-200 rounded">
+        <div className="p-3 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm">
           {error}
         </div>
       )}
 
-      <Tabs defaultValue="create" className="mt-6">
-        <TabsContent value="create" className="space-y-4">
-          {/* Original booking management functionality */}
+      <Tabs defaultValue="create" className="mt-0">
+        <TabsContent value="create" className="space-y-4 mt-0">
           {renderBookingManagement()}
           {step === 'select-user' && renderUserSelection()}
           {step === 'select-cabin' && renderCabinSelection()}

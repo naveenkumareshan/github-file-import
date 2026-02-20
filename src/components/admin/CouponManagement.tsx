@@ -578,28 +578,23 @@ export function CouponManagement() {
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Search className="h-5 w-5" />
-            Filters
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <Card className="border border-border/60 rounded-xl shadow-sm">
+        <CardContent className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <div>
-              <Label htmlFor="search">Search</Label>
+              <Label className="text-xs font-medium text-muted-foreground">Search</Label>
               <Input
                 id="search"
                 placeholder="Search by code or name"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                className="h-8 text-sm"
               />
             </div>
             <div>
-              <Label htmlFor="filterScope">Scope</Label>
+              <Label className="text-xs font-medium text-muted-foreground">Scope</Label>
               <Select value={filterScope} onValueChange={setFilterScope}>
-                <SelectTrigger>
+                <SelectTrigger className="h-8 text-sm">
                   <SelectValue placeholder="All scopes" />
                 </SelectTrigger>
                 <SelectContent>
@@ -611,9 +606,9 @@ export function CouponManagement() {
               </Select>
             </div>
             <div>
-              <Label htmlFor="filterType">Type</Label>
+              <Label className="text-xs font-medium text-muted-foreground">Type</Label>
               <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger>
+                <SelectTrigger className="h-8 text-sm">
                   <SelectValue placeholder="All types" />
                 </SelectTrigger>
                 <SelectContent>
@@ -624,13 +619,13 @@ export function CouponManagement() {
               </Select>
             </div>
             <div>
-              <Label htmlFor="filterApplicableFor">Applicable For</Label>
+              <Label className="text-xs font-medium text-muted-foreground">Applicable For</Label>
               <Select value={filterApplicableFor} onValueChange={setFilterApplicableFor}>
-                <SelectTrigger>
+                <SelectTrigger className="h-8 text-sm">
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="cabin">Cabin Only</SelectItem>
+                  <SelectItem value="cabin">Reading Room</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -639,54 +634,59 @@ export function CouponManagement() {
       </Card>
 
       {/* Coupons Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TicketPercent className="h-5 w-5" />
-            {user?.role === 'vendor' ? 'Your Coupons' : 'All Coupons'} ({coupons.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+      <Card className="border border-border/60 rounded-xl shadow-sm">
+        <div className="flex items-center justify-between py-3 px-4 border-b">
+          <span className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            {user?.role === 'vendor' ? 'Your Coupons' : 'All Coupons'}
+          </span>
+          <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-muted text-muted-foreground border border-border">{coupons.length} total</span>
+        </div>
+        <CardContent className="p-0">
           {loading ? (
-            <div className="text-center py-8">Loading coupons...</div>
+            <div className="p-4 space-y-3">
+              {[1,2,3].map(i => (
+                <div key={i} className="h-12 bg-muted animate-pulse rounded-lg" />
+              ))}
+            </div>
           ) : coupons.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No coupons found
+            <div className="text-center py-12">
+              <TicketPercent className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
+              <p className="text-sm font-medium text-foreground">No coupons found</p>
+              <p className="text-xs text-muted-foreground mt-1">Create your first coupon to get started</p>
             </div>
           ) : (
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Scope</TableHead>
-                  {user?.role === 'admin' && <TableHead>Vendor</TableHead>}
-                  <TableHead>Type</TableHead>
-                  <TableHead>Value</TableHead>
-                  <TableHead>Users</TableHead>
-                  <TableHead>Usage</TableHead>
-                  <TableHead>Valid Until</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
+                <TableRow className="bg-muted/30">
+                  <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Code</TableHead>
+                  <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Name</TableHead>
+                  <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Scope</TableHead>
+                  {user?.role === 'admin' && <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Vendor</TableHead>}
+                  <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Type</TableHead>
+                  <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Value</TableHead>
+                  <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Users</TableHead>
+                  <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Usage</TableHead>
+                  <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Valid Until</TableHead>
+                  <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Status</TableHead>
+                  <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {coupons.map((coupon) => (
-                  <TableRow key={coupon._id}>
-                    <TableCell className="font-mono font-semibold">
+                {coupons.map((coupon, idx) => (
+                  <TableRow key={coupon._id} className={idx % 2 === 0 ? "bg-background" : "bg-muted/20"}>
+                    <TableCell className="font-mono font-semibold text-sm">
                       {coupon.code}
                       {coupon.isReferralCoupon && (
-                        <Badge variant="secondary" className="ml-2">
+                        <Badge variant="secondary" className="ml-2 text-xs">
                           <Users className="h-3 w-3 mr-1" />
                           Referral
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell>{coupon.name}</TableCell>
+                    <TableCell className="text-sm">{coupon.name}</TableCell>
                     <TableCell>
-                      <Badge variant="outline">
-                        {coupon.scope === 'global' ? 'Global' : 
-                         coupon.scope === 'vendor' ? 'Vendor' : 'Referral'}
+                      <Badge variant="outline" className="text-xs">
+                        {coupon.scope === 'global' ? 'Global' : coupon.scope === 'vendor' ? 'Vendor' : 'Referral'}
                       </Badge>
                     </TableCell>
                     {user?.role === 'admin' && (
@@ -699,56 +699,43 @@ export function CouponManagement() {
                       </TableCell>
                     )}
                     <TableCell>
-                      <Badge variant="outline">
+                      <Badge variant="outline" className="text-xs">
                         {coupon.type === 'percentage' ? 'Percentage' : 'Fixed'}
                       </Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-sm">
                       {coupon.type === 'percentage' ? `${coupon.value}%` : `₹${coupon.value}`}
                       {coupon.type === 'percentage' && coupon.maxDiscountAmount && (
-                        <span className="text-sm text-muted-foreground">
-                          {` (max ₹${coupon.maxDiscountAmount})`}
-                        </span>
+                        <span className="text-xs text-muted-foreground"> (max ₹{coupon.maxDiscountAmount})</span>
                       )}
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-1">
                         {(coupon.specificUsers?.length || 0) > 0 && (
-                          <Badge variant="secondary" className="text-xs">
-                            Specific: {coupon.specificUsers?.length}
-                          </Badge>
+                          <Badge variant="secondary" className="text-xs w-fit">Specific: {coupon.specificUsers?.length}</Badge>
                         )}
                         {(coupon.excludeUsers?.length || 0) > 0 && (
-                          <Badge variant="destructive" className="text-xs">
-                            Excluded: {coupon.excludeUsers?.length}
-                          </Badge>
+                          <Badge variant="destructive" className="text-xs w-fit">Excluded: {coupon.excludeUsers?.length}</Badge>
                         )}
                         {(!coupon.specificUsers?.length && !coupon.excludeUsers?.length) && (
-                          <span className="text-muted-foreground text-sm">All Users</span>
+                          <span className="text-muted-foreground text-xs">All Users</span>
                         )}
                       </div>
                     </TableCell>
+                    <TableCell className="text-sm">{coupon.usageCount || 0}{coupon.usageLimit && ` / ${coupon.usageLimit}`}</TableCell>
+                    <TableCell className="text-sm">{formatDate(coupon.endDate!)}</TableCell>
                     <TableCell>
-                      {coupon.usageCount || 0}
-                      {coupon.usageLimit && ` / ${coupon.usageLimit}`}
-                    </TableCell>
-                    <TableCell>{formatDate(coupon.endDate!)}</TableCell>
-                    <TableCell>
-                      <Badge variant={coupon.isActive ? 'default' : 'secondary'}>
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border ${coupon.isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
                         {coupon.isActive ? 'Active' : 'Inactive'}
-                      </Badge>
+                      </span>
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
-                        <Button size="sm" variant="outline" onClick={() => openEditDialog(coupon)}>
-                          <Edit className="h-4 w-4" />
+                        <Button size="sm" variant="outline" className="h-7" onClick={() => openEditDialog(coupon)}>
+                          <Edit className="h-3.5 w-3.5" />
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleDeleteCoupon(coupon._id!)}
-                        >
-                          <Trash2 className="h-4 w-4" />
+                        <Button size="sm" variant="destructive" className="h-7" onClick={() => handleDeleteCoupon(coupon._id!)}>
+                          <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </TableCell>

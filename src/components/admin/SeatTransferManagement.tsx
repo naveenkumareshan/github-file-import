@@ -333,48 +333,25 @@ export default function SeatTransferManagement() {
   };
 
   return (
-    <div>
-      <div className="mb-4">
-        <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Admin Panel / Seat Management</p>
-        <h1 className="text-lg font-semibold">Seat Transfer</h1>
-        <p className="text-sm text-muted-foreground">
-          Manage and track seat transfers ({totalCount} transferable bookings)
-        </p>
-      </div>
-
+    <div className="space-y-4">
       {/* Filters */}
-      <Card>
+      <Card className="border border-border/60 rounded-xl shadow-sm">
         <CardContent className="p-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
             <div>
-              <Label htmlFor="search">Search</Label>
+              <Label className="text-xs font-medium text-muted-foreground">Search</Label>
               <Input
                 id="search"
                 placeholder="Booking ID, student name..."
                 value={filters.search}
                 onChange={(e) => handleFilterChange('search', e.target.value)}
+                className="h-8 text-sm"
               />
             </div>
-            
-            {/* <div>
-              <Label htmlFor="status">Status</Label>
-              <Select value={filters.status} onValueChange={(value) => handleFilterChange('status', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
-            </div> */}
-
             <div>
-              <Label htmlFor="cabin">Reading Room</Label>
+              <Label className="text-xs font-medium text-muted-foreground">Reading Room</Label>
               <Select value={filters.cabin} onValueChange={(value) => handleFilterChange('cabin', value)}>
-                <SelectTrigger>
+                <SelectTrigger className="h-8 text-sm">
                   <SelectValue placeholder="All reading rooms" />
                 </SelectTrigger>
                 <SelectContent>
@@ -387,11 +364,10 @@ export default function SeatTransferManagement() {
                 </SelectContent>
               </Select>
             </div>
-
             <div>
-              <Label htmlFor="sortBy">Sort By</Label>
+              <Label className="text-xs font-medium text-muted-foreground">Sort By</Label>
               <Select value={filters.sortBy} onValueChange={(value) => handleFilterChange('sortBy', value)}>
-                <SelectTrigger>
+                <SelectTrigger className="h-8 text-sm">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
@@ -406,29 +382,31 @@ export default function SeatTransferManagement() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
             <div>
-              <Label htmlFor="startDate">Start Date</Label>
+              <Label className="text-xs font-medium text-muted-foreground">Start Date</Label>
               <Input
                 id="startDate"
                 type="date"
                 value={filters.startDate}
                 onChange={(e) => handleFilterChange('startDate', e.target.value)}
+                className="h-8 text-sm"
               />
             </div>
             <div>
-              <Label htmlFor="endDate">End Date</Label>
+              <Label className="text-xs font-medium text-muted-foreground">End Date</Label>
               <Input
                 id="endDate"
                 type="date"
                 value={filters.endDate}
                 onChange={(e) => handleFilterChange('endDate', e.target.value)}
+                className="h-8 text-sm"
               />
             </div>
             <div className="flex items-end gap-2">
-              <Button variant="outline" onClick={clearFilters}>
+              <Button variant="outline" size="sm" onClick={clearFilters}>
                 Clear Filters
               </Button>
               <Select value={filters.order} onValueChange={(value) => handleFilterChange('order', value as 'asc' | 'desc')}>
-                <SelectTrigger className="w-20">
+                <SelectTrigger className="w-20 h-8 text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -440,12 +418,12 @@ export default function SeatTransferManagement() {
           </div>
 
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => exportData('csv')} className="flex items-center gap-2">
-              <Download className="h-4 w-4" />
+            <Button variant="outline" size="sm" onClick={() => exportData('csv')} className="flex items-center gap-2">
+              <Download className="h-3.5 w-3.5" />
               Export CSV
             </Button>
-            <Button variant="outline" onClick={() => exportData('xlsx')} className="flex items-center gap-2">
-              <FileSpreadsheet className="h-4 w-4" />
+            <Button variant="outline" size="sm" onClick={() => exportData('xlsx')} className="flex items-center gap-2">
+              <FileSpreadsheet className="h-3.5 w-3.5" />
               Export Excel
             </Button>
           </div>
@@ -453,62 +431,49 @@ export default function SeatTransferManagement() {
       </Card>
 
       {/* Bookings List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            Transfer Requests (Page {currentPage} of {totalPages} - Showing {bookings.length} of {totalCount})
-          </CardTitle>
-          <CardDescription>Click on a booking to initiate transfer</CardDescription>
-        </CardHeader>
-        <CardContent>
+      <Card className="border border-border/60 rounded-xl shadow-sm">
+        <div className="flex items-center justify-between py-3 px-4 border-b">
+          <span className="text-sm font-medium text-foreground">Active Bookings</span>
+          <span className="text-xs text-muted-foreground">{bookings.length} of {totalCount} · Page {currentPage}/{totalPages}</span>
+        </div>
+        <CardContent className="p-0">
           {loading ? (
             <div className="flex justify-center py-12">
               <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
             </div>
           ) : bookings.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-muted-foreground">No transferable bookings found with the current filters</p>
+              <ArrowRight className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
+              <p className="text-sm font-medium text-foreground">No transferable bookings</p>
+              <p className="text-xs text-muted-foreground mt-1">No completed seat bookings found with the current filters</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="divide-y">
               {bookings.map((booking) => (
-                <div key={booking._id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50">
-                  <div className="flex-1">
+                <div key={booking._id} className="flex items-start justify-between p-4 hover:bg-muted/30 border-l-2 border-primary/20 transition-colors">
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <Badge variant="secondary">{booking.bookingId || booking._id}</Badge>
-                      <Badge variant={booking.status === 'completed' ? 'default' : 'secondary'}>
+                      <span className="text-xs font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{booking.bookingId || booking._id?.slice(-8)}</span>
+                      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
                         {booking.status}
-                      </Badge>
+                      </span>
                     </div>
-                    <p className="font-medium">{booking.userId.name}</p>
-                    <p className="text-sm text-muted-foreground">{booking.userId.email}</p>
-                    <div className="flex items-center gap-4 mt-2 text-sm">
-                      <span><strong>Reading Room:</strong> {booking.cabinId.name}</span>
-                      <span><strong>Seat:</strong> {booking.seatId.number}</span>
-                      <span><strong>Duration:</strong> {new Date(booking.startDate).toLocaleDateString()} - {new Date(booking.endDate).toLocaleDateString()}</span>
-                      <span><strong>Amount:</strong> ₹{booking.totalPrice}</span>
+                    <p className="text-sm font-medium text-foreground">{booking.userId.name}</p>
+                    <p className="text-xs text-muted-foreground">{booking.userId.email}</p>
+                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs bg-muted text-muted-foreground border border-border/60">{booking.cabinId.name}</span>
+                      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs bg-muted text-muted-foreground border border-border/60">Seat {booking.seatId.number}</span>
+                      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs bg-muted text-muted-foreground border border-border/60">{new Date(booking.startDate).toLocaleDateString()} – {new Date(booking.endDate).toLocaleDateString()}</span>
+                      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs bg-muted text-muted-foreground border border-border/60">₹{booking.totalPrice}</span>
                     </div>
-                     {booking?.transferredHistory?.map((data, index) => (
-                       data?.cabin  ? (
-                        <div key={index}>
-                          <p className="font-medium">
-                            Transferred From : {data.cabin?.name || data.hostelId?.name}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                              Room Code : {data.cabin?.cabinCode}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            Seat #{data.seat?.number}
-                          </p>
-                            <p className="text-sm text-muted-foreground">
-                              Transferred By : {data.transferredBy?.name}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              Transferred At : {format(new Date(data.transferredAt), 'dd MMM yyyy')}
-                            </p>
+                    {booking?.transferredHistory?.map((data, index) => (
+                      data?.cabin ? (
+                        <div key={index} className="mt-2 bg-muted/30 rounded px-3 py-1.5 text-xs space-y-0.5">
+                          <p className="text-muted-foreground">From: <span className="text-foreground font-medium">{data.cabin?.name || data.hostelId?.name}</span> · Seat #{data.seat?.number}</p>
+                          <p className="text-muted-foreground">By: {data.transferredBy?.name} · {format(new Date(data.transferredAt), 'dd MMM yyyy')}</p>
                         </div>
-                        ) : null
-                      ))} 
+                      ) : null
+                    ))}
                   </div>
                   
                   <Dialog open={isDialogOpen && selectedBooking?._id === booking._id} onOpenChange={setIsDialogOpen}>
@@ -618,7 +583,7 @@ export default function SeatTransferManagement() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="mt-6">
+            <div className="mt-6 px-4 pb-4">
               <Pagination>
                 <PaginationContent>
                   <PaginationItem>
@@ -627,23 +592,15 @@ export default function SeatTransferManagement() {
                       className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
                     />
                   </PaginationItem>
-
                   {Array.from({ length: totalPages }, (_, i) => i + 1)
-                    .filter(page => {
-                      return page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1;
-                    })
+                    .filter(page => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1)
                     .map((page) => (
                       <PaginationItem key={page}>
-                        <PaginationLink
-                          onClick={() => setCurrentPage(page)}
-                          isActive={page === currentPage}
-                          className="cursor-pointer"
-                        >
+                        <PaginationLink onClick={() => setCurrentPage(page)} isActive={page === currentPage} className="cursor-pointer">
                           {page}
                         </PaginationLink>
                       </PaginationItem>
                     ))}
-
                   <PaginationItem>
                     <PaginationNext
                       onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
