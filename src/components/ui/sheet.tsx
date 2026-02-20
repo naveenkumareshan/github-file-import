@@ -96,8 +96,13 @@ const SheetTitle = React.forwardRef<
 ))
 SheetTitle.displayName = SheetPrimitive.Title.displayName
 
+const SheetFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", className)} {...props} />
+)
+SheetFooter.displayName = "SheetFooter"
+
 export {
   Sheet,
-  SheetContent, SheetHeader, SheetTitle, SheetTrigger
+  SheetContent, SheetFooter, SheetHeader, SheetTitle, SheetTrigger
 }
 

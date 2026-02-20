@@ -1,14 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { hostelService } from '@/api/hostelService';
 import { Search, MapPin, Hotel } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { AspectRatio } from '@/components/ui/aspect-ratio';
 
 export default function Hostels() {
   const [hostels, setHostels] = useState<any[]>([]);
@@ -17,7 +15,6 @@ export default function Hostels() {
   const [searchQuery, setSearchQuery] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
   const [cityFilter, setCityFilter] = useState('');
-  const [popularLocations, setPopularLocations] = useState<string[]>([]);
   const [genderFilter, setGenderFilter] = useState('');
   const [nearbyLoading, setNearbyLoading] = useState(false);
   const navigate = useNavigate();
@@ -37,11 +34,6 @@ export default function Hostels() {
       const filters = city ? { city } : {};
       const response = await hostelService.getAllHostels(filters);
       setHostels(response.data || []);
-      if (response.data?.length > 0) {
-        const locs = response.data.map((h: any) => h.locality)
-          .filter((l: string, i: number, s: string[]) => l && s.indexOf(l) === i);
-        setPopularLocations(locs.slice(0, 5));
-      }
     } catch (err: any) {
       setError(err.message || 'Failed to fetch hostels');
       toast({ title: 'Error', description: 'Failed to load hostels', variant: 'destructive' });
@@ -49,9 +41,9 @@ export default function Hostels() {
   };
 
   const handleCityChange = (city: string) => {
-    setCityFilter(city);
-    navigate(`/hostels?city=${city}`);
-    fetchHostels(city);
+    setCityFilter(city === cityFilter ? '' : city);
+    if (city === cityFilter) { navigate('/hostels'); fetchHostels(''); }
+    else { navigate(`/hostels?city=${city}`); fetchHostels(city); }
   };
 
   const handleFindNearby = () => {
@@ -66,8 +58,7 @@ export default function Hostels() {
           const { latitude, longitude } = pos.coords;
           const response = await hostelService.getNearbyHostels(latitude, longitude);
           setHostels(response.data || []);
-          setLocationFilter('');
-          setCityFilter('');
+          setLocationFilter(''); setCityFilter('');
           toast({ title: 'Location Found', description: 'Showing hostels near you' });
         } catch {
           toast({ title: 'Error', description: 'Failed to find nearby hostels', variant: 'destructive' });
@@ -93,27 +84,24 @@ export default function Hostels() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto py-6 px-4">
-        <div className="mb-5">
-          <h1 className="text-2xl font-bold mb-1">Find Your Perfect Hostel</h1>
-          <p className="text-muted-foreground text-sm">Browse available hostels and find the perfect accommodation</p>
-        </div>
+      <div className="px-3 py-3 max-w-lg mx-auto">
+        <h1 className="text-[17px] font-semibold mb-3">Find Your Hostel</h1>
 
-        {/* Popular Cities — horizontal scroll */}
-        <div className="mb-5">
-          <h2 className="text-base font-semibold mb-3">Popular Cities</h2>
-          <div className="flex gap-3 overflow-x-auto pb-1 -mx-4 px-4">
+        {/* Popular Cities */}
+        <div className="mb-3">
+          <p className="text-[12px] font-semibold text-muted-foreground mb-2">Popular Cities</p>
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-3 px-3 scrollbar-hide">
             {popularCityList.map((city) => (
               <button
                 key={city}
                 onClick={() => handleCityChange(city)}
-                className={`flex-shrink-0 flex flex-col items-center gap-1 px-4 py-3 rounded-2xl border text-sm font-medium transition-colors ${
+                className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl border text-[12px] font-medium transition-colors ${
                   cityFilter === city
                     ? 'bg-primary text-primary-foreground border-primary'
                     : 'bg-card text-foreground border-border hover:bg-muted'
                 }`}
               >
-                <Hotel className="h-5 w-5" />
+                <Hotel className="h-3.5 w-3.5" />
                 {city}
               </button>
             ))}
@@ -121,39 +109,42 @@ export default function Hostels() {
         </div>
 
         {/* Search & Filters */}
-        <div className="mb-5 space-y-3 bg-muted/30 p-4 rounded-2xl">
+        <div className="mb-3 space-y-2 bg-muted/30 p-3 rounded-2xl">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground h-3.5 w-3.5" />
             <Input
               type="text"
               placeholder="Search hostels by name or location..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 rounded-xl"
+              className="pl-8 h-9 text-[13px] rounded-xl"
             />
           </div>
 
           <div className="flex flex-wrap gap-2 items-center">
-            <Button onClick={handleFindNearby} variant="outline" size="sm" disabled={nearbyLoading} className="rounded-xl">
-              <MapPin className="h-4 w-4 mr-1" />
+            <Button onClick={handleFindNearby} variant="outline" size="sm" disabled={nearbyLoading} className="h-8 text-[12px] rounded-xl">
+              <MapPin className="h-3.5 w-3.5 mr-1" />
               {nearbyLoading ? 'Finding...' : 'Near Me'}
             </Button>
             {['Male', 'Female', 'Co-ed'].map(g => (
-              <Badge
+              <button
                 key={g}
-                variant={genderFilter === g ? 'default' : 'outline'}
-                className="cursor-pointer"
                 onClick={() => setGenderFilter(genderFilter === g ? '' : g)}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-colors ${
+                  genderFilter === g
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-card text-foreground border-border'
+                }`}
               >
                 {g}
-              </Badge>
+              </button>
             ))}
           </div>
 
           {cityFilter && (
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">City:</span>
-              <Badge variant="outline" className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] text-muted-foreground">City:</span>
+              <Badge variant="outline" className="text-[11px] flex items-center gap-1">
                 {cityFilter}
                 <button onClick={() => { setCityFilter(''); navigate('/hostels'); fetchHostels(); }}>×</button>
               </Badge>
@@ -163,63 +154,90 @@ export default function Hostels() {
 
         {/* Results */}
         {loading ? (
-          <div className="flex justify-center py-16">
-            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+          <div className="space-y-2.5">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="flex gap-3 p-3 bg-card rounded-2xl border border-border animate-pulse">
+                <div className="w-20 h-20 rounded-xl bg-muted flex-shrink-0" />
+                <div className="flex-1 space-y-2 py-1">
+                  <div className="h-3 bg-muted rounded w-3/4" />
+                  <div className="h-2.5 bg-muted rounded w-1/2" />
+                  <div className="h-2.5 bg-muted rounded w-1/3" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : error ? (
-          <div className="text-center py-16 text-destructive">{error}</div>
+          <div className="text-center py-12 text-destructive text-[13px]">{error}</div>
         ) : filteredHostels.length === 0 ? (
-          <div className="text-center py-16 text-muted-foreground">
-            {searchQuery || locationFilter || genderFilter || cityFilter ? 'No hostels match your search' : 'No hostels available'}
+          <div className="text-center py-12">
+            <p className="text-[14px] font-medium text-foreground mb-1">No hostels found</p>
+            <p className="text-[12px] text-muted-foreground">
+              {searchQuery || locationFilter || genderFilter || cityFilter ? 'Try adjusting your search' : 'No hostels available'}
+            </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="space-y-2.5">
+            <p className="text-[11px] text-muted-foreground">{filteredHostels.length} hostels found</p>
             {filteredHostels.map((hostel) => (
-              <Card key={hostel._id} className="overflow-hidden hover:shadow-md transition-shadow rounded-2xl">
-                {hostel.logoImage && (
-                  <AspectRatio ratio={16 / 9} className="relative">
+              <div
+                key={hostel._id}
+                onClick={() => navigate(`/hostels/${hostel._id}`)}
+                className="flex gap-3 p-3 bg-card rounded-2xl border border-border hover:border-primary/30 hover:shadow-sm transition-all active:scale-[0.99] cursor-pointer"
+              >
+                {/* Thumbnail */}
+                <div className="relative flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden bg-muted">
+                  {hostel.logoImage ? (
                     <img
                       src={import.meta.env.VITE_BASE_URL + hostel.logoImage}
                       alt={hostel.name}
-                      className="object-cover w-full h-full"
+                      className="w-full h-full object-cover"
                     />
-                    {hostel.gender && (
-                      <Badge className="absolute top-2 right-2">
-                        {hostel.gender === 'Male' ? 'Male Only' : hostel.gender === 'Female' ? 'Female Only' : 'Co-ed'}
-                      </Badge>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Hotel className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                  )}
+                  {hostel.gender && (
+                    <span className="absolute top-1 left-1 text-[9px] font-bold bg-primary text-primary-foreground px-1.5 py-0.5 rounded-md">
+                      {hostel.gender === 'Male' ? 'M' : hostel.gender === 'Female' ? 'F' : 'Co'}
+                    </span>
+                  )}
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 min-w-0 flex flex-col justify-between">
+                  <div>
+                    <h3 className="text-[13px] font-semibold text-foreground leading-tight truncate">{hostel.name}</h3>
+                    {(hostel.area?.name || hostel.city?.name) && (
+                      <div className="flex items-center gap-0.5 mt-0.5">
+                        <MapPin className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                        <span className="text-[11px] text-muted-foreground truncate">
+                          {hostel.area?.name ? hostel.area.name + ', ' : ''}{hostel.city?.name}
+                        </span>
+                      </div>
                     )}
-                  </AspectRatio>
-                )}
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">{hostel.name}</CardTitle>
-                  {hostel.locality && (
-                    <div className="flex items-center text-xs text-muted-foreground">
-                      <MapPin className="h-3.5 w-3.5 mr-1" />
-                      <span>{hostel.area?.name}, {hostel.city?.name}</span>
-                    </div>
-                  )}
-                </CardHeader>
-                <CardContent className="pb-2 space-y-1">
-                  {hostel.description && (
-                    <p className="text-xs text-muted-foreground line-clamp-2">{hostel.description}</p>
-                  )}
-                  {hostel.amenities?.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {hostel.amenities.slice(0, 3).map((a: string, i: number) => (
-                        <Badge key={i} variant="outline" className="text-[10px]">{a.replace(/-/g, ' ')}</Badge>
-                      ))}
-                      {hostel.amenities.length > 3 && (
-                        <Badge variant="outline" className="text-[10px]">+{hostel.amenities.length - 3}</Badge>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-                <CardFooter>
-                  <Button onClick={() => navigate(`/hostels/${hostel._id}`)} className="w-full rounded-xl">
-                    View Rooms
-                  </Button>
-                </CardFooter>
-              </Card>
+                    {hostel.amenities?.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {hostel.amenities.slice(0, 3).map((a: string, i: number) => (
+                          <span key={i} className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded-md">
+                            {a.replace(/-/g, ' ')}
+                          </span>
+                        ))}
+                        {hostel.amenities.length > 3 && (
+                          <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded-md">+{hostel.amenities.length - 3}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between mt-2">
+                    {hostel.description && (
+                      <p className="text-[11px] text-muted-foreground line-clamp-1 flex-1 mr-2">{hostel.description}</p>
+                    )}
+                    <span className="text-[11px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-lg flex-shrink-0">View Rooms</span>
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
         )}

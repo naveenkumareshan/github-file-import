@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Navigation } from "../components/Navigation";
-import { Footer } from "../components/Footer";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -171,70 +169,64 @@ const BookSeat = () => {
   };
 
   return (
-    <div className="min-h-screen bg-accent/30">
-      <Navigation />
-
-      <div className="container mx-auto px-4 py-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold">Book Your Reading Room</h1>
+    <div className="min-h-screen bg-background">
+      <div className="px-3 py-3 max-w-lg mx-auto">
+        {/* Compact header */}
+        <div className="flex items-center gap-2 mb-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleGoBack}
+            className="h-8 w-8 rounded-xl flex-shrink-0"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div className="min-w-0">
+            <h1 className="text-[16px] font-semibold leading-tight">Book Reading Room</h1>
             {cabin && (
-              <p className="text-muted-foreground">
-                {cabin.name} - {cabin.category} room
+              <p className="text-[11px] text-muted-foreground truncate">
+                {cabin.name} · {cabin.category}
               </p>
             )}
           </div>
-          <Button
-            variant="outline"
-            onClick={handleGoBack}
-            className="flex items-center gap-1"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Button>
         </div>
 
-        <Separator className="my-4" />
+        <Separator className="mb-3" />
 
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="animate-spin h-8 w-8 border-4 border-cabin-wood border-t-transparent rounded-full"></div>
+            <div className="animate-spin h-7 w-7 border-4 border-primary border-t-transparent rounded-full"></div>
           </div>
         ) : error ? (
           <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <p className="text-center text-red-500 mb-4">{error}</p>
-              <Button onClick={handleGoBack}>Go Back</Button>
+            <CardContent className="flex flex-col items-center justify-center py-10">
+              <p className="text-center text-destructive text-[13px] mb-4">{error}</p>
+              <Button onClick={handleGoBack} size="sm">Go Back</Button>
             </CardContent>
           </Card>
         ) : (
-          <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 md:gap-8">
+          <div className="flex flex-col gap-4">
             {cabin && (
-              <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Loading cabin details...</div>}>
+              <Suspense fallback={<div className="p-3 text-[13px] text-muted-foreground">Loading cabin details...</div>}>
                 <CabinDetails cabin={cabin} />
               </Suspense>
             )}
             {cabin && (
-            <div ref={cabinRef} className="md:sticky md:top-24">
-              <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Loading booking form...</div>}>
-                <SeatBookingForm
-                  cabin={cabin}
-                  selectedSeat={selectedSeat}
-                  onBookingComplete={handleBookingComplete}
-                  hideSeatSelection={hideSeatSelection}
-                  roomElements={roomElements}
-                />
-              </Suspense>
-            </div>
+              <div ref={cabinRef}>
+                <Suspense fallback={<div className="p-3 text-[13px] text-muted-foreground">Loading booking form...</div>}>
+                  <SeatBookingForm
+                    cabin={cabin}
+                    selectedSeat={selectedSeat}
+                    onBookingComplete={handleBookingComplete}
+                    hideSeatSelection={hideSeatSelection}
+                    roomElements={roomElements}
+                  />
+                </Suspense>
+              </div>
             )}
           </div>
-          </>
         )}
       </div>
-
-      <Footer />
     </div>
   );
 };

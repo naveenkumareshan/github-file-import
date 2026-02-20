@@ -12,7 +12,7 @@ const tabs = [
     isActive: (pathname: string) => pathname === '/',
   },
   {
-    label: 'Reading Rooms',
+    label: 'Rooms',
     icon: BookOpen,
     to: '/cabins',
     isActive: (pathname: string) =>
@@ -42,7 +42,7 @@ export const MobileBottomNav: React.FC = () => {
       className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      <div className="flex items-stretch h-16 max-w-lg mx-auto">
+      <div className="flex items-stretch max-w-lg mx-auto">
         {tabs.map((tab) => {
           const active = tab.isActive(pathname);
           const href = tab.requireAuth && !isAuthenticated ? '/student/login' : tab.to;
@@ -51,22 +51,21 @@ export const MobileBottomNav: React.FC = () => {
               key={tab.label}
               to={href}
               className={cn(
-                'flex-1 flex flex-col items-center justify-center gap-0.5 min-h-[64px] text-xs font-medium transition-colors',
-                active
-                  ? 'text-primary'
-                  : 'text-muted-foreground hover:text-foreground'
+                'flex-1 flex flex-col items-center justify-center gap-0.5 min-h-[56px] relative transition-colors',
+                active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
               )}
             >
+              {/* Active indicator bar at top */}
+              {active && (
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-primary" />
+              )}
               <tab.icon
-                className={cn('w-6 h-6 transition-transform', active && 'scale-110')}
+                className={cn('w-5 h-5 transition-transform', active && 'scale-110')}
                 strokeWidth={active ? 2.5 : 1.75}
               />
-              <span className={cn('text-[11px] leading-tight', active && 'font-semibold')}>
+              <span className={cn('text-[10px] leading-tight', active ? 'font-semibold' : 'font-medium')}>
                 {tab.label}
               </span>
-              {active && (
-                <span className="absolute bottom-0 block w-1 h-1 rounded-full bg-primary" />
-              )}
             </Link>
           );
         })}

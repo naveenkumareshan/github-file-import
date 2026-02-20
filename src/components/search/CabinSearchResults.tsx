@@ -1,10 +1,9 @@
 
 import React from 'react';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Star, Users, Clock, Loader2 } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { MapPin, Star, Loader2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface CabinResult {
   _id: string;
@@ -16,14 +15,11 @@ interface CabinResult {
   imageSrc: string;
   category: 'standard' | 'premium' | 'luxury';
   location: {
-    coordinates: {
-      latitude: number;
-      longitude: number;
-    };
+    coordinates: { latitude: number; longitude: number };
     fullAddress: string;
-    city: { _id:string, name:string};
-    state: { _id:string, name:string};
-    area?: { _id:string, name:string};
+    city: { _id: string; name: string };
+    state: { _id: string; name: string };
+    area?: { _id: string; name: string };
   };
   averageRating?: number;
   distance?: number;
@@ -40,30 +36,38 @@ interface CabinSearchResultsProps {
   loadingMore?: boolean;
 }
 
-export const CabinSearchResults = ({ 
-  cabins, 
-  loading, 
+const getCategoryColor = (category: string) => {
+  switch (category) {
+    case 'luxury': return 'bg-amber-500';
+    case 'premium': return 'bg-purple-500';
+    default: return 'bg-blue-500';
+  }
+};
+
+export const CabinSearchResults = ({
+  cabins,
+  loading,
   hasMore = false,
   currentPage = 1,
   totalPages = 1,
-  limit=10,
+  limit = 10,
   onLoadMore,
-  loadingMore = false
+  loadingMore = false,
 }: CabinSearchResultsProps) => {
-  const navigate = useNavigate();
 
   if (loading) {
     return (
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {[...Array(6)].map((_, i) => (
-          <Card key={i} className="animate-pulse">
-            <div className="h-48 bg-muted"></div>
-            <CardContent className="p-4">
-              <div className="h-4 bg-muted rounded mb-2"></div>
-              <div className="h-3 bg-muted rounded mb-4 w-2/3"></div>
-              <div className="h-3 bg-muted rounded mb-2 w-1/2"></div>
-            </CardContent>
-          </Card>
+      <div className="space-y-3">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="flex gap-3 p-3 bg-card rounded-2xl border border-border animate-pulse">
+            <div className="w-24 h-24 rounded-xl bg-muted flex-shrink-0" />
+            <div className="flex-1 space-y-2 py-1">
+              <div className="h-3 bg-muted rounded w-3/4" />
+              <div className="h-2.5 bg-muted rounded w-1/2" />
+              <div className="h-2.5 bg-muted rounded w-1/3" />
+              <div className="h-3 bg-muted rounded w-1/4 mt-2" />
+            </div>
+          </div>
         ))}
       </div>
     );
@@ -71,137 +75,104 @@ export const CabinSearchResults = ({
 
   if (cabins.length === 0) {
     return (
-      <Card className="text-center py-12">
-        <CardContent>
-          <p className="text-muted-foreground">No reading rooms found matching your criteria.</p>
-          <p className="text-sm text-muted-foreground mt-2">
-            Try adjusting your search filters or location.
-          </p>
-        </CardContent>
-      </Card>
+      <div className="text-center py-16">
+        <p className="text-[14px] font-medium text-foreground mb-1">No reading rooms found</p>
+        <p className="text-[12px] text-muted-foreground">Try adjusting your filters or location.</p>
+      </div>
     );
   }
 
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case 'luxury': return 'bg-amber-500';
-      case 'premium': return 'bg-purple-500';
-      default: return 'bg-blue-500';
-    }
-  };
-
-  const handleBookNow = (cabinId: string) => {
-    navigate(`/book-seat/${cabinId}`);
-  };
-
-
   return (
-    <div className="space-y-6">
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {cabins.map((cabin) => (
-        <Link to={`/book-seat/${cabin._id}`} key={'link'+cabin._id} >
-        <Card key={cabin._id} className="overflow-hidden hover:shadow-lg transition-shadow">
-          <div className="relative h-48 overflow-hidden">
-            <img 
-              src={ cabin.imageSrc ? import.meta.env.VITE_BASE_URL + cabin.imageSrc : '/placeholder.svg'} 
-              alt={cabin.name}
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute top-2 left-2">
-              <Badge className={getCategoryColor(cabin.category)}>
-                {cabin.category.charAt(0).toUpperCase() + cabin.category.slice(1)}
-              </Badge>
-            </div>
-            {cabin.distance && (
-              <div className="absolute top-2 right-2">
-                <Badge variant="outline" className="bg-white/90">
-                  {cabin.distance.toFixed(1)} km
-                </Badge>
-              </div>
-            )}
-          </div>
+    <div className="space-y-4">
+      <p className="text-[11px] text-muted-foreground">{cabins.length} rooms found</p>
 
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">{cabin.name}</CardTitle>
-            <div className="flex items-center text-sm text-muted-foreground">
-              <MapPin className="h-4 w-4 mr-1" />
-              <span className="truncate">{cabin.location?.area ? cabin.location?.area?.name + ", " :''}{cabin.location?.city?.name}</span>
-            </div>
-          </CardHeader>
-
-          <CardContent className="space-y-3">
-            <p className="text-sm text-muted-foreground line-clamp-2">
-              {cabin.description}
-            </p>
-
-            <div className="flex items-center justify-between text-sm">
-              {/* <div className="flex items-center">
-                <Users className="h-4 w-4 mr-1 text-muted-foreground" />
-                <span>Capacity: {cabin.capacity}</span>
-              </div> */}
-              {cabin.averageRating > 0 && (
-                <div className="flex items-center">
-                  <Star className="h-4 w-4 mr-1 text-yellow-500 fill-current" />
-                  <span>{cabin.averageRating.toFixed(1)}</span>
-                </div>
-              )}
-            </div>
-
-            <div className="text-lg font-semibold text-primary">
-              ₹{cabin.price}/month
-            </div>
-            {cabin.amenities && cabin.amenities.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {cabin.amenities.slice(0, 3).map((amenity, idx) => (
-                  <Badge key={idx} variant="outline" className="text-xs">
-                    {amenity}
-                  </Badge>
-                ))}
-                {cabin.amenities.length > 3 && (
-                  <Badge variant="outline" className="text-xs">
-                    +{cabin.amenities.length - 3} more
-                  </Badge>
+      <div className="space-y-2.5">
+        {cabins.map((cabin) => (
+          <Link to={`/book-seat/${cabin._id}`} key={cabin._id} className="block">
+            <div className="flex gap-3 p-3 bg-card rounded-2xl border border-border hover:border-primary/30 hover:shadow-sm transition-all active:scale-[0.99]">
+              {/* Image */}
+              <div className="relative flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden bg-muted">
+                <img
+                  src={cabin.imageSrc ? import.meta.env.VITE_BASE_URL + cabin.imageSrc : '/placeholder.svg'}
+                  alt={cabin.name}
+                  className="w-full h-full object-cover"
+                />
+                {/* Category badge */}
+                <span className={`absolute top-1 left-1 text-[9px] font-bold text-white px-1.5 py-0.5 rounded-md ${getCategoryColor(cabin.category)}`}>
+                  {cabin.category.charAt(0).toUpperCase() + cabin.category.slice(1)}
+                </span>
+                {/* Distance badge */}
+                {cabin.distance && (
+                  <span className="absolute bottom-1 right-1 text-[9px] bg-black/60 text-white px-1.5 py-0.5 rounded-md">
+                    {cabin.distance.toFixed(1)}km
+                  </span>
                 )}
               </div>
-            )}
-          </CardContent>
 
-          <CardFooter className="flex gap-2">
-            <Button 
-              size="sm" 
-              onClick={() => handleBookNow(cabin._id)}
-              className="flex-1"
-            >
-              Book Now
-            </Button>
-          </CardFooter>
-        </Card>
-        </Link>
-      ))}
-    </div>
-          {/* Pagination Controls */}
+              {/* Content */}
+              <div className="flex-1 min-w-0 flex flex-col justify-between">
+                <div>
+                  <h3 className="text-[13px] font-semibold text-foreground leading-tight truncate">{cabin.name}</h3>
+                  <div className="flex items-center gap-0.5 mt-0.5">
+                    <MapPin className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                    <span className="text-[11px] text-muted-foreground truncate">
+                      {cabin.location?.area ? cabin.location.area.name + ', ' : ''}{cabin.location?.city?.name}
+                    </span>
+                  </div>
+
+                  {/* Amenity tags */}
+                  {cabin.amenities?.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {cabin.amenities.slice(0, 3).map((amenity, idx) => (
+                        <span key={idx} className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded-md">
+                          {amenity}
+                        </span>
+                      ))}
+                      {cabin.amenities.length > 3 && (
+                        <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded-md">
+                          +{cabin.amenities.length - 3}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer row */}
+                <div className="flex items-center justify-between mt-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[13px] font-bold text-primary">₹{cabin.price}<span className="text-[10px] font-normal text-muted-foreground">/mo</span></span>
+                    {cabin.averageRating > 0 && (
+                      <div className="flex items-center gap-0.5">
+                        <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
+                        <span className="text-[11px] text-muted-foreground">{cabin.averageRating.toFixed(1)}</span>
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-[11px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-lg">Book</span>
+                </div>
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
+
+      {/* Load More */}
       {(hasMore || currentPage < totalPages) && (
-        <div className="flex flex-col items-center space-y-4 mt-8">
-          <div className="text-sm text-muted-foreground">
-            Showing {cabins.length} of {totalPages * limit} results (Page {currentPage} of {totalPages})
-          </div>
-          
+        <div className="flex flex-col items-center gap-2 pt-2">
+          <p className="text-[11px] text-muted-foreground">
+            Page {currentPage} of {totalPages}
+          </p>
           {onLoadMore && hasMore && (
-            <Button 
+            <Button
               onClick={onLoadMore}
               disabled={loadingMore}
               variant="outline"
-              size="lg"
-              className="min-w-32"
+              size="sm"
+              className="rounded-xl text-[13px] min-w-28"
             >
               {loadingMore ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Loading...
-                </>
-              ) : (
-                'Load More'
-              )}
+                <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Loading...</>
+              ) : 'Load More'}
             </Button>
           )}
         </div>

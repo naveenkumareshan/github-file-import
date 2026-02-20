@@ -95,36 +95,35 @@ const StudentBookings = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* App-style header section */}
-      <div className="bg-gradient-to-br from-primary to-primary/80 text-white px-4 pt-5 pb-8">
+      {/* Compact gradient header */}
+      <div className="bg-gradient-to-br from-primary to-primary/80 text-white px-3 pt-4 pb-7">
         <div className="max-w-lg mx-auto">
-          <p className="text-white/70 text-sm mb-1">Welcome back</p>
-          <h1 className="text-2xl font-bold mb-5">{user?.name || 'Student'}</h1>
+          <p className="text-white/70 text-[11px] mb-0.5">Welcome back</p>
+          <h1 className="text-[17px] font-bold mb-4">{user?.name || 'Student'}</h1>
 
-          {/* Stats row */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2.5">
             <Card className="bg-white/10 border-0 shadow-none">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
-                    <Building className="h-5 w-5 text-white" />
+              <CardContent className="p-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center">
+                    <Building className="h-4 w-4 text-white" />
                   </div>
                   <div>
-                    <p className="text-white/70 text-xs">Active Bookings</p>
-                    <p className="text-white font-bold text-xl">{activeCount}</p>
+                    <p className="text-white/70 text-[10px]">Active Bookings</p>
+                    <p className="text-white font-bold text-[15px]">{activeCount}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
             <Card className="bg-white/10 border-0 shadow-none">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
-                    <Calendar className="h-5 w-5 text-white" />
+              <CardContent className="p-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center">
+                    <Calendar className="h-4 w-4 text-white" />
                   </div>
                   <div>
-                    <p className="text-white/70 text-xs">Next Payment</p>
-                    <p className="text-white font-bold text-sm">{nextPayment}</p>
+                    <p className="text-white/70 text-[10px]">Next Payment</p>
+                    <p className="text-white font-bold text-[12px]">{nextPayment}</p>
                   </div>
                 </div>
               </CardContent>
@@ -134,27 +133,26 @@ const StudentBookings = () => {
       </div>
 
       {/* Content */}
-      <div className="max-w-lg mx-auto px-4 -mt-4">
-        {/* Book new button */}
+      <div className="max-w-lg mx-auto px-3 -mt-3">
         <Button
           onClick={() => navigate('/cabins')}
-          className="w-full mb-5 rounded-2xl py-5 shadow-md bg-card text-primary border border-primary/20 hover:bg-primary/5 flex items-center gap-2"
+          className="w-full mb-4 rounded-2xl py-3 shadow-sm bg-card text-primary border border-primary/20 hover:bg-primary/5 flex items-center gap-2 text-[13px]"
           variant="outline"
         >
-          <Plus className="w-5 h-5" />
+          <Plus className="w-4 h-4" />
           Book a New Reading Room
         </Button>
 
-        <h2 className="text-lg font-bold text-foreground mb-4">My Bookings</h2>
+        <h2 className="text-[15px] font-semibold text-foreground mb-3">My Bookings</h2>
 
         <Tabs defaultValue="current" className="w-full">
-          <TabsList className="w-full mb-4 rounded-xl">
-            <TabsTrigger value="current" className="flex-1 rounded-xl">
-              <BookOpen className="h-4 w-4 mr-1.5" />
+          <TabsList className="w-full mb-3 rounded-xl">
+            <TabsTrigger value="current" className="flex-1 rounded-xl text-[12px]">
+              <BookOpen className="h-3.5 w-3.5 mr-1" />
               Active
             </TabsTrigger>
-            <TabsTrigger value="past" className="flex-1 rounded-xl">
-              <Calendar className="h-4 w-4 mr-1.5" />
+            <TabsTrigger value="past" className="flex-1 rounded-xl text-[12px]">
+              <Calendar className="h-3.5 w-3.5 mr-1" />
               Expired
             </TabsTrigger>
           </TabsList>

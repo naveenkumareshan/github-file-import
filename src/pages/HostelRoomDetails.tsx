@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Navigation } from "@/components/Navigation";
-import { Footer } from "@/components/Footer";
 import {
   Card,
   CardContent,
@@ -127,34 +125,26 @@ const HostelRoomDetails = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-col min-h-screen">
-        <Navigation />
-        <div className="flex-grow container mx-auto p-6 flex items-center justify-center">
-          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
-        </div>
-        <Footer />
+      <div className="flex justify-center items-center min-h-[50vh]">
+        <div className="animate-spin h-7 w-7 border-4 border-primary border-t-transparent rounded-full"></div>
       </div>
     );
   }
 
   if (error || !room) {
     return (
-      <div className="flex flex-col min-h-screen">
-        <Navigation />
-        <div className="flex-grow container mx-auto p-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-xl">Error</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-red-500">{error || "Room not found"}</p>
-            </CardContent>
-            <CardFooter>
-              <Button onClick={() => navigate(-1)}>Go Back</Button>
-            </CardFooter>
-          </Card>
-        </div>
-        <Footer />
+      <div className="px-3 py-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-[15px]">Error</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-destructive text-[13px]">{error || "Room not found"}</p>
+          </CardContent>
+          <CardFooter>
+            <Button onClick={() => navigate(-1)} size="sm">Go Back</Button>
+          </CardFooter>
+        </Card>
       </div>
     );
   }
@@ -162,9 +152,8 @@ const HostelRoomDetails = () => {
   return (
     <ErrorBoundary>
       <div className="flex flex-col min-h-screen">
-        <Navigation />
 
-        <div className="flex-grow container mx-auto p-6">
+        <div className="flex-grow px-3 py-3 max-w-lg mx-auto w-full">
           <div className="flex flex-col gap-6">
             {/* Breadcrumb navigation */}
             <div className="flex items-center text-sm text-muted-foreground">
@@ -189,14 +178,14 @@ const HostelRoomDetails = () => {
               <span className="text-primary">{room.name}</span>
             </div>
 
-            {/* Main content */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Main content - single column on mobile */}
+            <div className="flex flex-col gap-3">
               {/* Left column - Room details */}
-              <div className="lg:col-span-2 space-y-6">
+              <div className="space-y-3">
                 <Card>
                   {/* Hostel images slider if available */}
                   {hostel.images && hostel.images.length > 0 && (
-                    <div className="mb-6">
+                    <div className="mb-3">
                       <CabinImageSlider images={hostel.images} />
                     </div>
                   )}
@@ -204,12 +193,12 @@ const HostelRoomDetails = () => {
 
                 {hostel && (
                   <Card>
-                    <CardHeader>
-                      <CardTitle className="text-xl">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-[14px] font-semibold">
                         About the Hostel
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-2 pt-0">
                       <div className="flex items-center gap-4">
                         {hostel.logoImage ? (
                           <img
@@ -284,7 +273,7 @@ const HostelRoomDetails = () => {
                       >
                       <div>
   {/* Room Details Header */}
-  <h3 className="text-lg font-medium mb-3">Room Details</h3>
+  <h3 className="text-[13px] font-semibold mb-2">Room Details</h3>
 
   <div className="flex gap-6 items-start">
     {/* Image + count */}
@@ -536,7 +525,7 @@ const HostelRoomDetails = () => {
           </DialogContent>
         </Dialog>
 
-        <Footer />
+        
       </div>
     </ErrorBoundary>
   );
