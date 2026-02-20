@@ -17,23 +17,23 @@ import { BookingExpiryDetails } from '@/pages/students/BookingExpiryDetails';
 import { formatBookingPeriod } from '@/utils/currency';
 
 interface BookingData {
-  durationCount: string;
-  bookingDuration: string;
-  _id: string;
-  cabinId: {
+  id: string;
+  _id?: string;
+  duration_count: string;
+  booking_duration: string;
+  cabin_id: string | null;
+  cabins?: {
     name: string;
     category: string;
-    _id: string;
-  };
-  seatId: {
-    number: number;
-    _id: string;
-  };
-  startDate: string;
-  endDate: string;
-  months: number;
-  totalPrice: number;
-  paymentStatus: 'pending' | 'completed' | 'failed';
+    image_url?: string;
+    city?: string;
+    area?: string;
+  } | null;
+  seat_number: number | null;
+  start_date: string;
+  end_date: string;
+  total_price: number;
+  payment_status: 'pending' | 'completed' | 'failed';
 }
 
 interface LaundryOrder {
@@ -149,8 +149,8 @@ const StudentDashboard: React.FC = () => {
 
   if (Array.isArray(currentBookings) && Array.isArray(bookingHistory)) {
     totalSpent = [...currentBookings, ...bookingHistory]
-      .filter(booking => booking.paymentStatus === 'completed')
-      .reduce((sum, booking) => sum + booking.totalPrice, 0);
+      .filter(booking => booking.payment_status === 'completed')
+      .reduce((sum, booking) => sum + (booking.total_price || 0), 0);
   }
   // Calculate total spent on laundry
   const totalLaundrySpent = laundryOrders
@@ -183,7 +183,7 @@ const StudentDashboard: React.FC = () => {
                           <p className="text-sm text-muted-foreground">Active Bookings</p>
                          <h3 className="text-2xl font-bold mt-1">
                             {Array.isArray(currentBookings)
-                              ? currentBookings.filter(b => b.paymentStatus === 'completed').length
+                              ? currentBookings.filter(b => b.payment_status === 'completed').length
                               : 0}
                           </h3>
                         </div>
@@ -194,23 +194,6 @@ const StudentDashboard: React.FC = () => {
                     </CardContent>
                   </Card>
                   
-                  {/* <Card>
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Total Spent</p>
-                          <h3 className="text-2xl font-bold mt-1">₹{totalSpent}</h3>
-                        </div>
-                        <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
-                          <ArrowDown className="h-6 w-6 text-green-600 dark:text-green-300" />
-                        </div>
-                      </div>
-                      <div className="mt-2 text-xs text-muted-foreground">
-                        Bookings: ₹{totalSpent} | Laundry: ₹{totalLaundrySpent}
-                      </div>
-                    </CardContent>
-                  </Card> */}
-                  
                   <Card>
                     <CardContent className="p-6">
                       <div className="flex items-center justify-between">
@@ -218,7 +201,7 @@ const StudentDashboard: React.FC = () => {
                           <p className="text-sm text-muted-foreground">Next Payment</p>
                           <h3 className="text-2xl font-bold mt-1">
                             {currentBookings.length > 0 ? (
-                              formatDate(currentBookings[0].endDate)
+                              formatDate(currentBookings[0].end_date || '')
                             ) : (
                               'N/A'
                             )}
@@ -236,7 +219,6 @@ const StudentDashboard: React.FC = () => {
                 <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3">
                   <TabsTrigger value="bookings">Current Bookings</TabsTrigger>
                   <TabsTrigger value="history">Booking History</TabsTrigger>
-                  {/* <TabsTrigger value="laundry">Laundry Orders</TabsTrigger> */}
                 </TabsList>
                   
                   <TabsContent value="bookings" className="mt-6">
@@ -260,48 +242,48 @@ const StudentDashboard: React.FC = () => {
                         ) : (
                           <div className="space-y-6">
                             {currentBookings.map((booking) => (
-                              <div key={booking._id} onClick={() => navigate(`/student/bookings/${booking._id}`)} className="cursor-pointer hover:bg-gray-300 transition rounded-lg border p-4 border rounded-2xl p-5 shadow-md bg-white space-y-4">
+                              <div key={booking.id} onClick={() => navigate(`/student/bookings/${booking.id}`)} className="cursor-pointer hover:bg-muted/50 transition rounded-2xl border p-5 shadow-md space-y-4">
                               {/* Top: Title & Status */}
                               <div className="flex flex-col md:flex-row md:justify-between md:items-center">
                                 <div>
-                                  <h3 className="text-lg font-semibold text-gray-900">{booking.cabinId.name}</h3>
-                                  <p className="text-sm text-gray-500">
-                                    Seat #{booking.seatId.number} • {booking.cabinId.category}
+                                  <h3 className="text-lg font-semibold">{booking.cabins?.name || 'Reading Room'}</h3>
+                                  <p className="text-sm text-muted-foreground">
+                                    Seat #{booking.seat_number} • {booking.cabins?.category}
                                   </p>
                                 </div>
                                 <div className="mt-2 md:mt-0">
-                                  {getStatusBadge(booking.paymentStatus)}
+                                  {getStatusBadge(booking.payment_status)}
                                 </div>
                               </div>
 
                               {/* Grid Info */}
-                              <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-700">
+                              <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                             <div>
-                              <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Period</p>
-                              <p>{formatDate(booking.startDate)} → {formatDate(booking.endDate)}</p>
+                              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Period</p>
+                              <p>{formatDate(booking.start_date || '')} → {formatDate(booking.end_date || '')}</p>
                             </div>
                           
-                            <div className="flex justify-between items-center sm:block sm:space-y-1 text-sm text-gray-700">
-                              <p className="text-xs text-gray-500 uppercase tracking-wide">Duration</p>
-                              <p>{booking.durationCount}</p>
+                            <div className="flex justify-between items-center sm:block sm:space-y-1 text-sm">
+                              <p className="text-xs text-muted-foreground uppercase tracking-wide">Duration</p>
+                              <p>{booking.duration_count}</p>
                             </div>
-                            <div className="flex justify-between items-center sm:block sm:space-y-1 text-sm text-gray-700">
-                              <p className="text-xs text-gray-500 uppercase tracking-wide">Type</p>
-                              <p>{booking.bookingDuration}</p>
+                            <div className="flex justify-between items-center sm:block sm:space-y-1 text-sm">
+                              <p className="text-xs text-muted-foreground uppercase tracking-wide">Type</p>
+                              <p>{booking.booking_duration}</p>
                             </div>
 
-                            <div className="flex justify-between items-center sm:block sm:space-y-1 text-sm text-gray-700">
-                              <p className="text-xs text-gray-500 uppercase tracking-wide">Price</p>
-                              <p className="font-medium text-green-700">₹{booking.totalPrice}</p>
+                            <div className="flex justify-between items-center sm:block sm:space-y-1 text-sm">
+                              <p className="text-xs text-muted-foreground uppercase tracking-wide">Price</p>
+                              <p className="font-medium text-green-700">₹{booking.total_price}</p>
                             </div>
                             
                           </div>
-                            {booking.paymentStatus =='completed' &&
+                            {booking.payment_status === 'completed' &&
                               <BookingExpiryDetails
-                                startDate={booking.startDate}
-                                endDate={booking.endDate}
-                                status={booking.paymentStatus}
-                                paymentStatus={booking.paymentStatus}
+                                startDate={booking.start_date || ''}
+                                endDate={booking.end_date || ''}
+                                status={booking.payment_status}
+                                paymentStatus={booking.payment_status}
                               />
                              }
                             </div>
@@ -330,30 +312,30 @@ const StudentDashboard: React.FC = () => {
                         ) : (
                           <div className="space-y-4">
                             {bookingHistory.map((booking) => (
-                              <div key={booking._id} className="border rounded-lg p-4">
+                              <div key={booking.id} className="border rounded-lg p-4">
                                 <div className="flex flex-col md:flex-row justify-between">
                                   <div>
-                                    <h3 className="font-medium">{booking.cabinId.name}</h3>
+                                    <h3 className="font-medium">{booking.cabins?.name || 'Reading Room'}</h3>
                                     <p className="text-sm text-muted-foreground">
-                                      Seat #{booking.seatId.number} • {booking.cabinId.category}
+                                      Seat #{booking.seat_number} • {booking.cabins?.category}
                                     </p>
                                   </div>
                                   <div className="mt-2 md:mt-0">
-                                    {getStatusBadge(booking.paymentStatus)}
+                                    {getStatusBadge(booking.payment_status)}
                                   </div>
                                 </div>
                                 <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-2">
                                   <div>
                                     <p className="text-xs text-muted-foreground">Period</p>
-                                    <p className="text-sm">{formatBookingPeriod(booking?.startDate, booking?.endDate)}</p>
+                                    <p className="text-sm">{formatBookingPeriod(booking?.start_date, booking?.end_date)}</p>
                                   </div>
                                   <div>
                                     <p className="text-xs text-muted-foreground">Duration</p>
-                                    <p className="text-sm">{booking.months} months</p>
+                                    <p className="text-sm">{booking.duration_count} {booking.booking_duration}</p>
                                   </div>
                                   <div>
                                     <p className="text-xs text-muted-foreground">Price</p>
-                                    <p className="text-sm">₹{booking.totalPrice}</p>
+                                    <p className="text-sm">₹{booking.total_price}</p>
                                   </div>
                                 </div>
                               </div>
