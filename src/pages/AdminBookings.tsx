@@ -108,12 +108,15 @@ const AdminBookings = () => {
     }
   };
 
-  const getStatusBadgeVariant = (s: string): "default" | "secondary" | "destructive" | "outline" | "success" => {
+  const getStatusBadgeClass = (s: string): string => {
     switch (s) {
-      case "completed": return "success";
-      case "failed": return "destructive";
-      case "pending": return "secondary";
-      default: return "outline";
+      case "completed": return "bg-emerald-50 text-emerald-700 border border-emerald-200";
+      case "failed": return "bg-red-50 text-red-700 border border-red-200";
+      case "cancelled": return "bg-red-50 text-red-700 border border-red-200";
+      case "pending": return "bg-amber-50 text-amber-700 border border-amber-200";
+      case "paid": return "bg-emerald-50 text-emerald-700 border border-emerald-200";
+      case "refunded": return "bg-blue-50 text-blue-700 border border-blue-200";
+      default: return "bg-muted text-muted-foreground border border-border";
     }
   };
 
@@ -121,13 +124,13 @@ const AdminBookings = () => {
     <div className="flex flex-col gap-6">
       {/* Page Header */}
       <div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
           <span>Admin Panel</span>
           <span>/</span>
-          <span className="text-foreground font-medium">Bookings Management</span>
+          <span className="text-foreground font-medium">All Transactions</span>
         </div>
-        <h1 className="text-2xl font-bold tracking-tight">Bookings Management</h1>
-        <p className="text-muted-foreground text-sm mt-1">
+        <h1 className="text-lg font-semibold tracking-tight">All Transactions</h1>
+        <p className="text-muted-foreground text-xs mt-0.5">
           View and manage all seat reservations across reading rooms.
         </p>
       </div>
@@ -181,16 +184,16 @@ const AdminBookings = () => {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/30">
-                      <TableHead className="font-semibold">Booking ID</TableHead>
-                      <TableHead className="font-semibold">Student</TableHead>
-                      <TableHead className="font-semibold">Type</TableHead>
-                      <TableHead className="font-semibold">Room / Seat</TableHead>
-                      <TableHead className="font-semibold">Booked On</TableHead>
-                      <TableHead className="font-semibold">Duration</TableHead>
-                      <TableHead className="font-semibold">Amount</TableHead>
-                      <TableHead className="font-semibold">Booking Status</TableHead>
-                      <TableHead className="font-semibold">Payment Status</TableHead>
-                      <TableHead className="text-right font-semibold">Actions</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Booking ID</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Student</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Type</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Room / Seat</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Booked On</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Duration</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Amount</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Status</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Payment</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3 text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -232,14 +235,14 @@ const AdminBookings = () => {
                         </TableCell>
                         <TableCell className="font-semibold">₹{booking.totalPrice}</TableCell>
                         <TableCell>
-                          <Badge variant={getStatusBadgeVariant(booking.status || "pending")}>
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${getStatusBadgeClass(booking.status || "pending")}`}>
                             {booking.status || "pending"}
-                          </Badge>
+                          </span>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={getStatusBadgeVariant(booking.paymentStatus)}>
+                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${getStatusBadgeClass(booking.paymentStatus)}`}>
                             {booking.paymentStatus}
-                          </Badge>
+                          </span>
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1.5">

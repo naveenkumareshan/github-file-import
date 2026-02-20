@@ -368,13 +368,13 @@ const RoomManagement = () => {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
             <span>Admin Panel</span>
             <span>/</span>
-            <span className="text-foreground font-medium">Room Management</span>
+            <span className="text-foreground font-medium">Reading Rooms</span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">Reading Room Management</h1>
-          <p className="text-muted-foreground text-sm mt-1">
+          <h1 className="text-lg font-semibold tracking-tight">Reading Room Management</h1>
+          <p className="text-muted-foreground text-xs mt-0.5">
             Configure and manage your reading room inventory.
           </p>
         </div>
@@ -424,7 +424,7 @@ const RoomManagement = () => {
             
             {loading ? (
               <div className="flex justify-center py-12">
-                <div className="animate-spin h-8 w-8 border-4 border-cabin-wood border-t-transparent rounded-full"></div>
+                <div className="animate-spin h-7 w-7 border-2 border-primary border-t-transparent rounded-full"></div>
               </div>
             ) : error ? (
               <div className="text-center py-6 text-red-500">{error}</div>
