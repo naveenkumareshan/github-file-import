@@ -1,86 +1,101 @@
 
-# Fix Access Issues — Admin Login & Protected Route Redirects
+# Add Demo Login Credentials to All Login Pages
 
-## Root Causes Found
+## What This Does
 
-### Problem 1: Wrong redirect path for unauthenticated users on admin routes
-In `src/components/ProtectedRoute.tsx`, the default `redirectPath` is `/` (the homepage). When a user tries to access `/admin/vendorpayouts` without being logged in, they get sent to `/?from=/admin/vendorpayouts` instead of `/admin/login?from=/admin/vendorpayouts`.
+Every login page in the app will get a "Demo Credentials" section — a set of one-click buttons that auto-fill the email and password fields so you can instantly test any role without typing. This covers all 3 login portals with all available roles.
 
-The admin routes in `App.tsx` use `<ProtectedRoute requiredRole="admin">` but never set `redirectPath="/admin/login"`, so everyone lands on the homepage confused.
+## Login Portals in the App
 
-### Problem 2: AdminLogin uses `login()` return value incorrectly
-In `src/pages/AdminLogin.tsx` line 36, the code does:
-```
-if (success) { ... }
-```
-But `login()` returns `{ success: boolean; error?: string }` — an **object**, not a boolean. In JavaScript, any object is truthy, so `if (success)` is always `true`, even when login fails. The correct check should be `if (success.success)`.
+There are 3 separate login pages, covering all roles:
 
-### Problem 3: No redirect after successful login based on `from` query param
-After a successful admin login, the code always navigates to `/admin/dashboard`. If the user was trying to reach `/admin/vendorpayouts`, they should be sent back there after login.
+| Portal | URL | Roles Covered |
+|---|---|---|
+| Admin Login | `/admin/login` | Admin, Super Admin |
+| Student Login | `/student/login` or `/login` | Student / Customer |
+| Host (Vendor) Login | `/vendor/login` or `/host/login` | Host (Vendor), Host Employee, Laundry Agent |
 
-### Problem 4: ProtectedRoute has a logic error in role checking
-On line 35, the check reads:
-```js
-if (requiredRole === 'admin' && (user?.role === 'admin' || ...))
-```
-This means if the required role IS `admin` AND the user IS an admin, it enters this block and renders content — which is correct. But when the required role is `admin` and the user's role is something else, it falls through to the role-specific redirects. The logic works but only because of how the conditions are arranged, which is confusing and fragile.
+## Pages Each Role Can Access
 
-## Files to Modify
+### Admin Role
+- Dashboard, Bookings, Seat Transfer, Manual Bookings, Hostel Bookings
+- Room Management, Hostel Management, User Management (create/import students)
+- Coupons, Reports, Payouts, Settings, Hosts Approval
+- Email Reports, Email Templates, Notifications, Reviews, Error Logs
+- Location Management, Deposits & Restrictions
 
-### 1. `src/pages/AdminLogin.tsx`
-- Fix `if (success)` → `if (success.success)`
-- After successful login, read the `?from=` query parameter and redirect there instead of always going to `/admin/dashboard`
+### Student / Customer Role
+- Student Dashboard (My Bookings)
+- Student Profile
+- Booking Detail & Transaction View
+- Public: Hostels, Cabins, Laundry Request, Book Seat, Book Shared Room
 
-### 2. `src/App.tsx`
-- Add `redirectPath="/admin/login"` to the admin `<ProtectedRoute>` wrapper so unauthenticated users land on the admin login page
+### Host (Vendor) Role
+- Dashboard, Deposits & Restrictions
+- Reading Rooms, Hostel Management, Reviews
+- Bookings (All Transactions, Seat Transfer, Book Seat)
+- User Management, Employee List, Payouts, Profile
 
-### 3. `src/components/ProtectedRoute.tsx`
-- Clean up the logic so that when a user is not authenticated AND the route has `requiredRole="admin"`, they go to `/admin/login` instead of the generic `redirectPath`
-- Alternatively, this is handled by fixing App.tsx to pass `redirectPath="/admin/login"` explicitly
+### Host Employee (vendor_employee) Role
+- Dashboard (permission-based)
+- Seat Availability Map (if permitted)
+- Bookings (if permitted)
+- Reports (if permitted)
+- Employee list (if permitted)
 
-## Detailed Changes
+### Laundry Agent
+- Laundry Agent Dashboard at `/laundry-agent` (requires admin role)
 
-### `src/App.tsx` — Line ~177
-Change:
-```jsx
-<ProtectedRoute requiredRole="admin">
-```
-To:
-```jsx
-<ProtectedRoute requiredRole="admin" redirectPath="/admin/login">
-```
+## Demo Credentials to Display
 
-### `src/pages/AdminLogin.tsx` — handleSubmit function
-Change:
-```js
-const success = await login(formData.email, formData.password);
-if (success) {
-  ...
-  navigate('/admin/dashboard');
-}
-```
-To:
-```js
-const result = await login(formData.email, formData.password);
-if (result.success) {
-  // Read the 'from' param and redirect appropriately
-  const params = new URLSearchParams(window.location.search);
-  const from = params.get('from') || '/admin/dashboard';
-  navigate(from);
-} else {
-  toast({
-    title: "Login Failed",
-    description: result.error || "Invalid email or password.",
-    variant: "destructive"
-  });
-}
-```
+The demo credentials shown on each page will be realistic placeholder values. The actual passwords/emails come from your real backend — these UI hints just pre-fill the form so you don't have to type.
 
-### `src/pages/StudentLogin.tsx` — verify same pattern
-Quick check to ensure the student login has the same fix applied for consistency.
+### On Admin Login page (`/admin/login`):
+- **Admin**: `admin@inhalestays.com` / `Admin@123`
+- **Super Admin**: `superadmin@inhalestays.com` / `Super@123`
 
-## Summary of Impact
-- Admin users navigating to any protected admin page will now be redirected to `/admin/login` (not the homepage)
-- After a successful admin login, users are taken back to the page they originally tried to access
-- The login failure toast now shows the actual error message from the backend instead of a hardcoded generic message
-- No changes to the backend, authentication logic, or database
+### On Student Login page (`/student/login`):
+- **Student**: `student@inhalestays.com` / `Student@123`
+
+### On Host Login page (`/vendor/login` or `/host/login`):
+- **Host (Vendor)**: `host@inhalestays.com` / `Host@123`
+- **Host Employee**: `employee@inhalestays.com` / `Employee@123`
+- **Laundry Agent** (uses admin role): shown with a note that it requires admin login at `/admin/login`
+
+## Implementation Details
+
+### Component: `DemoCredentials`
+A new reusable component `src/components/auth/DemoCredentials.tsx` will be created. It accepts:
+- An array of `{ label, email, password, description }` objects
+- An `onSelect(email, password)` callback to fill the form fields
+
+It renders a card below the login form with labeled buttons. Clicking a button calls `onSelect`, which updates the parent form state.
+
+### Files to Modify
+
+1. **`src/components/auth/DemoCredentials.tsx`** (NEW FILE)
+   - Reusable demo credentials card component
+   - Shows role label, email preview, and a "Use" button
+   - Clicking auto-fills email + password in parent form
+
+2. **`src/pages/AdminLogin.tsx`**
+   - Import and add `<DemoCredentials>` below the login form
+   - Pass `setFormData` as the callback so clicking a demo button fills the fields
+   - Show: Admin, Super Admin credentials
+
+3. **`src/pages/StudentLogin.tsx`**
+   - Import and add `<DemoCredentials>` below the form
+   - Show: Student credentials
+
+4. **`src/pages/vendor/VendorLogin.tsx`**
+   - Import and add `<DemoCredentials>` below the form
+   - Show: Host (Vendor) and Host Employee credentials
+
+### Visual Design
+- Shown as a collapsible "Demo Accounts" info card below the form
+- Each row: colored badge (role name) + masked email + "Use" button
+- Clicking "Use" fills both fields and shows a brief toast: "Demo credentials applied — click Login"
+- Uses existing shadcn `Card`, `Badge`, `Button` components — no new dependencies
+
+### Access Rights Summary Card
+On each login page, below the demo credentials, a small info box will explain what each role can access — so you know what to test after logging in.
