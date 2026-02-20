@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AlertCircle, Eye, EyeOff, Building2 } from 'lucide-react';
-import { authService } from '@/api/authService';
+
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from '@/hooks/use-toast';
 
@@ -89,32 +89,22 @@ const VendorLogin: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const response = await authService.login(formData);
+      const result = await login(formData.email, formData.password);
       
-      if (response.success) {
-        // Check if user is vendor or vendor employee
-        if (response.user.role === 'vendor' || response.user.role === 'vendor_employee') {
-          await login(response.token, response.user);
-          toast({
-            title: "Welcome back!",
-            description: "Successfully logged in to Host portal",
-          });
-          navigate('/admin/dashboard');
-        } else {
-          toast({
-            title: "Access Denied",
-            description: "This portal is only for Hosts and Host employees",
-            variant: "destructive"
-          });
-        }
+      if (result.success) {
+        toast({
+          title: "Welcome back!",
+          description: "Successfully logged in to Host portal",
+        });
+        navigate('/admin/dashboard');
       } else {
         toast({
           title: "Login Failed",
-          description: response.message || "Invalid email or password",
+          description: result.error || "Invalid email or password",
           variant: "destructive"
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
       toast({
         title: "Login Error",
