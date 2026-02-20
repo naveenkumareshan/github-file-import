@@ -1,200 +1,192 @@
 
-## Complete Admin Panel Redesign — Premium SaaS Dashboard
+## Admin Panel Inner Pages — Consistent Premium Redesign
 
-### Overview
-This is a comprehensive UI/UX uplift across the entire InhaleStays Admin Panel. Zero logic, API, or routing changes. Only visual polish, typography standardization, consistent brand colors, sidebar improvements, and layout structure.
+### What the Image Shows (The Problem)
+The reference screenshot reveals the **core issue**: every inner component renders its own redundant mini-header ("ADMIN PANEL / SEAT MANAGEMENT", "Seat Transfer", description text) **inside** the tab, while the page wrapper (`SeatTransferManagementPage`) already renders a large bold `"Seat Transfer Management"` title above the tabs. This creates:
+- Duplicate layered headers
+- Giant `text-2xl font-bold` page titles (not `text-lg font-semibold`)
+- Filter cards with oversized `CardHeader` + `CardTitle` (not compact)
+- Table section titles like `"Transfer Requests (Page 1 of 1 - Showing 0 of 0)"` as a full `CardTitle` heading
 
----
+### Root Pattern Fix (Applied to All Pages)
 
-### Design System — Applied Everywhere
+Every page will follow this exact visual structure:
 
-**Typography Scale (enforced via Tailwind):**
-- Page Title: `text-xl font-semibold` (20px)
-- Card Title: `text-sm font-semibold text-muted-foreground uppercase tracking-wide`
-- Table Header: `text-xs font-medium text-muted-foreground uppercase tracking-wider`
-- Body: `text-sm` (14px)
-- Caption/Meta: `text-xs text-muted-foreground` (12px)
-
-**Brand Badge Color System:**
-- Active / Approved / Completed → `bg-emerald-50 text-emerald-700 border border-emerald-200`
-- Pending / Warning → `bg-amber-50 text-amber-700 border border-amber-200`
-- Failed / Rejected / Inactive → `bg-red-50 text-red-700 border border-red-200`
-- Refunded / Info → `bg-blue-50 text-blue-700 border border-blue-200`
-- Suspended → `bg-orange-50 text-orange-700 border border-orange-200`
-
-**Card Styling:**
-- `shadow-sm hover:shadow-md transition-shadow rounded-xl border border-border/60`
-
-**Table Standard:**
-- `TableHead`: `text-xs font-medium text-muted-foreground uppercase tracking-wider py-3`
-- `TableRow`: alternating `bg-background` / `bg-muted/30`
-- Empty state: icon + title + subtitle centered
-
-**Page Layout Standard (every page):**
-```
-[Breadcrumb — tiny muted text]
-[Page Title]  [Action Buttons — right]
-[Description line]
-[Compact Filter Bar]
-[Data Table / Cards]
-[Pagination — bottom right]
+```text
+[Page Header: breadcrumb / title / description / action buttons — ONCE at the top]
+[Compact Filter Bar — no CardHeader, just CardContent p-4]
+[Data Card — compact CardHeader with small title + record count chip]
+[Table / List / Cards]
+[Pagination — bottom of data card]
 ```
 
 ---
 
-### Files to Change
+### Files to Edit
 
-#### 1. `src/components/AdminLayout.tsx`
-- Top header: add current page name with a real breadcrumb resolver using `useLocation`
-- Add subtle `bg-gradient-to-r from-primary/5 to-background` on the header
-- Keep the `SidebarTrigger` visible and well spaced
+#### 1. `src/pages/admin/SeatTransferManagement.tsx` (the wrapper page)
+**Current**: Shows `<h1 className="text-2xl font-bold mb-2">Seat Transfer Management</h1>` above tabs. The tabs then push inner components which have their OWN redundant headers.
 
-#### 2. `src/components/admin/AdminSidebar.tsx`
-**Sidebar Header:**
-- Replace `border-b bg-gradient-to-b from-muted/60` with a cleaner branded gradient using `from-primary/8 to-background`
-- Logo: already present — add `drop-shadow` for definition
-- Role badge: already color-coded — add `ring-1` for premium look
+**Fix**:
+- Replace `text-2xl font-bold` → compact page header block matching the established standard:
+  ```tsx
+  <div>
+    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+      <span>Admin Panel</span><span>/</span>
+      <span className="text-foreground font-medium">Transfer Seat</span>
+    </div>
+    <h1 className="text-lg font-semibold tracking-tight">Transfer Seat</h1>
+    <p className="text-xs text-muted-foreground mt-0.5">Manage and review seat transfers across reading rooms.</p>
+  </div>
+  ```
+- Tab strip: keep `TabsList` but reduce gap, use `h-9` tabs
+- Remove the `min-h-screen bg-gradient-to-b` wrapper div (the AdminLayout already provides background)
+- Remove the `grid grid-cols-1 lg:grid-cols-[1fr_auto]` outer wrapper
 
-**Nav Items:**
-- Active leaf items: add `border-l-2 border-primary` left indicator + `bg-primary/8 text-primary font-medium`
-- Hover: `hover:bg-muted/60` smooth
-- All icons: uniform `h-4 w-4` (some are `FcFeedback`/`FcSettings` colorful icons — replace with `lucide-react` equivalents `Star`, `Settings` for consistency)
-- Submenu items: increase indent from `ml-4` to `ml-5`, add `text-xs` font size
-- Group labels: Add visible section separators with `text-[10px] uppercase tracking-widest text-muted-foreground/60 px-3 pt-4 pb-1`
+#### 2. `src/components/admin/SeatTransferManagement.tsx` (inner Seat Transfer tab)
+**Current**: Has its own redundant `<p>Admin Panel / Seat Management</p>` + `<h1>Seat Transfer</h1>` + description block.
 
-**Label Improvements:**
-- `"Deposits & Restrictions"` → `"Finance"`
-- `"User Management"` → `"Users"`
-- `"Communication"` → `"Messaging"`
-- `"Location Management"` → `"Locations"`
-- `"Booking Reports"` → `"Reports"`
+**Fix**:
+- **Remove** the entire `<div className="mb-4">` header block (breadcrumb, title, description). The page wrapper now owns the header.
+- Filter Card: Remove `CardHeader` from filter section — just use `CardContent className="p-4"` directly, add a subtle `border rounded-xl shadow-sm` to the card.
+- Filter labels: `text-xs font-medium text-muted-foreground` (not default `Label` size)
+- All `Input` and `Select` elements: add `h-8 text-sm` for compact sizing
+- Export buttons row: reduce to `size="sm"`
+- Data Card header: Replace `CardTitle` with a minimal row:
+  ```tsx
+  <div className="flex items-center justify-between py-3 px-4 border-b">
+    <span className="text-sm font-medium text-foreground">Active Bookings</span>
+    <span className="text-xs text-muted-foreground">{bookings.length} of {totalCount} · Page {currentPage}/{totalPages}</span>
+  </div>
+  ```
+- Booking list items: Replace dense `<div className="flex items-center justify-between p-4 border">` with a cleaner card:
+  - Left border accent `border-l-2 border-primary/30` (blue/primary left stripe)
+  - Name as `text-sm font-medium`, email as `text-xs text-muted-foreground`
+  - Info pills: `Reading Room`, `Seat`, `Duration`, `Amount` as `text-xs` chips in a flex row
+  - Transfer history block: compact collapsible-style — shown as a subtle inset `bg-muted/30 rounded px-3 py-1.5 mt-2`
+- Empty state: icon (`ArrowRight` or `MoveHorizontal`) + "No transferable bookings" + description
 
-**Footer:**
-- Sign Out button: add proper `LogOut` icon placement, lighter hover
+#### 3. `src/components/admin/SeatTransferManagementHistory.tsx` (inner History tab)
+**Same fixes as above**:
+- Remove the redundant header block (`"Admin Panel / Seat Management"`, `"Transfer History"`, description)
+- Filter card: Remove `CardHeader` with `<Filter>` icon title, just compact `CardContent p-4`
+- Data card: same compact header pattern with record count
+- Booking items: same left-border styling as above
+- Transfer history metadata displayed inline as `text-xs` badges/chips: `"From: [Room Name]"`, `"Seat #X"`, `"By: Admin"`, `"On: DD MMM YYYY"`
+- View button: `size="sm"` with `h-8`
+- Empty state: icon + message
 
-#### 3. `src/pages/AdminDashboard.tsx`
-- Page title: reduce from `text-2xl font-bold` to `text-xl font-semibold`
-- Add day-based greeting: "Good morning, {name}" etc.
-- Tab strip: improve active state styling with `data-[state=active]:bg-primary data-[state=active]:text-primary-foreground`
-- Breadcrumb already present — just ensure consistent style
+#### 4. `src/pages/AdminBookings.tsx` — All Transactions
+**Current state**: Already good from previous rounds. Minor polish:
+- Card `shadow-sm` → `shadow-sm border-border/60 rounded-xl`
+- Table `TableRow` even rows: confirm `bg-muted/20` working (no changes to logic)
+- No structural changes needed — this page is the reference standard.
 
-#### 4. `src/pages/AdminBookings.tsx`
-- Page title: `text-xl font-semibold` (already improved — verify)
-- Table: apply standard header (`text-xs uppercase tracking-wider`)
-- Status badges: replace `.getStatusBadgeVariant()` with inline style function using brand color system
-- "Booking Status" / "Payment Status" column headers: add tooltip icons
-- Empty state: replace plain `<p>` with icon + title + description card
+#### 5. `src/pages/AdminStudents.tsx` — User Management
+**Current state**: Already has proper breadcrumb header and table headers. Issues to fix:
+- The `CardTitle` inside the Card header says `"Students"` / `"Vendors"` at `text-lg font-semibold` — too large for a card title. Change to `text-sm font-semibold text-muted-foreground uppercase tracking-wide`
+- Filter row: wrap the entire filter area in a `bg-muted/30 rounded-lg p-3 border border-border/40` strip to visually group it
+- Table: already has alternating rows — verify the `py-3` on header rows is correct
+- Profile picture in the ID column: reduce to `w-8 h-8 rounded-full object-cover` instead of `w-20 h-20`
+- "Include Inactive" toggle: move to align right in the filter row
 
-#### 5. `src/pages/AdminStudents.tsx`
-- Fix spinner: `border-cabin-wood` → `border-primary`
-- Filter row: make more compact — `gap-3` grid, `text-xs` labels
-- Table rows: alternating colors, compact `py-2` cells
-- Empty state: proper illustrated empty state
-- Page header: consistent breadcrumb + subtitle already added — verify text sizes
+#### 6. `src/components/admin/CouponManagement.tsx` — Coupons
+**Current state**: No page header at all (the page just starts with the dialog button section). Issues:
+- Add compact page header at the top matching the standard:
+  ```tsx
+  <div className="mb-4">
+    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+      <span>Admin Panel</span><span>/</span>
+      <span className="text-foreground font-medium">Coupons</span>
+    </div>
+    <div className="flex items-center justify-between">
+      <div>
+        <h1 className="text-lg font-semibold tracking-tight">Coupons</h1>
+        <p className="text-xs text-muted-foreground mt-0.5">Create and manage discount coupons for bookings.</p>
+      </div>
+      [Create Coupon button — already exists, just move here]
+    </div>
+  </div>
+  ```
+- Filter Card: Remove `CardHeader` with `Search` icon title → compact `CardContent p-4`
+- Filter labels: `text-xs font-medium`
+- Fix `<SelectItem value="cabin">Cabin Only</SelectItem>` → `"Reading Room"` (in the filter dropdown at line 633)
+- Coupons Table Card: Replace large `CardTitle` with compact:
+  - `text-sm font-semibold uppercase tracking-wide text-muted-foreground` + count badge
+- Table headers: already partially improved but add `tracking-wider` and `py-3`
+- Status badge: replace `variant={coupon.isActive ? 'default' : 'secondary'}` with brand color:
+  ```tsx
+  className={coupon.isActive ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-red-700 border border-red-200"}
+  ```
+- Loading state: replace `"Loading coupons..."` text with 3 skeleton rows
+- Empty state: `<TicketPercent>` icon + "No coupons found" + "Create your first coupon to get started"
 
-#### 6. `src/pages/RoomManagement.tsx`
-- Page title: `text-xl font-semibold` (reduce from `text-2xl`)
-- Spinner: `border-cabin-wood` → `border-primary`
-- Card grid: `gap-4` spacing
-- Pagination: use `Pagination` shadcn component instead of raw buttons
+#### 7. `src/components/admin/VendorApproval.tsx` — Host Management
+**Current state**: Has compact header (`text-lg font-semibold`) but the breadcrumb uses uppercase not the standard format, and buttons in header need improvement.
+- Fix breadcrumb format: `"Admin Panel / Hosts"` → `p` tag with `flex items-center gap-1.5 text-xs text-muted-foreground`
+- Move `"Auto Payout Settings"` button: from `Link` wrapper to a proper `Button variant="outline" size="sm"` with a `Settings2` icon
+- Filter card (conditionally shown): remove `CardHeader`, use compact `CardContent p-4`
+- Status badge in DataTable: `getStatusColor()` already returns Tailwind classes — verify they match the brand system (emerald/amber/red/orange)
+- DataTable column headers: already improved in previous rounds — verify `text-xs uppercase tracking-wider`
 
-#### 7. `src/components/admin/CabinItem.tsx`
-- Card: add `group` class for hover effects
-- Image: `group-hover:scale-105` already there — also add subtle overlay on hover
-- Booking status badge: make cleaner with colored dots instead of text "Booking On/Off"
-- Action buttons: reorganize into 2 rows — primary actions top, toggle actions bottom
-- Price: make `₹{price}` bolder and bigger (`text-base font-bold text-foreground`)
+#### 8. `src/pages/admin/ReviewsManagement.tsx` — Reviews
+**Current state**: Has header but issues with tabs and filter card layout.
+- Filter card: already `CardContent p-4` ✓ — verify label sizes are `text-xs`
+- Tabs section: `TabsList` currently shows just "All Reviews (N)" — compact this to just `All (N)` to save space
+- Review cards: when `!review.isApproved` → current `border-orange-200 bg-orange-50/50` is fine
+- Review card `CardHeader pb-3`: compact to `py-2 px-4`
+- Review card `CardContent`: `p-4` → `px-4 pb-4 pt-0`
+- Action buttons in review card: `size="sm"` with `h-7 text-xs`
+- Pagination: already at bottom — verify it shows compact page numbers
 
-#### 8. `src/components/admin/VendorApproval.tsx`
-- Page header: already has `text-lg font-semibold` — verify
-- Stats cards: already using `VendorStatsCards` — check styling inside
-- Filter card: compact `p-4`, `gap-3` grid
-- Table via `DataTable`: improve `DataTable` component column headers to use `text-xs uppercase` styling
-- Status badge colors: replace `bg-green-100 text-green-800` with `bg-emerald-50 text-emerald-700` for consistency
-- Action buttons: add tooltips ("View Details", "Approve", "Reject", "Suspend")
-- "Auto Payout Settings" button: move into actions area cleanly, add icon
+#### 9. `src/pages/admin/ManualBookingManagement.tsx` — Manual Booking
+**Current state**: Raw `<h1 className="text-2xl font-semibold mb-4">` with no breadcrumb, uses `container mx-auto p-4` layout.
 
-#### 9. `src/components/admin/CouponManagement.tsx`
-- Page header: add breadcrumb `Admin Panel / Coupons`
-- Filter card: compact `p-4`
-- Fix: `<SelectItem value="cabin">Cabin Only</SelectItem>` label → `"Reading Room"`
-- Table headers: `text-xs uppercase tracking-wider`
-- Status badge: `coupon.isActive` — use brand color system
-- Loading state: add skeleton rows instead of plain text "Loading coupons..."
-- Empty state: icon + text centered
+**Fix**:
+- Replace `container mx-auto p-4` outer wrapper → `flex flex-col gap-4`
+- Add standard page header:
+  ```tsx
+  <div>
+    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+      <span>Admin Panel</span><span>/</span>
+      <span className="text-foreground font-medium">Manual Booking</span>
+    </div>
+    <h1 className="text-lg font-semibold tracking-tight">Manual Booking</h1>
+    <p className="text-xs text-muted-foreground mt-0.5">Create bookings on behalf of students.</p>
+  </div>
+  ```
+- Step indicator: Add a visual progress strip showing Step 1–4 (or however many steps exist). Use a simple `flex items-center gap-2` bar with numbered circles, where the current step has `bg-primary text-white` and future steps have `bg-muted text-muted-foreground`.
+- Card headers inside: change any `text-xl` or `text-2xl` card titles to `text-sm font-semibold uppercase tracking-wide text-muted-foreground`
+- Booking table (`renderBookingManagement`): Replace the raw `<table>` with Shadcn `<Table>` component with:
+  - `TableHead`: `text-xs font-medium text-muted-foreground uppercase tracking-wider py-3`
+  - Alternating row: `bg-muted/20` on even rows
+  - `booking.cabinId ? 'Cabin'` → `'Reading Room'`
+  - Fix label: `"key Deposite"` → `"Key Deposit"`
 
-#### 10. `src/components/admin/SeatTransferManagement.tsx`
-- Page header: standardize to `text-xl font-semibold`
-- Filter card: compact `p-4`, `gap-3` grid with `text-xs` labels
-- Booking list items: improve card styling — left-border accent, better info layout
-- Transfer panel: card with clearer step indicators
-
-#### 11. `src/components/admin/SeatTransferManagementHistory.tsx`
-- Same fixes as above
-- Table: standard header styling, alternating rows, better date formatting
-
-#### 12. `src/pages/admin/ManualBookingManagement.tsx`
-**Major overhaul:**
-- `<h1 className="text-2xl font-semibold mb-4">` → standard `text-xl font-semibold` with breadcrumb header
-- Step indicator: replace invisible step flow with a proper step progress bar (Step 1/2/3/4/5)
-- `renderBookingManagement()`: replace raw `<table>` with Shadcn `<Table>` component with proper headers
-- Fix label: `"key Deposite"` → `"Key Deposit"` (already in plan from previous round — confirm applied)
-- `booking.cabinId ? 'Cabin' : 'Hostel'` in table → `'Reading Room' : 'Hostel'`
-- Error state: use styled error card instead of raw `<div className="...text-red-500...">`
-- `container mx-auto p-4` → consistent `flex flex-col gap-6` pattern matching other pages
-
-#### 13. `src/pages/admin/DepositAndRestrictionManagement.tsx`
-- Already improved — verify heading is `text-xl font-semibold` and tab list is compact
-
-#### 14. `src/components/admin/DepositManagement.tsx`
-- Already improved — verify filter compaction
-
-#### 15. `src/pages/admin/ReviewsManagement.tsx`
-- Already improved — verify heading size
-
-#### 16. `src/components/ui/data-table.tsx`
-- The `DataTable` component used in `VendorApproval` has plain filter input and headers
-- Add `text-xs font-medium text-muted-foreground uppercase tracking-wider` to all `TableHead` cells
-- Add alternating row colors: `className={idx % 2 === 0 ? "bg-background" : "bg-muted/30"}`
+#### 10. `src/pages/admin/DepositAndRestrictionManagement.tsx` — Finance
+**Current state**: Already improved — `text-lg font-semibold` header, compact tabs. No changes needed here, the `DepositManagement` and `RefundManagement` inner components are already clean.
 
 ---
 
-### Sidebar Label Changes (wording only, routes unchanged)
+### Specific Small Fixes Across All Pages
 
-| Current Label | New Label |
-|---|---|
-| `"Deposits & Restrictions"` | `"Finance"` |
-| `"Key Deposits"` | `"Key Deposits"` (keep) |
-| `"User Management"` | `"Users"` |
-| `"User"` (sub-item) | `"All Users"` |
-| `"Import Existing Users"` | `"Import Users"` |
-| `"Communication"` | `"Messaging"` |
-| `"Location Management"` | `"Locations"` |
-| `"Booking Reports"` | `"Reports"` (sub-item) |
-| `"Employee"` → sub `"List"` | `"Employees"` → `"All Employees"` |
-| `"Seat Availability Map"` | `"Seat Map"` |
-| FcSettings icon | `Settings` (lucide, for consistency) |
-| FcFeedback icon | `Star` (lucide, for consistency) |
-| FcHome icon | `Home` (lucide, for consistency) |
-| FileText icon in Reports | `BarChart2` (more semantic) |
-| FileText icon in Communication | `Mail` |
-| FileText icon in Employee | `Users` |
-| FileText icon in User Management | `Users` |
-
----
-
-### Specific Bug Fixes Included
-
-- `border-cabin-wood` spinner → `border-primary` in `AdminStudents.tsx` and `RoomManagement.tsx`
-- `key Deposite` label → `Key Deposit` in `ManualBookingManagement.tsx`
-- `booking.cabinId ? 'Cabin'` → `'Reading Room'` in `ManualBookingManagement.tsx`
+| Issue | Location | Fix |
+|---|---|---|
+| `"Transfer Requests (Page X of X - Showing Y of Z)"` as CardTitle | Both seat transfer components | Replace with compact `<span>` inline info line |
+| Filter `CardHeader` with icon title on History tab | `SeatTransferManagementHistory` | Remove CardHeader, just CardContent p-4 |
+| `"Cabin Only"` in Coupon filter dropdown | `CouponManagement.tsx` line 633 | → `"Reading Room"` |
+| `text-2xl font-bold` page title | `SeatTransferManagement.tsx` wrapper | → `text-lg font-semibold` + breadcrumb |
+| `min-h-screen bg-gradient-to-b` wrapper | `SeatTransferManagement.tsx` wrapper | Remove (AdminLayout handles this) |
+| Loading "Loading coupons..." text | `CouponManagement.tsx` | → 3 `Skeleton` rows |
+| `w-20 h-20` profile image in table | `AdminStudents.tsx` | → `w-8 h-8 rounded-full` |
+| `"key Deposite"` label | `ManualBookingManagement.tsx` | → `"Key Deposit"` |
 
 ---
 
 ### What is NOT Changed
-- No routes, API calls, state variables, or form logic
-- No component file names or imports that would break existing flow
+- No API calls, state variables, routes, or logic
+- No component file names or exports
 - No backend files
-- No database fields
-- Sidebar menu item `url` values are untouched — only labels and icons change
-- All permission-based access controls remain exactly as they are
+- All permission-based access controls remain exactly as-is
+- Sidebar menu items and routes untouched
+- All form submission handlers, filter handlers, pagination handlers — unchanged
