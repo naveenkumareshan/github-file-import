@@ -1,109 +1,118 @@
 
-## Three Tasks — Analysis & Plan
+## Rename "Cabin/Cabins" → "Reading Room/Reading Rooms" Across All UI
 
-### Current State
+### Scope of Change
 
-**Task 1 — Banner position & multi-banner carousel:**
-- `HomeBanner` already supports multiple banners with auto-slide every 4s, prev/next buttons, and dot indicators — it's fully working
-- BUT it sits ABOVE "Quick Actions" in `AuthenticatedHome` (line 119 in `Index.tsx`, Quick Actions is at line 173)
-- The fix is simple: move `<HomeBanner />` to render AFTER the Quick Actions grid block, not before it
-
-**Task 2 — Seed example data (cabins/reading rooms, hostels, bookings):**
-- The `cabins` table exists but is empty — no reading rooms to browse
-- The `bookings` table exists but has no demo data linked to the test user
-- There are no hostel records either
-- We need to INSERT realistic sample rows into `cabins` and `bookings` (as the current logged-in user) using the database insert tool
-
-**Task 3 — Student dashboard receipt UI:**
-- `StudentDashboard.tsx` fetches real data from `bookingsService`, but since there's no data yet, it shows empty states
-- After seeding data in Task 2, the dashboard will auto-populate
-- Additionally, the "Booking History" tab should show a richer receipt-style card with a receipt/invoice look — showing status clearly for both active and expired bookings
-- Currently the history tab shows a plain `<div className="border rounded-lg p-4">` — we should upgrade it to a proper receipt card with colored status bar, icon, and better layout
+This is a **UI-only text rename** — no routes, API calls, variable names, or database fields change. Only what users **see** on screen changes. This affects 15 files.
 
 ---
 
-## Implementation Plan
+### Rule Applied Everywhere
 
-### 1. Move Banner below Quick Actions (`src/pages/Index.tsx`)
-
-In `AuthenticatedHome`, swap the render order:
-
-**Current order:**
-```
-HomeBanner  ← line 119
-Active Booking Card  ← line 122
-Quick Actions  ← line 173
-WhyCarousel ← line 190
-```
-
-**New order:**
-```
-Active Booking Card
-Quick Actions
-HomeBanner   ← move here, after quick actions
-WhyCarousel
-```
-
-This puts the advertisement banner below the utility actions as requested.
-
----
-
-### 2. Seed Sample Data (database inserts)
-
-Insert 3 reading room cabins into the `cabins` table:
-
-| Name | Category | City | Price | Capacity |
-|---|---|---|---|---|
-| Sunrise Study Hub | premium | Pune | 1500/mo | 30 |
-| Scholar's Den | standard | Mumbai | 900/mo | 20 |
-| Focus Zone | ac | Bangalore | 1200/mo | 25 |
-
-Then insert 3 sample bookings for the currently logged-in student tied to these cabins — covering 3 states:
-- **Active booking** — `payment_status = 'completed'`, `end_date` = 3 months from now
-- **Expiring soon** — `payment_status = 'completed'`, `end_date` = 5 days from now
-- **Expired/history** — `payment_status = 'completed'`, `end_date` = 30 days ago
-
-This will make the dashboard show real data: "2 Active Bookings" in the summary, "Next Payment" date, and history tab will show the expired one.
-
-Note: Bookings require `user_id` (the auth UUID of the logged-in student). Since we can't hardcode the UUID, we'll seed the cabins first (they're public data), and add a note that the student needs to place a real booking from the UI to see their personal receipts — OR we can create the bookings directly in the admin panel. The cabin seed is the most important part.
-
----
-
-### 3. Upgrade Receipt UI in `StudentDashboard.tsx`
-
-**Current bookings tab** — already has a nice card with `BookingExpiryDetails`. Keep this.
-
-**History tab** — upgrade from plain border div to a receipt-style card:
-
-```
-┌─────────────────────────────────────────────────────┐
-│ [colored left border based on status]               │
-│  📍 Sunrise Study Hub         ✅ COMPLETED          │
-│     Seat #12 · Premium                              │
-│ ─────────────────────────────────────────────────── │
-│  Period    │  Duration   │  Amount                  │
-│  Jan→Mar   │  3 Months   │  ₹4,500                 │
-│ ─────────────────────────────────────────────────── │
-│  [EXPIRED badge: 30 days ago]  Booked: 1 Jan 2025  │
-└─────────────────────────────────────────────────────┘
-```
-
-The left border color will indicate:
-- `completed` + not expired → green border
-- `completed` + expired → gray border  
-- `failed` → red border
-- `pending` → yellow border
-
-Add a `BookingReceiptCard` sub-component inside `StudentDashboard.tsx` for the history tab that renders this enhanced layout. The current bookings tab stays as-is since it already has `BookingExpiryDetails`.
-
----
-
-## Files to change
-
-| File | Change |
+| Old text | New text |
 |---|---|
-| `src/pages/Index.tsx` | Move `<HomeBanner />` after Quick Actions block |
-| `src/pages/StudentDashboard.tsx` | Upgrade booking history tab with receipt-style `BookingReceiptCard` component |
-| Database (cabins table) | Insert 3 sample reading room cabins |
+| "Cabin" (standalone noun) | "Reading Room" |
+| "Cabins" (plural noun) | "Reading Rooms" |
+| "cabin" (lowercase label) | "reading room" |
+| "cabins" (lowercase plural) | "reading rooms" |
+| "No cabins found" | "No reading rooms found" |
+| "Browse Cabins" | "Browse Reading Rooms" |
+| "Select cabin" | "Select reading room" |
+| "All Cabins" | "All Reading Rooms" |
+| "Target Cabin" | "Target Reading Room" |
+| "Cabin Seat Booking Reports" | "Reading Room Seat Booking Reports" |
+| "reading cabin" | "reading room" |
+| "active cabin subscriptions" | "active reading room subscriptions" |
+| "Standard Cabin" | "Standard Reading Room" |
 
-The cabin seeding is done via the database insert tool (not a schema migration). The bookings seeding requires the user's auth UUID, so we'll seed cabins and note that bookings will show up once the student makes a booking from the UI, or the admin creates one from the admin panel.
+---
+
+### Files to Edit (UI text only, no logic changes)
+
+#### Student-facing pages
+
+**1. `src/pages/StudentDashboard.tsx`**
+- `"Browse Cabins"` button → `"Browse Reading Rooms"`
+- `"Book New Cabin"` button → `"Book New Reading Room"`
+
+**2. `src/pages/Confirmation.tsx`**
+- `"Your reading cabin has been successfully reserved."` → `"Your reading room has been successfully reserved."`
+- Label `"Cabin"` showing cabin name → `"Reading Room"`
+- Label `"cabinCode"` → `"Room Code"`
+
+**3. `src/components/dashboard/SubscriptionCard.tsx`**
+- `"Your active cabin subscriptions"` → `"Your active reading room subscriptions"`
+- `"Standard Cabin"` → `"Standard Reading Room"`
+
+**4. `src/components/EditSeatView.tsx`**
+- `"Non AC Cabin"` → `"Non AC Room"` and `"AC Cabin"` → `"AC Room"` (in description text)
+
+---
+
+#### Admin panel pages
+
+**5. `src/pages/AdminBookingDetail.tsx`**
+- `'Cabin'` in breadcrumb subtitle `"Cabin Booking #..."` → `"Reading Room Booking #..."`
+
+**6. `src/pages/RoomManagement.tsx`**
+- `'No cabins found matching your criteria.'` → `'No reading rooms found matching your criteria.'`
+- `'No cabins found. Add your first cabin!'` → `'No reading rooms found. Add your first reading room!'`
+- `"Cabin deleted successfully"` → `"Reading Room deleted successfully"`
+- `"Cabin updated successfully"` / `"Cabin created successfully"` → `"Reading Room updated/created successfully"`
+- `"Are you sure you want to delete this cabin?"` → `"...this reading room?"`
+- `"Failed to delete cabin"` / `"Failed to fetch cabins"` toast messages → reading room equivalent
+
+**7. `src/components/admin/reports/BookingReportsPage.tsx`**
+- `"Cabin Seat Booking Reports"` → `"Reading Room Seat Booking Reports"`
+
+**8. `src/components/admin/reports/BookingTransactions.tsx`**
+- Filter dropdown `<SelectItem value="cabin">Cabin</SelectItem>` → label `"Reading Room"` (value stays `"cabin"` — it's an API filter key)
+
+**9. `src/components/admin/SeatTransferManagement.tsx`**
+- `<Label htmlFor="cabin">Cabin</Label>` → `"Reading Room"`
+- `<SelectValue placeholder="All cabins" />` → `"All reading rooms"`
+- `<SelectItem value="all">All Cabins</SelectItem>` → `"All Reading Rooms"`
+- `"Please select target cabin and seat"` toast → `"...reading room..."`
+- `<Label htmlFor="target-cabin">Target Cabin</Label>` → `"Target Reading Room"`
+- `<SelectValue placeholder="Select target cabin" />` → `"Select target reading room"`
+- `<strong>Cabin:</strong>` label in booking row → `"Reading Room:"`
+- `"Transferred From : ..."` row — `Canin Code :` (typo) → `Room Code:`
+- CSV export header `'Cabin'` column → `'Reading Room'`
+
+**10. `src/components/admin/SeatTransferManagementHistory.tsx`**
+- Same set as above: `"Cabin"` label, `"All cabins"`, `"All Cabins"`, `"Cabin:"` row text, `Canin Code :` (typo fix) → `"Reading Room:"`/`"Room Code:"`
+- CSV export header `'Cabin'` → `'Reading Room'`
+
+**11. `src/components/admin/BookingCalendarDashboard.tsx`**
+- `<SelectValue placeholder="Select cabin" />` → `"Select reading room"`
+- `<SelectItem value="all">All Cabins</SelectItem>` → `"All Reading Rooms"`
+
+**12. `src/components/admin/reports/BookingReportsPage.tsx`** (already listed above)
+
+---
+
+#### Host/Vendor pages
+
+**13. `src/pages/vendor/VendorRegister.tsx`**
+- `<option value="cabin">Cabin</option>` display label → `"Reading Room"` (value stays `"cabin"`)
+
+---
+
+#### Shared/common components
+
+**14. `src/components/cabins/CabinsHeader.tsx`**
+- Already says "Reading Rooms" in the `<h1>` — confirm no remaining "cabin" text. (Already correct — no change needed.)
+
+**15. `src/components/admin/NotificationManagement.tsx`**
+- Placeholder text: `"Book any cabin and get 20% off..."` → `"Book any reading room and get 20% off..."`
+
+---
+
+### What is NOT changed (intentional)
+
+- **Variable names**: `cabin`, `cabins`, `setCabins`, `cabinId`, etc. — internal JS variables, no user impact
+- **CSS class names**: `text-cabin-dark`, `bg-cabin-light` — Tailwind theme tokens, not visible text
+- **API/route values**: `value="cabin"` in select items that are filter API params — the label changes but the value stays so API calls don't break
+- **File/component names**: `CabinCard.tsx`, `cabinsService.ts` etc. — internal code names
+- **Database fields**: `cabin_id`, `cabinCode` — backend fields stay the same
+- **Backend folder/code** — not touched at all
