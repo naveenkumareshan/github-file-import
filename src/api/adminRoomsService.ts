@@ -1,7 +1,7 @@
 
 import axios from './axiosConfig';
 
-interface RoomData {
+export interface RoomData {
   name: string;
   description: string;
   price: number;

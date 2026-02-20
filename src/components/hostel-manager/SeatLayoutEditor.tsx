@@ -45,7 +45,7 @@ export function SeatLayoutEditor({ cabinId, onSaved }: SeatLayoutEditorProps) {
       }
       
       // Fetch seats for this cabin
-      const seatsResponse = await adminSeatsService.getSeatsByCabin(cabinId, 1);
+      const seatsResponse = await adminSeatsService.getSeatsByCabin(cabinId, "1");
       
       if (seatsResponse.success) {
         setSeats(seatsResponse.data || []);

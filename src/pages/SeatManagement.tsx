@@ -154,7 +154,7 @@ const SeatManagement = () => {
       // Fetch seats for this cabin
       const seatsResponse = await adminSeatsService.getSeatsByCabin(
         id,
-        selectedFloor,
+        selectedFloor.toString(),
       );
       if (seatsResponse.success) {
         setSeats(seatsResponse.data);

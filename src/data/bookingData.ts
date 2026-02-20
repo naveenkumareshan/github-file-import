@@ -23,7 +23,7 @@ interface BookingTime {
   isAvailable: boolean;
 }
 
-interface BookingPlan {
+export interface BookingPlan {
   id: number;
   months: number;
   description: string;

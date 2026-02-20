@@ -22,9 +22,9 @@ export interface Booking {
   id: string;
   _id?: string;
   bookingId?: string;
-  userId: string;
-  cabinId: string;
-  seatId: string;
+  userId: string | { name: string; email: string };
+  cabinId: string | { _id: string; name: string; price?: number; [key: string]: unknown };
+  seatId: string | { _id: string; price?: number; number?: number; [key: string]: unknown };
   startDate: string;
   endDate: string;
   bookingDuration: "daily" | "weekly" | "monthly";

@@ -66,7 +66,8 @@ export const BookingRenewal = ({ booking, onRenewalComplete }: BookingRenewalPro
   };
 
   const calculateAdditionalAmount = () => {
-    const monthlyRate = booking.seatId?.price || 1000;
+    const seatObj = booking.seatId as any;
+    const monthlyRate = (typeof seatObj === 'object' ? seatObj?.price : undefined) || 1000;
     const originalAmount = monthlyRate * selectedDuration;
     
     if (appliedCoupon) {
@@ -80,7 +81,8 @@ export const BookingRenewal = ({ booking, onRenewalComplete }: BookingRenewalPro
   };
 
   const getOriginalAmount = () => {
-    const monthlyRate = booking.seatId?.price || 1000;
+    const seatObj = booking.seatId as any;
+    const monthlyRate = (typeof seatObj === 'object' ? seatObj?.price : undefined) || 1000;
     return monthlyRate * selectedDuration;
   };
 
@@ -101,8 +103,9 @@ export const BookingRenewal = ({ booking, onRenewalComplete }: BookingRenewalPro
       const currentEndDate = new Date(booking.endDate);
       const nextStartDate = addDays(currentEndDate, 1);
 
+      const seatObj = booking.seatId as any;
       const response = await seatsService.checkSeatAvailability(
-        booking.seatId._id || booking.seatId,
+        (typeof seatObj === 'object' ? seatObj?._id : seatObj) || seatObj,
         format(nextStartDate, 'yyyy-MM-dd'),
         format(newEndDate, 'yyyy-MM-dd')
       );
@@ -136,11 +139,12 @@ export const BookingRenewal = ({ booking, onRenewalComplete }: BookingRenewalPro
       setCouponValidating(true);
       const originalAmount = getOriginalAmount();
       
+      const cabinObj = booking.cabinId as any;
       const response = await couponService.validateCoupon(
         couponCode,
         'cabin',
         originalAmount,
-        booking.cabinId._id || booking.cabinId
+        (typeof cabinObj === 'object' ? cabinObj?._id : cabinObj) || cabinObj
       );
       
       if (response.success && response.data) {

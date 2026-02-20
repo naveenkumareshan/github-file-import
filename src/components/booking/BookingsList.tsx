@@ -349,7 +349,7 @@ export const BookingsList = ({
                   
                   { booking.paymentStatus =='completed' && showRenewalOption  && (
                     <BookingRenewal
-                      booking={booking}
+                      booking={booking as any}
                       onRenewalComplete={onBookingRenewed || (() => {})}
                     />
                   )}
