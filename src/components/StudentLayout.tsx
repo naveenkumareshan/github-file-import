@@ -1,22 +1,17 @@
 
 import React, { lazy, Suspense } from 'react';
 import { Outlet } from 'react-router-dom';
-import { Navigation } from './Navigation';
-import { Footer } from './Footer';
-const ChatbotButton = lazy(() => import("@/components/JiyaChatbot/ChatbotButton"));
+
+// StudentLayout now delegates to MobileAppLayout (used for the /student/* sub-routes)
+// The actual layout is handled at the App.tsx route level via MobileAppLayout.
+// This file is kept for any remaining legacy imports.
+const MobileAppLayout = lazy(() => import('./student/MobileAppLayout'));
 
 const StudentLayout: React.FC = () => {
   return (
-    <div className="min-h-screen flex flex-col">
-      <Navigation />
-      <main className="flex-grow">
-        <Outlet />
-      </main>
-      <Footer />
-      <Suspense fallback={null}>
-        <ChatbotButton />
-      </Suspense>
-    </div>
+    <Suspense fallback={<div className="min-h-screen bg-background" />}>
+      <MobileAppLayout />
+    </Suspense>
   );
 };
 
