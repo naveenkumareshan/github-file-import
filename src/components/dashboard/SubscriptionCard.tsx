@@ -31,7 +31,7 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
     <Card>
       <CardHeader>
         <CardTitle>Current Subscriptions</CardTitle>
-        <CardDescription>Your active cabin subscriptions</CardDescription>
+        <CardDescription>Your active reading room subscriptions</CardDescription>
       </CardHeader>
       <CardContent>
         {bookings.length === 0 ? (
@@ -59,9 +59,9 @@ export const SubscriptionCard: React.FC<SubscriptionCardProps> = ({
                 <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
                   <span className="text-xs">
                     {/* Add null check for category */}
-                    {booking.cabin.category ? 
-                      `${booking.cabin.category.charAt(0).toUpperCase() + booking.cabin.category.slice(1)} Cabin` : 
-                      'Standard Cabin'}
+                      {booking.cabin.category ? 
+                        `${booking.cabin.category.charAt(0).toUpperCase() + booking.cabin.category.slice(1)} Reading Room` : 
+                        'Standard Reading Room'}
                   </span>
                   {booking.paymentStatus === 'completed' && (
                     <button className="text-xs text-cabin-wood hover:text-cabin-dark">Manage</button>

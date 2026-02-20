@@ -37,7 +37,7 @@ export function EditSeatView({ seat, onGoBack, onConfirm }: EditSeatViewProps) {
           <div className="grid md:grid-cols-2 gap-6">
             <div>
               <p className="text-cabin-dark/70 mb-4">
-                This seat is located in the {seat.number <= 57 ? "Non AC Cabin" : "AC Cabin"} section.
+                This seat is located in the {seat.number <= 57 ? "Non AC Room" : "AC Room"} section.
               </p>
               
               {seat.status === 'hot' && (

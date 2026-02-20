@@ -91,7 +91,7 @@ const Confirmation = () => {
                   Booking  Confirmed!
                 </h1>
                 <p className="mt-2">
-                  Your reading cabin has been successfully reserved.
+                  Your reading room has been successfully reserved.
                 </p>
               </>
             ) : (
@@ -128,11 +128,11 @@ const Confirmation = () => {
 
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="bg-cabin-light/20 p-4 rounded-md">
-                  <p className="text-sm text-cabin-dark/60 mb-1">Cabin</p>
+                  <p className="text-sm text-cabin-dark/60 mb-1">Reading Room</p>
                   <p className="font-medium text-cabin-dark">{booking?.cabinId.name}</p>
                 </div>
                 <div className="bg-cabin-light/20 p-4 rounded-md">
-                  <p className="text-sm text-cabin-dark/60 mb-1">cabinCode</p>
+                  <p className="text-sm text-cabin-dark/60 mb-1">Room Code</p>
                   <p className="font-medium text-cabin-dark">{booking?.cabinId.cabinCode}</p>
                 </div>
                 <div className="bg-cabin-light/20 p-4 rounded-md">

@@ -152,10 +152,10 @@ export const BookingCalendarDashboard = () => {
             <div className="flex items-center gap-4">
               <Select value={selectedCabin} onValueChange={setSelectedCabin}>
                 <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Select cabin" />
+                  <SelectValue placeholder="Select reading room" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Cabins</SelectItem>
+                  <SelectItem value="all">All Reading Rooms</SelectItem>
                   {cabins.map(cabin => (
                     <SelectItem key={cabin._id} value={cabin._id}>
                       {cabin.name}

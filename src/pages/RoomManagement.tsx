@@ -111,19 +111,19 @@ const RoomManagement = () => {
         setCabins(processedCabins);
         setTotalItems(response.totalCount || processedCabins.length);
       } else {
-        setError('Failed to fetch cabins');
+              setError('Failed to fetch reading rooms');
         toast({
           title: "Error",
-          description: "Failed to fetch cabins",
+          description: "Failed to fetch reading rooms",
           variant: "destructive"
         });
       }
     } catch (err) {
       console.error('Error fetching cabins:', err);
-      setError('Failed to fetch cabins');
+      setError('Failed to fetch reading rooms');
       toast({
         title: "Error",
-        description: "Failed to fetch cabins",
+        description: "Failed to fetch reading rooms",
         variant: "destructive"
       });
     } finally {
@@ -151,7 +151,7 @@ const RoomManagement = () => {
   };
   
   const handleDeleteCabin = async (cabinId: string) => {
-    if (!window.confirm('Are you sure you want to delete this cabin?')) {
+    if (!window.confirm('Are you sure you want to delete this reading room?')) {
       return;
     }
     
@@ -161,7 +161,7 @@ const RoomManagement = () => {
       if (response.success) {
         toast({
           title: "Success",
-          description: "Cabin deleted successfully"
+          description: "Reading Room deleted successfully"
         });
         
         setCabins(prevCabins => prevCabins.filter(cabin => cabin._id !== cabinId));
@@ -227,7 +227,7 @@ const RoomManagement = () => {
         if (response.success) {
           toast({
             title: "Success",
-            description: selectedCabin ? "Cabin updated successfully" : "Cabin created successfully"
+            description: selectedCabin ? "Reading Room updated successfully" : "Reading Room created successfully"
           });
           
           setShowEditor(false);
@@ -415,7 +415,7 @@ const RoomManagement = () => {
               <div className="text-center py-6 text-red-500">{error}</div>
             ) : filteredCabins.length === 0 ? (
               <div className="text-center py-12 text-gray-500">
-                {searchQuery || selectedVendor !== 'all' ? 'No cabins found matching your criteria.' : 'No cabins found. Add your first cabin!'}
+                {searchQuery || selectedVendor !== 'all' ? 'No reading rooms found matching your criteria.' : 'No reading rooms found. Add your first reading room!'}
               </div>
             ) : (
               <>
