@@ -1,0 +1,146 @@
+import React, { useRef, useState } from "react";
+import { Cabin } from "../pages/BookSeat";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "./ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Star } from "lucide-react";
+import { ReviewsManager } from "./reviews/ReviewsManager";
+import { CabinImageSlider } from './CabinImageSlider';
+
+
+interface CabinDetailsProps {
+  cabin: Cabin | null;
+}
+
+export const CabinDetails: React.FC<CabinDetailsProps> = ({
+  cabin
+}) => {
+  const [activeTab, setActiveTab] = useState("details");
+
+  if (!cabin) return null;
+
+    // Create an array of images for the slider
+  const cabinImages = cabin.imageSrc 
+    ? [cabin.imageSrc] 
+    : [];
+    
+    // If cabin has additional images in an array, add them
+    if (cabin.images && Array.isArray(cabin.images)) {
+      cabinImages.push(...cabin.images);
+    }
+
+  return (
+    <Card className="bg-white shadow-sm border border-border h-fit">
+      <CardContent className="p-4 sm:p-6 h-fit">
+        <div className="flex flex-col md:flex-row gap-4 sm:gap-6 items-start">
+          
+          {/* Left: Image */}
+          <div className="w-full md:w-1/2">
+            <CabinImageSlider images={cabinImages} />
+          </div>
+          {/* Right: Cabin Info */}
+          <div className="w-full md:w-1/2 flex flex-col">
+            <h2 className="text-lg sm:text-xl font-serif font-semibold mb-1 sm:mb-2 text-cabin-dark">
+              {cabin.name}
+            </h2>
+
+            {/* Price + Category */}
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-3 sm:mb-4">
+              <span className="text-base sm:text-lg font-medium text-cabin-dark">
+                ₹{cabin.price}/month
+              </span>
+              <Badge
+                variant="outline"
+                className="w-fit bg-cabin-light/50 text-cabin-dark border-none"
+              >
+                {cabin.category.charAt(0).toUpperCase() + cabin.category.slice(1)}
+              </Badge>
+            </div>
+
+            {/* Rating */}
+            {cabin.averageRating > 0 && (
+              <div className="flex items-center flex-wrap gap-2 mb-3">
+                <div className="flex">
+                  {[...Array(5)].map((_, i) => (
+                    <Star
+                      key={i}
+                      className={`h-4 w-4 ${
+                        i < Math.floor(cabin.averageRating)
+                          ? "fill-yellow-400 text-yellow-400"
+                          : i < Math.ceil(cabin.averageRating) &&
+                            cabin.averageRating % 1 > 0
+                          ? "fill-yellow-400 text-yellow-400 opacity-50"
+                          : "text-gray-300"
+                      }`}
+                    />
+                  ))}
+                </div>
+                <span className="text-xs sm:text-sm text-muted-foreground">
+                  {cabin.averageRating.toFixed(1)} ({cabin.reviewCount} reviews)
+                </span>
+              </div>
+            )}
+
+            {/* Tabs */}
+            <Tabs
+              defaultValue="details"
+              value={activeTab}
+              onValueChange={setActiveTab}
+              className="mt-1 sm:mt-2"
+            >
+              <TabsList className="mb-3 sm:mb-4 w-full overflow-x-auto justify-start">
+                <TabsTrigger value="details" className="flex-1 sm:flex-none">
+                  Details
+                </TabsTrigger>
+                <TabsTrigger value="reviews" className="flex-1 sm:flex-none">
+                  Reviews
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="details">
+                <p className="text-sm sm:text-base text-cabin-dark/70 mb-3 sm:mb-4">
+                  {cabin.description}
+                </p>
+
+                <div className="mb-3 sm:mb-4">
+                  <h3 className="text-sm sm:text-md font-medium mb-2 text-cabin-dark">
+                    Amenities
+                  </h3>
+                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {cabin.amenities.map((amenity) => (
+                      <li key={amenity} className="flex items-center text-sm">
+                        <svg
+                          className="w-4 h-4 mr-2 text-cabin-wood shrink-0"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                        <span className="break-words">{amenity}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="reviews">
+                <ReviewsManager
+                  entityType="Cabin"
+                  entityId={cabin._id}
+                  showForm={true}
+                />
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+export default CabinDetails;

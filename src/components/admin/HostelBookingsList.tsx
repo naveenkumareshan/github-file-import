@@ -1,0 +1,459 @@
+
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { format } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
+import { hostelService } from '@/api/hostelService';
+import { Eye, Download, Search, Filter, Calendar } from 'lucide-react';
+
+interface BookingListProps {
+  hostelId?: string;
+}
+
+export const HostelBookingsList = ({ hostelId }: BookingListProps) => {
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedBooking, setSelectedBooking] = useState<any>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  
+  const { toast } = useToast();
+  
+  useEffect(() => {
+    fetchBookings();
+  }, [hostelId]);
+  
+  const fetchBookings = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const params = hostelId ? { hostelId } : {};
+      const response = await hostelService.getAllBookings(params);
+      
+      if (response.success) {
+        setBookings(response.data);
+      } else {
+        setError('Failed to load bookings');
+        toast({
+          title: "Error",
+          description: "Failed to load bookings",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+      setError('Failed to load bookings');
+      toast({
+        title: "Error",
+        description: "Failed to load bookings",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleViewDetails = (booking: any) => {
+    setSelectedBooking(booking);
+    setIsDetailsOpen(true);
+  };
+  
+  const getFilteredBookings = () => {
+    return bookings.filter(booking => {
+      const matchesSearch = 
+        (booking.student?.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+         booking.student?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+         booking._id.toLowerCase().includes(searchTerm.toLowerCase()));
+         
+      const matchesStatus = statusFilter === 'all' || booking.status === statusFilter;
+      
+      return matchesSearch && matchesStatus;
+    });
+  };
+  
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return <Badge className="bg-green-500">Completed</Badge>;
+      case 'pending':
+        return <Badge variant="outline" className="border-amber-500 text-amber-500">Pending</Badge>;
+      case 'cancelled':
+        return <Badge variant="outline" className="border-red-500 text-red-500">Cancelled</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+  
+  const getPaymentStatusBadge = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return <Badge className="bg-green-500">Paid</Badge>;
+      case 'pending':
+        return <Badge variant="outline" className="border-amber-500 text-amber-500">Pending</Badge>;
+      case 'failed':
+        return <Badge variant="outline" className="border-red-500 text-red-500">Failed</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+  
+  const filteredBookings = getFilteredBookings();
+  
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row gap-4 justify-between">
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search bookings..."
+            className="pl-8"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        
+        <div className="flex gap-2">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          <Button variant="outline" onClick={fetchBookings}>
+            <Filter className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
+      </div>
+      
+      <Tabs defaultValue="current">
+        <TabsList>
+          <TabsTrigger value="current">Current & Upcoming</TabsTrigger>
+          <TabsTrigger value="past">Past Bookings</TabsTrigger>
+          <TabsTrigger value="all">All Bookings</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="current">
+          <BookingTable 
+            bookings={filteredBookings.filter(b => new Date(b.endDate) >= new Date())}
+            loading={loading}
+            error={error}
+            onViewDetails={handleViewDetails}
+            getStatusBadge={getStatusBadge}
+            getPaymentStatusBadge={getPaymentStatusBadge}
+          />
+        </TabsContent>
+        
+        <TabsContent value="past">
+          <BookingTable 
+            bookings={filteredBookings.filter(b => new Date(b.endDate) < new Date())}
+            loading={loading}
+            error={error}
+            onViewDetails={handleViewDetails}
+            getStatusBadge={getStatusBadge}
+            getPaymentStatusBadge={getPaymentStatusBadge}
+          />
+        </TabsContent>
+        
+        <TabsContent value="all">
+          <BookingTable 
+            bookings={filteredBookings}
+            loading={loading}
+            error={error}
+            onViewDetails={handleViewDetails}
+            getStatusBadge={getStatusBadge}
+            getPaymentStatusBadge={getPaymentStatusBadge}
+          />
+        </TabsContent>
+      </Tabs>
+      
+      {/* Booking Details Dialog */}
+      <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Booking Details</DialogTitle>
+          </DialogHeader>
+          
+          {selectedBooking && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-medium mb-2">Booking Information</h3>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Booking ID</span>
+                        <span className="font-mono">{selectedBooking._id}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Booking Date</span>
+                        <span>{format(new Date(selectedBooking.createdAt), 'PPP')}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Status</span>
+                        <span>{getStatusBadge(selectedBooking.status)}</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h3 className="text-lg font-medium mb-2">Student Information</h3>
+                    <div className="space-y-2">
+                      {selectedBooking.student ? (
+                        <>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Name</span>
+                            <span>{selectedBooking.student.name}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Email</span>
+                            <span>{selectedBooking.student.email}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Phone</span>
+                            <span>{selectedBooking.student.phone || 'N/A'}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="text-muted-foreground">Student data not available</div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h3 className="text-lg font-medium mb-2">Payment Information</h3>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Payment Status</span>
+                        <span>{getPaymentStatusBadge(selectedBooking.paymentStatus)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Payment Method</span>
+                        <span>{selectedBooking.paymentMethod || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Payment Date</span>
+                        <span>{selectedBooking.paymentDate ? format(new Date(selectedBooking.paymentDate), 'PPP') : 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Total Amount</span>
+                        <span className="font-bold">₹{selectedBooking.totalPrice}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-medium mb-2">Accommodation Details</h3>
+                    <div className="space-y-2">
+                      {selectedBooking.hostel && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Hostel</span>
+                          <span>{selectedBooking.hostel.name}</span>
+                        </div>
+                      )}
+                      {selectedBooking.room && (
+                        <>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Room</span>
+                            <span>{selectedBooking.room.name} (#{selectedBooking.room.roomNumber})</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Room Type</span>
+                            <span>{selectedBooking.room.category.charAt(0).toUpperCase() + selectedBooking.room.category.slice(1)}</span>
+                          </div>
+                        </>
+                      )}
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Sharing Type</span>
+                        <span>{selectedBooking.sharingType}</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h3 className="text-lg font-medium mb-2">Stay Period</h3>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Check-in</span>
+                        <span>{format(new Date(selectedBooking.startDate), 'PPP')}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Check-out</span>
+                        <span>{format(new Date(selectedBooking.endDate), 'PPP')}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Duration</span>
+                        <span>
+                          {selectedBooking.bookingDuration === 'daily' && `${selectedBooking.durationCount} days`}
+                          {selectedBooking.bookingDuration === 'weekly' && `${selectedBooking.durationCount} weeks`}
+                          {selectedBooking.bookingDuration === 'monthly' && `${selectedBooking.durationCount} months`}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {selectedBooking.notes && (
+                    <div>
+                      <h3 className="text-lg font-medium mb-2">Notes</h3>
+                      <p className="text-muted-foreground">{selectedBooking.notes}</p>
+                    </div>
+                  )}
+                  
+                  <div className="pt-4">
+                    <Button className="w-full">
+                      <Download className="mr-2 h-4 w-4" />
+                      Download Receipt
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+interface BookingTableProps {
+  bookings: any[];
+  loading: boolean;
+  error: string | null;
+  onViewDetails: (booking: any) => void;
+  getStatusBadge: (status: string) => React.ReactNode;
+  getPaymentStatusBadge: (status: string) => React.ReactNode;
+}
+
+const BookingTable = ({ 
+  bookings, 
+  loading, 
+  error, 
+  onViewDetails,
+  getStatusBadge,
+  getPaymentStatusBadge 
+}: BookingTableProps) => {
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="py-10 flex justify-center">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="py-10">
+          <div className="text-center text-red-500">{error}</div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  if (bookings.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-10">
+          <div className="text-center">
+            <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+            <h3 className="text-lg font-medium mb-2">No Bookings Found</h3>
+            <p className="text-muted-foreground">There are no bookings matching your criteria.</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  return (
+    <Card>
+      <CardContent className="p-0">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Booking ID</TableHead>
+                <TableHead>Student</TableHead>
+                <TableHead>Room Details</TableHead>
+                <TableHead>Check-in / Check-out</TableHead>
+                <TableHead>Total Amount</TableHead>
+                <TableHead>Payment Status</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {bookings.map((booking) => (
+                <TableRow key={booking._id}>
+                  <TableCell className="font-mono text-xs">
+                    {booking._id.substring(0, 8)}...
+                  </TableCell>
+                  <TableCell>
+                    {booking.student ? (
+                      <div>
+                        <div className="font-medium">{booking.student.name}</div>
+                        <div className="text-xs text-muted-foreground">{booking.student.email}</div>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">N/A</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {booking.room ? (
+                      <div>
+                        <div className="font-medium">{booking.room.name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          #{booking.room.roomNumber}, {booking.sharingType}
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">N/A</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="text-xs">
+                      <div>{format(new Date(booking.startDate), 'PP')}</div>
+                      <div className="text-muted-foreground mt-1">{format(new Date(booking.endDate), 'PP')}</div>
+                    </div>
+                  </TableCell>
+                  <TableCell>₹{booking.totalPrice}</TableCell>
+                  <TableCell>{getPaymentStatusBadge(booking.paymentStatus)}</TableCell>
+                  <TableCell>{getStatusBadge(booking.status)}</TableCell>
+                  <TableCell className="text-right">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => onViewDetails(booking)}
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      View
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};

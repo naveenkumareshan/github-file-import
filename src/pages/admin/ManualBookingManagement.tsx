@@ -1,0 +1,810 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { adminManualBookingService } from '../../api/adminManualBookingService';
+import { adminUsersService } from '../../api/adminUsersService';
+import { seatsService } from '../../api/seatsService';
+import { useToast } from '../../hooks/use-toast';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { DateBasedSeatMap } from '@/components/seats/DateBasedSeatMap';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { adminCabinsService } from '@/api/adminCabinsService';
+
+// Define bookingType type to fix TypeScript errors
+type BookingType = 'cabin' | 'hostel';
+
+// Interface for Cabin data
+interface Cabin {
+  _id: string;
+  name: string;
+  description: string;
+  price: number;
+  category: string;
+  amenities: string[];
+  imageUrl?: string;
+  floors?: { id: string; number: number }[];
+}
+
+export interface Seat {
+  _id: string;
+  id: string;
+  number: number;
+  cabinId: string;
+  price: number;
+  position: {
+    x: number;
+    y: number;
+  };
+  isAvailable: boolean;
+  isHotSelling: boolean;
+  unavailableUntil?: string;
+}
+
+const monthsLIst = [
+    { type: '1 Month', count: 1},
+    { type: '2 months', count: 2 },
+    { type: '3 Months', count: 3 },
+    { type: '6 Months', count: 6 },
+  ];
+
+const ManualBookingManagement: React.FC = () => {
+  // State variables for bookings
+  const [users, setUsers] = useState<any[]>([]);
+  const [selectedUser, setSelectedUser] = useState<string>('');
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // State for booking flow
+  const [step, setStep] = useState<'select-user' | 'select-cabin' | 'select-dates' | 'select-seat' | 'booking-details'>('select-user');
+  const [cabins, setCabins] = useState<Cabin[]>([]);
+  const [selectedCabin, setSelectedCabin] = useState<Cabin | null>(null);
+  const [seats, setSeats] = useState<Seat[]>([]);
+  const [selectedSeat, setSelectedSeat] = useState<Seat | null>(null);
+
+  // State for booking form
+  const [bookingType, setBookingType] = useState<BookingType>('cabin');
+  const [cabinId, setCabinId] = useState<string>('');
+  const [hostelId, setHostelId] = useState<string>('');
+  const [roomId, setRoomId] = useState<string>('');
+  const [seatId, setSeatId] = useState<string>('');
+  const [transaction_id, setTransactionId] = useState<string>('');
+  const [receipt_no, setReceiptNo] = useState<string>('');
+  const [bedId, setBedId] = useState<string>('');
+  const [startDate, setStartDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState<string>('');
+  const [totalPrice, setTotalPrice] = useState<number>(0);
+  const [keyDeposite, setKeyDeposite] = useState<number>(500);
+  const [finalPrice, setFinalPrice] = useState<number>(0);
+  const [paymentStatus, setPaymentStatus] = useState<'pending' | 'completed' | 'failed'>('pending');
+  const [paymentMethod, setPaymentMethod] = useState<string>('cash');
+  const [notes, setNotes] = useState<string>('');
+  const [months, setMonths] = useState<number>(1);
+  const [durationCount, setDurationCount] = useState<number>(1);
+  const [bookingDuration, setBookingDuration] = useState<'daily' | 'weekly' | 'monthly'>('monthly');
+  const [searchTerm, setSearchTerm] = useState('');
+  const { toast } = useToast();
+
+   const navigate = useNavigate();
+
+  // Load users on component mount
+  const fetchUsers = async (searchTerm) => {
+    setLoading(true);
+    try {
+      // Use getUsers instead of getAllUsers
+      const response = await adminUsersService.getUsers({search:searchTerm});
+      if (response.data) {
+        setUsers(response.data);
+      }
+    } catch (err) {
+      setError('Failed to load users');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+useEffect(() => {
+    fetchUsers(searchTerm);
+  }, [searchTerm]);
+  
+  // Load bookings for selected user
+  useEffect(() => {
+    const fetchBookings = async () => {
+      if (selectedUser) {
+        setLoading(true);
+        try {
+          const response = await adminUsersService.getBookingsByUserId({ userId: selectedUser });
+          if (response.data) {
+            setBookings(response.data);
+          }
+        } catch (err) {
+          setError('Failed to load bookings');
+          console.error(err);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchBookings();
+  }, [selectedUser]);
+
+  useEffect(()=>{
+    setFinalPrice(keyDeposite + totalPrice)
+  },[keyDeposite, totalPrice])
+
+  // Load cabins when step changes to select-cabin
+  useEffect(() => {
+    if (step === 'select-cabin') {
+      fetchCabins();
+    }
+  }, [step]);
+
+  // Load seats when cabin is selected
+  useEffect(() => {
+    if (selectedCabin && selectedCabin._id) {
+      fetchSeats(selectedCabin._id);
+    }
+  }, [selectedCabin]);
+
+  // Fetch cabins
+  const fetchCabins = async () => {
+    setLoading(true);
+    try {
+      const response = await adminCabinsService.getAllCabins();
+      if (response.success && response.data) {
+        setCabins(response.data);
+      } else {
+        setError('Failed to load cabins');
+      }
+    } catch (err) {
+      setError('Failed to load cabins');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch seats for a cabin
+  const fetchSeats = async (cabinId: string) => {
+    setLoading(true);
+    try {
+      const response = await seatsService.getSeatsByCabin(cabinId, 1);
+      if (response.success && response.data) {
+        setSeats(response.data);
+      } else {
+        setError('Failed to load seats');
+      }
+    } catch (err) {
+      setError('Failed to load seats');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handlers for form inputs
+  const handleUserChange = (userId: string) => {
+    setSelectedUser(userId);
+    if (userId) {
+      setStep('select-cabin');
+    }
+  };
+
+  const handleCabinSelect = (cabin: Cabin) => {
+    setSelectedCabin(cabin);
+    setCabinId(cabin._id);
+    setStep('select-dates');
+    // Prefill the total price based on the cabin
+    setTotalPrice(cabin.price);
+    setFinalPrice(cabin.price);
+  };
+
+  const handleSeatSelect = (seat: Seat) => {
+    // Always allow selection for admin, but show warning for unavailable seats
+    setSelectedSeat(seat);
+    setSeatId(seat._id);
+    
+    // Update total price based on seat price if available
+    if (seat.price) {
+      setTotalPrice(seat.price);
+    }
+    
+    // Show warning if seat is not available
+    if (!seat.isAvailable) {
+      toast({
+        title: "Seat Unavailable",
+        description: `Seat ${seat.number} is currently occupied${seat.unavailableUntil ? ` until ${new Date(seat.unavailableUntil).toLocaleDateString()}` : ''}. Admin can still create booking if needed.`,
+        variant: "destructive"
+      });
+    }
+    
+    setStep('booking-details');
+
+    // Update end date based on new months value
+    if (startDate) {
+      const startDateObj = new Date(startDate);
+      const endDateObj = new Date(startDateObj);
+      endDateObj.setMonth(endDateObj.getMonth() + months);
+      setEndDate(endDateObj.toISOString().split('T')[0]);
+    }
+    
+    // Update total price based on duration
+    if (seat) {
+      const basePrice = seat.price || (selectedCabin ? selectedCabin.price : 0);
+      setTotalPrice(basePrice * months);
+    }
+  };
+
+  const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setStartDate(e.target.value);
+    // Calculate end date based on months
+    const startDateObj = new Date(e.target.value);
+    const endDateObj = new Date(startDateObj);
+    endDateObj.setMonth(endDateObj.getMonth() + months);
+    setEndDate(endDateObj.toISOString().split('T')[0]);
+  };
+
+  const handleMonthsChange = (months) => {
+    const monthsValue = Number(months);
+    console.log(monthsValue)
+    setMonths(monthsValue);
+    
+    // Update end date based on new months value
+    if (startDate) {
+      const startDateObj = new Date(startDate);
+      const endDateObj = new Date(startDateObj);
+      endDateObj.setMonth(endDateObj.getMonth() + monthsValue);
+      setEndDate(endDateObj.toISOString().split('T')[0]);
+    }
+    
+    // Update total price based on duration
+    if (selectedSeat) {
+      const basePrice = selectedSeat.price || (selectedCabin ? selectedCabin.price : 0);
+      setTotalPrice(basePrice * monthsValue);
+    }
+  };
+
+
+  const handleBookingDurationChange = (value: string) => {
+    setBookingDuration(value as 'daily' | 'weekly' | 'monthly');
+  };
+
+  const handleTotalPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setTotalPrice(Number(e.target.value));
+    setFinalPrice(keyDeposite + Number(e.target.value))
+  };
+  const handleKeyDepositeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setKeyDeposite(Number(e.target.value));
+    setFinalPrice(totalPrice + Number(e.target.value))
+  };
+  const handlePaymentStatusChange = (value: string) => {
+    setPaymentStatus(value as 'pending' | 'completed' | 'failed');
+  };
+
+  const handlePaymentMethodChange = (value: string) => {
+    setPaymentMethod(value);
+  };
+
+  const handleNotesChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setNotes(e.target.value);
+  };
+
+  const handleBackToUserSelection = () => {
+    setStep('select-user');
+    setSelectedCabin(null);
+    setSelectedSeat(null);
+  };
+
+  const handleBackToCabinSelection = () => {
+    setStep('select-cabin');
+    setSelectedSeat(null);
+  };
+
+  const handleBackToDateSelection = () => {
+    setStep('select-dates');
+    setSelectedSeat(null);
+  };
+
+  const handleBackToSeatSelection = () => {
+    setStep('select-seat');
+  };
+
+  const handleDateSelectionComplete = () => {
+    setStep('select-seat');
+  };
+
+  // Submit handlers
+  const handleCreateBooking = async () => {
+    setLoading(true);
+    setError(null);
+
+    if (!selectedUser || !selectedCabin || !selectedSeat) {
+      setError('Please select a user, cabin, and seat before creating a booking');
+      setLoading(false);
+      return;
+    }
+
+    
+    if (!startDate || !endDate) {
+      setError('Please select Start and End Dates before creating a booking');
+      setLoading(false);
+      return;
+    }
+
+    const bookingData = {
+      userId: selectedUser,
+      cabinId: selectedCabin._id,
+      seatId: selectedSeat._id,
+      startDate,
+      endDate,
+      totalPrice:finalPrice,
+      key_deposite:keyDeposite,
+      transaction_id,
+      receipt_no,
+      paymentStatus,
+      paymentMethod,
+      notes,
+      months,
+      durationCount,
+      bookingDuration
+    };
+
+    try {
+      const response = await adminManualBookingService.createManualCabinBooking(bookingData);
+
+      if (response?.success) {
+        toast({
+          title: 'Booking Created',
+          description: 'Booking created successfully.',
+        });
+        navigate('/admin/bookings');
+        // Reset form and go back to user selection
+        resetForm();
+        setStep('select-user');
+      } else {
+        setError(response?.error || 'Failed to create booking');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to create booking');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetForm = () => {
+    setSelectedUser('');
+    setSelectedCabin(null);
+    setSelectedSeat(null);
+    setCabinId('');
+    setSeatId('');
+    setStartDate(new Date().toISOString().split('T')[0]);
+    setEndDate('');
+    setTotalPrice(0);
+    setPaymentStatus('completed');
+    setPaymentMethod('cash');
+    setNotes('');
+    setMonths(1);
+    setDurationCount(1);
+    setBookingDuration('monthly');
+  };
+
+  // Rendering the user selection view
+  const renderUserSelection = () => (
+    <Card className="mb-6">
+      <CardHeader>
+        <CardTitle>Select User</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Select 
+          value={selectedUser} 
+          onValueChange={handleUserChange}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select a user" />
+          </SelectTrigger>
+            <SelectContent className="max-h-80">
+              <div className="p-2">
+                <input
+                  type="text"
+                  placeholder="Search user..."
+                  className="w-full p-1 border rounded text-sm"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+                {users.map(user => (
+                  <SelectItem key={user._id} value={user._id}>
+                    {user.userId} {user.name} ({user.email})
+                  </SelectItem>
+                ))}
+            </SelectContent>
+        </Select>
+      </CardContent>
+    </Card>
+  );
+
+  // Rendering the cabin selection view
+  const renderCabinSelection = () => (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold">Select a Cabin</h2>
+        <Button variant="outline" onClick={handleBackToUserSelection}>Back to User Selection</Button>
+      </div>      
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <p>Loading cabins...</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {cabins.map((cabin) => (
+            <Card 
+              key={cabin._id} 
+              className={`cursor-pointer transition-all ${selectedCabin?._id === cabin._id ? 'border-primary' : 'hover:shadow-md'}`}
+              onClick={() => handleCabinSelect(cabin)}
+            >
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg">{cabin.name}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">{cabin.description?.substring(0, 100)}...</p>
+                <p className="font-medium mt-2">₹{cabin.price} / month</p>
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {cabin.amenities?.slice(0, 3).map((amenity, index) => (
+                    <span key={index} className="text-xs bg-muted px-2 py-1 rounded">{amenity}</span>
+                  ))}
+                  {cabin.amenities?.length > 3 && (
+                    <span className="text-xs bg-muted px-2 py-1 rounded">+{cabin.amenities.length - 3} more</span>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+      
+      {cabins.length === 0 && !loading && (
+        <p className="text-center py-12">No cabins found.</p>
+      )}
+    </div>
+  );
+
+  // Rendering the date selection view
+  const renderDateSelection = () => (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold">Select Dates for {selectedCabin?.name}</h2>
+        <Button variant="outline" onClick={handleBackToCabinSelection}>Back to Cabin Selection</Button>
+      </div>
+      
+      <Card className="mb-4">
+        <CardHeader>
+          <CardTitle>Select Booking Period</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+ <div>
+              <Label htmlFor="startDate">Start Date</Label>
+              <Input type="date" id="startDate" value={startDate} onChange={handleStartDateChange}/>
+            </div>
+            
+            <div>
+              <Label htmlFor="months">Duration (Months)</Label>
+              <Select 
+                value={months+''}
+                onValueChange={handleMonthsChange}
+                >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a duration" />
+                </SelectTrigger>
+                <SelectContent className="max-h-80">
+                  {monthsLIst.map(month => (
+                    <SelectItem key={month.type} value={month.count+''}>
+                      {month.type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+                </Select>
+            </div>
+            
+            <div>
+              <Label htmlFor="endDate">End Date</Label>
+              <Input type="date" id="endDate" value={endDate} disabled />
+            </div>
+            
+            {/* <div>
+              <Label htmlFor="durationCount">Duration Count</Label>
+              <Input type="number" id="durationCount" value={durationCount} onChange={handleDurationCountChange} min={1} />
+            </div>
+             */}
+            <div>
+              <Label htmlFor="bookingDuration">Booking Duration Type</Label>
+              <Select value={bookingDuration} onValueChange={handleBookingDurationChange}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {/* <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem> */}
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <Button 
+            onClick={handleDateSelectionComplete} 
+            className="mt-4"
+            disabled={!startDate || !endDate}
+          >
+            Continue to Seat Selection
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  // Rendering the seat selection view with date-based availability
+  const renderSeatSelection = () => (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold">Select a Seat in {selectedCabin?.name}</h2>
+        <Button variant="outline" onClick={handleBackToDateSelection}>Back to Date Selection</Button>
+      </div>
+
+      {/* Selected Seat Details */}
+      {selectedSeat && (
+        <Card className="mb-4">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Selected Seat Details</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div>
+                <span className="font-medium">Seat Number:</span> {selectedSeat.number}
+              </div>
+              <div>
+                <span className="font-medium">Price:</span> ₹{selectedSeat.price}/month
+              </div>
+              <div>
+                <span className="font-medium">Status:</span> 
+                <span className={`ml-1 ${selectedSeat.isAvailable ? 'text-green-600' : 'text-red-600'}`}>
+                  {selectedSeat.isAvailable ? 'Available' : 'Occupied'}
+                </span>
+              </div>
+              {selectedSeat.unavailableUntil && (
+                <div className="md:col-span-3">
+                  <span className="font-medium">Unavailable Until:</span> 
+                  <span className="ml-1 text-red-600">
+                    {new Date(selectedSeat.unavailableUntil).toLocaleDateString()}
+                  </span>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
+      {selectedCabin && (
+        <DateBasedSeatMap
+          cabinId={selectedCabin._id}
+          floorsList={selectedCabin.floors}
+          startDate={new Date(startDate)}
+          endDate={new Date(endDate)}
+          onSeatSelect={handleSeatSelect}
+          selectedSeat={selectedSeat}
+          exportcsv={false}
+        />
+      )}
+    </div>
+  );
+
+  // Rendering the booking details form
+  const renderBookingDetailsForm = () => (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold">Booking Details</h2>
+        <Button variant="outline" onClick={handleBackToSeatSelection}>Back to Seat Selection</Button>
+      </div>
+      
+      <Card>
+        <CardContent className="p-6 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="startDate">Start Date</Label>
+              <Input type="date" id="startDate" value={startDate} onChange={handleStartDateChange} disabled/>
+            </div>
+            
+            <div>
+              <Label htmlFor="months">Duration (Months)</Label>
+              <Select 
+                value={months+''}
+                onValueChange={handleMonthsChange}
+                disabled
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a duration" />
+                </SelectTrigger>
+                <SelectContent className="max-h-80">
+                  {monthsLIst.map(month => (
+                    <SelectItem key={month.type} value={month.count+''}>
+                      {month.type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+                </Select>
+            </div>
+            
+            <div>
+              <Label htmlFor="endDate">End Date</Label>
+              <Input type="date" id="endDate" value={endDate} disabled />
+            </div>
+            
+            {/* <div>
+              <Label htmlFor="durationCount">Duration Count</Label>
+              <Input type="number" id="durationCount" value={durationCount} onChange={handleDurationCountChange} min={1} />
+            </div>
+             */}
+            <div>
+              <Label htmlFor="bookingDuration">Booking Duration Type</Label>
+              <Select value={bookingDuration} onValueChange={handleBookingDurationChange} disabled>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {/* <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem> */}
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Label htmlFor="keyDeposite">key Deposite</Label>
+              <Input type="number" id="keyDeposite" value={keyDeposite} onChange={handleKeyDepositeChange} />
+            </div>
+             <div>
+              <Label htmlFor="totalPrice">Total Price</Label>
+              <Input type="number" id="totalPrice" value={totalPrice} onChange={handleTotalPriceChange} />
+            </div>
+            <div>
+              <Label htmlFor="finalPrice">Final Price</Label>
+              <Input type="number" id="finalPrice" value={finalPrice} readOnly />
+            </div>
+
+            <div>
+              <Label htmlFor="paymentStatus">Payment Status</Label>
+              <Select value={paymentStatus} onValueChange={handlePaymentStatusChange}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {/* <SelectItem value="pending">Pending</SelectItem> */}
+                  <SelectItem value="completed">Completed</SelectItem>
+                  {/* <SelectItem value="failed">Failed</SelectItem> */}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Label htmlFor="paymentMethod">Payment Method</Label>
+              <Select value={paymentMethod} onValueChange={handlePaymentMethodChange}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="card">Card</SelectItem>
+                  <SelectItem value="upi">UPI</SelectItem>
+                  <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                  <SelectItem value="razorpay">Razorpay</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+                       <div>
+              <Label htmlFor="transaction_id">Transaction Id</Label>
+              <Input type="text" id="transaction_id" value={transaction_id}  onChange={(e) => setTransactionId(e.target.value)}
+/>
+            </div>
+             <div>
+              <Label htmlFor="receipt_no">Receipt No</Label>
+              <Input type="text" id="receipt_no" value={receipt_no} onChange={(e) => setReceiptNo(e.target.value)}
+  />
+            </div>
+          <div>
+            <Label htmlFor="notes">Notes</Label>
+            <textarea 
+              id="notes" 
+              value={notes} 
+              onChange={handleNotesChange}
+              className="w-full p-2 border rounded mt-1 h-24"
+            ></textarea>
+          </div>
+          
+          <Button 
+            onClick={handleCreateBooking}
+            disabled={loading}
+            className="w-full"
+          >
+            {loading ? 'Creating...' : 'Create Booking'}
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+  const viewBookings = (bookingid) => {
+     window.open(`/admin/bookings/${bookingid}/cabin`, '_blank');
+  };
+ const renderBookingManagement = () => (
+    <div className="mb-4">
+      <h2 className="text-xl font-semibold mb-2">User Bookings</h2>
+      {bookings.length > 0 ? (
+        <div className="mt-4 overflow-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Booking ID</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Date</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Date</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Price</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {bookings.map((booking) => (
+                <tr key={booking._id}>
+                  <td className="px-6 py-4 whitespace-nowrap">{booking._id}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{booking.cabinId ? 'Cabin' : 'Hostel'}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{new Date(booking.startDate).toLocaleDateString()}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{new Date(booking.endDate).toLocaleDateString()}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">₹{booking.totalPrice}</td>
+                  <td className="px-6 py-4 whitespace-nowrap">{booking.paymentStatus}</td>
+                  <td className="px-6 py-4 whitespace-nowrap space-x-2">
+                    <Button size="sm" variant="outline" onClick={()=>viewBookings(booking._id)}>View</Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p className="text-muted-foreground">No bookings found for the selected user</p>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="container mx-auto p-4">
+      <h1 className="text-2xl font-semibold mb-4">Manual Booking Management</h1>
+
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 text-red-500 border border-red-200 rounded">
+          {error}
+        </div>
+      )}
+
+      <Tabs defaultValue="create" className="mt-6">
+        <TabsContent value="create" className="space-y-4">
+          {/* Original booking management functionality */}
+          {renderBookingManagement()}
+          {step === 'select-user' && renderUserSelection()}
+          {step === 'select-cabin' && renderCabinSelection()}
+          {step === 'select-dates' && renderDateSelection()}
+          {step === 'select-seat' && renderSeatSelection()}
+          {step === 'booking-details' && renderBookingDetailsForm()}
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+};
+
+export default ManualBookingManagement;

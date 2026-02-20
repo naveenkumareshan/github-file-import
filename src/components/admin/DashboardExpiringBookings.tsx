@@ -1,0 +1,105 @@
+
+import React, { useState, useEffect, useRef } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { adminBookingsService } from '@/api/adminBookingsService';
+import { Calendar } from 'lucide-react';
+import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
+import { toast } from '@/hooks/use-toast';
+
+export function DashboardExpiringBookings() {
+  const [expiringBookings, setExpiringBookings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const hasFetchedRef = useRef(false);
+
+ useEffect(() => {
+    if (hasFetchedRef.current) return;
+      hasFetchedRef.current = true;
+    const fetchExpiringBookings = async () => {
+      try {
+        setLoading(true);
+        const response = await adminBookingsService.getExpiringBookings(7); // Get bookings expiring in 7 days
+        
+        if (response.success && response.data) {
+          setExpiringBookings(response.data.slice(0, 5)); // Show only top 5
+        }
+      } catch (error) {
+        console.error('Error fetching expiring bookings:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load expiring bookings",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchExpiringBookings();
+  }, []);
+
+  const handleViewAll = () => {
+    navigate('/admin/reports');
+  };
+
+  const formatDate = (dateString: string) => {
+    return format(new Date(dateString), 'MMM dd, yyyy');
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Calendar className="h-4 w-4" />
+            Expiring Bookings
+          </CardTitle>
+          <Button variant="ghost" size="sm" onClick={handleViewAll}>
+            View All
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="space-y-2">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <Skeleton className="h-12 w-full" />
+              </div>
+            ))}
+          </div>
+        ) : expiringBookings.length === 0 ? (
+          <p className="text-center text-muted-foreground py-4">
+            No bookings expiring soon
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {expiringBookings.map((booking) => (
+              <div 
+                key={booking._id} 
+                className="flex justify-between items-center p-2 rounded-md hover:bg-muted cursor-pointer"
+                onClick={() => navigate(`/admin/bookings/${booking._id}`)}
+              >
+                <div>
+                  <p className="font-medium">{booking.studentName || 'Student'}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {booking.cabinId?.name || 'Cabin'} - Seat {booking.seatId?.number || 'N/A'}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <Badge variant="outline" className="border-amber-500 text-amber-500">
+                    Expires {formatDate(booking.endDate)}
+                  </Badge>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
