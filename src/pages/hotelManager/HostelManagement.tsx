@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { hostelService, HostelData as HostelServiceData } from '@/api/hostelService';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
   Dialog, 
@@ -9,31 +9,29 @@ import {
   DialogTitle 
 } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { HostelForm, HostelData as HostelFormData } from '@/components/admin/HostelForm';
 import { AddRoomWithSharingForm } from '@/components/admin/AddRoomWithSharingForm';
-import { Plus, Building, Edit, Trash2, Building2, Bed } from 'lucide-react';
+import { Plus, Building2, Edit, Trash2, Bed, DoorOpen, Eye } from 'lucide-react';
 import ErrorBoundary from '../../components/ErrorBoundary';
 import { useNavigate } from 'react-router-dom';
 import { DialogDescription } from '@radix-ui/react-dialog';
 import { useAuth } from '@/contexts/AuthContext';
 
-// Update the type to align with HostelForm's requirements
 type HostelData = {
   _id: string;
   id: string;
   name: string;
   location: string;
-  description: string; // Required in form
+  description: string;
   city: string;
   area: string;
   locality: string;
   state: string;
   country: string;
   maxCapacity: number,
-  contactEmail: string; // Required in form
-  contactPhone: string; // Required in form
+  contactEmail: string;
+  contactPhone: string;
   isActive: boolean;
   logoImage?: string;
   images : string[],
@@ -65,50 +63,38 @@ const HostelManagement = () => {
     try {
       setLoading(true);
       setError(null);
-      
       const response = await hostelService.getUserHostels();
-      
       if (response.success) {
-        // Transform the data to ensure it matches our HostelData type
         const transformedHostels = response.data.map((hostel): HostelData => ({
           _id: hostel._id,
           id: hostel.id,
           name: hostel.name,
           location: hostel.location,
-          description: hostel.description || '', // Ensure description is never null
+          description: hostel.description || '',
           city: hostel.city,
           area: hostel.area,
           locality: hostel.locality,
           state: hostel.state,
           country: hostel.country,
           maxCapacity: hostel.maxCapacity,
-          contactEmail: hostel.contactEmail || '', // Ensure contactEmail is never null
-          contactPhone: hostel.contactPhone || '', // Ensure contactPhone is never null
+          contactEmail: hostel.contactEmail || '',
+          contactPhone: hostel.contactPhone || '',
           isActive: hostel.isActive,
           logoImage: hostel.logoImage,
           images: hostel.images,
           amenities: hostel.amenities,
-          hostelCode:hostel.hostelCode,
+          hostelCode: hostel.hostelCode,
           coordinates: hostel.coordinates
         }));
-        
         setHostels(transformedHostels);
       } else {
         setError('Failed to load hostels');
-        toast({
-          title: "Error",
-          description: "Failed to load hostels",
-          variant: "destructive"
-        });
+        toast({ title: "Error", description: "Failed to load hostels", variant: "destructive" });
       }
     } catch (error) {
       console.error('Error fetching hostels:', error);
       setError('Failed to load hostels');
-      toast({
-        title: "Error",
-        description: "Failed to load hostels",
-        variant: "destructive"
-      });
+      toast({ title: "Error", description: "Failed to load hostels", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -120,14 +106,12 @@ const HostelManagement = () => {
   };
 
   const handleEditHostel = (hostel: HostelData) => {
-    // Make sure all required fields are present
     const completeHostel: HostelData = {
       ...hostel,
       description: hostel.description || '',
       contactEmail: hostel.contactEmail || '',
       contactPhone: hostel.contactPhone || '',
     };
-    
     setSelectedHostel(completeHostel);
     setIsHostelFormOpen(true);
   };
@@ -135,18 +119,10 @@ const HostelManagement = () => {
   const handleDeleteHostel = async (hostelId: string) => {
     try {
       await hostelService.deleteHostel(hostelId);
-      toast({
-        title: "Success",
-        description: "Hostel deleted successfully",
-      });
+      toast({ title: "Success", description: "Hostel deleted successfully" });
       fetchHostels();
     } catch (error) {
-      console.error('Error deleting hostel:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete hostel",
-        variant: "destructive"
-      });
+      toast({ title: "Error", description: "Failed to delete hostel", variant: "destructive" });
     }
   };
 
@@ -161,144 +137,115 @@ const HostelManagement = () => {
     fetchHostels();
   };
 
-  const handleFormClose = () => {
-    setIsRoomFormOpen(false);
-  };
+  const handleFormClose = () => setIsRoomFormOpen(false);
 
   const handleViewRooms = (hostelId: string) => {
     navigate(`/admin/hostels/${hostelId}/rooms`);
   };
 
-   const handleOpenImageGallery = (hostel: HostelData, initialImage?: string) => {
+  const handleOpenImageGallery = (hostel: HostelData, initialImage?: string) => {
     setSelectedHostel(hostel);
     setSelectedImage(initialImage || hostel.logoImage);
     setIsImageGalleryOpen(true);
   };
 
-
-    // Check if user is admin
-  // if (!user || user.role !== 'admin') {
-  //   return (
-  //     <div className="container mx-auto p-6">
-  //       <Card>
-  //         <CardContent className="flex flex-col items-center justify-center py-12">
-  //           <h2 className="text-2xl font-bold mb-2">Access Denied</h2>
-  //           <p className="mb-4">You don't have permission to access this page.</p>
-  //           <Button onClick={() => navigate('/')}>Back to Home</Button>
-  //         </CardContent>
-  //       </Card>
-  //     </div>
-  //   );
-  // }
-
   return (
     <ErrorBoundary>
-      <div className="container mx-auto p-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-2xl font-bold">Hostel Management</CardTitle>
-            <Button onClick={handleAddHostel} className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Add New Hostel
+      <div className="flex flex-col gap-4">
+        {/* Page Header */}
+        <div>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+            <span>Admin Panel</span><span>/</span>
+            <span className="text-foreground font-medium">Manage Hostels</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-lg font-semibold tracking-tight">Manage Hostels</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">View and manage all hostels and their rooms.</p>
+            </div>
+            <Button onClick={handleAddHostel} size="sm" className="flex items-center gap-1.5">
+              <Plus className="h-4 w-4" /> Add Hostel
             </Button>
-          </CardHeader>
-          <CardContent>
+          </div>
+        </div>
+
+        <Card className="border-border/60 shadow-sm">
+          <CardContent className="p-0">
             {loading ? (
               <div className="flex justify-center py-12">
-                <div className="animate-spin h-8 w-8 border-4 border-cabin-wood border-t-transparent rounded-full"></div>
+                <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
               </div>
             ) : error ? (
-              <div className="text-center py-6 text-red-500">{error}</div>
+              <div className="text-center py-6 text-red-500 text-sm">{error}</div>
             ) : hostels.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16">
-                <Building2 className="h-16 w-16 text-muted-foreground mb-4" />
-                <h3 className="text-xl font-medium mb-2">No Hostels Found</h3>
-                <p className="text-muted-foreground mb-6">
-                  Start by adding your first hostel to manage accommodation.
-                </p>
-                <Button onClick={handleAddHostel}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Hostel
+                <Building2 className="h-10 w-10 text-muted-foreground/30 mb-3" />
+                <p className="text-sm font-medium">No Hostels Found</p>
+                <p className="text-xs text-muted-foreground mb-4">Start by adding your first hostel.</p>
+                <Button onClick={handleAddHostel} size="sm">
+                  <Plus className="h-4 w-4 mr-1" /> Add Hostel
                 </Button>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Location</TableHead>
-                      <TableHead>Contact</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
+                    <TableRow className="bg-muted/30">
+                      <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Name</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Location</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Contact</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Status</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {hostels.map((hostel) => (
-                      <TableRow key={hostel._id}>
-                        <TableCell className="flex items-center gap-2">
-                          <div 
-                            className="h-10 w-10 rounded overflow-hidden cursor-pointer"
-                            onClick={() => handleOpenImageGallery(hostel)}
-                          >
-                            {hostel.logoImage ? (
-                              <img src={import.meta.env.VITE_BASE_URL + hostel.logoImage} alt={hostel.name} className="h-full w-full object-cover" />
-                            ) : (
-                              <div className="h-full w-full bg-muted flex items-center justify-center">
-                                <Bed className="h-5 w-5 text-muted-foreground" />
-                              </div>
-                            )}
+                    {hostels.map((hostel, idx) => (
+                      <TableRow key={hostel._id} className={idx % 2 === 0 ? "bg-background" : "bg-muted/20"}>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="h-8 w-8 rounded overflow-hidden cursor-pointer flex-shrink-0"
+                              onClick={() => handleOpenImageGallery(hostel)}
+                            >
+                              {hostel.logoImage ? (
+                                <img src={import.meta.env.VITE_BASE_URL + hostel.logoImage} alt={hostel.name} className="h-full w-full object-cover" />
+                              ) : (
+                                <div className="h-full w-full bg-muted flex items-center justify-center">
+                                  <Bed className="h-4 w-4 text-muted-foreground" />
+                                </div>
+                              )}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium">{hostel.name}</p>
+                              {hostel.hostelCode && <p className="text-xs text-muted-foreground">{hostel.hostelCode}</p>}
+                            </div>
                           </div>
-                          <span className="font-medium">{hostel.name}</span>
-                          <span className="font-medium">{hostel.hostelCode}</span>
-                          
                         </TableCell>
-                        <TableCell>{hostel.location}</TableCell>
+                        <TableCell className="text-sm">{hostel.location}</TableCell>
                         <TableCell>
-                          <div>
-                            <p>{hostel.contactEmail}</p>
-                            <p className="text-muted-foreground text-sm">{hostel.contactPhone}</p>
-                          </div>
+                          <p className="text-sm">{hostel.contactEmail}</p>
+                          <p className="text-xs text-muted-foreground">{hostel.contactPhone}</p>
                         </TableCell>
                         <TableCell>
                           {hostel.isActive ? (
-                            <Badge className="bg-green-500">Active</Badge>
+                            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">Active</span>
                           ) : (
-                            <Badge variant="outline" className="text-muted-foreground">
-                              Inactive
-                            </Badge>
+                            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-red-50 text-red-700 border border-red-200">Inactive</span>
                           )}
                         </TableCell>
                         <TableCell>
-                          <div className="flex space-x-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => handleAddRoom(hostel)}
-                            >
-                              Add Room
+                          <div className="flex items-center gap-1.5">
+                            <Button variant="outline" size="sm" onClick={() => handleAddRoom(hostel)} className="h-7 text-xs">
+                              <DoorOpen className="h-3 w-3 mr-1" /> Add Room
                             </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => handleViewRooms(hostel._id)}
-                            >
-                              View Rooms
+                            <Button variant="outline" size="sm" onClick={() => handleViewRooms(hostel._id)} className="h-7 text-xs">
+                              <Eye className="h-3 w-3 mr-1" /> Rooms
                             </Button>
-                            <Button 
-                              variant="outline" 
-                              size="icon" 
-                              onClick={() => handleEditHostel(hostel)}
-                            >
-                              <Edit className="h-4 w-4" />
+                            <Button variant="outline" size="sm" onClick={() => handleEditHostel(hostel)} className="h-7 w-7 p-0">
+                              <Edit className="h-3 w-3" />
                             </Button>
-                            <Button 
-                              variant="outline" 
-                              size="icon"
-                              className="text-red-500" 
-                              onClick={() => handleDeleteHostel(hostel._id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
+                            <Button variant="outline" size="sm" className="h-7 w-7 p-0 text-red-500 border-red-200 hover:bg-red-50" onClick={() => handleDeleteHostel(hostel._id)}>
+                              <Trash2 className="h-3 w-3" />
                             </Button>
                           </div>
                         </TableCell>
@@ -333,37 +280,24 @@ const HostelManagement = () => {
             </DialogHeader>
             {selectedHostel && (
               <div className="space-y-6">
-                {/* Main Selected Image */}
                 <div className="w-full aspect-video bg-muted rounded-lg overflow-hidden">
                   {selectedImage ? (
-                    <img 
-                      src={import.meta.env.VITE_BASE_URL + selectedImage} 
-                      alt={selectedHostel.name}
-                      className="w-full h-full object-contain" 
-                    />
+                    <img src={import.meta.env.VITE_BASE_URL + selectedImage} alt={selectedHostel.name} className="w-full h-full object-contain" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <Bed className="h-16 w-16 text-muted-foreground" />
                     </div>
                   )}
                 </div>
-
-                {/* Thumbnails */}
                 {selectedHostel.images && selectedHostel.images.length > 0 && (
                   <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
                     {selectedHostel.images.map((img, index) => (
                       <div 
                         key={index} 
                         onClick={() => setSelectedImage(img)}
-                        className={`aspect-square rounded-md overflow-hidden cursor-pointer ${
-                          selectedImage === img ? 'ring-2 ring-primary' : ''
-                        }`}
+                        className={`aspect-square rounded-md overflow-hidden cursor-pointer ${selectedImage === img ? 'ring-2 ring-primary' : ''}`}
                       >
-                        <img 
-                          src={import.meta.env.VITE_BASE_URL + img} 
-                          alt={`Room image ${index + 1}`} 
-                          className="w-full h-full object-cover" 
-                        />
+                        <img src={import.meta.env.VITE_BASE_URL + img} alt={`Room image ${index + 1}`} className="w-full h-full object-cover" />
                       </div>
                     ))}
                   </div>
@@ -372,6 +306,7 @@ const HostelManagement = () => {
             )}
           </DialogContent>
         </Dialog>
+
         {/* Add Room Form Dialog */}
         <Dialog open={isRoomFormOpen} onOpenChange={setIsRoomFormOpen}>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
