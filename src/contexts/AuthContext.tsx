@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { authService } from '../api/authService';
-import { v4 as uuidv4 } from 'uuid';
+import { supabase } from '@/integrations/supabase/client';
+import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
 
 // Define user type
 type UserRole = 'admin' | 'student' | 'hostel_manager' | 'super_admin' | 'vendor' | 'vendor_employee';
@@ -10,9 +10,9 @@ interface User {
   name: string;
   email: string;
   role: UserRole;
-  phone?: string;        // Added phone property
-  profileImage?: string; // Added profileImage property
-  permissions?:any;
+  phone?: string;
+  profileImage?: string;
+  permissions?: any;
   vendorId?: string;
   vendorIds?: string[];
 }
@@ -23,7 +23,7 @@ interface AuthContextType {
   authChecked: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  SocialLogin: (response:any) => Promise<boolean>;
+  SocialLogin: (response: any) => Promise<boolean>;
   registerUser: (name: string, phone: string, email: string, password: string, gender: string, role: string) => Promise<boolean>;
   logout: () => void;
   changeUserName: (newName: string) => Promise<boolean>;
@@ -49,159 +49,152 @@ const AuthContext = createContext<AuthContextType>({
   updateUserProfile: async () => false
 });
 
+const fetchUserRole = async (userId: string): Promise<UserRole> => {
+  const { data, error } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', userId)
+    .single();
+
+  if (error || !data) {
+    console.warn('No role found for user, defaulting to student');
+    return 'student';
+  }
+
+  return data.role as UserRole;
+};
+
+const buildUser = async (supabaseUser: SupabaseUser): Promise<User> => {
+  const role = await fetchUserRole(supabaseUser.id);
+  return {
+    id: supabaseUser.id,
+    name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
+    email: supabaseUser.email || '',
+    role,
+    profileImage: supabaseUser.user_metadata?.avatar_url,
+  };
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    // Check if user is already logged in
-    const token = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-    
-    if (token && storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-        setAuthChecked(true)
+    // Set up auth state listener BEFORE calling getSession
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        // Defer Supabase calls to avoid deadlock in onAuthStateChange
+        setTimeout(async () => {
+          const appUser = await buildUser(session.user);
+          setUser(appUser);
+          setIsLoading(false);
+          setAuthChecked(true);
+        }, 0);
+      } else {
+        setUser(null);
         setIsLoading(false);
-      } catch (error) {
-        console.error('Error parsing user data:', error);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        setIsLoading(false);
+        setAuthChecked(true);
       }
-    } else {
-      setIsLoading(false);
-    }
+    });
+
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        setIsLoading(false);
+        setAuthChecked(true);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-   const getDeviceInfo = () => {
-    const userAgent = navigator.userAgent;
-    const platform = navigator.platform;
-
-    const deviceType = /Mobi|Android/i.test(userAgent) ? 'Mobile' : 'Web';
-
-    // Store and reuse a generated device ID
-    let deviceId = localStorage.getItem('deviceId');
-    if (!deviceId) {
-      deviceId = uuidv4();
-      localStorage.setItem('deviceId', deviceId);
-    }
-
-    const deviceModel = platform || 'Unknown';
-    const osVersion = navigator.appVersion || 'Unknown';
-    const appVersion = '1.0.0';
-
-    return {
-      deviceType,
-      deviceId,
-      deviceModel,
-      osVersion,
-      appVersion,
-      platform
-    };
-  }
-  
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {
-      const data = await getDeviceInfo();
-      const response = await authService.login({ email, password, ...data });
-      
-      if (response.success && response.token && response.user) {
-        localStorage.setItem('token', response.token);
-        localStorage.setItem('user', JSON.stringify(response.user));
-        setUser(response.user);
-        return { success: true,  error:response};
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        return { success: false, error: error.message };
       }
-      
-      return { 
-        success: false, 
-        error: response.message || 'Invalid email or password. Please try again.' 
-      };
-    } catch (error) {
+
+      if (data.user) {
+        return { success: true };
+      }
+
+      return { success: false, error: 'Login failed. Please try again.' };
+    } catch (error: any) {
       console.error('Login error:', error);
-      
-      // Extract error message from different possible error structures
-      let errorMessage = 'An error occurred during login. Please try again.';
-      
-      if (error?.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error?.message) {
-        errorMessage = error.message;
-      }
-      
-      return { success: false, error: errorMessage };
+      return { success: false, error: error.message || 'An error occurred during login.' };
     }
   };
 
-  const SocialLogin = async (response): Promise<boolean> => {
+  const SocialLogin = async (response: any): Promise<boolean> => {
     try {
-      
       if (response.success && response.token && response.user) {
-        localStorage.setItem('token', response.token);
-        localStorage.setItem('user', JSON.stringify(response.user));
-        setUser(response.user);
         return true;
       }
       return false;
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('Social login error:', error);
       return false;
     }
   };
 
-  const registerUser = async (name: string, phone:string, email: string, password: string,gender:string, role: string): Promise<boolean> => {
+  const registerUser = async (name: string, phone: string, email: string, password: string, gender: string, role: string): Promise<boolean> => {
     try {
-      const response = await authService.register({ name, phone, email, password, gender, role });
-      
-      if (response.success && response.token) {
-        return true;
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { name, phone, gender }
+        }
+      });
+
+      if (error) {
+        console.error('Registration error:', error);
+        return false;
       }
-      return false;
+
+      return !!data.user;
     } catch (error) {
       console.error('Registration error:', error);
       return false;
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
   };
 
   const changeUserName = async (newName: string): Promise<boolean> => {
-    if (user) {
-      const response = await authService.updateName({ newName });
-      const updatedUser = { ...user, name: newName };
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      setUser(updatedUser);
-      return true;
-    }
-    return false;
-  };
-
-  const changeUserPassword = async (currentPassword: string, newPassword: string): Promise<boolean> => {
     try {
-      const response = await authService.changePassword({ currentPassword, newPassword });
-      return response.success;
-    } catch (error) {
-      console.error('Change password error:', error);
+      const { error } = await supabase.auth.updateUser({ data: { name: newName } });
+      if (error) return false;
+      if (user) {
+        setUser({ ...user, name: newName });
+      }
+      return true;
+    } catch {
       return false;
     }
   };
 
-  const updateUserName = async (newName: string): Promise<boolean> => {
-    return changeUserName(newName);
+  const changeUserPassword = async (currentPassword: string, newPassword: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      return !error;
+    } catch {
+      return false;
+    }
   };
 
-  const updateUserPassword = async (currentPassword: string, newPassword: string): Promise<boolean> => {
-    return changeUserPassword(currentPassword, newPassword);
-  };
+  const updateUserName = async (newName: string): Promise<boolean> => changeUserName(newName);
+  const updateUserPassword = async (currentPassword: string, newPassword: string): Promise<boolean> => changeUserPassword(currentPassword, newPassword);
 
   const updateUserProfile = async (data: unknown): Promise<boolean> => {
     if (user) {
-      console.log("Updating user profile with data:", data);
+      console.log('Updating user profile with data:', data);
       return true;
     }
     return false;
@@ -212,7 +205,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         user,
         isAuthenticated: !!user,
-        authChecked:authChecked,
+        authChecked,
         isLoading,
         login,
         SocialLogin,

@@ -91,17 +91,9 @@ const StudentLogin = () => {
           title: "Login Successful",
           description: "Welcome to the dashboard!",
         });
-
-        const storedUser = localStorage.getItem("user");
-        if (storedUser) {
-          const userData = JSON.parse(storedUser);
-          if (userData.role !== "student") {
-            navigate("/admin/dashboard");
-            return;
-          } else {
-            navigate(redirectPath);
-          }
-        }
+        // Navigation handled by auth state change; user object will be set
+        // Role-based redirect happens after user is populated in context
+        navigate(redirectPath);
       } else {
         // Handle login failure without page reload
         const errorMessage =
