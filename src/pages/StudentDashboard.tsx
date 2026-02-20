@@ -9,12 +9,124 @@ import { Footer } from '@/components/Footer';
 import { bookingsService } from '@/api/bookingsService';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { format } from 'date-fns';
-import { Building, Calendar, Check, ArrowUp, ArrowDown } from 'lucide-react';
+import { format, differenceInDays, isPast } from 'date-fns';
+import { Building, Calendar, Check, ArrowUp, ArrowDown, MapPin, Clock, Receipt, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { useNavigate } from 'react-router-dom';
 import { BookingExpiryDetails } from '@/pages/students/BookingExpiryDetails';
 import { formatBookingPeriod } from '@/utils/currency';
+
+/* ─── Receipt Card for Booking History ─────────────────────────────── */
+interface ReceiptCardProps {
+  booking: BookingData;
+  formatDate: (d: string) => string;
+}
+
+const BookingReceiptCard: React.FC<ReceiptCardProps> = ({ booking, formatDate }) => {
+  const isExpired = booking.end_date ? isPast(new Date(booking.end_date)) : false;
+  const daysAgo = booking.end_date ? Math.abs(differenceInDays(new Date(), new Date(booking.end_date))) : 0;
+
+  const borderColor = (() => {
+    if (booking.payment_status === 'failed') return 'border-l-red-500';
+    if (booking.payment_status === 'pending') return 'border-l-yellow-500';
+    if (booking.payment_status === 'completed' && !isExpired) return 'border-l-green-500';
+    return 'border-l-muted-foreground/40';
+  })();
+
+  const StatusIcon = (() => {
+    if (booking.payment_status === 'failed') return XCircle;
+    if (booking.payment_status === 'pending') return AlertCircle;
+    if (booking.payment_status === 'completed' && !isExpired) return CheckCircle2;
+    return Receipt;
+  })();
+
+  const iconColor = (() => {
+    if (booking.payment_status === 'failed') return 'text-red-500';
+    if (booking.payment_status === 'pending') return 'text-yellow-500';
+    if (booking.payment_status === 'completed' && !isExpired) return 'text-green-500';
+    return 'text-muted-foreground';
+  })();
+
+  const statusLabel = (() => {
+    if (booking.payment_status === 'failed') return 'Failed';
+    if (booking.payment_status === 'pending') return 'Pending';
+    if (isExpired) return `Expired ${daysAgo}d ago`;
+    return 'Completed';
+  })();
+
+  return (
+    <div className={`rounded-xl border border-l-4 ${borderColor} bg-card shadow-sm overflow-hidden`}>
+      {/* Header */}
+      <div className="flex items-start justify-between p-4 pb-3">
+        <div className="flex items-start gap-3 min-w-0">
+          <div className={`mt-0.5 flex-shrink-0 ${iconColor}`}>
+            <StatusIcon className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="font-semibold text-[14px] text-foreground truncate">
+              {booking.cabins?.name || 'Reading Room'}
+            </p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              {booking.cabins?.city && (
+                <span className="flex items-center gap-0.5 text-[11px] text-muted-foreground">
+                  <MapPin className="w-2.5 h-2.5" />{booking.cabins.city}
+                </span>
+              )}
+              {booking.seat_number && (
+                <span className="text-[11px] text-muted-foreground">· Seat #{booking.seat_number}</span>
+              )}
+              {booking.cabins?.category && (
+                <span className="text-[11px] text-muted-foreground capitalize">· {booking.cabins.category}</span>
+              )}
+            </div>
+          </div>
+        </div>
+        <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0 ml-2 ${
+          booking.payment_status === 'failed' ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400' :
+          booking.payment_status === 'pending' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-400' :
+          !isExpired ? 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-400' :
+          'bg-muted text-muted-foreground'
+        }`}>{statusLabel}</span>
+      </div>
+
+      {/* Divider */}
+      <div className="border-t border-dashed mx-4" />
+
+      {/* Stats row */}
+      <div className="grid grid-cols-3 divide-x px-0">
+        <div className="px-4 py-3">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Period</p>
+          <p className="text-[12px] font-medium text-foreground">
+            {booking.start_date ? format(new Date(booking.start_date), 'dd MMM') : '—'}
+            {' → '}
+            {booking.end_date ? format(new Date(booking.end_date), 'dd MMM yy') : '—'}
+          </p>
+        </div>
+        <div className="px-4 py-3">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Duration</p>
+          <p className="text-[12px] font-medium text-foreground">
+            {booking.duration_count} {booking.booking_duration}
+          </p>
+        </div>
+        <div className="px-4 py-3">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Amount</p>
+          <p className="text-[12px] font-semibold text-foreground">₹{(booking.total_price || 0).toLocaleString()}</p>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="border-t bg-muted/30 px-4 py-2 flex items-center justify-between">
+        <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+          <Clock className="w-3 h-3" />
+          Booked {booking.created_at ? format(new Date(booking.created_at), 'd MMM yyyy') : '—'}
+        </span>
+        {isExpired && booking.payment_status === 'completed' && (
+          <span className="text-[10px] text-muted-foreground italic">Expired</span>
+        )}
+      </div>
+    </div>
+  );
+};
 
 interface BookingData {
   id: string;
@@ -34,6 +146,7 @@ interface BookingData {
   end_date: string;
   total_price: number;
   payment_status: 'pending' | 'completed' | 'failed';
+  created_at?: string;
 }
 
 interface LaundryOrder {
@@ -310,35 +423,13 @@ const StudentDashboard: React.FC = () => {
                             <p className="text-muted-foreground">You don't have any past bookings.</p>
                           </div>
                         ) : (
-                          <div className="space-y-4">
+                          <div className="space-y-3">
                             {bookingHistory.map((booking) => (
-                              <div key={booking.id} className="border rounded-lg p-4">
-                                <div className="flex flex-col md:flex-row justify-between">
-                                  <div>
-                                    <h3 className="font-medium">{booking.cabins?.name || 'Reading Room'}</h3>
-                                    <p className="text-sm text-muted-foreground">
-                                      Seat #{booking.seat_number} • {booking.cabins?.category}
-                                    </p>
-                                  </div>
-                                  <div className="mt-2 md:mt-0">
-                                    {getStatusBadge(booking.payment_status)}
-                                  </div>
-                                </div>
-                                <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-2">
-                                  <div>
-                                    <p className="text-xs text-muted-foreground">Period</p>
-                                    <p className="text-sm">{formatBookingPeriod(booking?.start_date, booking?.end_date)}</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-xs text-muted-foreground">Duration</p>
-                                    <p className="text-sm">{booking.duration_count} {booking.booking_duration}</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-xs text-muted-foreground">Price</p>
-                                    <p className="text-sm">₹{booking.total_price}</p>
-                                  </div>
-                                </div>
-                              </div>
+                              <BookingReceiptCard
+                                key={booking.id}
+                                booking={booking}
+                                formatDate={formatDate}
+                              />
                             ))}
                           </div>
                         )}

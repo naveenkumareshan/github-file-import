@@ -115,9 +115,6 @@ const AuthenticatedHome: React.FC<{ user: any }> = ({ user }) => {
       </section>
 
       <div className="px-4 py-4 max-w-lg mx-auto w-full space-y-4">
-        {/* Banner carousel */}
-        <HomeBanner />
-
         {/* Active booking card */}
         <div>
           <p className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Current Booking</p>
@@ -185,6 +182,9 @@ const AuthenticatedHome: React.FC<{ user: any }> = ({ user }) => {
             ))}
           </div>
         </div>
+
+        {/* Banner carousel — after quick actions */}
+        <HomeBanner />
 
         {/* Why InhaleStays — auto carousel */}
         <WhyCarousel />
