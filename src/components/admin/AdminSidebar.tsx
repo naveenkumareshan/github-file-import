@@ -6,7 +6,6 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -25,7 +24,6 @@ import {
   Building, 
   Users, 
   Plus,
-  FileText, 
   Settings, 
   Bed,
   MapPin,
@@ -39,25 +37,28 @@ import {
   Currency,
   Users2,
   Wallet,
-  Ban,
   Map,
   Bell,
   MapIcon,
   TicketPlus,
   Hotel,
-  HomeIcon
+  HomeIcon,
+  Star,
+  BarChart2,
+  ArrowLeftRight,
+  BookOpen,
+  UserCheck
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronRight } from 'lucide-react';
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { FcFeedback, FcHome, FcSettings } from 'react-icons/fc';
 
 interface MenuItem {
   title: string;
   url?: string;
   icon: React.ComponentType<any>;
   roles: string[];
-  permissions?: string[]; // New field for permission-based access
+  permissions?: string[];
   subItems?: MenuItem[];
 }
 
@@ -71,7 +72,7 @@ export function AdminSidebar() {
       <Sidebar>
         <SidebarContent>
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
+            <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full"></div>
           </div>
         </SidebarContent>
       </Sidebar>
@@ -88,10 +89,9 @@ export function AdminSidebar() {
     }
   ];
 
-  // Add seat availability map for non-admin users with property permissions
   if (user?.role !== 'admin' && hasPermission('seats_available_map')) {
     menuItems.push({
-      title: 'Seat Availability Map',
+      title: 'Seat Map',
       url: '/admin/seats-available-map',
       icon: MapIcon,
       roles: ['vendor', 'vendor_employee'],
@@ -99,10 +99,9 @@ export function AdminSidebar() {
     });
   }
 
-  // Add deposits & restrictions section for admins only
   if (user?.role === 'admin' || user?.role == 'vendor') {
     menuItems.push({
-      title: "Deposits & Restrictions",
+      title: "Finance",
       roles: ['admin','vendor'],
       icon: Wallet,
       subItems: [
@@ -116,16 +115,15 @@ export function AdminSidebar() {
     });
   }
 
-  // Add reading rooms section with permission checks
   if ((user?.role === 'admin' || hasPermission('view_reading_rooms') && import.meta.env.VITE_HOSTEL_MODULE)) {
     menuItems.push({
       title: 'Hostels',
-      icon: FcHome,
+      icon: Hotel,
       roles: ['admin', 'vendor', 'vendor_employee'],
       permissions: ['view_reading_rooms'],
       subItems: [
         {
-          title: 'Hostel Management',
+          title: 'Manage Hostels',
           url: '/admin/hostels',
           icon: HomeIcon,
           roles: ['admin', 'vendor', 'vendor_employee'],
@@ -134,7 +132,7 @@ export function AdminSidebar() {
         {
           title: 'Reviews',
           url: '/admin/reviews?module=Hostel',
-          icon: FcFeedback,
+          icon: Star,
           roles: ['admin', 'vendor', 'vendor_employee'],
           permissions: ['manage_reviews']
         }
@@ -142,7 +140,6 @@ export function AdminSidebar() {
     });
   }
 
-  // Add reading rooms section with permission checks
   if (user?.role === 'admin' || hasPermission('view_reading_rooms')) {
     menuItems.push({
       title: 'Reading Rooms',
@@ -151,7 +148,7 @@ export function AdminSidebar() {
       permissions: ['view_reading_rooms'],
       subItems: [
         {
-          title: 'Room Management',
+          title: 'Manage Rooms',
           url: '/admin/rooms',
           icon: Building,
           roles: ['admin', 'vendor', 'vendor_employee'],
@@ -160,7 +157,7 @@ export function AdminSidebar() {
         {
           title: 'Reviews',
           url: '/admin/reviews?module=Reading Room',
-          icon: FcFeedback,
+          icon: Star,
           roles: ['admin', 'vendor', 'vendor_employee'],
           permissions: ['manage_reviews']
         }
@@ -168,7 +165,6 @@ export function AdminSidebar() {
     });
   }
 
-  // Add bookings section with permission checks
   if (user?.role === 'admin' || hasPermission('view_bookings')) {
     const bookingSubItems = [];
     
@@ -185,15 +181,15 @@ export function AdminSidebar() {
     if (user?.role === 'admin' || user?.role=='vendor') {
       bookingSubItems.push(
         {
-          title: 'Seat Transfer',
+          title: 'Transfer Seat',
           url: '/admin/seat-transfer',
-          icon: MapPin,
+          icon: ArrowLeftRight,
           roles: ['admin','vendor']
         },
         {
-          title: 'Book Seat',
+          title: 'Manual Booking',
           url: '/admin/manual-bookings',
-          icon: CreditCard,
+          icon: BookOpen,
           roles: ['admin','vendor']
         }
       );
@@ -210,16 +206,15 @@ export function AdminSidebar() {
     }
   }
 
-  // Add user management section for admins only
   if (user?.role === 'admin' ||  hasPermission('manage_students')) {
     menuItems.push({
-      title: 'User Management',
-      icon: FileText,
+      title: 'Users',
+      icon: Users,
       roles: ['admin', 'vendor', 'vendor_employee'],
       subItems: [
-        { title: 'User', url: '/admin/students', icon: Users, roles: ['admin', 'vendor', 'vendor_employee'] },
-        { title: 'Create Users', url: '/admin/students-create', icon: Plus, roles: ['admin','vendor'] },
-        { title: 'Import Existing Users', url: '/admin/students-import', icon: Import, roles: ['admin','vendor'] },
+        { title: 'All Users', url: '/admin/students', icon: Users, roles: ['admin', 'vendor', 'vendor_employee'] },
+        { title: 'Create User', url: '/admin/students-create', icon: Plus, roles: ['admin','vendor'] },
+        { title: 'Import Users', url: '/admin/students-import', icon: Import, roles: ['admin','vendor'] },
         {
           title: 'Coupons',
           url: '/admin/coupons',
@@ -230,12 +225,11 @@ export function AdminSidebar() {
     });
   }
 
-  // Role-specific menu items
   if (user?.role === 'admin') {
     menuItems.push(
       {
         title: 'Settings',
-        icon: FcSettings,
+        icon: Settings,
         roles: ['admin'],
         subItems: [
           { title: 'Site Configuration', url: '/admin/settings', icon: Settings, roles: ['admin'] }
@@ -244,21 +238,21 @@ export function AdminSidebar() {
       {
         title: 'Hosts',
         url: '/admin/vendors',
-        icon: Users2,
+        icon: UserCheck,
         roles: ['admin']
       },
       {
         title: 'Reports',
-        icon: FileText,
+        icon: BarChart2,
         roles: ['admin'],
         subItems: [
-          { title: 'Booking Reports', url: '/admin/reports', icon: FileText, roles: ['admin'] },
-          { title: 'Payouts', url: '/admin/payouts', icon: MessageSquare, roles: ['admin'] }
+          { title: 'Booking Reports', url: '/admin/reports', icon: BarChart2, roles: ['admin'] },
+          { title: 'Payouts', url: '/admin/payouts', icon: Wallet, roles: ['admin'] }
         ],
       },
       {
-        title: 'Communication',
-        icon: FileText,
+        title: 'Messaging',
+        icon: Mail,
         roles: ['admin'],
         subItems: [
           { title: 'Email Reports', url: '/admin/email-reports', icon: Mail, roles: ['admin'] },
@@ -266,7 +260,7 @@ export function AdminSidebar() {
         ],
       },
       {
-        title: 'Location Management',
+        title: 'Locations',
         icon: Map,
         roles: ['admin'],
         url: '/admin/locations'
@@ -279,21 +273,19 @@ export function AdminSidebar() {
       }
     );
   } else {
-    // Vendor/Vendor Employee specific items
     const vendorMenuItems = [];
 
-    // Reports section with permission checks
     if (hasPermission('view_reports')) {
       vendorMenuItems.push({
         title: 'Reports',
-        icon: FileText,
+        icon: BarChart2,
         roles: ['vendor', 'vendor_employee'],
         permissions: ['view_reports'],
         subItems: [
           {
             title: 'Booking Reports',
             url: '/admin/reports',
-            icon: FileText,
+            icon: BarChart2,
             roles: ['vendor', 'vendor_employee'],
             permissions: ['view_reports']
           }
@@ -301,18 +293,17 @@ export function AdminSidebar() {
       });
     }
 
-    // Employee management for vendors or employees with permission
     if (user?.role === 'vendor' || hasPermission('manage_employees')) {
       vendorMenuItems.push({
-        title: 'Employee',
-        icon: FileText,
+        title: 'Employees',
+        icon: Users2,
         roles: ['vendor', 'vendor_employee'],
         permissions: ['manage_employees'],
         subItems: [
           {
-            title: 'List',
+            title: 'All Employees',
             url: '/admin/employees',
-            icon: FileText,
+            icon: Users,
             roles: ['vendor', 'vendor_employee'],
             permissions: ['manage_employees']
           }
@@ -320,25 +311,24 @@ export function AdminSidebar() {
       });
     }
 
-    // Payout access with permission checks
     if (hasPermission('view_payouts')) {
       vendorMenuItems.push({
         title: 'Payouts',
-        icon: Currency,
+        icon: Wallet,
         roles: ['vendor', 'vendor_employee'],
         permissions: ['view_payouts'],
         url: '/admin/vendorpayouts'
       });
     }
-  if (user?.role == 'vendor') {
-    // Profile access
-    vendorMenuItems.push({
-      title: 'Profile',
-      icon: User,
-      roles: ['vendor', 'vendor_employee'],
-      url: '/admin/profile'
-    });
-  }
+
+    if (user?.role == 'vendor') {
+      vendorMenuItems.push({
+        title: 'Profile',
+        icon: User,
+        roles: ['vendor', 'vendor_employee'],
+        url: '/admin/profile'
+      });
+    }
 
     menuItems.push(...vendorMenuItems);
   }
@@ -352,16 +342,12 @@ export function AdminSidebar() {
   };
 
   const hasAccess = (item: MenuItem) => {
-    // Check role access
     if (!item.roles.includes(user?.role || '')) {
       return false;
     }
-    
-    // Check permission access for vendor employees
     if (item.permissions && user?.role === 'vendor_employee') {
       return hasAnyPermission(item.permissions as any);
     }
-    
     return true;
   };
 
@@ -381,26 +367,33 @@ export function AdminSidebar() {
         <Collapsible key={item.title} defaultOpen={isActiveItem(item.url, item.subItems)}>
           <SidebarMenuItem>
             <CollapsibleTrigger asChild>
-              <SidebarMenuButton className="w-full justify-between">
-                <div className="flex items-center gap-2">
-                  <item.icon className="h-4 w-4" />
-                  <span>{item.title}</span>
+              <SidebarMenuButton className="w-full justify-between hover:bg-muted/60 transition-colors">
+                <div className="flex items-center gap-2.5">
+                  <item.icon className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">{item.title}</span>
                 </div>
-                <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[state=open]/collapsible:rotate-90" />
               </SidebarMenuButton>
             </CollapsibleTrigger>
             <CollapsibleContent>
               <SidebarMenuSub>
-                {accessibleSubItems.map((subItem) => (
-                  <SidebarMenuSubItem key={subItem.title}>
-                    <SidebarMenuSubButton asChild isActive={pathname === subItem.url}>
-                      <Link to={subItem.url || '#'}>
-                        <subItem.icon className="h-4 w-4" />
-                        <span>{subItem.title}</span>
-                      </Link>
-                    </SidebarMenuSubButton>
-                  </SidebarMenuSubItem>
-                ))}
+                {accessibleSubItems.map((subItem) => {
+                  const isActive = pathname === subItem.url || pathname.startsWith(subItem.url?.split('?')[0] || '____');
+                  return (
+                    <SidebarMenuSubItem key={subItem.title}>
+                      <SidebarMenuSubButton
+                        asChild
+                        isActive={isActive}
+                        className={isActive ? "border-l-2 border-primary bg-primary/8 text-primary font-medium" : "hover:bg-muted/60"}
+                      >
+                        <Link to={subItem.url || '#'} className="flex items-center gap-2.5 pl-2">
+                          <subItem.icon className="h-3.5 w-3.5 flex-shrink-0" />
+                          <span className="text-xs">{subItem.title}</span>
+                        </Link>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                  );
+                })}
               </SidebarMenuSub>
             </CollapsibleContent>
           </SidebarMenuItem>
@@ -408,12 +401,17 @@ export function AdminSidebar() {
       );
     }
 
+    const isActive = pathname === item.url;
     return (
       <SidebarMenuItem key={item.title}>
-        <SidebarMenuButton asChild isActive={pathname === item.url}>
-          <Link to={item.url || '#'}>
-            <item.icon className="h-4 w-4" />
-            <span>{item.title}</span>
+        <SidebarMenuButton
+          asChild
+          isActive={isActive}
+          className={isActive ? "border-l-2 border-primary bg-primary/8 text-primary font-medium" : "hover:bg-muted/60 transition-colors"}
+        >
+          <Link to={item.url || '#'} className="flex items-center gap-2.5">
+            <item.icon className="h-4 w-4 flex-shrink-0" />
+            <span className="text-sm font-medium">{item.title}</span>
           </Link>
         </SidebarMenuButton>
       </SidebarMenuItem>
@@ -422,12 +420,13 @@ export function AdminSidebar() {
 
   const getRoleBadgeStyle = () => {
     switch (user?.role) {
-      case 'admin': return 'bg-blue-100 text-blue-700 border border-blue-200';
-      case 'vendor': return 'bg-green-100 text-green-700 border border-green-200';
-      case 'vendor_employee': return 'bg-orange-100 text-orange-700 border border-orange-200';
+      case 'admin': return 'bg-blue-50 text-blue-700 border border-blue-200 ring-1 ring-blue-100';
+      case 'vendor': return 'bg-emerald-50 text-emerald-700 border border-emerald-200 ring-1 ring-emerald-100';
+      case 'vendor_employee': return 'bg-amber-50 text-amber-700 border border-amber-200 ring-1 ring-amber-100';
       default: return 'bg-muted text-muted-foreground';
     }
   };
+
   const getRoleLabel = () => {
     switch (user?.role) {
       case 'admin': return 'Admin';
@@ -439,21 +438,21 @@ export function AdminSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="border-b bg-gradient-to-b from-muted/60 to-background">
-        <div className="flex items-center gap-3 px-4 py-3">
+      <SidebarHeader className="border-b" style={{ background: 'linear-gradient(180deg, hsl(var(--primary) / 0.06) 0%, hsl(var(--background)) 100%)' }}>
+        <div className="flex items-center gap-3 px-4 py-3.5">
           <img
             src="/src/assets/inhalestays-logo.png"
             alt="InhaleStays"
-            className="h-8 w-8 rounded-md object-contain"
+            className="h-8 w-8 rounded-lg object-contain drop-shadow-sm"
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />
           <div className="flex flex-col flex-1 min-w-0">
-            <span className="font-bold text-sm truncate">InhaleStays</span>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${getRoleBadgeStyle()}`}>
+            <span className="font-semibold text-sm truncate tracking-tight">InhaleStays</span>
+            <div className="flex items-center gap-1.5 mt-1">
+              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${getRoleBadgeStyle()}`}>
                 {getRoleLabel()}
               </span>
-              <span className="text-xs text-muted-foreground truncate">{user?.name}</span>
+              <span className="text-[11px] text-muted-foreground truncate">{user?.name}</span>
             </div>
           </div>
         </div>
@@ -463,7 +462,7 @@ export function AdminSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              <ScrollArea className="my-2">
+              <ScrollArea className="my-1">
                 {menuItems.map(renderMenuItem).filter(Boolean)}
               </ScrollArea>
             </SidebarMenu>
@@ -471,16 +470,16 @@ export function AdminSidebar() {
         </SidebarGroup>
       </SidebarContent>
       
-      <SidebarFooter className="border-t bg-muted/20">
+      <SidebarFooter className="border-t">
         <SidebarMenu>
           <SidebarMenuItem>
             <Button 
               variant="ghost" 
-              className="w-full justify-start text-muted-foreground hover:text-foreground" 
+              className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-red-50 hover:text-red-600 transition-colors" 
               onClick={logout}
             >
-              <LogOut className="h-4 w-4 mr-2" />
-              Sign Out
+              <LogOut className="h-4 w-4 mr-2.5" />
+              <span className="text-sm">Sign Out</span>
             </Button>
           </SidebarMenuItem>
         </SidebarMenu>

@@ -243,13 +243,13 @@ const AdminStudents = () => {
       <div className="flex flex-col gap-6">
         {/* Page Header */}
         <div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
             <span>Admin Panel</span>
             <span>/</span>
             <span className="text-foreground font-medium">User Management</span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">User Management</h1>
-          <p className="text-muted-foreground text-sm mt-1">
+          <h1 className="text-lg font-semibold tracking-tight">User Management</h1>
+          <p className="text-muted-foreground text-xs mt-0.5">
             Manage student accounts, view booking history, and update user details.
           </p>
         </div>
@@ -336,7 +336,7 @@ const AdminStudents = () => {
 
             {loading ? (
               <div className="flex justify-center py-12">
-                <div className="animate-spin h-8 w-8 border-4 border-cabin-wood border-t-transparent rounded-full"></div>
+                <div className="animate-spin h-7 w-7 border-2 border-primary border-t-transparent rounded-full"></div>
               </div>
             ) : error ? (
               <div className="text-center py-6 text-red-500">{error}</div>
@@ -351,19 +351,19 @@ const AdminStudents = () => {
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow>
-                        <TableHead>ID</TableHead>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Phone</TableHead>
-                        <TableHead>Gender</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Actions</TableHead>
+                      <TableRow className="bg-muted/30">
+                        <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">ID</TableHead>
+                        <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Name</TableHead>
+                        <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Email</TableHead>
+                        <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Phone</TableHead>
+                        <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Gender</TableHead>
+                        <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Bookings</TableHead>
+                        <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {students.map((student) => (
-                        <TableRow key={student._id}>
+                      {students.map((student, idx) => (
+                        <TableRow key={student._id} className={idx % 2 === 0 ? "bg-background" : "bg-muted/20"}>
                           <TableCell>
                             <div>
                               {student.userId}
@@ -405,12 +405,12 @@ const AdminStudents = () => {
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-col gap-1">
-                              <Badge className="bg-green-500 w-fit">
+                              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 w-fit">
                                 {student.activeBookings} Active
-                              </Badge>
-                              <Badge variant="outline" className="w-fit">
+                              </span>
+                              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-muted text-muted-foreground border border-border w-fit">
                                 {student.bookingsCount} Total
-                              </Badge>
+                              </span>
                             </div>
                           </TableCell>
                           <TableCell>

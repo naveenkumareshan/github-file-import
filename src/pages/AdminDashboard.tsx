@@ -43,19 +43,26 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
+
   return (
     <div className="flex flex-col gap-6">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
             <span>{getRoleLabel()} Panel</span>
             <span>/</span>
             <span className="text-foreground font-medium">Dashboard</span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Welcome back, {user?.name?.split(' ')[0] || 'there'} — here's your operational overview.
+          <h1 className="text-lg font-semibold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground text-xs mt-0.5">
+            {getGreeting()}, {user?.name?.split(' ')[0] || 'there'} — here's your operational overview.
           </p>
         </div>
         <div className="flex items-center gap-2">
