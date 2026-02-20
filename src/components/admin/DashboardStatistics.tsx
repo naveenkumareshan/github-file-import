@@ -75,18 +75,21 @@ export function DashboardStatistics() {
       <DynamicStatisticsCards />
 
       {/* Top Filling Reading Rooms */}
-      <Card>
-        <CardHeader className="pb-2">
+      <Card className="shadow-sm">
+        <CardHeader className="pb-2 border-b">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              Top Filling Reading Rooms
-            </CardTitle>
+            <div>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-primary" />
+                Top Filling Reading Rooms
+              </CardTitle>
+              <p className="text-xs text-muted-foreground mt-0.5">Rooms with highest seat occupancy rates</p>
+            </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {loading ? (
-            <div className="space-y-2">
+            <div className="space-y-2 p-4">
               {[...Array(3)].map((_, i) => (
                 <Skeleton key={i} className="h-12 w-full" />
               ))}
@@ -94,25 +97,35 @@ export function DashboardStatistics() {
           ) : (
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Room Name</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Occupancy</TableHead>
-                  <TableHead>Booked</TableHead>
+                <TableRow className="bg-muted/30">
+                  <TableHead className="font-semibold">#</TableHead>
+                  <TableHead className="font-semibold">Room Name</TableHead>
+                  <TableHead className="font-semibold">Category</TableHead>
+                  <TableHead className="font-semibold">Occupancy</TableHead>
+                  <TableHead className="font-semibold">Booked / Total</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {topFillingRooms.map((room) => (
-                  <TableRow key={room.id}>
+                {topFillingRooms.map((room, idx) => (
+                  <TableRow key={room.id} className={idx % 2 === 0 ? "bg-background" : "bg-muted/20"}>
+                    <TableCell className="text-muted-foreground text-sm w-8">{idx + 1}</TableCell>
                     <TableCell className="font-medium">{room.name}</TableCell>
                     <TableCell>
-                      <Badge className={getCategoryBadgeColor(room.category)}>
+                      <Badge className={`capitalize ${getCategoryBadgeColor(room.category)}`}>
                         {room.category}
                       </Badge>
                     </TableCell>
-                    <TableCell>{room.occupancyRate}%</TableCell>
                     <TableCell>
-                      {room.bookedSeats} / {room.totalSeats}
+                      <div className="flex items-center gap-2">
+                        <div className="w-20 h-1.5 rounded-full bg-muted overflow-hidden">
+                          <div className="h-full bg-primary rounded-full" style={{ width: `${room.occupancyRate}%` }} />
+                        </div>
+                        <span className="text-sm font-medium">{room.occupancyRate}%</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      <span className="font-medium">{room.bookedSeats}</span>
+                      <span className="text-muted-foreground"> / {room.totalSeats}</span>
                     </TableCell>
                   </TableRow>
                 ))}

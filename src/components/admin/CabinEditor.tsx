@@ -207,11 +207,11 @@ export function CabinEditor({
     }));
   };
 
-  // Get all images for display in the upload section
+  // Get all images for display in the upload section (filter out falsy values)
   const allImages =
-    cabin.imageUrl !== "/placeholder.svg"
-      ? Array.from(new Set([cabin.imageSrc, ...(cabin.images || [])]))
-      : cabin.images || [];
+    cabin.imageUrl && cabin.imageUrl !== "/placeholder.svg"
+      ? Array.from(new Set([cabin.imageSrc, ...(cabin.images || [])])).filter(Boolean)
+      : (cabin.images || []).filter(Boolean);
 
   return (
     <Card className="w-full mx-auto">

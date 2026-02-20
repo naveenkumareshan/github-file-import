@@ -420,16 +420,41 @@ export function AdminSidebar() {
     );
   };
 
+  const getRoleBadgeStyle = () => {
+    switch (user?.role) {
+      case 'admin': return 'bg-blue-100 text-blue-700 border border-blue-200';
+      case 'vendor': return 'bg-green-100 text-green-700 border border-green-200';
+      case 'vendor_employee': return 'bg-orange-100 text-orange-700 border border-orange-200';
+      default: return 'bg-muted text-muted-foreground';
+    }
+  };
+  const getRoleLabel = () => {
+    switch (user?.role) {
+      case 'admin': return 'Admin';
+      case 'vendor': return 'Host';
+      case 'vendor_employee': return 'Employee';
+      default: return 'User';
+    }
+  };
+
   return (
     <Sidebar>
-      <SidebarHeader className="border-b">
-        <div className="flex items-center gap-2 px-4 py-2">
-          <Building className="h-6 w-6" />
-          <div className="flex flex-col">
-            <span className="font-semibold">
-              {user?.role === 'admin' ? 'Admin' : user?.role === 'vendor_employee' ? 'Employee' : 'Host'} Panel
-            </span>
-            <span className="text-xs text-muted-foreground">{user?.name}</span>
+      <SidebarHeader className="border-b bg-gradient-to-b from-muted/60 to-background">
+        <div className="flex items-center gap-3 px-4 py-3">
+          <img
+            src="/src/assets/inhalestays-logo.png"
+            alt="InhaleStays"
+            className="h-8 w-8 rounded-md object-contain"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
+          <div className="flex flex-col flex-1 min-w-0">
+            <span className="font-bold text-sm truncate">InhaleStays</span>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${getRoleBadgeStyle()}`}>
+                {getRoleLabel()}
+              </span>
+              <span className="text-xs text-muted-foreground truncate">{user?.name}</span>
+            </div>
           </div>
         </div>
       </SidebarHeader>
@@ -438,7 +463,7 @@ export function AdminSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              <ScrollArea className="my-4">
+              <ScrollArea className="my-2">
                 {menuItems.map(renderMenuItem).filter(Boolean)}
               </ScrollArea>
             </SidebarMenu>
@@ -446,16 +471,16 @@ export function AdminSidebar() {
         </SidebarGroup>
       </SidebarContent>
       
-      <SidebarFooter className="border-t">
+      <SidebarFooter className="border-t bg-muted/20">
         <SidebarMenu>
           <SidebarMenuItem>
             <Button 
               variant="ghost" 
-              className="w-full justify-start" 
+              className="w-full justify-start text-muted-foreground hover:text-foreground" 
               onClick={logout}
             >
               <LogOut className="h-4 w-4 mr-2" />
-              Logout
+              Sign Out
             </Button>
           </SidebarMenuItem>
         </SidebarMenu>

@@ -364,21 +364,35 @@ const RoomManagement = () => {
   };
   
   return (
-    <div className="container mx-auto p-6">
+    <div className="flex flex-col gap-6">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+            <span>Admin Panel</span>
+            <span>/</span>
+            <span className="text-foreground font-medium">Room Management</span>
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight">Reading Room Management</h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            Configure and manage your reading room inventory.
+          </p>
+        </div>
+        {!showEditor && (
+          <Button onClick={handleNewCabin} className="flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            Add New Room
+          </Button>
+        )}
+      </div>
+
       {!showEditor ? (
-        <Card>
-          <CardHeader className="flex flex-col sm:flex-row justify-between items-center pb-4">
-            <CardTitle className="text-2xl font-bold">Reading Room Management</CardTitle>
-            <Button onClick={handleNewCabin} className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Add New Room
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col md:flex-row gap-4 mb-6">
+        <Card className="shadow-sm">
+          <CardHeader className="pb-4 border-b">
+            <div className="flex flex-col md:flex-row gap-4">
               <form onSubmit={handleSearch} className="flex-1">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                   <Input 
                     placeholder="Search by name, category or description..." 
                     value={searchQuery}
@@ -387,9 +401,8 @@ const RoomManagement = () => {
                   />
                 </div>
               </form>
-              
               {isAdmin && vendors.length > 0 && (
-                <div className="w-full md:w-64">
+                <div className="w-full md:w-56">
                   <Select value={selectedVendor} onValueChange={handleVendorChange}>
                     <SelectTrigger>
                       <SelectValue placeholder="Filter by Vendor" />
@@ -406,6 +419,8 @@ const RoomManagement = () => {
                 </div>
               )}
             </div>
+          </CardHeader>
+          <CardContent className="pt-4">
             
             {loading ? (
               <div className="flex justify-center py-12">
