@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Navigation } from '../components/Navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { Footer } from '@/components/Footer';
 
 const AdminLogin = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
@@ -30,19 +31,20 @@ const AdminLogin = () => {
     setIsSubmitting(true);
     
     try {
-      // Updated to use only email and password parameters
-      const success = await login(formData.email, formData.password);
+      const result = await login(formData.email, formData.password);
       
-      if (success) {
+      if (result.success) {
         toast({
           title: "Login Successful",
           description: "Welcome to the admin dashboard!",
         });
-        navigate('/admin/dashboard'); // Updated path to match route in App.tsx
+        const params = new URLSearchParams(location.search);
+        const from = params.get('from') || '/admin/dashboard';
+        navigate(from);
       } else {
         toast({
           title: "Login Failed",
-          description: "Invalid email or password. Please try again.",
+          description: result.error || "Invalid email or password. Please try again.",
           variant: "destructive"
         });
       }
