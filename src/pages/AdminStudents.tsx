@@ -255,12 +255,12 @@ const AdminStudents = () => {
         </div>
 
         <Card className="shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-4 border-b">
+        <CardHeader className="flex flex-row items-center justify-between pb-4 border-b">
             <div>
-              <CardTitle className="text-lg font-semibold">
+              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                 {role === "student" ? "Students" : "Vendors"}
               </CardTitle>
-              <p className="text-sm text-muted-foreground mt-0.5">
+              <p className="text-xs text-muted-foreground mt-0.5">
                 {totalUsers} {role === "student" ? "students" : "vendors"} total
               </p>
             </div>
@@ -369,20 +369,14 @@ const AdminStudents = () => {
                               {student.userId}
                               {student.profilePicture && (
                                 <a
-                                  href={
-                                    import.meta.env.VITE_BASE_URL +
-                                    student.profilePicture
-                                  }
+                                  href={import.meta.env.VITE_BASE_URL + student.profilePicture}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                 >
                                   <img
-                                    src={
-                                      import.meta.env.VITE_BASE_URL +
-                                      student.profilePicture
-                                    }
+                                    src={import.meta.env.VITE_BASE_URL + student.profilePicture}
                                     alt={student?.userId}
-                                    className="w-20 h-20 object-contain cursor-pointer"
+                                    className="w-8 h-8 rounded-full object-cover cursor-pointer mt-1"
                                   />
                                 </a>
                               )}

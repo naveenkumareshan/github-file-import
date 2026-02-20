@@ -140,11 +140,11 @@ const VendorApproval: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'approved': return 'bg-green-100 text-green-800';
-      case 'rejected': return 'bg-red-100 text-red-800';
-      case 'suspended': return 'bg-yellow-100 text-yellow-800';
-      case 'pending': return 'bg-blue-100 text-blue-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'approved': return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+      case 'rejected': return 'bg-red-50 text-red-700 border border-red-200';
+      case 'suspended': return 'bg-orange-50 text-orange-700 border border-orange-200';
+      case 'pending': return 'bg-amber-50 text-amber-700 border border-amber-200';
+      default: return 'bg-muted text-muted-foreground border border-border';
     }
   };
 
@@ -317,26 +317,26 @@ const VendorApproval: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-start">
         <div>
-          <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Admin Panel / Hosts</p>
-          <h1 className="text-lg font-semibold">Host Management</h1>
-          <p className="text-sm text-muted-foreground">Review and manage host applications</p>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+            <span>Admin Panel</span><span>/</span>
+            <span className="text-foreground font-medium">Hosts</span>
+          </div>
+          <h1 className="text-lg font-semibold tracking-tight">Host Management</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Review and manage host applications</p>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setShowFilters(!showFilters)}
-          >
+          <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)}>
             <Filter className="h-4 w-4 mr-2" />
             Filters
           </Button>
-          <Button variant="outline" onClick={handleExport}>
+          <Button variant="outline" size="sm" onClick={handleExport}>
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
           <Link to="/admin/vendor-auto-payout">
-            <Button variant="outline" className="w-full justify-start">
+            <Button variant="outline" size="sm">
               Auto Payout Settings
             </Button>
           </Link>
@@ -346,20 +346,16 @@ const VendorApproval: React.FC = () => {
       <VendorStatsCards />
 
       {showFilters && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Filters</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="border border-border/60 rounded-xl shadow-sm">
+          <CardContent className="p-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
               <div>
-                <Label>Status</Label>
+                <Label className="text-xs font-medium text-muted-foreground">Status</Label>
                 <Select value={filters.status} onValueChange={(value) => handleFilterChange('status', value)}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-8 text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {/* <SelectItem value="all">All Status</SelectItem> */}
                     <SelectItem value="pending">Pending</SelectItem>
                     <SelectItem value="approved">Approved</SelectItem>
                     <SelectItem value="rejected">Rejected</SelectItem>
@@ -367,11 +363,10 @@ const VendorApproval: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
-              
               <div>
-                <Label className="text-xs">Business Type</Label>
+                <Label className="text-xs font-medium text-muted-foreground">Business Type</Label>
                 <Select value={filters.businessType} onValueChange={(value) => handleFilterChange('businessType', value)}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-8 text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -379,33 +374,24 @@ const VendorApproval: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
-              
               <div>
-                <Label>City</Label>
-                <Input
-                  value={filters.city || ''}
-                  onChange={(e) => handleFilterChange('city', e.target.value)}
-                  placeholder="Filter by city"
-                />
+                <Label className="text-xs font-medium text-muted-foreground">City</Label>
+                <Input value={filters.city || ''} onChange={(e) => handleFilterChange('city', e.target.value)} placeholder="Filter by city" className="h-8 text-sm" />
               </div>
-              
               <div>
-                <Label>State</Label>
-                <Input
-                  value={filters.state || ''}
-                  onChange={(e) => handleFilterChange('state', e.target.value)}
-                  placeholder="Filter by state"
-                />
+                <Label className="text-xs font-medium text-muted-foreground">State</Label>
+                <Input value={filters.state || ''} onChange={(e) => handleFilterChange('state', e.target.value)} placeholder="Filter by state" className="h-8 text-sm" />
               </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Hosts ({totalCount})</CardTitle>
-        </CardHeader>
+      <Card className="border border-border/60 rounded-xl shadow-sm">
+        <div className="flex items-center justify-between py-3 px-4 border-b">
+          <span className="text-sm font-medium text-foreground">Hosts</span>
+          <span className="text-xs text-muted-foreground">{totalCount} total</span>
+        </div>
         <CardContent>
           {loading ? (
             <div className="flex items-center justify-center h-64">
