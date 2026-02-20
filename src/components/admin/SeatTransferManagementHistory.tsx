@@ -239,9 +239,11 @@ export function SeatTransferManagementHistory() {
 
   return (
     <div className="">
-      <div className="mb-6">
-        <p className="text-muted-foreground">
-          Manage and track seat transfers with advanced filtering ({totalCount} transferable bookings)
+      <div className="mb-4">
+        <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Admin Panel / Seat Management</p>
+        <h1 className="text-lg font-semibold">Transfer History</h1>
+        <p className="text-sm text-muted-foreground">
+          View all completed seat transfers ({totalCount} records)
         </p>
       </div>
 

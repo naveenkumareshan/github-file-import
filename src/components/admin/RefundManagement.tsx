@@ -226,12 +226,12 @@ export const RefundManagement: React.FC<ReportDateRangePickerProps> = ({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h1 className="text-2xl sm:text-3xl font-bold">{type} Management</h1>
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <p className="text-xs text-muted-foreground">{pagination.total} record{pagination.total !== 1 ? 's' : ''} found</p>
         <div className="flex gap-2">
-          <Button variant="outline" disabled={exporting} onClick={() => handleExportReport('excel')}>
-            {exporting ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+          <Button variant="outline" size="sm" disabled={exporting} onClick={() => handleExportReport('excel')}>
+            {exporting ? <RefreshCw className="mr-2 h-3 w-3 animate-spin" /> : <Download className="mr-2 h-3 w-3" />}
             Export
           </Button>
           {/* <Button variant="outline" disabled={exporting} onClick={() => handleExportReport('pdf')}>
@@ -243,26 +243,10 @@ export const RefundManagement: React.FC<ReportDateRangePickerProps> = ({
 
       {/* Filter Section */}
       <Card>
-        <CardHeader>
-          <CardTitle>Filters</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* <div>
-              <Label>Status</Label>
-              <Select value={statusFilter} onValueChange={value => setStatusFilter(value as 'all' | 'pending' | 'refunded')}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="All" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="refunded">Refunded</SelectItem>
-                </SelectContent>
-              </Select>
-            </div> */}
+        <CardContent className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <Label>Search</Label>
+              <Label className="text-xs">Search</Label>
               <Input
                 type="text"
                 placeholder="Search by booking ID or user name"
@@ -271,7 +255,7 @@ export const RefundManagement: React.FC<ReportDateRangePickerProps> = ({
               />
             </div>
             <div>
-              <Label>Date Range</Label>
+              <Label className="text-xs">Date Range</Label>
               <DateFilterSelector
                 dateFilter={dateFilter}
                 startDate={customStartDate}
@@ -282,64 +266,37 @@ export const RefundManagement: React.FC<ReportDateRangePickerProps> = ({
               />
             </div>
           </div>
-          <Button onClick={fetchDeposits}>
-            <Filter className="mr-2 h-4 w-4" />
-            Apply Filters
-          </Button>
+          <div className="mt-3">
+            <Button size="sm" onClick={fetchDeposits}>
+              <Filter className="mr-2 h-3 w-3" />
+              Apply
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Deposits List */}
+      {/* Records List */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Deposits</CardTitle>
-          {/* <Button 
-            disabled={processing || selectedDeposits.length === 0} 
-            onClick={() => handleProcessRefund()}
-          >
-            {processing ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : ''}
-            Bulk Refund ({selectedDeposits.length})
-          </Button> */}
+        <CardHeader className="py-3 flex flex-row items-center justify-between">
+          <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Records</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           <div className="overflow-x-auto">
             <div className="min-w-[800px]">
-              <table className="w-full divide-y divide-gray-200">
+              <table className="w-full divide-y divide-border">
                 <thead>
-                  <tr className="bg-gray-50">
-                    {/* <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
-                      <Checkbox 
-                        checked={selectedDeposits.length === deposits.length && deposits.length > 0} 
-                        onCheckedChange={handleSelectAll} 
-                      />
-                    </th> */}
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Booking ID
-                    </th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      User
-                    </th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Cabin
-                    </th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Seat
-                    </th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Deposit
-                    </th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
+                  <tr className="bg-muted/50">
+                    <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Booking ID</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">User</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Reading Room</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Seat</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Deposit</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="divide-y divide-border">
                   {loading ? (
                     <tr>
                       <td colSpan={9} className="px-3 py-4 whitespace-nowrap text-center">
@@ -353,49 +310,28 @@ export const RefundManagement: React.FC<ReportDateRangePickerProps> = ({
                       </td>
                     </tr>
                   ) : (
-                    deposits.map(deposit => (
-                      <tr key={deposit._id} className="hover:bg-gray-50">
-                        {/* <td className="px-3 py-4 whitespace-nowrap">
-                          <Checkbox 
-                            checked={selectedDeposits.includes(deposit._id)} 
-                            onCheckedChange={(checked) => handleSelectDeposit(deposit._id, checked as boolean)}
-                            disabled={deposit.keyDepositRefunded}
-                          />
-                        </td> */}
-                        <td className="px-3 py-4 whitespace-nowrap text-sm">
-                          {deposit.booking?.bookingId || 'N/A'}<br></br>
-                          { deposit.transactionId && `TRId : ${deposit.transactionId}` }
-                          
+                    deposits.map((deposit, idx) => (
+                      <tr key={deposit._id} className={`hover:bg-muted/30 ${idx % 2 === 0 ? '' : 'bg-muted/10'}`}>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm">
+                          <span className="font-mono text-xs">{deposit.booking?.bookingId || 'N/A'}</span>
+                          {deposit.transactionId && <div className="text-xs text-muted-foreground">TR: {deposit.transactionId}</div>}
                         </td>
-                        <td className="px-3 py-4 whitespace-nowrap text-sm">
-                          {deposit.user?.name || 'N/A'}
+                        <td className="px-3 py-2 whitespace-nowrap text-sm">{deposit.user?.name || 'N/A'}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm">{deposit.cabin?.name || 'N/A'}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm">{deposit.seat?.number || 'N/A'}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm font-semibold">₹{deposit.keyDeposit}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-xs text-muted-foreground">
+                          <div>End: {format(new Date(deposit.endDate), "dd MMM yyyy")}</div>
+                          {deposit.transactionId && <div>Refund: {format(new Date(deposit.keyDepositRefundDate), "dd MMM yyyy")}</div>}
                         </td>
-                        <td className="px-3 py-4 whitespace-nowrap text-sm">
-                          {deposit.cabin?.name || 'N/A'}
-                        </td>
-                        <td className="px-3 py-4 whitespace-nowrap text-sm">
-                          {deposit.seat?.number || 'N/A'}
-                        </td>
-                        <td className="px-3 py-4 whitespace-nowrap text-sm font-medium">
-                          ₹{deposit.keyDeposit}
-                        </td>
-                        <td className="px-3 py-4 whitespace-nowrap text-sm">
-                          End Date : {format(new Date(deposit.endDate), "dd MMM yyyy hh:mm:ss a")}<br></br>
-                          { deposit.transactionId && 
-                          `Refund : ${format(new Date(deposit.keyDepositRefundDate), "dd MMM yyyy hh:mm:ss a")} `}<br></br>
-                        </td>
-                        <td className="px-3 py-4 whitespace-nowrap">
-                          <Badge variant={deposit.keyDepositRefunded ? 'default' : 'secondary'}>
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${deposit.keyDepositRefunded ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
                             {deposit.keyDepositRefunded ? 'Refunded' : 'Pending'}
-                          </Badge>
+                          </span>
                         </td>
-                        <td className="px-3 py-4 whitespace-nowrap">
+                        <td className="px-3 py-2 whitespace-nowrap">
                           {!deposit.keyDepositRefunded && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleProcessRefund(deposit)}
-                            >
+                            <Button size="sm" variant="outline" onClick={() => handleProcessRefund(deposit)}>
                               Refund
                             </Button>
                           )}
@@ -409,29 +345,17 @@ export const RefundManagement: React.FC<ReportDateRangePickerProps> = ({
           </div>
           
           {/* Pagination */}
-          <div className="flex flex-col sm:flex-row justify-between items-center mt-4 gap-4">
-            <div className="text-sm text-gray-700">
+          <div className="flex flex-col sm:flex-row justify-between items-center mt-4 gap-4 px-4 pb-4">
+            <div className="text-sm text-muted-foreground">
               Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} results
             </div>
             <div className="flex items-center space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPagination(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
-                disabled={pagination.page === 1}
-              >
+              <Button variant="outline" size="sm" onClick={() => setPagination(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))} disabled={pagination.page === 1}>
                 <ChevronLeft className="h-4 w-4 mr-1" />
                 Previous
               </Button>
-              <span className="text-sm">
-                Page {pagination.page} of {pagination.pages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPagination(prev => ({ ...prev, page: Math.min(prev.pages, prev.page + 1) }))}
-                disabled={pagination.page === pagination.pages}
-              >
+              <span className="text-sm">Page {pagination.page} of {pagination.pages}</span>
+              <Button variant="outline" size="sm" onClick={() => setPagination(prev => ({ ...prev, page: Math.min(prev.pages, prev.page + 1) }))} disabled={pagination.page === pagination.pages}>
                 Next
                 <ChevronRight className="h-4 w-4 ml-1" />
               </Button>

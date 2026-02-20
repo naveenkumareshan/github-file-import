@@ -227,9 +227,13 @@ const ReviewManagement: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">{module} Review Management</h2>
+        <div>
+          <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Admin Panel / Reviews</p>
+          <h1 className="text-lg font-semibold">{module} Reviews</h1>
+          <p className="text-sm text-muted-foreground">Moderate and manage customer reviews</p>
+        </div>
       </div>
 
       {/* Filters */}

@@ -334,22 +334,18 @@ export default function SeatTransferManagement() {
 
   return (
     <div>
-      <div className="mb-6">
-        <p className="text-muted-foreground">
-          Manage and track seat transfers with advanced filtering ({totalCount} transferable bookings)
+      <div className="mb-4">
+        <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Admin Panel / Seat Management</p>
+        <h1 className="text-lg font-semibold">Seat Transfer</h1>
+        <p className="text-sm text-muted-foreground">
+          Manage and track seat transfers ({totalCount} transferable bookings)
         </p>
       </div>
 
       {/* Filters */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-4 w-4" />
-            Filters & Export
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+        <CardContent className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
             <div>
               <Label htmlFor="search">Search</Label>
               <Input
@@ -408,7 +404,7 @@ export default function SeatTransferManagement() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
             <div>
               <Label htmlFor="startDate">Start Date</Label>
               <Input

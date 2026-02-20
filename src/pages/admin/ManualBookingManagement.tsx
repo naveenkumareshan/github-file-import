@@ -77,7 +77,7 @@ const ManualBookingManagement: React.FC = () => {
   const [startDate, setStartDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState<string>('');
   const [totalPrice, setTotalPrice] = useState<number>(0);
-  const [keyDeposite, setKeyDeposite] = useState<number>(500);
+  const [keyDeposite, setKeyDeposite] = useState<number>(500); // Key Deposit
   const [finalPrice, setFinalPrice] = useState<number>(0);
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'completed' | 'failed'>('pending');
   const [paymentMethod, setPaymentMethod] = useState<string>('cash');
@@ -433,10 +433,10 @@ useEffect(() => {
   // Rendering the cabin selection view
   const renderCabinSelection = () => (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold">Select a Cabin</h2>
-        <Button variant="outline" onClick={handleBackToUserSelection}>Back to User Selection</Button>
-      </div>      
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Select a Reading Room</h2>
+        <Button variant="outline" size="sm" onClick={handleBackToUserSelection}>← Back</Button>
+      </div>
       {loading ? (
         <div className="flex justify-center py-12">
           <p>Loading cabins...</p>
