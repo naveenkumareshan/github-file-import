@@ -1,0 +1,1 @@
+ALTER TABLE public.banners ADD COLUMN start_date date, ADD COLUMN expire_at date;

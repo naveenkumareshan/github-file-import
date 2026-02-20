@@ -18,10 +18,12 @@ export type Database = {
         Row: {
           created_at: string
           display_order: number
+          expire_at: string | null
           id: string
           image_url: string | null
           is_active: boolean
           link_url: string | null
+          start_date: string | null
           subtitle: string | null
           title: string
           updated_at: string
@@ -29,10 +31,12 @@ export type Database = {
         Insert: {
           created_at?: string
           display_order?: number
+          expire_at?: string | null
           id?: string
           image_url?: string | null
           is_active?: boolean
           link_url?: string | null
+          start_date?: string | null
           subtitle?: string | null
           title?: string
           updated_at?: string
@@ -40,10 +44,12 @@ export type Database = {
         Update: {
           created_at?: string
           display_order?: number
+          expire_at?: string | null
           id?: string
           image_url?: string | null
           is_active?: boolean
           link_url?: string | null
+          start_date?: string | null
           subtitle?: string | null
           title?: string
           updated_at?: string

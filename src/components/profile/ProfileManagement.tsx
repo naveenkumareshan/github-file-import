@@ -6,12 +6,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { User, MailIcon, GraduationCap, Shield, AlertTriangle, Pencil, X, Check, LogOut, FileText, Lock } from 'lucide-react';
+import { User, MailIcon, GraduationCap, Shield, AlertTriangle, Pencil, X, Check, LogOut, FileText, Lock, BookMarked, ChevronRight, Info } from 'lucide-react';
 import { userProfileService } from '@/api/userProfileService';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Link } from 'react-router-dom';
+import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { bookingsService } from '@/api/bookingsService';
+import { format } from 'date-fns';
 
 interface ProfileData {
   id?: string;
@@ -43,19 +47,42 @@ const defaultProfile: ProfileData = {
   course_preparing_for: '',
 };
 
+const statusColor: Record<string, string> = {
+  completed: 'bg-green-100 text-green-700',
+  pending: 'bg-yellow-100 text-yellow-700',
+  failed: 'bg-red-100 text-red-700',
+  cancelled: 'bg-muted text-muted-foreground',
+};
+
+// Section field maps — which fields belong to which section
+const SECTION_FIELDS: Record<string, (keyof ProfileData)[]> = {
+  account: ['name', 'email', 'phone', 'alternate_phone', 'gender'],
+  personal: ['date_of_birth', 'address', 'city', 'state', 'pincode'],
+  academic: ['course_preparing_for', 'course_studying', 'college_studied', 'parent_mobile_number', 'bio'],
+};
+
 export const ProfileManagement = () => {
   const { logout } = useAuth();
   const [profile, setProfile] = useState<ProfileData>(defaultProfile);
   const [isLoading, setIsLoading] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [savedProfile, setSavedProfile] = useState<ProfileData>(defaultProfile);
+
+  // Per-section editing
+  const [editingSection, setEditingSection] = useState<string | null>(null);
+  const [sectionDraft, setSectionDraft] = useState<Partial<ProfileData>>({});
+
+  // Bookings
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [loadingBookings, setLoadingBookings] = useState(true);
 
   // Password change state
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
-  useEffect(() => { loadProfile(); }, []);
+  useEffect(() => {
+    loadProfile();
+    loadBookings();
+  }, []);
 
   const loadProfile = async () => {
     try {
@@ -83,33 +110,54 @@ export const ProfileManagement = () => {
           course_preparing_for: data.course_preparing_for || '',
         };
         setProfile(mapped);
-        setSavedProfile(mapped);
       }
     } catch {
       toast({ title: 'Error', description: 'Failed to load profile data', variant: 'destructive' });
     }
   };
 
-  const handleSave = async () => {
-    setIsLoading(true);
+  const loadBookings = async () => {
     try {
-      const response = await userProfileService.updateProfile(profile);
-      if (response.success) {
-        toast({ title: 'Success', description: 'Profile updated successfully' });
-        setSavedProfile(profile);
-        setIsEditing(false);
-      } else {
-        toast({ title: 'Error', description: 'Failed to update profile', variant: 'destructive' });
+      const res = await bookingsService.getUserBookings();
+      if (res.success && Array.isArray(res.data)) {
+        setBookings(res.data.slice(0, 2));
       }
-    } catch {
-      toast({ title: 'Error', description: 'Failed to update profile', variant: 'destructive' });
     } finally {
-      setIsLoading(false); }
+      setLoadingBookings(false);
+    }
   };
 
-  const handleCancel = () => {
-    setProfile(savedProfile);
-    setIsEditing(false);
+  const startEdit = (section: string) => {
+    const fields = SECTION_FIELDS[section] || [];
+    const draft: Partial<ProfileData> = {};
+    fields.forEach((f) => { (draft as any)[f] = (profile as any)[f]; });
+    setSectionDraft(draft);
+    setEditingSection(section);
+  };
+
+  const cancelEdit = () => {
+    setSectionDraft({});
+    setEditingSection(null);
+  };
+
+  const saveSection = async (section: string) => {
+    setIsLoading(true);
+    try {
+      const merged = { ...profile, ...sectionDraft };
+      const response = await userProfileService.updateProfile(merged);
+      if (response.success) {
+        toast({ title: 'Saved', description: 'Section updated successfully' });
+        setProfile(merged);
+        setEditingSection(null);
+        setSectionDraft({});
+      } else {
+        toast({ title: 'Error', description: 'Failed to update', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Error', description: 'Failed to update', variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleChangePassword = async () => {
@@ -135,23 +183,63 @@ export const ProfileManagement = () => {
     }
   };
 
-  const field = (id: keyof ProfileData, label: string, type = 'text', placeholder = '') => (
-    <div key={id}>
-      <Label htmlFor={id} className="text-[12px] mb-1 block">{label}</Label>
-      <Input
-        id={id}
-        type={type}
-        value={(profile[id] as string) || ''}
-        onChange={(e) => setProfile(prev => ({ ...prev, [id]: e.target.value }))}
-        disabled={!isEditing}
-        placeholder={placeholder}
-        className="h-9 text-[13px]"
-      />
-    </div>
-  );
+  // Field helper — reads from sectionDraft when that section is being edited
+  const field = (id: keyof ProfileData, label: string, section: string, type = 'text', placeholder = '') => {
+    const isActive = editingSection === section;
+    const value = isActive && id in sectionDraft ? (sectionDraft as any)[id] : (profile[id] as string) || '';
+    return (
+      <div key={id}>
+        <Label htmlFor={id} className="text-[12px] mb-1 block">{label}</Label>
+        <Input
+          id={id}
+          type={type}
+          value={value}
+          onChange={(e) => isActive && setSectionDraft(prev => ({ ...prev, [id]: e.target.value }))}
+          disabled={!isActive}
+          placeholder={placeholder}
+          className="h-9 text-[13px]"
+        />
+      </div>
+    );
+  };
+
+  // Section header with edit/save/cancel controls
+  const SectionControls = ({ section }: { section: string }) => {
+    const isActive = editingSection === section;
+    return (
+      <div className="flex items-center gap-1 ml-auto" onClick={(e) => e.stopPropagation()}>
+        {!isActive ? (
+          <button
+            type="button"
+            onClick={() => startEdit(section)}
+            className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-muted transition-colors"
+          >
+            <Pencil className="h-3 w-3 text-muted-foreground" />
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={cancelEdit}
+              className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-muted transition-colors"
+            >
+              <X className="h-3 w-3 text-muted-foreground" />
+            </button>
+            <button
+              type="button"
+              onClick={() => saveSection(section)}
+              disabled={isLoading}
+              className="h-7 px-2 rounded-lg flex items-center gap-1 bg-primary text-primary-foreground text-[11px] font-medium hover:bg-primary/90 transition-colors"
+            >
+              <Check className="h-3 w-3" /> {isLoading ? '…' : 'Save'}
+            </button>
+          </>
+        )}
+      </div>
+    );
+  };
 
   const initials = profile.name?.charAt(0)?.toUpperCase() || '?';
-  const canEdit = profile.profile_edit_count < 2;
 
   return (
     <div className="max-w-lg mx-auto space-y-3 px-3 py-3">
@@ -164,74 +252,113 @@ export const ProfileManagement = () => {
         <div className="min-w-0 flex-1">
           <p className="text-[14px] font-semibold text-foreground">{profile.name || 'Your Name'}</p>
           <p className="text-[11px] text-muted-foreground truncate">{profile.email}</p>
-          {!canEdit && (
+          {profile.profile_edit_count >= 2 && (
             <p className="text-[10px] text-destructive mt-0.5">Profile edit limit reached</p>
-          )}
-        </div>
-        <div className="flex-shrink-0">
-          {!isEditing ? (
-            <Button size="sm" variant="outline" onClick={() => setIsEditing(true)} className="h-8 text-[12px] rounded-xl gap-1">
-              <Pencil className="h-3 w-3" /> Edit
-            </Button>
-          ) : (
-            <div className="flex gap-1.5">
-              <Button size="sm" variant="outline" onClick={handleCancel} className="h-8 text-[12px] rounded-xl gap-1">
-                <X className="h-3 w-3" />
-              </Button>
-              <Button size="sm" onClick={handleSave} disabled={isLoading} className="h-8 text-[12px] rounded-xl gap-1">
-                <Check className="h-3 w-3" /> {isLoading ? 'Saving…' : 'Save'}
-              </Button>
-            </div>
           )}
         </div>
       </div>
 
-      {isEditing && profile.profile_edit_count >= 1 && (
-        <Alert>
-          <AlertTriangle className="h-3.5 w-3.5" />
-          <AlertDescription className="text-[12px]">
-            {2 - profile.profile_edit_count} edit{2 - profile.profile_edit_count !== 1 ? 's' : ''} remaining.
-          </AlertDescription>
-        </Alert>
-      )}
+      {/* My Bookings — between avatar and sections */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <p className="text-[13px] font-semibold text-foreground flex items-center gap-1.5">
+            <BookMarked className="h-3.5 w-3.5 text-primary" /> My Bookings
+          </p>
+          <Link to="/student/bookings" className="text-[12px] text-primary flex items-center gap-0.5 font-medium">
+            View All <ChevronRight className="h-3 w-3" />
+          </Link>
+        </div>
+
+        {loadingBookings ? (
+          <div className="space-y-2">
+            <Skeleton className="h-14 w-full rounded-2xl" />
+            <Skeleton className="h-14 w-full rounded-2xl" />
+          </div>
+        ) : bookings.length === 0 ? (
+          <Card className="rounded-2xl border-dashed border-2 border-muted bg-transparent">
+            <CardContent className="py-5 text-center">
+              <p className="text-[12px] text-muted-foreground">No bookings yet.</p>
+              <Link to="/cabins" className="text-[12px] text-primary font-medium mt-1 block">
+                Browse reading rooms →
+              </Link>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-2">
+            {bookings.map((b) => (
+              <Card key={b.id} className="rounded-2xl border-0 shadow-sm bg-card">
+                <CardContent className="p-3 flex items-center gap-3">
+                  <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <BookMarked className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[12px] font-semibold text-foreground truncate">
+                      {(b.cabins as any)?.name || 'Reading Room'} — Seat #{b.seat_number || '—'}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {b.start_date ? format(new Date(b.start_date), 'd MMM') : '—'} → {b.end_date ? format(new Date(b.end_date), 'd MMM yyyy') : '—'}
+                    </p>
+                  </div>
+                  <span className={`flex-shrink-0 text-[10px] font-medium px-2 py-0.5 rounded-full ${statusColor[b.payment_status] || 'bg-muted text-muted-foreground'}`}>
+                    {b.payment_status}
+                  </span>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Accordion sections */}
       <Accordion type="multiple" defaultValue={['account']} className="space-y-2">
         {/* Section 1 — Account */}
         <AccordionItem value="account" className="bg-card rounded-2xl border px-4 data-[state=open]:shadow-sm">
           <AccordionTrigger className="text-[13px] font-semibold py-3 hover:no-underline">
-            <span className="flex items-center gap-2"><User className="h-3.5 w-3.5 text-primary" /> Account Info</span>
+            <span className="flex items-center gap-2 flex-1"><User className="h-3.5 w-3.5 text-primary" /> Account Info</span>
+            <SectionControls section="account" />
           </AccordionTrigger>
           <AccordionContent className="space-y-3 pb-4">
+            {editingSection === 'account' && profile.profile_edit_count >= 1 && (
+              <Alert>
+                <AlertTriangle className="h-3.5 w-3.5" />
+                <AlertDescription className="text-[12px]">
+                  {2 - profile.profile_edit_count} edit{2 - profile.profile_edit_count !== 1 ? 's' : ''} remaining.
+                </AlertDescription>
+              </Alert>
+            )}
             {/* Gender selector */}
             <div className="space-y-1.5">
               <Label className="text-[12px]">Gender</Label>
               <div className="flex gap-3">
-                {['male', 'female'].map(g => (
-                  <button
-                    key={g}
-                    type="button"
-                    onClick={() => isEditing && setProfile(prev => ({ ...prev, gender: g }))}
-                    disabled={!isEditing}
-                    className={`flex flex-col items-center gap-1 ${profile.gender === g ? (g === 'male' ? 'text-blue-600' : 'text-pink-600') : 'text-muted-foreground'}`}
-                  >
-                    <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                      profile.gender === g
-                        ? g === 'male' ? 'bg-blue-100 border-2 border-blue-500' : 'bg-pink-100 border-2 border-pink-500'
-                        : 'bg-muted'
-                    }`}>
-                      <User className={`h-5 w-5 ${g === 'male' ? 'text-blue-500' : 'text-pink-500'}`} />
-                    </div>
-                    <span className="text-[11px] font-medium capitalize">{g}</span>
-                  </button>
-                ))}
+                {['male', 'female'].map(g => {
+                  const isActive = editingSection === 'account';
+                  const val = isActive && 'gender' in sectionDraft ? sectionDraft.gender : profile.gender;
+                  return (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => isActive && setSectionDraft(prev => ({ ...prev, gender: g }))}
+                      disabled={!isActive}
+                      className={`flex flex-col items-center gap-1 ${val === g ? (g === 'male' ? 'text-blue-600' : 'text-pink-600') : 'text-muted-foreground'}`}
+                    >
+                      <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
+                        val === g
+                          ? g === 'male' ? 'bg-blue-100 border-2 border-blue-500' : 'bg-pink-100 border-2 border-pink-500'
+                          : 'bg-muted'
+                      }`}>
+                        <User className={`h-5 w-5 ${g === 'male' ? 'text-blue-500' : 'text-pink-500'}`} />
+                      </div>
+                      <span className="text-[11px] font-medium capitalize">{g}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
             <div className="grid grid-cols-1 gap-3">
-              {field('name', 'Full Name')}
-              {field('email', 'Email', 'email')}
-              {field('phone', 'Phone')}
-              {field('alternate_phone', 'Alternate Phone')}
+              {field('name', 'Full Name', 'account')}
+              {field('email', 'Email', 'account', 'email')}
+              {field('phone', 'Phone', 'account')}
+              {field('alternate_phone', 'Alternate Phone', 'account')}
             </div>
           </AccordionContent>
         </AccordionItem>
@@ -239,15 +366,16 @@ export const ProfileManagement = () => {
         {/* Section 2 — Personal Info */}
         <AccordionItem value="personal" className="bg-card rounded-2xl border px-4 data-[state=open]:shadow-sm">
           <AccordionTrigger className="text-[13px] font-semibold py-3 hover:no-underline">
-            <span className="flex items-center gap-2"><MailIcon className="h-3.5 w-3.5 text-primary" /> Personal Info</span>
+            <span className="flex items-center gap-2 flex-1"><MailIcon className="h-3.5 w-3.5 text-primary" /> Personal Info</span>
+            <SectionControls section="personal" />
           </AccordionTrigger>
           <AccordionContent className="space-y-3 pb-4">
             <div className="grid grid-cols-1 gap-3">
-              {field('date_of_birth', 'Date of Birth', 'date')}
-              {field('address', 'Address')}
-              {field('city', 'City')}
-              {field('state', 'State')}
-              {field('pincode', 'Pincode')}
+              {field('date_of_birth', 'Date of Birth', 'personal', 'date')}
+              {field('address', 'Address', 'personal')}
+              {field('city', 'City', 'personal')}
+              {field('state', 'State', 'personal')}
+              {field('pincode', 'Pincode', 'personal')}
             </div>
           </AccordionContent>
         </AccordionItem>
@@ -255,21 +383,22 @@ export const ProfileManagement = () => {
         {/* Section 3 — Academic Info */}
         <AccordionItem value="academic" className="bg-card rounded-2xl border px-4 data-[state=open]:shadow-sm">
           <AccordionTrigger className="text-[13px] font-semibold py-3 hover:no-underline">
-            <span className="flex items-center gap-2"><GraduationCap className="h-3.5 w-3.5 text-primary" /> Academic Info</span>
+            <span className="flex items-center gap-2 flex-1"><GraduationCap className="h-3.5 w-3.5 text-primary" /> Academic Info</span>
+            <SectionControls section="academic" />
           </AccordionTrigger>
           <AccordionContent className="space-y-3 pb-4">
             <div className="grid grid-cols-1 gap-3">
-              {field('course_preparing_for', 'Preparing For', 'text', 'e.g., NEET, JEE')}
-              {field('course_studying', 'Course Studying', 'text', 'e.g., B.Tech')}
-              {field('college_studied', 'College / University', 'text', 'Name of your college')}
-              {field('parent_mobile_number', 'Parent / Guardian Mobile', 'text', 'Emergency contact')}
+              {field('course_preparing_for', 'Preparing For', 'academic', 'text', 'e.g., NEET, JEE')}
+              {field('course_studying', 'Course Studying', 'academic', 'text', 'e.g., B.Tech')}
+              {field('college_studied', 'College / University', 'academic', 'text', 'Name of your college')}
+              {field('parent_mobile_number', 'Parent / Guardian Mobile', 'academic', 'text', 'Emergency contact')}
               <div>
                 <Label htmlFor="bio" className="text-[12px] mb-1 block">Bio</Label>
                 <Textarea
                   id="bio"
-                  value={profile.bio}
-                  onChange={(e) => setProfile(prev => ({ ...prev, bio: e.target.value }))}
-                  disabled={!isEditing}
+                  value={editingSection === 'academic' && 'bio' in sectionDraft ? sectionDraft.bio || '' : profile.bio}
+                  onChange={(e) => editingSection === 'academic' && setSectionDraft(prev => ({ ...prev, bio: e.target.value }))}
+                  disabled={editingSection !== 'academic'}
                   placeholder="Tell us about yourself…"
                   rows={3}
                   className="text-[13px]"
@@ -321,8 +450,12 @@ export const ProfileManagement = () => {
 
       {/* Legal links */}
       <div className="flex items-center justify-center gap-4 pt-1">
+        <Link to="/about" className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors">
+          <Info className="h-3 w-3" /> About
+        </Link>
+        <span className="text-muted-foreground text-[11px]">·</span>
         <Link to="/privacy-policy" className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors">
-          <Lock className="h-3 w-3" /> Privacy Policy
+          <Lock className="h-3 w-3" /> Privacy
         </Link>
         <span className="text-muted-foreground text-[11px]">·</span>
         <Link to="/terms" className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors">

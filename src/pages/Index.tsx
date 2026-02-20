@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,6 +8,53 @@ import {
   Star, Users, ChevronRight, Leaf, CheckCircle,
   ClipboardList, Shirt, BookMarked,
 } from 'lucide-react';
+
+const WHY_FEATURES = [
+  { icon: BookOpen, title: 'Premium Spaces', desc: 'Quiet, well-equipped rooms for focused study.', color: 'bg-primary/10 text-primary' },
+  { icon: Shield, title: 'Safe & Secure', desc: '24/7 CCTV and secure access control.', color: 'bg-secondary/10 text-secondary' },
+  { icon: Clock, title: 'Open 24/7', desc: 'Study at any hour — always accessible.', color: 'bg-accent/30 text-primary' },
+  { icon: Wifi, title: 'High-Speed WiFi', desc: 'Blazing fast internet at every desk.', color: 'bg-primary/10 text-primary' },
+  { icon: Coffee, title: 'Amenities', desc: 'Ergonomic seating & charging points.', color: 'bg-secondary/10 text-secondary' },
+];
+
+const WhyCarousel: React.FC = () => {
+  const [idx, setIdx] = useState(0);
+  const next = useCallback(() => setIdx((i) => (i + 1) % WHY_FEATURES.length), []);
+
+  useEffect(() => {
+    const t = setInterval(next, 5000);
+    return () => clearInterval(t);
+  }, [next]);
+
+  const f = WHY_FEATURES[idx];
+  return (
+    <div className="space-y-2">
+      <div className="relative overflow-hidden rounded-2xl">
+        <Card className="border-0 shadow-sm bg-card">
+          <CardContent className="p-4 flex items-center gap-4">
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${f.color}`}>
+              <f.icon className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="font-semibold text-[13px] text-foreground">{f.title}</p>
+              <p className="text-muted-foreground text-[11px] mt-0.5 leading-relaxed">{f.desc}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      {/* Dot indicators */}
+      <div className="flex justify-center gap-1.5">
+        {WHY_FEATURES.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => setIdx(i)}
+            className={`h-1.5 rounded-full transition-all duration-300 ${i === idx ? 'w-4 bg-primary' : 'w-1.5 bg-muted-foreground/30'}`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
 import inhalestaysLogo from '@/assets/inhalestays-logo.png';
 import { useAuth } from '@/contexts/AuthContext';
 import { bookingsService } from '@/api/bookingsService';
@@ -139,31 +186,8 @@ const AuthenticatedHome: React.FC<{ user: any }> = ({ user }) => {
           </div>
         </div>
 
-        {/* Why InhaleStays compact */}
-        <div>
-          <div className="flex items-center gap-1.5 mb-2">
-            <Leaf className="w-3.5 h-3.5 text-primary" />
-            <p className="text-[13px] font-semibold text-foreground">Why InhaleStays?</p>
-          </div>
-          <div className="flex gap-2.5 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">
-            {[
-              { icon: BookOpen, title: 'Premium Spaces', desc: 'Quiet, well-equipped rooms.', color: 'bg-primary/10 text-primary' },
-              { icon: Shield, title: 'Safe & Secure', desc: '24/7 CCTV and access control.', color: 'bg-secondary/10 text-secondary' },
-              { icon: Clock, title: 'Open 24/7', desc: 'Study at any hour.', color: 'bg-accent/30 text-primary' },
-              { icon: Wifi, title: 'High-Speed WiFi', desc: 'Fast internet at every desk.', color: 'bg-primary/10 text-primary' },
-            ].map((f) => (
-              <Card key={f.title} className="flex-shrink-0 w-32 border-0 shadow-sm bg-card">
-                <CardContent className="p-3 flex flex-col gap-1.5">
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${f.color}`}>
-                    <f.icon className="w-3.5 h-3.5" />
-                  </div>
-                  <p className="font-semibold text-[11px] text-foreground leading-tight">{f.title}</p>
-                  <p className="text-muted-foreground text-[10px] leading-relaxed">{f.desc}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
+        {/* Why InhaleStays — auto carousel */}
+        <WhyCarousel />
       </div>
     </div>
   );
@@ -228,32 +252,14 @@ const GuestHome: React.FC = () => {
         </div>
       </section>
 
-      {/* Why Choose Us */}
+      {/* Why Choose Us — auto carousel */}
       <section className="px-3 py-4 bg-background">
         <div className="max-w-lg mx-auto">
           <div className="flex items-center gap-1.5 mb-3">
             <Leaf className="w-3.5 h-3.5 text-primary" />
             <h2 className="font-semibold text-[15px] text-foreground">Why InhaleStays?</h2>
           </div>
-          <div className="flex gap-2.5 overflow-x-auto pb-2 -mx-3 px-3 scrollbar-hide">
-            {[
-              { icon: BookOpen, title: 'Premium Spaces', desc: 'Quiet, well-equipped rooms for focused study.', color: 'bg-primary/10 text-primary' },
-              { icon: Shield, title: 'Safe & Secure', desc: '24/7 CCTV and secure access.', color: 'bg-secondary/10 text-secondary' },
-              { icon: Clock, title: 'Open 24/7', desc: 'Study at any hour — always accessible.', color: 'bg-accent/30 text-primary' },
-              { icon: Wifi, title: 'High-Speed WiFi', desc: 'Blazing fast internet at every desk.', color: 'bg-primary/10 text-primary' },
-              { icon: Coffee, title: 'Amenities', desc: 'Ergonomic seating & charging points.', color: 'bg-secondary/10 text-secondary' },
-            ].map((f) => (
-              <Card key={f.title} className="flex-shrink-0 w-36 border-0 shadow-sm bg-card">
-                <CardContent className="p-3 flex flex-col gap-1.5">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${f.color}`}>
-                    <f.icon className="w-4 h-4" />
-                  </div>
-                  <p className="font-semibold text-[12px] text-foreground leading-tight">{f.title}</p>
-                  <p className="text-muted-foreground text-[11px] leading-relaxed">{f.desc}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <WhyCarousel />
         </div>
       </section>
 

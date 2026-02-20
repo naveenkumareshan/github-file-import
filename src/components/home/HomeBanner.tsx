@@ -6,10 +6,12 @@ import { useNavigate } from 'react-router-dom';
 interface Banner {
   id: string;
   title: string;
-  subtitle: string;
-  image_url: string;
-  link_url: string;
+  subtitle: string | null;
+  image_url: string | null;
+  link_url: string | null;
   display_order: number;
+  start_date?: string | null;
+  expire_at?: string | null;
 }
 
 const DEFAULT_BANNERS: Banner[] = [
@@ -35,7 +37,14 @@ export const HomeBanner: React.FC = () => {
         .select('*')
         .eq('is_active', true)
         .order('display_order', { ascending: true });
-      if (data && data.length > 0) setBanners(data as Banner[]);
+      if (data && data.length > 0) {
+        const today = new Date().toISOString().split('T')[0];
+        const filtered = (data as Banner[]).filter(b =>
+          (!b.start_date || b.start_date <= today) &&
+          (!b.expire_at || b.expire_at >= today)
+        );
+        if (filtered.length > 0) setBanners(filtered);
+      }
     })();
   }, []);
 
