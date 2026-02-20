@@ -497,8 +497,8 @@ export const VendorDetailsDialog: React.FC<VendorDetailsDialogProps> = ({
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => {
-                                setSelectedDocument(doc);
+              onClick={() => {
+                                setSelectedDocument(doc as unknown as AdminVendorDocument);
                                 setShowReviewDialog(true);
                               }}
                             >

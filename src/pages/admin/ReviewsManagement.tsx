@@ -31,6 +31,15 @@ interface Review {
   comment: string;
   isApproved: boolean;
   createdAt: string;
+  userData?: {
+    name: string;
+    profilePicture?: string;
+    [key: string]: unknown;
+  };
+  entityData?: {
+    name: string;
+    [key: string]: unknown;
+  };
 }
 
 interface Cabin {
@@ -251,7 +260,7 @@ const ReviewManagement: React.FC = () => {
                   <SelectItem value="all">All Reading Rooms</SelectItem>
                   {cabins.map(cabin => (
                     <SelectItem key={cabin._id} value={cabin._id}>
-                      {cabin.name} - {cabin.location?.area?.name}
+                      {cabin.name} - {(cabin.location as any)?.area?.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

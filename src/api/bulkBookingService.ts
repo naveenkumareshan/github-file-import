@@ -3,19 +3,20 @@ import axios from './axiosConfig';
 
 export interface BulkBookingData {
   cabinId: string;
+  floorId?: string;
   students: {
     name: string;
     email: string;
     phone: string;
     status?: string;
     receipt_no?: string;
-    endDate?: string;
+    endDate?: string | Date;
     room_name: string;
     seat_no: number;
-    startDate: string;
+    startDate: string | Date;
     transaction_id: string;
-    amount: string;
-    key_deposite:string;
+    amount: string | number;
+    key_deposite: string | number;
   }[];
 }
 

@@ -106,12 +106,12 @@ export const HostelRoomForm: React.FC<HostelRoomFormProps> = ({
   const [beds, setBeds] = useState<Array<{number: number; bedType: string; sharingType: string}>>([]);
 
   // Convert initialData.sharingOptions to ensure it has all required properties
-  const initialSharingOptions = initialData?.sharingOptions?.map(option => ({
+  const initialSharingOptions = (initialData?.sharingOptions as any[])?.map(option => ({
     type: option.type,
     capacity: option.capacity,
     count: option.count,
     price: option.price,
-    bedsCount: option.bedIds.length,
+    bedsCount: (option.bedIds as unknown[])?.length ?? 0,
     available: option.available || 0
   })) || [];
 
@@ -703,9 +703,9 @@ export const HostelRoomForm: React.FC<HostelRoomFormProps> = ({
                   <div></div>
                 </div>
                 <div className="space-y-1 max-h-64 overflow-y-auto">
-                  {initialData?.sharingOptions.map((option, index) => (
+                  {(initialData?.sharingOptions as any[])?.map((option, index) => (
                       <div>
-                         {option.bedIds?.map((bed, bedIndex) => (
+                         {(option.bedIds as any[])?.map((bed, bedIndex) => (
                         <div key={bedIndex} className="grid grid-cols-6 gap-2 items-center py-1 border-b border-dashed">
                           <div>
                             <Input 

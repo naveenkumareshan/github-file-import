@@ -181,10 +181,10 @@ const AdminPayouts: React.FC = () => {
       header: 'Bank Details',
       cell: ({ row }: { row: { original: AdminPayout } }) => (
         <div>
-          <p className="font-medium">{row.original.vendorId.bankDetails.accountHolderName}</p>
-          <p className="text-sm text-muted-foreground">{row.original.vendorId.bankDetails.accountNumber}</p>
-          <p className="text-sm text-muted-foreground">{row.original.vendorId.bankDetails.bankName}</p>
-          <p className="text-sm text-muted-foreground">{row.original.vendorId.bankDetails.ifscCode}</p>
+          <p className="font-medium">{row.original.bankDetails?.accountHolderName}</p>
+          <p className="text-sm text-muted-foreground">{row.original.bankDetails?.accountNumber}</p>
+          <p className="text-sm text-muted-foreground">{row.original.bankDetails?.bankName}</p>
+          <p className="text-sm text-muted-foreground">{row.original.bankDetails?.ifscCode}</p>
         </div>
       )
     },
@@ -250,10 +250,10 @@ const AdminPayouts: React.FC = () => {
                   <DialogTitle>Process Payout</DialogTitle>
                 </DialogHeader>
                     <div>
-                      <p className="font-medium">Name : {selectedPayout?.vendorId?.bankDetails.accountHolderName}</p>
-                      <p className="font-medium">Account No : {selectedPayout?.vendorId?.bankDetails.accountNumber}</p>
-                      <p className="font-medium">Bank Name: {selectedPayout?.vendorId?.bankDetails.bankName}</p>
-                      <p className="font-medium">IFSC Code : {selectedPayout?.vendorId?.bankDetails.ifscCode}</p>
+                      <p className="font-medium">Name : {selectedPayout?.bankDetails?.accountHolderName}</p>
+                      <p className="font-medium">Account No : {selectedPayout?.bankDetails?.accountNumber}</p>
+                      <p className="font-medium">Bank Name: {selectedPayout?.bankDetails?.bankName}</p>
+                      <p className="font-medium">IFSC Code : {selectedPayout?.bankDetails?.ifscCode}</p>
                     </div>
                 <div className="space-y-4">
                   <div>

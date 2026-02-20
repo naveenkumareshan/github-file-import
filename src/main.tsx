@@ -5,16 +5,6 @@ import App from './App.tsx'
 import './index.css'
 import './App.css'
 import { ThemeProvider } from "./components/ui/theme-provider"
-import { registerSW } from 'virtual:pwa-register';
-
-registerSW({
-  onNeedRefresh() {
-    console.log('New update available');
-  },
-  onOfflineReady() {
-    console.log('App ready for offline use');
-  },
-});
 
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

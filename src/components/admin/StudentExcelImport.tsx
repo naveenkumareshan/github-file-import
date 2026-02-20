@@ -240,7 +240,7 @@ function excelDateToJSEndOfDay(serial: number): Date {
       setCurrentStep('Processing results...');
 
       // Update students with results
-      const finalStudents = [...updatedStudents];
+      const finalStudents: StudentData[] = [...updatedStudents] as StudentData[];
       
       // Mark successful students
       response.data?.successful.forEach(success => {
@@ -248,7 +248,7 @@ function excelDateToJSEndOfDay(serial: number): Date {
         if (studentIndex !== -1) {
           finalStudents[studentIndex] = {
             ...finalStudents[studentIndex],
-            status: 'completed',
+            status: 'completed' as StudentData['status'],
             bookingId: success.bookingId,
             transactionId: success.transactionId,
             seatNumber: success.seatNumber,
@@ -264,7 +264,7 @@ function excelDateToJSEndOfDay(serial: number): Date {
         if (studentIndex !== -1) {
           finalStudents[studentIndex] = {
             ...finalStudents[studentIndex],
-            status: 'failed',
+            status: 'failed' as StudentData['status'],
             error: failure.error
           };
         }
@@ -351,7 +351,7 @@ function excelDateToJSEndOfDay(serial: number): Date {
   const failedCount = students.filter(s => s.status === 'failed').length;
   const totalRevenue = students
     .filter(s => s.status === 'completed')
-    .reduce((sum, s) => sum + (s.amount || 0), 0);
+    .reduce((sum, s) => sum + (Number(s.amount) || 0), 0);
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -590,9 +590,9 @@ function excelDateToJSEndOfDay(serial: number): Date {
                           )}
                           {student.amount && (
                             <div className="text-sm font-medium text-green-600">
-                              Seat Price    : ₹{student.amount.toLocaleString()}<br></br>
-                              Key Deposite  : ₹{student.key_deposite.toLocaleString()}<br></br>
-                              Total         :  ₹{(student.key_deposite + student.amount).toLocaleString()}
+                              Seat Price    : ₹{Number(student.amount).toLocaleString()}<br></br>
+                              Key Deposite  : ₹{Number(student.key_deposite).toLocaleString()}<br></br>
+                              Total         :  ₹{(Number(student.key_deposite) + Number(student.amount)).toLocaleString()}
                               
                             </div>
                           )}
