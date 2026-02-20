@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
+// Badge replaced with inline brand spans
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -81,30 +81,31 @@ export const HostelBookingsList = ({ hostelId }: BookingListProps) => {
     });
   };
   
-  const getStatusBadge = (status: string) => {
+  const getStatusBadgeClass = (status: string) => {
     switch (status) {
-      case 'completed':
-        return <Badge className="bg-green-500">Completed</Badge>;
-      case 'pending':
-        return <Badge variant="outline" className="border-amber-500 text-amber-500">Pending</Badge>;
-      case 'cancelled':
-        return <Badge variant="outline" className="border-red-500 text-red-500">Cancelled</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
+      case 'completed': return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+      case 'pending': return 'bg-amber-50 text-amber-700 border border-amber-200';
+      case 'cancelled': return 'bg-red-50 text-red-700 border border-red-200';
+      default: return 'bg-muted text-muted-foreground border border-border';
     }
   };
+
+  const getStatusBadge = (status: string) => (
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${getStatusBadgeClass(status)}`}>
+      {status === 'completed' ? 'Completed' : status}
+    </span>
+  );
   
   const getPaymentStatusBadge = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return <Badge className="bg-green-500">Paid</Badge>;
-      case 'pending':
-        return <Badge variant="outline" className="border-amber-500 text-amber-500">Pending</Badge>;
-      case 'failed':
-        return <Badge variant="outline" className="border-red-500 text-red-500">Failed</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
+    const cls = status === 'completed'
+      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+      : status === 'pending'
+      ? 'bg-amber-50 text-amber-700 border border-amber-200'
+      : status === 'failed'
+      ? 'bg-red-50 text-red-700 border border-red-200'
+      : 'bg-muted text-muted-foreground border border-border';
+    const label = status === 'completed' ? 'Paid' : status;
+    return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${cls}`}>{label}</span>;
   };
   
   const filteredBookings = getFilteredBookings();
@@ -375,9 +376,9 @@ const BookingTable = ({
       <Card>
         <CardContent className="py-10">
           <div className="text-center">
-            <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-            <h3 className="text-lg font-medium mb-2">No Bookings Found</h3>
-            <p className="text-muted-foreground">There are no bookings matching your criteria.</p>
+            <Calendar className="h-10 w-10 mx-auto text-muted-foreground/30 mb-3" />
+            <p className="text-sm font-medium">No Bookings Found</p>
+            <p className="text-xs text-muted-foreground mt-1">There are no bookings matching your criteria.</p>
           </div>
         </CardContent>
       </Card>
@@ -389,21 +390,21 @@ const BookingTable = ({
       <CardContent className="p-0">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Booking ID</TableHead>
-                <TableHead>Student</TableHead>
-                <TableHead>Room Details</TableHead>
-                <TableHead>Check-in / Check-out</TableHead>
-                <TableHead>Total Amount</TableHead>
-                <TableHead>Payment Status</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+          <TableHeader>
+              <TableRow className="bg-muted/30">
+                <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Booking ID</TableHead>
+                <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Student</TableHead>
+                <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Room Details</TableHead>
+                <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Check-in / Check-out</TableHead>
+                <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Amount</TableHead>
+                <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Payment</TableHead>
+                <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Status</TableHead>
+                <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {bookings.map((booking) => (
-                <TableRow key={booking._id}>
+              {bookings.map((booking, idx) => (
+                <TableRow key={booking._id} className={idx % 2 === 0 ? "bg-background" : "bg-muted/20"}>
                   <TableCell className="font-mono text-xs">
                     {booking._id.substring(0, 8)}...
                   </TableCell>
