@@ -1,90 +1,62 @@
 
-## What's Already Done vs What Still Needs Fixing
+## Two Issues — Root Causes & Fixes
 
-After reading all the current files, here's the exact state:
+### Issue 1: Security Warning — Leaked Password Protection Disabled
 
-**Already working:**
-- HomeBanner carousel (auto-slides every 4s) — exists and integrated
-- BannerManagement admin component — exists with upload
-- PrivacyPolicy + TermsAndConditions pages — exist
-- Quick actions 2x2 grid — already fixed
-- Logout button in ProfileManagement — exists
-- Phone shown below email in Account section — already correct
+**Root cause:** The Lovable Cloud auth configuration has "Leaked Password Protection" disabled. This is a global auth security setting that checks user passwords against known breached password databases when signing up or changing passwords.
 
-**Still broken — what I will fix:**
+**Fix:** Enable it in `supabase/config.toml` by adding the `[auth.password]` config block:
+```toml
+[auth.password]
+hibp_enabled = true
+min_length = 6
+```
 
-### 1. About page link in Profile legal links
-Current: legal links only show Privacy Policy · Terms
-Fix: Add "About" link → `/about` in the legal links row
-
-### 2. Banner date fields (start date + expiry) — DB migration needed
-Current: `banners` table has no `start_date` or `expire_at` columns
-Fix: Add `start_date date` and `expire_at date` columns to the `banners` table. Update `HomeBanner.tsx` to filter out expired/not-yet-started banners. Update `BannerManagement.tsx` form to show date pickers.
-
-### 3. Per-section edit/save in ProfileManagement
-Current: ONE global `isEditing` boolean — clicking Edit on the header unlocks ALL sections at once, one Save button
-Fix: Replace with `editingSection: string | null` state. Each accordion section (Account, Personal, Academic) gets its own pencil icon in the trigger. When you click edit on a section, only that section's fields become editable. That section shows Save + Cancel buttons. Other sections stay locked. Security section (password) is always editable independently.
-
-### 4. Why InhaleStays — auto-carousel instead of scroll
-Current: `overflow-x-auto` horizontal scroll row in both `AuthenticatedHome` and `GuestHome`  
-Fix: Replace with a `translateX` CSS carousel that auto-advances every 5 seconds with dot indicators. One card visible at a time. Add `featureIndex` state + `useEffect` interval in both components.
-
-### 5. My Bookings position in Profile
-Current: My Bookings is rendered in `Profile.tsx` BELOW the `<ProfileManagement />` component
-Fix: Move the My Bookings section INTO `ProfileManagement.tsx`, placed between the avatar header card and the accordion sections. Remove it from `Profile.tsx` (simplify Profile.tsx). The bookings fetch logic moves into `ProfileManagement`.
+This will silently stop the security warning banner — it's a one-line fix.
 
 ---
 
-## Technical Implementation
+### Issue 2: Student Bookings Pages Failing & Slow
 
-### DB Migration — add date columns to banners
-```sql
-ALTER TABLE public.banners 
-  ADD COLUMN start_date date,
-  ADD COLUMN expire_at date;
+**Root cause (confirmed from console logs):**
+
+```
+AxiosError: Network Error
+ERR_NETWORK
+baseURL: "http://localhost:5000/api"
+url: "/bookings/user/current"
 ```
 
-### Files to change (5 files + 1 migration):
+`StudentBookings.tsx` (the `/student/bookings` route) imports from `bookingManagementService` which hits **`http://localhost:5000/api`** — the old Express/MongoDB backend that doesn't exist in the cloud deployment. Every call instantly fails with a Network Error, causing:
+- Infinite loading spinner
+- "Failed to fetch your bookings" toast error
+- Page appears broken/slow because it waits for requests that time out
 
-**`src/components/profile/ProfileManagement.tsx`** — Major rewrite:
-- Import `BookMarked, ChevronRight` from lucide
-- Import `bookingsService` 
-- Add `bookings`, `loadingBookings` state
-- Fetch bookings in `useEffect` alongside `loadProfile`
-- Replace global `isEditing` / `savedProfile` with:
-  ```ts
-  const [editingSection, setEditingSection] = useState<string | null>(null);
-  const [sectionDraft, setSectionDraft] = useState<Partial<ProfileData>>({});
-  ```
-- Add `startEdit(section)` — copies current profile fields into `sectionDraft`, sets `editingSection`
-- Add `cancelEdit()` — clears draft and editingSection
-- Add `saveSection()` — merges draft into profile, calls `userProfileService.updateProfile`, clears editingSection
-- Update `field()` helper to read from `sectionDraft` when `editingSection === currentSection`, else from `profile`
-- Each AccordionTrigger gets a pencil/check/x button row
-- Insert My Bookings block between avatar card and Accordion
-- Add "About" to legal links
+There is already a correct Supabase-native service — `bookingsService.ts` — that directly queries the cloud database. `ProfileManagement.tsx` already uses this correctly.
 
-**`src/pages/Profile.tsx`** — Simplify:
-- Remove the bookings fetch + My Bookings JSX (it moves into ProfileManagement)
-- Just render `<ProfileManagement />` inside the page div
+**Files to fix:**
 
-**`src/pages/Index.tsx`** — Fix Why InhaleStays carousel:
-- In `AuthenticatedHome`: Add `const [featureIdx, setFeatureIdx] = useState(0)` at component top, add `useEffect` with `setInterval(5000)`. Replace `overflow-x-auto` div with a `relative overflow-hidden rounded-2xl` container + `translateX` flex div + dot indicators.
-- In `GuestHome`: Same treatment for the "Why InhaleStays?" section.
+#### 1. `src/pages/StudentBookings.tsx`
+- Change import from `bookingManagementService` → `bookingsService`
+- Replace `bookingManagementService.getCurrentBookings()` → `bookingsService.getCurrentBookings()`
+- Replace `bookingManagementService.getBookingHistory()` → `bookingsService.getBookingHistory()`
+- Update the `mapBooking()` function to match the Supabase response shape (snake_case fields like `cabin_id`, `seat_number`, `start_date`, `end_date`, `payment_status`, `created_at`)
 
-**`src/components/admin/BannerManagement.tsx`** — Add date fields:
-- Add `start_date: ''` and `expire_at: ''` to the `empty()` form shape
-- Add two `<Input type="date">` fields for Start Date and Expiry Date in the form grid
-- Pass them in `handleCreate` insert
+#### 2. `src/pages/StudentDashboard.tsx`
+- This already uses `bookingsService` (correct) but has the same mapping issue — the response fields are snake_case (`cabin_id`, `start_date`, `end_date`) but the code reads camelCase (`cabinId.name`, `seatId.number`)
+- Fix the field mapping in both the display template and the `totalSpent` calculation
 
-**`src/components/home/HomeBanner.tsx`** — Filter by dates:
-- After fetching banners, filter client-side:
-  ```ts
-  const today = new Date().toISOString().split('T')[0];
-  const filtered = data.filter(b => 
-    (!b.start_date || b.start_date <= today) && 
-    (!b.expire_at || b.expire_at >= today)
-  );
-  ```
+#### 3. `supabase/config.toml`
+- Add `[auth.password]` section to enable leaked password protection
 
-All 5 files + 1 migration implemented in one pass.
+---
+
+### Technical Summary
+
+| Problem | Location | Root Cause | Fix |
+|---|---|---|---|
+| Security warning | `supabase/config.toml` | `hibp_enabled` not set | Add `hibp_enabled = true` |
+| Bookings page fails | `StudentBookings.tsx` | Calls `localhost:5000` via `bookingManagementService` | Switch to `bookingsService` (Supabase) |
+| Data mapping errors | `StudentBookings.tsx` + `StudentDashboard.tsx` | Expects MongoDB camelCase, gets Supabase snake_case | Fix field name mapping |
+
+No database migration needed — the `bookings` table already exists and `bookingsService.ts` already queries it correctly.
