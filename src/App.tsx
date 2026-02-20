@@ -174,7 +174,7 @@ function App() {
           <Route
             path="/admin"
             element={
-              <ProtectedRoute requiredRole="admin">
+          <ProtectedRoute requiredRole="admin" redirectPath="/admin/login">
                 <Suspense fallback={<div className="p-6 text-center">Loading admin panel...</div>}>
                   <AdminLayout />
                 </Suspense>
