@@ -355,7 +355,7 @@ export const BookingTransactions: React.FC<BookingTransactionsProps> = ({ dateRa
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="cabin">Cabin</SelectItem>
+                <SelectItem value="cabin">Reading Room</SelectItem>
                 <SelectItem value="hostel">Hostel</SelectItem>
                 <SelectItem value="laundry">Laundry</SelectItem>
               </SelectContent>

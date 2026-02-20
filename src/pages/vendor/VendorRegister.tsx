@@ -400,7 +400,7 @@ const VendorRegister: React.FC = () => {
                 className="w-full p-2 border rounded"
                 disabled={isLoading}
               >
-                <option value="cabin">Cabin</option>
+                <option value="cabin">Reading Room</option>
               </select>
             </div>
 

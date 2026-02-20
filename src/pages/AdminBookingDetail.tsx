@@ -225,7 +225,7 @@ const AdminBookingDetail = () => {
             <div>
               <h1 className="text-2xl font-bold">Booking Details</h1>
               <p className="text-muted-foreground">
-                {bookingType === 'hostel' ? 'Hostel' : 'Cabin'} Booking #{booking.bookingId || booking._id.substring(0, 10)}
+                {bookingType === 'hostel' ? 'Hostel' : 'Reading Room'} Booking #{booking.bookingId || booking._id.substring(0, 10)}
               </p>
             </div>
           </div>
@@ -311,7 +311,7 @@ const AdminBookingDetail = () => {
                     <Separator />
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <p className="text-sm font-medium text-muted-foreground">Cabin</p>
+                        <p className="text-sm font-medium text-muted-foreground">Reading Room</p>
                         <p>{booking.cabinId?.name || '-'}</p>
                       </div>
                       <div>

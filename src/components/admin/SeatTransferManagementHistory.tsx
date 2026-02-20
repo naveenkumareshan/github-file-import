@@ -184,7 +184,7 @@ export function SeatTransferManagementHistory() {
       );
 
       const csvContent = [
-        ['Booking ID', 'Student Name', 'Email', 'Cabin', 'Seat', 'Start Date', 'End Date', 'Status', 'Amount'].join(','),
+        ['Booking ID', 'Student Name', 'Email', 'Reading Room', 'Seat', 'Start Date', 'End Date', 'Status', 'Amount'].join(','),
         ...transferableBookings.map((booking: Booking) => [
           booking.bookingId || booking._id,
           booking.userId.name,
@@ -281,13 +281,13 @@ export function SeatTransferManagementHistory() {
             </div> */}
 
             <div>
-              <Label htmlFor="cabin">Cabin</Label>
+              <Label htmlFor="cabin">Reading Room</Label>
               <Select value={filters.cabin} onValueChange={(value) => handleFilterChange('cabin', value)}>
                 <SelectTrigger>
-                  <SelectValue placeholder="All cabins" />
+                  <SelectValue placeholder="All reading rooms" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Cabins</SelectItem>
+                  <SelectItem value="all">All Reading Rooms</SelectItem>
                   {cabins.map((cabin) => (
                     <SelectItem key={cabin._id} value={cabin._id}>
                       {cabin.name}
@@ -392,7 +392,7 @@ export function SeatTransferManagementHistory() {
                     <p className="font-medium">{booking.userId.name}</p>
                     <p className="text-sm text-muted-foreground">{booking.userId.email}</p>
                     <div className="flex items-center gap-4 mt-2 text-sm">
-                      <span><strong>Cabin:</strong> {booking.cabinId.name}</span>
+                      <span><strong>Reading Room:</strong> {booking.cabinId.name}</span>
                       <span><strong>Seat:</strong> {booking.seatId.number}</span>
                       <span><strong>Duration:</strong> {new Date(booking.startDate).toLocaleDateString()} - {new Date(booking.endDate).toLocaleDateString()}</span>
                       <span><strong>Amount:</strong> ₹{booking.totalPrice}</span>
@@ -404,7 +404,7 @@ export function SeatTransferManagementHistory() {
                           Transferred From : {data.cabin?.name || data.hostelId?.name}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                            Canin Code : {data.cabin?.cabinCode}
+                            Room Code : {data.cabin?.cabinCode}
                         </p>
                         <p className="text-sm text-muted-foreground">
                           Seat #{data.seat?.number}

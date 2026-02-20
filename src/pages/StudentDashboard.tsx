@@ -282,7 +282,7 @@ const StudentDashboard: React.FC = () => {
                     <CardTitle className="text-3xl font-bold">Student Dashboard</CardTitle>
                     <CardDescription>Welcome back, {user?.name}</CardDescription>
                   </div>
-                  <Button onClick={() => navigate('/cabins')}>Book New Cabin</Button>
+                  <Button onClick={() => navigate('/cabins')}>Book New Reading Room</Button>
                 </div>
               </CardHeader>
               
@@ -349,7 +349,7 @@ const StudentDashboard: React.FC = () => {
                           <div className="text-center py-8">
                             <p className="text-muted-foreground">You don't have any current bookings.</p>
                             <Button onClick={() => navigate('/cabins')} className="mt-4">
-                              Browse Cabins
+                              Browse Reading Rooms
                             </Button>
                           </div>
                         ) : (

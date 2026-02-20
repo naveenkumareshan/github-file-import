@@ -349,7 +349,7 @@ const NotificationManagement: React.FC = () => {
                       <Label htmlFor="offerDescription">Offer Description</Label>
                       <Textarea
                         id="offerDescription"
-                        placeholder="Book any cabin and get 20% off on your stay"
+                        placeholder="Book any reading room and get 20% off on your stay"
                         rows={2}
                       />
                     </div>

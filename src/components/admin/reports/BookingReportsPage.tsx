@@ -52,7 +52,7 @@ const BookingReportsPage: React.FC = () => {
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-background to-muted/20">     
       <div className="container mx-auto p-6">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold tracking-tight mb-2 text-foreground/90">Cabin Seat Booking Reports</h1>
+          <h1 className="text-3xl font-bold tracking-tight mb-2 text-foreground/90">Reading Room Seat Booking Reports</h1>
           <p className="text-muted-foreground max-w-2xl">
             Comprehensive analytics on bookings, occupancy, and revenue. Use these insights to make data-driven decisions for your business.
           </p>
