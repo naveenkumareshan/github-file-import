@@ -1,5 +1,4 @@
-
-import axios from './axiosConfig';
+import { supabase } from '@/integrations/supabase/client';
 
 interface BookingFilters {
   status?: string;
@@ -8,128 +7,190 @@ interface BookingFilters {
 }
 
 interface BookingData {
-  cabinId?: string;
-  seatId: string;
-  startDate: string;
-  endDate: string;
-  paymentMethod: string;
-  bookingDuration?: string;
-  durationCount?: number;
-  totalPrice?: number;
-  seatPrice: number;
-  isRenewal: boolean;
-  keyDeposit: number;
-  couponCode?: string;
-  discountAmount?: number;
+  cabin_id?: string;
+  seat_number?: number;
+  start_date: string;
+  end_date: string;
+  total_price?: number;
+  payment_status?: string;
+  booking_duration?: string;
+  duration_count?: string;
 }
 
 export const bookingsService = {
   createBooking: async (data: BookingData) => {
     try {
-      const response = await axios.post('/bookings', data);
-      return { success: true, data: response.data };
-    } catch (error) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return { success: false, error: 'Not authenticated' };
+
+      const { data: booking, error } = await supabase
+        .from('bookings')
+        .insert({ ...data, user_id: user.id })
+        .select()
+        .single();
+
+      return { success: !error, data: booking };
+    } catch (error: any) {
       console.error('Error creating booking:', error);
-      return { success: false, error: error.response?.data || error.message };
-    }
-  },
-  
-  getUserBookings: async (filters?: BookingFilters) => {
-    try {
-      let url = '/bookings/user';
-      if (filters) {
-        const params = new URLSearchParams();
-        if (filters.status) params.append('status', filters.status);
-        if (filters.startDate) params.append('startDate', filters.startDate);
-        if (filters.endDate) params.append('endDate', filters.endDate);
-        
-        if (params.toString()) {
-          url += `?${params.toString()}`;
-        }
-      }
-      
-      const response = await axios.get(url);
-      return { success: true, data: response.data };
-    } catch (error) {
-      console.error('Error fetching user bookings:', error);
-      return { success: false, error: error.response?.data || error.message };
+      return { success: false, error: error.message };
     }
   },
 
-  // Add getCurrentBookings method for StudentDashboard.tsx
+  getUserBookings: async (filters?: BookingFilters) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return { success: false, data: [] };
+
+      let query = supabase
+        .from('bookings')
+        .select('*, cabins(name, category, image_url, city, area)')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (filters?.status) query = query.eq('payment_status', filters.status);
+      if (filters?.startDate) query = query.gte('start_date', filters.startDate);
+      if (filters?.endDate) query = query.lte('end_date', filters.endDate);
+
+      const { data, error } = await query;
+      return { success: !error, data: data || [] };
+    } catch (error: any) {
+      console.error('Error fetching user bookings:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
   getCurrentBookings: async () => {
     try {
-      const response = await axios.get('/bookings/user/current');
-      return { success: true, data: response.data };
-    } catch (error) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return { success: false, data: [] };
+
+      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('*, cabins(name, category, image_url, city, area)')
+        .eq('user_id', user.id)
+        .gte('end_date', today)
+        .eq('payment_status', 'completed')
+        .order('end_date', { ascending: true });
+
+      return { success: !error, data: data || [] };
+    } catch (error: any) {
       console.error('Error fetching current bookings:', error);
-      return { success: false, error: error.response?.data || error.message };
+      return { success: false, error: error.message, data: [] };
     }
   },
-  
+
   getBookingById: async (id: string) => {
     try {
-      const response = await axios.get(`/bookings/${id}`);
-      return { success: true, data: response.data };
-    } catch (error) {
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('*, cabins(name, category, image_url, city, area, description)')
+        .eq('id', id)
+        .single();
+      return { success: !error, data };
+    } catch (error: any) {
       console.error('Error fetching booking:', error);
-      return { success: false, error: error.response?.data || error.message };
+      return { success: false, error: error.message };
     }
   },
-  
+
   updateBookingStatus: async (id: string, status: string) => {
     try {
-      const response = await axios.put(`/bookings/${id}/status`, { status });
-      return { success: true, data: response.data };
-    } catch (error) {
+      const { data, error } = await supabase
+        .from('bookings')
+        .update({ payment_status: status })
+        .eq('id', id)
+        .select()
+        .single();
+      return { success: !error, data };
+    } catch (error: any) {
       console.error('Error updating booking status:', error);
-      return { success: false, error: error.response?.data || error.message };
+      return { success: false, error: error.message };
     }
   },
-  
+
   cancelBooking: async (id: string) => {
     try {
-      const response = await axios.put(`/bookings/${id}/cancel`);
-      return { success: true, data: response.data };
-    } catch (error) {
+      const { data, error } = await supabase
+        .from('bookings')
+        .update({ payment_status: 'cancelled' })
+        .eq('id', id)
+        .select()
+        .single();
+      return { success: !error, data };
+    } catch (error: any) {
       console.error('Error cancelling booking:', error);
-      return { success: false, error: error.response?.data || error.message };
+      return { success: false, error: error.message };
     }
   },
-  
+
   extendBooking: async (id: string, newEndDate: string) => {
     try {
-      const response = await axios.put(`/bookings/${id}/extend`, { newEndDate });
-      return { success: true, data: response.data };
-    } catch (error) {
+      const { data, error } = await supabase
+        .from('bookings')
+        .update({ end_date: newEndDate })
+        .eq('id', id)
+        .select()
+        .single();
+      return { success: !error, data };
+    } catch (error: any) {
       console.error('Error extending booking:', error);
-      return { success: false, error: error.response?.data || error.message };
+      return { success: false, error: error.message };
     }
   },
-  
+
   getBookingHistory: async () => {
     try {
-      const response = await axios.get('/bookings/user/history');
-      return { success: true, data: response.data };
-    } catch (error) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return { success: false, data: [] };
+
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('*, cabins(name, category, image_url)')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      return { success: !error, data: data || [] };
+    } catch (error: any) {
       console.error('Error fetching booking history:', error);
-      return { success: false, error: error.response?.data || error.message };
+      return { success: false, error: error.message, data: [] };
     }
   },
-  
-  // Add the missing method to get cabin bookings
+
   getCabinBookings: async (cabinId: string) => {
     try {
-      const response = await axios.get(`/bookings/cabin/${cabinId}`);
-      return { success: true, data: response.data };
-    } catch (error) {
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('cabin_id', cabinId);
+      return { success: !error, data: data || [] };
+    } catch (error: any) {
       console.error('Error fetching cabin bookings:', error);
-      return { success: false, error: error.response?.data || error.message };
+      return { success: false, error: error.message, data: [] };
     }
   },
-    // New method for renewing bookings
+
   renewBooking: async (renewalData: any) => {
-    const response = await axios.post(`/bookings/${renewalData.bookingId}/renew`, renewalData);
-    return response.data;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { data, error } = await supabase
+      .from('bookings')
+      .insert({
+        cabin_id: renewalData.cabin_id,
+        seat_number: renewalData.seat_number,
+        start_date: renewalData.start_date,
+        end_date: renewalData.end_date,
+        total_price: renewalData.totalPrice,
+        payment_status: 'pending',
+        booking_duration: renewalData.bookingDuration,
+        duration_count: String(renewalData.durationCount),
+        user_id: user.id,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
   },
 };

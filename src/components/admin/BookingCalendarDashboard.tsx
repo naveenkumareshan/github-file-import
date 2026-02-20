@@ -86,8 +86,8 @@ export const BookingCalendarDashboard = () => {
   const fetchCabins = async () => {
     try {
       const response = await cabinsService.getAllCabins();
-      if (response.success && response.data) {
-        setCabins(response.data);
+        if (response.success && response.data) {
+        setCabins((response.data as any[]).map((c: any) => ({ _id: c.id || c._id, name: c.name, category: c.category })));
       }
     } catch (error) {
       console.error('Error fetching cabins:', error);

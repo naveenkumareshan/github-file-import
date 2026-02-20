@@ -76,7 +76,7 @@ export default function StudentBookingView() {
         setLoading(true);
         const response = await bookingsService.getBookingById(bookingId);
         if (response.success) {
-          setBooking(response.data.data);
+          setBooking(response.data as any);
         } else {
           throw new Error(response.error || "Failed to fetch booking details");
         }

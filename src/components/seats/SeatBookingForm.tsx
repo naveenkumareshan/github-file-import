@@ -338,19 +338,14 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
       setIsSubmitting(true);
 
       const response = await bookingsService.createBooking({
-        cabinId: cabin._id || cabin.id || "",
-        seatId: selectedSeat._id || selectedSeat.id,
-        startDate: withFixedTime(startDate, CHECK_IN_HOUR).toISOString(),
-        endDate: withFixedTime(endDate, CHECK_OUT_HOUR).toISOString(),
-        bookingDuration: selectedDuration.type,
-        durationCount: selectedDuration.count,
-        seatPrice: seatPrice,
-        isRenewal: false,
-        keyDeposit: keyDeposit,
-        totalPrice: totalPrice,
-        paymentMethod: "razorpay",
-        couponCode: appliedCoupon ? appliedCoupon.coupon.code : undefined,
-        discountAmount: appliedCoupon ? appliedCoupon.discountAmount : 0,
+        cabin_id: cabin._id || cabin.id || "",
+        seat_number: selectedSeat.number,
+        start_date: format(withFixedTime(startDate, CHECK_IN_HOUR), 'yyyy-MM-dd'),
+        end_date: format(withFixedTime(endDate, CHECK_OUT_HOUR), 'yyyy-MM-dd'),
+        booking_duration: selectedDuration.type,
+        duration_count: String(selectedDuration.count),
+        total_price: totalPrice,
+        payment_status: "pending",
       });
 
       if (response.success && response.data) {
@@ -359,7 +354,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
           description: "Your booking has been created successfully",
         });
         setBookingCreated(true);
-        setBookingId(response.data.data._id);
+        setBookingId((response.data as any).id || '');
         setBookingCreatedAt(new Date().toISOString());
         hideSeatSelection(bookingId, true);
         setTimeout(() => {

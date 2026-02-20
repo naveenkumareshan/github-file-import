@@ -1,5 +1,4 @@
-
-import axios from './axiosConfig';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface CabinFilters {
   category?: string;
@@ -8,112 +7,100 @@ export interface CabinFilters {
   search?: string;
   page?: number;
   limit?: number;
-  lat?: number;
-  lng?: number;
-  radius?: number;
-  amenities?: string;
-  sortBy?: 'distance' | 'price' | 'rating' | 'name';
-}
-
-interface RoomElement {
-  id: string;
-  type: string;
-  position: {
-    x: number;
-    y: number;
-  };
+  city?: string;
+  sortBy?: 'price' | 'rating' | 'name';
 }
 
 export const cabinsService = {
   getAllCabins: async (filters?: CabinFilters) => {
     try {
-      const response = await axios.get('/cabins/filter', { params: filters });
+      let query = supabase.from('cabins').select('*', { count: 'exact' }).eq('is_active', true);
+
+      if (filters?.category) query = query.eq('category', filters.category);
+      if (filters?.search) query = query.ilike('name', `%${filters.search}%`);
+      if (filters?.minPrice) query = query.gte('price', filters.minPrice);
+      if (filters?.maxPrice) query = query.lte('price', filters.maxPrice);
+      if (filters?.city) query = query.ilike('city', `%${filters.city}%`);
+
+      const limit = filters?.limit || 20;
+      const from = ((filters?.page || 1) - 1) * limit;
+      query = query.range(from, from + limit - 1);
+
+      if (filters?.sortBy === 'price') query = query.order('price');
+      else if (filters?.sortBy === 'name') query = query.order('name');
+      else query = query.order('created_at', { ascending: false });
+
+      const { data, error, count } = await query;
       return {
-        success: true,
-        data: response.data.data || response.data,
-        count: response.data.total || 0,
-        totalPages: response.data.pagination?.next?.page || 1
+        success: !error,
+        data: data || [],
+        count: count || 0,
+        totalPages: Math.ceil((count || 0) / limit),
       };
     } catch (error) {
       console.error('Error fetching cabins:', error);
-      return {
-        success: false,
-        error,
-        data: [],
-        count: 0,
-        totalPages: 1
-      };
+      return { success: false, error, data: [], count: 0, totalPages: 1 };
     }
   },
+
   getAllCabinsWithOutFilter: async (filters?: CabinFilters) => {
     try {
-      const response = await axios.get('/cabins/for-reviews/all', { params: filters });
+      const { data, error, count } = await supabase
+        .from('cabins')
+        .select('*', { count: 'exact' })
+        .eq('is_active', true);
       return {
-        success: true,
-        data: response.data.data || response.data,
-        count: response.data.total || 0,
-        totalPages: response.data.pagination?.next?.page || 1
+        success: !error,
+        data: data || [],
+        count: count || 0,
+        totalPages: 1,
       };
     } catch (error) {
       console.error('Error fetching cabins:', error);
-      return {
-        success: false,
-        error,
-        data: [],
-        count: 0,
-        totalPages: 1
-      };
+      return { success: false, error, data: [], count: 0, totalPages: 1 };
     }
   },
-  
-  
+
   getFeaturedCabins: async () => {
     try {
-      const response = await axios.get('/cabins/featured-cabins');
-      return {
-        success: true,
-        data: response.data.data || response.data
-      };
+      const { data, error } = await supabase
+        .from('cabins')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(6);
+      return { success: !error, data: data || [] };
     } catch (error) {
       console.error('Error fetching featured cabins:', error);
-      return {
-        success: false,
-        error,
-        data: []
-      };
+      return { success: false, error, data: [] };
     }
   },
-  
+
   getCabinById: async (id: string) => {
     try {
-      const response = await axios.get(`/cabins/${id}`);
-      return {
-        success: true,
-        data: response.data.data || response.data
-      };
+      const { data, error } = await supabase
+        .from('cabins')
+        .select('*')
+        .eq('id', id)
+        .single();
+      return { success: !error, data };
     } catch (error) {
       console.error(`Error fetching cabin with id ${id}:`, error);
-      return {
-        success: false,
-        error
-      };
+      return { success: false, error };
     }
   },
-  
+
   getCabinsByCategory: async (category: string) => {
     try {
-      const response = await axios.get(`/cabins/category/${category}`);
-      return {
-        success: true,
-        data: response.data.data || response.data
-      };
+      const { data, error } = await supabase
+        .from('cabins')
+        .select('*')
+        .eq('is_active', true)
+        .eq('category', category);
+      return { success: !error, data: data || [] };
     } catch (error) {
       console.error(`Error fetching cabins in category ${category}:`, error);
-      return {
-        success: false,
-        error,
-        data: []
-      };
+      return { success: false, error, data: [] };
     }
-  }
+  },
 };
