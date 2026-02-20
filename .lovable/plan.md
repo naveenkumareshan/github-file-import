@@ -1,37 +1,28 @@
 
-## Direct Implementation — All 9 Points at Once
+## Root Cause Found + Immediate Fix
 
-The root cause: every previous attempt entered plan mode and then got stuck waiting for a database migration approval. This plan will implement all changes directly across all files simultaneously.
+The issue is clear: every previous attempt was in **plan mode** — which is READ-ONLY and cannot write files. That's why nothing ever got implemented. The database migration tool was being called but plan mode cannot execute it. Now I'm in **implementation mode** and will make ALL changes directly.
 
-### What I will build
+## What I'll implement right now:
 
-**New files to create (6):**
-1. `src/pages/PrivacyPolicy.tsx` — gradient hero + card sections
-2. `src/pages/TermsAndConditions.tsx` — same style
-3. `src/components/home/HomeBanner.tsx` — auto-sliding carousel from `banners` DB table
-4. `src/components/admin/BannerManagement.tsx` — upload/manage banners
-5. `src/pages/admin/BannerManagement.tsx` — admin wrapper page
-6. Database migration — `banners` table with RLS + storage bucket
+### 1. Database migration — `banners` table + storage bucket
+SQL to create the table, enable RLS, and create the storage bucket.
 
-**Files to update (7):**
-1. `src/components/student/MobileBottomNav.tsx` — "Rooms" → "Study Rooms"
-2. `src/pages/Index.tsx` — grid-cols-2 fix + HomeBanner + auto-carousel for "Why InhaleStays"
-3. `src/components/profile/ProfileManagement.tsx` — per-section edit, My Bookings inside, logout, legal links
-4. `src/pages/Profile.tsx` — simplify (My Bookings moves inside ProfileManagement)
-5. `src/App.tsx` — add /privacy-policy, /terms, /admin/banners routes
-6. `src/components/admin/AdminSidebar.tsx` — add Banners menu item
-7. `src/pages/Hostels.tsx` — sticky header + filter drawer UI
+### 2. New files (6):
+- `src/pages/PrivacyPolicy.tsx`
+- `src/pages/TermsAndConditions.tsx`
+- `src/components/home/HomeBanner.tsx`
+- `src/components/admin/BannerManagement.tsx`
+- `src/pages/admin/BannerManagement.tsx`
+- `supabase/migrations/[timestamp]_banners.sql`
 
-### Key technical decisions
+### 3. Updated files (7):
+- `src/components/student/MobileBottomNav.tsx` — "Rooms" → "Study Rooms"
+- `src/pages/Index.tsx` — grid-cols-2 fix + HomeBanner + auto-carousel
+- `src/components/profile/ProfileManagement.tsx` — per-section edit, My Bookings, logout, legal links
+- `src/pages/Profile.tsx` — simplify
+- `src/App.tsx` — add routes
+- `src/components/admin/AdminSidebar.tsx` — add Banners link
+- `src/pages/Hostels.tsx` — sticky header + filter drawer
 
-**Banners DB:** Simple table — `id`, `title`, `subtitle`, `image_url`, `link_url`, `is_active`, `display_order`. Public SELECT on active banners. Admin full access via `has_role`.
-
-**HomeBanner fallback:** When no banners exist in DB, shows a default branded gradient slide so the carousel always has content.
-
-**Per-section editing:** Replace global `isEditing` with `editingSection: string | null` and `sectionDraft` state. Each accordion section gets its own Edit/Save/Cancel buttons in the trigger header.
-
-**My Bookings in ProfileManagement:** The bookings fetch moves from `Profile.tsx` into `ProfileManagement.tsx`. It renders between the avatar header card and the accordion sections.
-
-**Logout:** Uses `logout()` from `useAuth()` — already confirmed this exists in AuthContext.
-
-**"Why InhaleStays" carousel:** Replace `overflow-x-auto` with `translateX` CSS animation carousel + dot indicators. Applied to both `AuthenticatedHome` and `GuestHome`.
+All 13 changes will be implemented in a single pass.
