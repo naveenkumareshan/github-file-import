@@ -84,45 +84,26 @@ export default function Hostels() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="px-3 py-3 max-w-lg mx-auto">
-        <h1 className="text-[17px] font-semibold mb-3">Find Your Hostel</h1>
+      {/* Sticky header */}
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
+        <div className="px-3 pt-3 pb-2 max-w-lg mx-auto">
+          <h1 className="text-[16px] font-semibold mb-2">Find Your Hostel</h1>
 
-        {/* Popular Cities */}
-        <div className="mb-3">
-          <p className="text-[12px] font-semibold text-muted-foreground mb-2">Popular Cities</p>
-          <div className="flex gap-2 overflow-x-auto pb-1 -mx-3 px-3 scrollbar-hide">
-            {popularCityList.map((city) => (
-              <button
-                key={city}
-                onClick={() => handleCityChange(city)}
-                className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl border text-[12px] font-medium transition-colors ${
-                  cityFilter === city
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-card text-foreground border-border hover:bg-muted'
-                }`}
-              >
-                <Hotel className="h-3.5 w-3.5" />
-                {city}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Search & Filters */}
-        <div className="mb-3 space-y-2 bg-muted/30 p-3 rounded-2xl">
-          <div className="relative">
+          {/* Search bar */}
+          <div className="relative mb-2">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground h-3.5 w-3.5" />
             <Input
               type="text"
-              placeholder="Search hostels by name or location..."
+              placeholder="Search by name or location..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-8 h-9 text-[13px] rounded-xl"
             />
           </div>
 
-          <div className="flex flex-wrap gap-2 items-center">
-            <Button onClick={handleFindNearby} variant="outline" size="sm" disabled={nearbyLoading} className="h-8 text-[12px] rounded-xl">
+          {/* Filters row */}
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            <Button onClick={handleFindNearby} variant="outline" size="sm" disabled={nearbyLoading} className="h-8 text-[11px] rounded-xl flex-shrink-0">
               <MapPin className="h-3.5 w-3.5 mr-1" />
               {nearbyLoading ? 'Finding...' : 'Near Me'}
             </Button>
@@ -130,7 +111,7 @@ export default function Hostels() {
               <button
                 key={g}
                 onClick={() => setGenderFilter(genderFilter === g ? '' : g)}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-colors ${
+                className={`flex-shrink-0 px-3 py-1 rounded-xl text-[11px] font-medium border transition-colors h-8 ${
                   genderFilter === g
                     ? 'bg-primary text-primary-foreground border-primary'
                     : 'bg-card text-foreground border-border'
@@ -139,10 +120,24 @@ export default function Hostels() {
                 {g}
               </button>
             ))}
+            {popularCityList.map((city) => (
+              <button
+                key={city}
+                onClick={() => handleCityChange(city)}
+                className={`flex-shrink-0 flex items-center gap-1 px-3 py-1 rounded-xl border text-[11px] font-medium transition-colors h-8 ${
+                  cityFilter === city
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-card text-foreground border-border hover:bg-muted'
+                }`}
+              >
+                <Hotel className="h-3 w-3" />
+                {city}
+              </button>
+            ))}
           </div>
 
           {cityFilter && (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 mt-1.5">
               <span className="text-[11px] text-muted-foreground">City:</span>
               <Badge variant="outline" className="text-[11px] flex items-center gap-1">
                 {cityFilter}
@@ -151,8 +146,10 @@ export default function Hostels() {
             </div>
           )}
         </div>
+      </div>
 
-        {/* Results */}
+      {/* Results */}
+      <div className="px-3 py-3 max-w-lg mx-auto">
         {loading ? (
           <div className="space-y-2.5">
             {[...Array(4)].map((_, i) => (
