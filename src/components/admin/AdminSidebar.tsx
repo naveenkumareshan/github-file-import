@@ -270,6 +270,12 @@ export function AdminSidebar() {
         icon: Map,
         roles: ['admin'],
         url: '/admin/locations'
+      },
+      {
+        title: 'Banners',
+        icon: Bell,
+        roles: ['admin'],
+        url: '/admin/banners'
       }
     );
   } else {

@@ -6,12 +6,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   BookOpen, Hotel, Wifi, Shield, Clock, Coffee,
   Star, Users, ChevronRight, Leaf, CheckCircle,
-  Calendar, ClipboardList, Shirt, BookMarked,
+  ClipboardList, Shirt, BookMarked,
 } from 'lucide-react';
 import inhalestaysLogo from '@/assets/inhalestays-logo.png';
 import { useAuth } from '@/contexts/AuthContext';
 import { bookingsService } from '@/api/bookingsService';
 import { differenceInDays, format } from 'date-fns';
+import { HomeBanner } from '@/components/home/HomeBanner';
 
 /* ─── Authenticated home view ───────────────────────────────────────── */
 const AuthenticatedHome: React.FC<{ user: any }> = ({ user }) => {
@@ -67,6 +68,9 @@ const AuthenticatedHome: React.FC<{ user: any }> = ({ user }) => {
       </section>
 
       <div className="px-4 py-4 max-w-lg mx-auto w-full space-y-4">
+        {/* Banner carousel */}
+        <HomeBanner />
+
         {/* Active booking card */}
         <div>
           <p className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Current Booking</p>
@@ -118,17 +122,17 @@ const AuthenticatedHome: React.FC<{ user: any }> = ({ user }) => {
           )}
         </div>
 
-        {/* Quick actions */}
+        {/* Quick actions — 2x2 grid */}
         <div>
           <p className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Quick Actions</p>
-          <div className="grid grid-cols-4 gap-2.5">
+          <div className="grid grid-cols-2 gap-2.5">
             {quickActions.map((a) => (
               <Link key={a.label} to={a.to} className="block">
-                <div className="flex flex-col items-center gap-1.5 p-2.5 bg-card rounded-2xl border active:scale-95 transition-transform text-center">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${a.color}`}>
+                <div className="flex items-center gap-3 p-3 bg-card rounded-2xl border active:scale-95 transition-transform">
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${a.color}`}>
                     <a.icon className="w-4 h-4" />
                   </div>
-                  <span className="text-[10px] font-medium text-foreground leading-tight">{a.label}</span>
+                  <span className="text-[12px] font-medium text-foreground leading-tight">{a.label}</span>
                 </div>
               </Link>
             ))}
@@ -268,7 +272,7 @@ const GuestHome: React.FC = () => {
             ].map((s) => (
               <Card key={s.step} className="flex-shrink-0 w-40 border-0 shadow-sm bg-card">
                 <CardContent className="p-3 flex flex-col gap-2">
-                  <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${s.from} ${s.to} flex items-center justify-center text-white font-bold text-[13px] shadow-sm`}>
+                  <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${s.from} ${s.to} flex items-center justify-center text-primary-foreground font-bold text-[13px] shadow-sm`}>
                     {s.step}
                   </div>
                   <p className="font-semibold text-[12px] text-foreground">{s.title}</p>
@@ -300,7 +304,7 @@ const GuestHome: React.FC = () => {
                   </div>
                   <p className="text-muted-foreground text-[11px] leading-relaxed">"{t.review}"</p>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <div className={`w-7 h-7 ${t.color} rounded-lg flex items-center justify-center text-white text-[10px] font-bold`}>{t.initial}</div>
+                    <div className={`w-7 h-7 ${t.color} rounded-lg flex items-center justify-center text-primary-foreground text-[10px] font-bold`}>{t.initial}</div>
                     <div>
                       <p className="text-[11px] font-semibold text-foreground">{t.name}</p>
                       <p className="text-[10px] text-muted-foreground">{t.role}</p>

@@ -6,10 +6,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { User, MailIcon, PhoneIcon, GraduationCap, UserCheck, Building2, Shield, AlertTriangle, Pencil, X, Check } from 'lucide-react';
+import { User, MailIcon, GraduationCap, Shield, AlertTriangle, Pencil, X, Check, LogOut, FileText, Lock } from 'lucide-react';
 import { userProfileService } from '@/api/userProfileService';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { Link } from 'react-router-dom';
 
 interface ProfileData {
   id?: string;
@@ -42,6 +44,7 @@ const defaultProfile: ProfileData = {
 };
 
 export const ProfileManagement = () => {
+  const { logout } = useAuth();
   const [profile, setProfile] = useState<ProfileData>(defaultProfile);
   const [isLoading, setIsLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -315,6 +318,26 @@ export const ProfileManagement = () => {
           </AccordionContent>
         </AccordionItem>
       </Accordion>
+
+      {/* Legal links */}
+      <div className="flex items-center justify-center gap-4 pt-1">
+        <Link to="/privacy-policy" className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors">
+          <Lock className="h-3 w-3" /> Privacy Policy
+        </Link>
+        <span className="text-muted-foreground text-[11px]">·</span>
+        <Link to="/terms" className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-primary transition-colors">
+          <FileText className="h-3 w-3" /> Terms
+        </Link>
+      </div>
+
+      {/* Logout */}
+      <Button
+        variant="outline"
+        className="w-full rounded-2xl h-11 text-[13px] text-destructive border-destructive/30 hover:bg-destructive/5 gap-2"
+        onClick={logout}
+      >
+        <LogOut className="h-4 w-4" /> Logout
+      </Button>
     </div>
   );
 };

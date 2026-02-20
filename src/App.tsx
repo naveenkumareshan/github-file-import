@@ -46,8 +46,11 @@ const AdminBookingDetail = lazy(() => import("./pages/AdminBookingDetail"));
 const AdminStudents = lazy(() => import("./pages/AdminStudents"));
 const ReviewsManagement = lazy(() => import("./pages/admin/ReviewsManagement"));
 const ErrorLogManagement = lazy(() => import("./components/admin/ErrorLogManagement"));
+const BannerManagementPage = lazy(() => import("./pages/admin/BannerManagement"));
 
 // Student / public pages
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const TermsAndConditions = lazy(() => import("./pages/TermsAndConditions"));
 const HomePage = lazy(() => import("./pages/Index"));
 const About = lazy(() => import("./pages/About"));
 const Login = lazy(() => import("./pages/StudentLogin"));
@@ -130,6 +133,7 @@ function App() {
               <Route path="manual-bookings" element={<ManualBookingManagement />} />
               <Route path="/admin/manual-bookings/:type/:bookingId" element={<ManualBookingManagement />} />
               <Route path="profile" element={<VendorProfilePage />} />
+              <Route path="banners" element={<BannerManagementPage />} />
             </Route>
 
             {/* ── Vendor routes ── */}
@@ -169,6 +173,8 @@ function App() {
               <Route path="/booking-confirmation/:bookingId" element={<StudentSuspense><HostelBookConfirmation /></StudentSuspense>} />
               <Route path="/laundry" element={<StudentSuspense><Laundry /></StudentSuspense>} />
               <Route path="/laundry-request" element={<StudentSuspense><LaundryRequest /></StudentSuspense>} />
+              <Route path="/privacy-policy" element={<StudentSuspense><PrivacyPolicy /></StudentSuspense>} />
+              <Route path="/terms" element={<StudentSuspense><TermsAndConditions /></StudentSuspense>} />
               <Route path="/booking/:cabinId" element={<StudentSuspense><Booking /></StudentSuspense>} />
               <Route path="/book-seat/:cabinId" element={<StudentSuspense><BookSeat /></StudentSuspense>} />
               <Route path="/book-confirmation/:bookingId" element={<StudentSuspense><BookConfirmation /></StudentSuspense>} />

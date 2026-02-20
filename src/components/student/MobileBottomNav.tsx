@@ -12,7 +12,7 @@ const tabs = [
     isActive: (pathname: string) => pathname === '/',
   },
   {
-    label: 'Rooms',
+    label: 'Study Rooms',
     icon: BookOpen,
     to: '/cabins',
     isActive: (pathname: string) =>
