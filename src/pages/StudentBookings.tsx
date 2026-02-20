@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { BookingsList } from '@/components/booking/BookingsList';
 import { useToast } from '@/hooks/use-toast';
-import { bookingManagementService } from '@/api/bookingManagementService';
+import { bookingsService } from '@/api/bookingsService';
 import { format } from 'date-fns';
 import { Calendar, Building, BookOpen, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -49,30 +49,32 @@ const StudentBookings = () => {
     try {
       setIsLoading(true);
       const mapBooking = (booking: any) => ({
-        id: booking._id || booking.id,
-        startDate: booking.startDate,
-        endDate: booking.endDate,
-        status: booking.status,
-        createdAt: booking.createdAt,
-        totalPrice: booking.totalPrice,
-        originalPrice: booking.originalPrice,
-        appliedCoupon: booking.appliedCoupon,
-        seatPrice: booking.seatPrice,
-        cabinId: booking.cabinId,
-        seatId: booking.seatId,
-        paymentStatus: booking.paymentStatus,
-        bookingType: booking.cabinId ? 'cabin' : booking.hostelId ? 'hostel' : 'laundry',
-        itemName: booking.cabinId?.name || booking.hostelId?.name || 'Laundry Service',
-        itemNumber: booking.seatId?.number || booking.bedId?.number || 0,
-        itemImage: booking.cabinId?.imageUrl || booking.hostelId?.logoImage,
-        bookingStatus: booking.bookingStatus,
-        location: booking.location,
-        keyDeposit: booking.keyDeposit,
+        id: booking.id,
+        startDate: booking.start_date,
+        endDate: booking.end_date,
+        status: booking.payment_status,
+        createdAt: booking.created_at,
+        totalPrice: booking.total_price,
+        originalPrice: booking.total_price,
+        appliedCoupon: undefined,
+        seatPrice: booking.total_price,
+        cabinId: booking.cabin_id,
+        seatId: null,
+        paymentStatus: booking.payment_status,
+        bookingType: 'cabin' as const,
+        itemName: booking.cabins?.name || 'Reading Room',
+        itemNumber: booking.seat_number || 0,
+        itemImage: booking.cabins?.image_url,
+        bookingStatus: booking.payment_status,
+        location: booking.cabins?.city,
+        keyDeposit: undefined,
+        cabinCode: booking.cabin_id || '',
+        transferredHistory: null,
       });
 
       const [currentRes, historyRes] = await Promise.all([
-        bookingManagementService.getCurrentBookings(),
-        bookingManagementService.getBookingHistory(),
+        bookingsService.getCurrentBookings(),
+        bookingsService.getBookingHistory(),
       ]);
 
       setCurrentBookings(currentRes.success ? currentRes.data.map(mapBooking) : []);
