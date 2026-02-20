@@ -240,15 +240,28 @@ const AdminStudents = () => {
 
   return (
     <ErrorBoundary>
-      <div className="container mx-auto p-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
+      <div className="flex flex-col gap-6">
+        {/* Page Header */}
+        <div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+            <span>Admin Panel</span>
+            <span>/</span>
+            <span className="text-foreground font-medium">User Management</span>
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight">User Management</h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            Manage student accounts, view booking history, and update user details.
+          </p>
+        </div>
+
+        <Card className="shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between pb-4 border-b">
             <div>
-              <CardTitle className="text-2xl font-bold">
-                {role == "student" ? "Students" : "Vendors"} Management
+              <CardTitle className="text-lg font-semibold">
+                {role === "student" ? "Students" : "Vendors"}
               </CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                Total: {totalUsers} {role == "student" ? "Students" : "Vendors"}
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {totalUsers} {role === "student" ? "students" : "vendors"} total
               </p>
             </div>
           </CardHeader>

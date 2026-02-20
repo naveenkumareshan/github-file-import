@@ -30,8 +30,8 @@ export function ImageUpload({
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   
-  // Use both existing and locally uploaded images
-  const allImages = [...existingImages, ...uploadedImages.filter(img => !existingImages.includes(img))];
+  // Use both existing and locally uploaded images (filter out falsy values)
+  const allImages = [...existingImages.filter(Boolean), ...uploadedImages.filter(img => img && !existingImages.includes(img))];
   
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -104,7 +104,7 @@ export function ImageUpload({
   };
   
   const handleRemove = async (url: string) => {
-    if (!onRemove) return;
+    if (!url || !onRemove) return;
     
     try {
       // If it's a URL from backend, delete it there too
