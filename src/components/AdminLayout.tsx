@@ -23,7 +23,7 @@ const routeLabels: Record<string, string> = {
   "/admin/locations": "Locations",
   "/admin/banners": "Banners",
   "/admin/settings": "Settings",
-  "/admin/deposits-restrictions": "Finance",
+  "/admin/deposits-restrictions": "Key Deposits",
   "/admin/reviews": "Reviews",
   "/admin/employees": "Employees",
   "/admin/vendorpayouts": "Payouts",

@@ -99,19 +99,69 @@ export function AdminSidebar() {
     });
   }
 
-  if (user?.role === 'admin' || user?.role == 'vendor') {
-    menuItems.push({
-      title: "Finance",
-      roles: ['admin','vendor'],
-      icon: Wallet,
-      subItems: [
+  if (user?.role === 'admin' || hasPermission('view_bookings')) {
+    const bookingSubItems = [];
+    
+    if (user?.role === 'admin' || hasPermission('view_bookings')) {
+      bookingSubItems.push({
+        title: 'All Transactions',
+        url: '/admin/bookings',
+        icon: Calendar,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+        permissions: ['view_bookings']
+      });
+    }
+    
+    if (user?.role === 'admin' || user?.role=='vendor') {
+      bookingSubItems.push(
         {
-          title: "Key Deposits",
-          url: "/admin/deposits-restrictions",
+          title: 'Transfer Seat',
+          url: '/admin/seat-transfer',
+          icon: ArrowLeftRight,
+          roles: ['admin','vendor']
+        },
+        {
+          title: 'Manual Booking',
+          url: '/admin/manual-bookings',
+          icon: BookOpen,
+          roles: ['admin','vendor']
+        },
+        {
+          title: 'Key Deposits',
+          url: '/admin/deposits-restrictions',
           icon: Wallet,
           roles: ['admin','vendor']
         }
-      ]
+      );
+    }
+
+    if (bookingSubItems.length > 0) {
+      menuItems.push({
+        title: 'Bookings',
+        icon: Calendar,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+        permissions: ['view_bookings'],
+        subItems: bookingSubItems,
+      });
+    }
+  }
+
+  if (user?.role === 'admin' ||  hasPermission('manage_students')) {
+    menuItems.push({
+      title: 'Users',
+      icon: Users,
+      roles: ['admin', 'vendor', 'vendor_employee'],
+      subItems: [
+        { title: 'All Users', url: '/admin/students', icon: Users, roles: ['admin', 'vendor', 'vendor_employee'] },
+        { title: 'Create User', url: '/admin/students-create', icon: Plus, roles: ['admin','vendor'] },
+        { title: 'Import Users', url: '/admin/students-import', icon: Import, roles: ['admin','vendor'] },
+        {
+          title: 'Coupons',
+          url: '/admin/coupons',
+          icon: TicketPlus,
+          roles: ['admin', 'vendor', 'vendor_employee']
+        },
+      ],
     });
   }
 
@@ -161,66 +211,6 @@ export function AdminSidebar() {
           roles: ['admin', 'vendor', 'vendor_employee'],
           permissions: ['manage_reviews']
         }
-      ],
-    });
-  }
-
-  if (user?.role === 'admin' || hasPermission('view_bookings')) {
-    const bookingSubItems = [];
-    
-    if (user?.role === 'admin' || hasPermission('view_bookings')) {
-      bookingSubItems.push({
-        title: 'All Transactions',
-        url: '/admin/bookings',
-        icon: Calendar,
-        roles: ['admin', 'vendor', 'vendor_employee'],
-        permissions: ['view_bookings']
-      });
-    }
-    
-    if (user?.role === 'admin' || user?.role=='vendor') {
-      bookingSubItems.push(
-        {
-          title: 'Transfer Seat',
-          url: '/admin/seat-transfer',
-          icon: ArrowLeftRight,
-          roles: ['admin','vendor']
-        },
-        {
-          title: 'Manual Booking',
-          url: '/admin/manual-bookings',
-          icon: BookOpen,
-          roles: ['admin','vendor']
-        }
-      );
-    }
-
-    if (bookingSubItems.length > 0) {
-      menuItems.push({
-        title: 'Bookings',
-        icon: Calendar,
-        roles: ['admin', 'vendor', 'vendor_employee'],
-        permissions: ['view_bookings'],
-        subItems: bookingSubItems,
-      });
-    }
-  }
-
-  if (user?.role === 'admin' ||  hasPermission('manage_students')) {
-    menuItems.push({
-      title: 'Users',
-      icon: Users,
-      roles: ['admin', 'vendor', 'vendor_employee'],
-      subItems: [
-        { title: 'All Users', url: '/admin/students', icon: Users, roles: ['admin', 'vendor', 'vendor_employee'] },
-        { title: 'Create User', url: '/admin/students-create', icon: Plus, roles: ['admin','vendor'] },
-        { title: 'Import Users', url: '/admin/students-import', icon: Import, roles: ['admin','vendor'] },
-        {
-          title: 'Coupons',
-          url: '/admin/coupons',
-          icon: TicketPlus,
-          roles: ['admin', 'vendor', 'vendor_employee']
-        },
       ],
     });
   }
