@@ -1,44 +1,44 @@
 
 
-## Sidebar Menu Restructure
+## Fix: Show Seat Availability Map for Admin Users
 
-### Changes
+### Problem
+In `src/components/admin/AdminSidebar.tsx` (line 92), the "Seat Map" menu item has this condition:
 
-**1. Remove "Finance" menu group entirely** (lines 102-116)
-
-**2. Add "Key Deposits" as a sub-item inside the Bookings menu** — it will appear alongside "All Transactions", "Transfer Seat", and "Manual Booking".
-
-**3. Reorder menu items so Bookings and Users appear right after Dashboard:**
-
-Current order:
 ```
-Dashboard
-(Seat Map)
-Finance        <-- remove
-Hostels
-Reading Rooms
-Bookings
-Users
-...
+if (user?.role !== 'admin' && hasPermission('seats_available_map'))
 ```
 
-New order:
+This **excludes admins entirely**. The admin user never sees the "Seat Map" link in the sidebar.
+
+### Solution
+
+**File: `src/components/admin/AdminSidebar.tsx`**
+
+Change the condition on line 92 from:
+```ts
+if (user?.role !== 'admin' && hasPermission('seats_available_map'))
 ```
-Dashboard
-(Seat Map)
-Bookings       <-- moved up, now includes Key Deposits
-Users           <-- moved up
-Hostels
-Reading Rooms
-...
+to:
+```ts
+if (user?.role === 'admin' || hasPermission('seats_available_map'))
 ```
 
-### Technical Details
+Also update the `roles` array to include `'admin'`:
+```ts
+roles: ['admin', 'vendor', 'vendor_employee'],
+```
 
-In `src/components/admin/AdminSidebar.tsx`:
+This makes the Seat Map visible to admins (always) and to vendor/vendor_employee (when they have the `seats_available_map` permission).
 
-- Remove the Finance `menuItems.push` block (lines 102-116)
-- Move the Bookings block (lines 168-207) to execute right after the Seat Map block (after line 100), and add a "Key Deposits" sub-item with url `/admin/deposits-restrictions` and `Wallet` icon
-- Move the Users block (lines 209-226) to execute right after the Bookings block
-- No route, page, or logic changes — only sidebar ordering and menu structure
+### Additional Polish
+
+**File: `src/pages/vendor/VendorSeats.tsx`**
+
+Apply the same compact page header standard used across other admin pages:
+- Replace `text-3xl font-bold` title with `text-lg font-semibold` + breadcrumb
+- Reduce stat card value sizes from `text-2xl` to match dashboard KPI style
+- Compact the Refresh button to `size="sm"`
+
+No API, route, or logic changes needed -- the route `/admin/seats-available-map` already exists and renders `VendorSeats`.
 
