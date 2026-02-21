@@ -89,12 +89,12 @@ export function AdminSidebar() {
     }
   ];
 
-  if (user?.role !== 'admin' && hasPermission('seats_available_map')) {
+  if (user?.role === 'admin' || hasPermission('seats_available_map')) {
     menuItems.push({
       title: 'Seat Map',
       url: '/admin/seats-available-map',
       icon: MapIcon,
-      roles: ['vendor', 'vendor_employee'],
+      roles: ['admin', 'vendor', 'vendor_employee'],
       permissions: ['seats_available_map']
     });
   }
