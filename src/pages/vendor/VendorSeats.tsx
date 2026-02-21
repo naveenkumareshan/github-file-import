@@ -200,13 +200,11 @@ const VendorSeats: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Seat Management</h1>
-          <p className="text-muted-foreground mt-2">
-            Monitor and manage all your seats across properties
-          </p>
+          <p className="text-xs text-muted-foreground mb-1">Dashboard / Seat Map</p>
+          <h1 className="text-lg font-semibold">Seat Availability Map</h1>
         </div>
-        <Button onClick={fetchData}>
-          Refresh Data
+        <Button size="sm" variant="outline" onClick={fetchData}>
+          Refresh
         </Button>
       </div>
 
@@ -218,7 +216,7 @@ const VendorSeats: React.FC = () => {
               <MapPin className="h-5 w-5 text-blue-600" />
               <div>
                 <p className="text-sm text-muted-foreground">Total Reading Rooms</p>
-                <p className="text-2xl font-bold">{cabins.length}</p>
+                <p className="text-lg font-semibold">{cabins.length}</p>
               </div>
             </div>
           </CardContent>
@@ -229,7 +227,7 @@ const VendorSeats: React.FC = () => {
               <Users className="h-5 w-5 text-green-600" />
               <div>
                 <p className="text-sm text-muted-foreground">Total Seats</p>
-                <p className="text-2xl font-bold">{seats.length}</p>
+                <p className="text-lg font-semibold">{seats.length}</p>
               </div>
             </div>
           </CardContent>
@@ -240,7 +238,7 @@ const VendorSeats: React.FC = () => {
               <CalendarIcon className="h-5 w-5 text-orange-600" />
               <div>
                 <p className="text-sm text-muted-foreground">Occupied</p>
-                <p className="text-2xl font-bold">
+                <p className="text-lg font-semibold">
                   {seats.filter((s: VendorSeat) => !s.isAvailable).length}
                 </p>
               </div>
@@ -253,7 +251,7 @@ const VendorSeats: React.FC = () => {
               <DollarSign className="h-5 w-5 text-purple-600" />
               <div>
                 <p className="text-sm text-muted-foreground">Available</p>
-                <p className="text-2xl font-bold">
+                <p className="text-lg font-semibold">
                   {seats.filter((s: VendorSeat) => s.isAvailable).length}
                 </p>
               </div>
