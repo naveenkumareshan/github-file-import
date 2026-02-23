@@ -1,81 +1,81 @@
 
+## Fix Build Error + Add Admin Password Reset
 
-## Security Cleanup: Remove All Hardcoded Credentials
+### 1. Fix Build Error in StudentLogin.tsx
 
-### Findings
+Line 22 has a dangling `const StudentLogin` (leftover from the demo credentials removal). Remove that line so the component declaration on line 23 is the only one.
 
-**5 locations with hardcoded passwords found:**
-
-| File | Secret | Type |
-|---|---|---|
-| `src/pages/AdminLogin.tsx` | `Admin@123`, `Super@123` | Demo login passwords visible in UI |
-| `src/pages/StudentLogin.tsx` | `Student@123` | Demo login password visible in UI |
-| `src/pages/vendor/VendorLogin.tsx` | `Host@123`, `Employee@123` | Demo login passwords visible in UI |
-| `supabase/functions/seed-demo-users/index.ts` | All 5 demo passwords | Hardcoded in edge function |
-| `backend/controllers/socialAuth.js` | `Inhale123` (x3) | Default password for social auth users |
-| `backend/config/passport.js` | `Inhale123` | Default password for Google OAuth users |
-| `backend/controllers/adminBulkBookings.js` | `Inhale123` | Default password for bulk-created users |
-
-**1 Firebase API key** in `public/firebase-messaging-sw.js` -- This is a **publishable client-side key** (safe to keep in code, not a secret).
+**File:** `src/pages/StudentLogin.tsx`
+- Remove line 22 (`const StudentLogin`)
 
 ---
 
-### Remediation Plan
+### 2. Also Fix: LoginDetails.tsx Contains Hardcoded Passwords
 
-#### 1. Remove Demo Credentials from Login Pages
-
-**Files:** `src/pages/AdminLogin.tsx`, `src/pages/StudentLogin.tsx`, `src/pages/vendor/VendorLogin.tsx`
-
-- Remove the hardcoded `demoAccounts` arrays that contain plaintext emails and passwords
-- Remove the `DemoCredentials` component usage from all three login pages
-- Keep the login forms functional -- just remove the "Quick Access" demo credential panels
-
-#### 2. Remove Seed Function with Hardcoded Passwords
-
-**File:** `supabase/functions/seed-demo-users/index.ts`
-
-- Delete this entire edge function -- it contains all 5 demo passwords hardcoded
-- This function should never exist in production code
-
-#### 3. Replace Hardcoded Passwords in Backend Controllers
-
-**Files:** `backend/controllers/socialAuth.js`, `backend/config/passport.js`, `backend/controllers/adminBulkBookings.js`
-
-- Replace `'Inhale123'` with a cryptographically random password generator
-- Use `crypto.randomBytes(16).toString('hex')` to generate unique passwords for each auto-created user
-- These users authenticate via social login (Google/Facebook), so the password is never used directly -- it just needs to exist and be unique
-
-#### 4. Rotate Compromised Credentials (Manual Step)
-
-Since these passwords have been in Git history, any demo accounts using them should have their passwords changed:
-- The 5 demo accounts (`admin@`, `superadmin@`, `student@`, `host@`, `employee@inhalestays.com`) should be deleted or have passwords rotated via the backend admin panel
-- This is a manual step the project owner must perform
+The `LoginDetails.tsx` page still has hardcoded mock passwords (`admin123`, `manager456`, `student123`, etc.) in state. This page and its related components (`LoginDetailsCard`, `ChangePasswordForm`, `login-details/types.ts`) use a mock/demo pattern that stores passwords in plaintext on the client. This entire page needs to be replaced with a real admin password reset system.
 
 ---
 
-### Technical Details
+### 3. Create Edge Function for Admin Password Reset
 
-**Files to modify (6):**
+**New file:** `supabase/functions/admin-reset-password/index.ts`
+
+This edge function will:
+- Accept `{ userId: string, newPassword: string }` in the request body
+- Verify the caller is an authenticated admin using the `has_role` database function
+- Use the Supabase Admin API (`supabase.auth.admin.updateUserById`) with the service role key to set the new password
+- Return success/error response
+
+Security measures:
+- Validates JWT from Authorization header
+- Checks caller has `admin` role via `has_role()` RPC
+- Uses service role key server-side only
+- Validates password length (minimum 6 characters)
+
+---
+
+### 4. Add Password Reset Button to AdminStudents Page
+
+**File:** `src/pages/AdminStudents.tsx`
+
+- Add a "Reset Password" button in the Actions column (next to Edit and View Details) -- only visible to admins
+- Clicking opens a dialog to enter a new password
+- On submit, calls the `admin-reset-password` edge function via `supabase.functions.invoke()`
+- Shows success/error toast
+
+**New component:** `src/components/admin/AdminResetPasswordDialog.tsx`
+
+A simple dialog with:
+- Display of the target user's name/email
+- New password input field
+- Confirm password input field
+- Password validation (min 6 chars, passwords must match)
+- Submit button that invokes the edge function
+
+---
+
+### 5. Remove Legacy LoginDetails Page
+
+**Files to clean up:**
+- `src/pages/LoginDetails.tsx` -- remove hardcoded passwords, replace with a redirect or remove the route
+- The route referencing `/login-details` in `src/routes.tsx` should be removed
+
+---
+
+### Technical Summary
 
 | File | Change |
 |---|---|
-| `src/pages/AdminLogin.tsx` | Remove `demoAccounts` array and `DemoCredentials` component |
-| `src/pages/StudentLogin.tsx` | Remove `demoAccounts` array and `DemoCredentials` component |
-| `src/pages/vendor/VendorLogin.tsx` | Remove `demoAccounts` array and `DemoCredentials` component |
-| `backend/controllers/socialAuth.js` | Replace `'Inhale123'` with `crypto.randomBytes(16).toString('hex')` |
-| `backend/config/passport.js` | Replace `'Inhale123'` with random password |
-| `backend/controllers/adminBulkBookings.js` | Replace `'Inhale123'` with random password |
+| `src/pages/StudentLogin.tsx` | Fix build error: remove duplicate `const StudentLogin` on line 22 |
+| `supabase/functions/admin-reset-password/index.ts` | New edge function: admin password reset using service role |
+| `src/components/admin/AdminResetPasswordDialog.tsx` | New component: password reset dialog |
+| `src/pages/AdminStudents.tsx` | Add "Reset Password" button in user actions |
+| `src/pages/LoginDetails.tsx` | Remove hardcoded passwords, simplify or remove page |
+| `src/routes.tsx` | Remove `/login-details` route if it exists |
 
-**Files to delete (1):**
+**Database changes:** None required. Uses existing `has_role` function for authorization.
 
-| File | Reason |
-|---|---|
-| `supabase/functions/seed-demo-users/index.ts` | Contains all demo passwords hardcoded |
-
-**No database changes needed.**
-
-### What This Does NOT Fix
-
-- **Git history**: Lovable does not provide tools to rewrite Git history. The passwords will remain in past commits. This is why rotating the actual credentials (step 4) is essential.
-- **Firebase API key**: This is a publishable client-side key, not a secret. It is safe in code and does not need removal.
-
+**Security model:**
+- Only authenticated users with `admin` role can reset passwords
+- Password is set server-side using Supabase Admin API (service role key never exposed to client)
+- Minimum password length enforced both client-side and server-side
