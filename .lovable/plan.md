@@ -1,116 +1,77 @@
 
 
-## Simplify Layout Builder + Add Seat Placement Popup with Category
+## Seat Management Enhancements
 
-### What Changes
+### 1. Draggable Seats on Canvas
+Make placed seats draggable so admins can reposition them by clicking and dragging. When not in placement mode, clicking and dragging a seat will move it to a new position and save the updated coordinates.
 
-**1. Remove unnecessary UI elements from the toolbar and canvas:**
-- Remove **Width (W) and Height (H)** dimension inputs from toolbar
-- Remove **"Add Seat Section"** button
-- Remove **"Wall Element"** dropdown (Door, Window, Screen, AC, Bath)
-- Remove **RoomWalls** component rendering (Front Wall / Back Wall labels and border)
-- Remove **GridOverlay** component rendering
-- Remove the **Grid toggle** button
-- Remove the **section editor dialog** and all section-related rendering
-- Keep: Upload Layout, Place Seats, Zoom controls, Save Layout, opacity slider
+**In `FloorPlanDesigner.tsx`:**
+- Add `draggingSeatId` state and drag offset tracking
+- On seat mousedown (when not in placement mode): start dragging, track offset
+- On mousemove: update the dragged seat's position in real-time
+- On mouseup: finalize position, call a new `onSeatMove` callback to persist
+- Prevent panning while dragging a seat
 
-**2. Show a popup dialog every time a seat is placed:**
-When the admin clicks on the canvas in placement mode, instead of immediately creating the seat, show a small dialog with:
-- **Seat Number** (auto-filled, editable)
-- **Category** selector: AC / Non-AC / Premium / Economy (radio group or select)
-- **Price** (auto-filled from default, editable)
-- Confirm / Cancel buttons
+### 2. Edit Category on Existing Seat Click
+Replace the static "Category: Non-AC" text in the seat details panel with a dropdown/radio selector so admins can change the category of an already-placed seat.
 
-Only after the admin confirms does the seat get saved to the database.
+**In `SeatManagement.tsx`:**
+- Replace the plain text category display with a Select dropdown populated from the categories list
+- Add a `handleCategoryUpdate` function that calls `adminSeatsService.updateSeat` with the new category
+- When category changes, also update the seat's price to match the category's default price
 
-**3. Add `category` column to seats table:**
-A new text column to store the seat category (e.g., "AC", "Non-AC", "Premium").
+### 3. Category Management (Add/Rename Categories with Pricing)
+Create a new `seat_categories` database table so admins can define custom categories (e.g., "AC", "Non-AC", "Premium") with a default price per category. This replaces the hardcoded `SEAT_CATEGORIES` array.
 
-### Technical Details
+**Database migration:**
+- Create `seat_categories` table with columns: `id`, `cabin_id`, `name`, `price`, `created_at`
+- Seed default categories (AC, Non-AC, Premium, Economy) per cabin or globally
 
-#### Database Migration
-```sql
-ALTER TABLE public.seats ADD COLUMN category text NOT NULL DEFAULT 'Non-AC';
-```
+**New service: `src/api/seatCategoryService.ts`**
+- CRUD operations for seat categories scoped by cabin
 
-#### `src/components/seats/FloorPlanDesigner.tsx`
+**In `SeatManagement.tsx`:**
+- Add a "Manage Categories" section/dialog where admins can:
+  - Add a new category with a name and default price
+  - Edit existing category name or price
+  - Delete a category
+- Fetch categories on load and pass to FloorPlanDesigner
+- When a category's price is updated, optionally bulk-update all seats of that category
 
-**Remove from toolbar:**
-- W/H dimension inputs (lines 601-608)
-- Grid toggle button (lines 612-614)
-- "Add Seat Section" button (lines 619-621)
-- "Wall Element" dropdown (lines 624-638)
-- All dividers related to removed items
+**In `FloorPlanDesigner.tsx`:**
+- Accept `categories` as a prop instead of using hardcoded `SEAT_CATEGORIES`
+- The placement dialog uses dynamic categories from the prop
+- Price auto-fills from the selected category's default price
 
-**Remove from canvas rendering:**
-- `<RoomWalls>` component (line 736)
-- `<GridOverlay>` component (line 737)
-- Wall elements rendering block (lines 740-770)
-- Sections rendering block (lines 773-841)
-- Section legend items (lines 899-907)
-- Section editor dialog (lines 910-920)
+### 4. Price Controlled by Category
+When placing or editing a seat, the price auto-fills based on the selected category's configured price. Admins can still override per-seat, but the category price is the default.
 
-**Remove state/logic:**
-- `showGrid`, wall element dragging state, section dragging/resizing state, section editor state
-- `handleAddSeatSection`, `handleAddWallElement`, `handleDeleteElement`, `constrainToWall`, resize handlers, section drag handlers
-- Remove `STRUCTURAL_COLORS`, `WALL_ELEMENT_TYPES`, `WALL_ELEMENT_STYLES`, resize-related types
+### 5. Remove Image Details Display
+Remove the "Position: X: ..., Y: ..." column from the seat details panel (the screenshot shows it -- it's unnecessary clutter).
 
-**Modify placement mode click handler:**
-- Instead of calling `onPlaceSeat` immediately, set a `pendingSeat` state with the clicked position
-- Show a `SeatPlacementDialog` with seat number, category selector, and price
-- On confirm, call `onPlaceSeat` with the full details including category
-- On cancel, clear `pendingSeat`
+**In `SeatManagement.tsx`:**
+- Remove the Position column from the selected seat details grid
+- Change grid from `grid-cols-4` to `grid-cols-3`
 
-**New `SeatPlacementDialog` component (inline in same file):**
-- Props: open, position, defaultNumber, defaultPrice, onConfirm, onCancel
-- Fields: Seat Number (input), Category (radio group: AC, Non-AC, Premium, Economy), Price (input)
-- On confirm calls back with `{ number, category, price }`
+---
 
-**Update `onPlaceSeat` prop signature:**
-```typescript
-onPlaceSeat?: (position: {x: number, y: number}, number: number, price: number, category: string) => void;
-```
+### Technical Summary
 
-**Update `FloorPlanSeat` type:**
-```typescript
-export interface FloorPlanSeat {
-  // ... existing fields
-  category?: string;
-}
-```
-
-#### `src/api/adminSeatsService.ts`
-
-- Add `category` to `SeatData` interface
-- Add `category` to `mapRow` function
-- Add `category` to `createSeat`, `updateSeat`, `bulkCreateSeats` methods
-
-#### `src/pages/SeatManagement.tsx`
-
-- Update `handlePlaceSeat` to accept and pass `category` parameter
-- Update seat details panel to show category
-- Remove props no longer needed: `onGenerateSeatsForSection`, `onAddSeatToSection`, `onDeleteSectionWithSeats`, section-related state
-- Keep: `onPlaceSeat`, `onDeleteSeat`, layout image handling, save, floors
-
-#### Props cleanup on FloorPlanDesigner
-Remove these props (no longer needed):
-- `gridSize`, `onRoomDimensionsChange`
-- `sections`, `onSectionsChange`
-- `roomElements`, `onRoomElementsChange`
-- `onGenerateSeatsForSection`, `onAddSeatToSection`, `onDeleteSectionWithSeats`
-
-Keep:
-- `cabinId`, `roomWidth`, `roomHeight`, `seats`, `onSeatsChange`
-- `onSeatSelect`, `selectedSeat`, `onSave`, `onDeleteSeat`, `onPlaceSeat`
-- `layoutImage`, `layoutImageOpacity`, `onLayoutImageChange`, `onLayoutImageOpacityChange`
-- `isSaving`
-
-### Files Summary
-
-| File | Action |
+| File | Changes |
 |---|---|
-| Database migration | Add `category` text column to `seats` |
-| `src/components/seats/FloorPlanDesigner.tsx` | Major cleanup: remove walls, grid, sections, wall elements; add SeatPlacementDialog popup with category |
-| `src/pages/SeatManagement.tsx` | Simplify props, add category to placement handler and seat details |
-| `src/api/adminSeatsService.ts` | Add `category` field to create/update/map |
+| Database migration | Create `seat_categories` table (id, cabin_id, name, price, created_at) with default rows |
+| `src/api/seatCategoryService.ts` | New file -- CRUD for seat categories |
+| `src/components/seats/FloorPlanDesigner.tsx` | Add drag-to-move seats, accept dynamic categories prop, remove hardcoded SEAT_CATEGORIES |
+| `src/pages/SeatManagement.tsx` | Add category management UI, editable category on seat details, drag handler, remove position display |
+| `src/api/adminSeatsService.ts` | No changes needed (already supports category) |
 
+### Database Schema
+
+```text
+seat_categories
+  id          uuid  PK  default gen_random_uuid()
+  cabin_id    uuid  FK -> cabins(id)
+  name        text  NOT NULL
+  price       numeric NOT NULL default 0
+  created_at  timestamptz default now()
+```
