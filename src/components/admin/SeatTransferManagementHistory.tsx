@@ -2,8 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -241,95 +240,53 @@ export function SeatTransferManagementHistory() {
     <div className="space-y-4">
       {/* Filters */}
       <Card className="border border-border/60 rounded-xl shadow-sm">
-        <CardContent className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
-            <div>
-              <Label className="text-xs font-medium text-muted-foreground">Search</Label>
-              <Input
-                id="search"
-                placeholder="Booking ID, student name..."
-                value={filters.search}
-                onChange={(e) => handleFilterChange('search', e.target.value)}
-                className="h-8 text-sm"
-              />
-            </div>
-            <div>
-              <Label className="text-xs font-medium text-muted-foreground">Reading Room</Label>
-              <Select value={filters.cabin} onValueChange={(value) => handleFilterChange('cabin', value)}>
-                <SelectTrigger className="h-8 text-sm">
-                  <SelectValue placeholder="All reading rooms" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Reading Rooms</SelectItem>
-                  {cabins.map((cabin) => (
-                    <SelectItem key={cabin._id} value={cabin._id}>
-                      {cabin.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="text-xs font-medium text-muted-foreground">Sort By</Label>
-              <Select value={filters.sortBy} onValueChange={(value) => handleFilterChange('sortBy', value)}>
-                <SelectTrigger className="h-8 text-sm">
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="createdAt">Created Date</SelectItem>
-                  <SelectItem value="startDate">Start Date</SelectItem>
-                  <SelectItem value="endDate">End Date</SelectItem>
-                  <SelectItem value="totalPrice">Amount</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
-            <div>
-              <Label className="text-xs font-medium text-muted-foreground">Start Date</Label>
-              <Input
-                id="startDate"
-                type="date"
-                value={filters.startDate}
-                onChange={(e) => handleFilterChange('startDate', e.target.value)}
-                className="h-8 text-sm"
-              />
-            </div>
-            <div>
-              <Label className="text-xs font-medium text-muted-foreground">End Date</Label>
-              <Input
-                id="endDate"
-                type="date"
-                value={filters.endDate}
-                onChange={(e) => handleFilterChange('endDate', e.target.value)}
-                className="h-8 text-sm"
-              />
-            </div>
-            <div className="flex items-end gap-2">
-              <Button variant="outline" size="sm" onClick={clearFilters}>
-                Clear Filters
-              </Button>
-              <Select value={filters.order} onValueChange={(value) => handleFilterChange('order', value as 'asc' | 'desc')}>
-                <SelectTrigger className="w-20 h-8 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="desc">↓</SelectItem>
-                  <SelectItem value="asc">↑</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => exportData('csv')} className="flex items-center gap-2">
-              <Download className="h-3.5 w-3.5" />
-              Export CSV
+        <CardContent className="p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              placeholder="Search booking ID, name..."
+              value={filters.search}
+              onChange={(e) => handleFilterChange('search', e.target.value)}
+              className="h-8 text-sm w-48"
+            />
+            <Select value={filters.cabin} onValueChange={(value) => handleFilterChange('cabin', value)}>
+              <SelectTrigger className="h-8 text-sm w-40">
+                <SelectValue placeholder="All rooms" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Reading Rooms</SelectItem>
+                {cabins.map((cabin) => (
+                  <SelectItem key={cabin._id} value={cabin._id}>{cabin.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filters.sortBy} onValueChange={(value) => handleFilterChange('sortBy', value)}>
+              <SelectTrigger className="h-8 text-sm w-32">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="createdAt">Created Date</SelectItem>
+                <SelectItem value="startDate">Start Date</SelectItem>
+                <SelectItem value="endDate">End Date</SelectItem>
+                <SelectItem value="totalPrice">Amount</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filters.order} onValueChange={(value) => handleFilterChange('order', value as 'asc' | 'desc')}>
+              <SelectTrigger className="w-16 h-8 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="desc">↓</SelectItem>
+                <SelectItem value="asc">↑</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input type="date" value={filters.startDate} onChange={(e) => handleFilterChange('startDate', e.target.value)} className="h-8 text-sm w-36" />
+            <Input type="date" value={filters.endDate} onChange={(e) => handleFilterChange('endDate', e.target.value)} className="h-8 text-sm w-36" />
+            <Button variant="outline" size="sm" onClick={clearFilters} className="h-8">Clear</Button>
+            <Button variant="outline" size="sm" onClick={() => exportData('csv')} className="h-8 flex items-center gap-1">
+              <Download className="h-3.5 w-3.5" /> CSV
             </Button>
-            <Button variant="outline" size="sm" onClick={() => exportData('xlsx')} className="flex items-center gap-2">
-              <FileSpreadsheet className="h-3.5 w-3.5" />
-              Export Excel
+            <Button variant="outline" size="sm" onClick={() => exportData('xlsx')} className="h-8 flex items-center gap-1">
+              <FileSpreadsheet className="h-3.5 w-3.5" /> Excel
             </Button>
           </div>
         </CardContent>

@@ -73,10 +73,6 @@ export default function AdminHostelBookings() {
       {/* Page Header */}
       <div className="flex items-start justify-between">
         <div>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-            <span>Admin Panel</span><span>/</span>
-            <span className="text-foreground font-medium">Hostel Bookings</span>
-          </div>
           <h1 className="text-lg font-semibold tracking-tight">Hostel Bookings</h1>
           <p className="text-xs text-muted-foreground mt-0.5">Manage all hostel bookings from students</p>
         </div>
