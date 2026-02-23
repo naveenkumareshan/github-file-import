@@ -1,132 +1,156 @@
 
 
-## Implementation Plan: Fix Login, Add Partner Portal Button, Full Internal Rename
+## Fix Admin / Student / Partner Panels: Performance and Error Handling
 
-### 1. Fix Login Issues (Database + Auth)
-
-**Database Migration** -- Update the `handle_new_user` trigger to auto-insert a default `student` role into `user_roles`:
-
-```sql
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path TO 'public'
-AS $$
-BEGIN
-  INSERT INTO public.profiles (id, name, email)
-  VALUES (NEW.id, NEW.raw_user_meta_data->>'name', NEW.email)
-  ON CONFLICT (id) DO NOTHING;
-
-  INSERT INTO public.user_roles (user_id, role)
-  VALUES (NEW.id, 'student')
-  ON CONFLICT (user_id, role) DO NOTHING;
-
-  RETURN NEW;
-END;
-$$;
-```
-
-**Also create the trigger** if it doesn't exist:
-```sql
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
-```
-
-**AuthContext.tsx fixes:**
-- Add a login wait mechanism: after `signInWithPassword` succeeds, wait for the `onAuthStateChange` callback to populate the user state before returning success
-- Add null safety guard so `user.role` access never crashes on null user
-- Better error message for email not confirmed
-
-**AdminDashboard.tsx fix:**
-- Line 78: Change `user.role === 'admin'` to `user?.role === 'admin'` (null safety)
-- Line 88: Same null safety fix
+This plan addresses four areas: replacing technical error messages with clean UI states, fixing infinite/slow loading, clean UI improvements, and stability fixes.
 
 ---
 
-### 2. Add "Partner Portal" Button to Admin Dashboard
+### 1. Create a Reusable Empty State Component
 
-**File: `src/pages/AdminDashboard.tsx`**
-- Add an `ExternalLink` icon import
-- Add a "Partner Portal" button next to "Reports" (only visible when `user?.role === 'admin'`)
-- Opens `/partner/login` in a new tab
+Create a new `src/components/ui/empty-state.tsx` component used across all panels for consistent "no data" and "error" states:
+- Accepts an icon, title, description, and optional retry button
+- Neutral card styling with muted colors (no red error text for data loading failures)
+- Used to replace all "Failed to load..." toasts with inline UI
 
 ---
 
-### 3. Full Internal Rename: vendor/host to partner
+### 2. Replace Technical Error Toasts with Clean UI States
 
-This renames all internal variable names, component names, type names, service names, and hook names. File paths on disk stay the same to avoid breaking imports. Database role values (`vendor`, `vendor_employee`) stay unchanged.
+**Files affected (~15 files):**
 
-#### Phase A: Routes (App.tsx)
-- Add `/partner/login` and `/partner/register` routes pointing to the same components
-- Keep `/vendor/login`, `/vendor/register`, `/host/login`, `/host/register` as aliases for backward compatibility
-- Rename lazy import variable names: `VendorLogin` to `PartnerLogin`, `VendorRegister` to `PartnerRegister`, etc.
+| File | Current Error | New Behavior |
+|---|---|---|
+| `DynamicStatisticsCards.tsx` | Toast: "Error loading statistics" / "Failed to load dashboard statistics" | Show skeleton cards with subtle "Unable to load" overlay + retry button, no toast |
+| `DashboardStatistics.tsx` | Toast: "Failed to load dashboard data" | Show empty state card: "No data available" with retry |
+| `DashboardExpiringBookings.tsx` | Toast: "Failed to load expiring bookings" | Show empty state: "No expiring bookings" |
+| `VendorApproval.tsx` | Toast: "Failed to fetch Partners" | Show empty state: "No Partners Found" |
+| `StudentDashboard.tsx` | Toast: "Failed to load booking data" | Show empty state: "No Bookings Found" |
+| `Hostels.tsx` | Toast: "Failed to load hostels" | Show empty state: "No Hostels Available" |
+| `HostelManagement.tsx` | Toast: "Failed to load hostels" | Show empty state: "No Hostels Available" |
+| `ReviewsManagement.tsx` | Toast: "Failed to load reviews" | Show empty state: "No Reviews Found" |
+| `ProfileManagement.tsx` | Toast: "Failed to load profile data" | Show inline message: "Unable to load profile. Please refresh." |
+| `StudentBookings.tsx` | Toast: "Failed to fetch your bookings" | Show empty state: "No Bookings Found" |
+| `use-dashboard-statistics.ts` | Sets error string that triggers toast | Return error silently, let component handle display |
 
-#### Phase B: Type Definitions (`src/types/vendor.ts`)
-- `VendorEmployee` renamed to `PartnerEmployee` (add `export type VendorEmployee = PartnerEmployee` for backward compat)
-- `VendorBooking` renamed to `PartnerBooking` (add `export type VendorBooking = PartnerBooking` for backward compat)
+**Pattern for each file:**
+- Remove the `toast({ variant: "destructive" })` call from catch blocks
+- Instead, set a local `error` state
+- Render the new EmptyState component when error is set, with a "Retry" button
+- Keep `console.error` for developer debugging
 
-#### Phase C: Hook Rename (`src/hooks/useVendorEmployeePermissions.ts`)
-- Rename `VendorEmployeePermissions` to `PartnerEmployeePermissions`
-- Rename `useVendorEmployeePermissions` to `usePartnerEmployeePermissions`
-- Add backward-compatible re-export: `export const useVendorEmployeePermissions = usePartnerEmployeePermissions`
-- Update all 4 consuming files to use new name
+---
 
-#### Phase D: API Services (keep file paths, rename exports)
-Files affected (rename exported object/type names):
-- `src/api/vendorService.ts`: `vendorService` stays as-is (too many consumers), just add `export const partnerService = vendorService`
-- `src/api/vendorSeatsService.ts`: Add `export const partnerSeatsService = vendorSeatsService`
-- `src/api/vendorRegistrationService.ts`: Add `export const partnerRegistrationService = vendorRegistrationService`
-- `src/api/vendorProfileService.ts`: Add `export const partnerProfileService = vendorProfileService`
-- `src/api/vendorApprovalService.ts`: Add `export const partnerApprovalService = vendorApprovalService`
-- `src/api/vendorDocumentService.ts`: Add `export const partnerDocumentService = vendorDocumentService`
-- `src/api/adminVendorService.ts`: Add `export const adminPartnerService = adminVendorService`
-- `src/api/adminVendorDocumentService.ts`: Add `export const adminPartnerDocumentService = adminVendorDocumentService`
+### 3. Fix Panel Header Cross-Labeling
 
-#### Phase E: Component Internal Renames
-These files get their exported component/function names updated, plus any remaining "Host" or "Vendor" UI text changed to "Partner":
+**Problem:** The `AdminLayout.tsx` breadcrumb shows "Admin Panel" even for partner/employee users.
 
-| File | Component Rename |
-|---|---|
-| `src/pages/vendor/VendorLogin.tsx` | `VendorLogin` to `PartnerLogin`, update `/host/register` link to `/partner/register`, `/host/login` to `/partner/login` |
-| `src/pages/vendor/VendorRegister.tsx` | `VendorRegister` to `PartnerRegister`, update `/host/login` links to `/partner/login` |
-| `src/pages/vendor/VendorDashboard.tsx` | `VendorDashboard` to `PartnerDashboard` |
-| `src/pages/vendor/VendorProfile.tsx` | `VendorProfilePage` to `PartnerProfilePage` |
-| `src/pages/vendor/VendorEmployees.tsx` | `VendorEmployees` to `PartnerEmployees`, update `VendorEmployee` type imports |
-| `src/pages/vendor/VendorSeats.tsx` | `VendorSeats` to `PartnerSeats`, remove leftover `handleToggleHotSelling` reference, update imports |
-| `src/pages/HostDashboard.tsx` | `HostDashboard` to `PartnerDashboard` |
-| `src/components/vendor/VendorProfile.tsx` | `VendorProfile` to `PartnerProfile` |
-| `src/components/vendor/VendorPayouts.tsx` | Keep named export as-is (too many references) |
-| `src/components/vendor/VendorDocumentUpload.tsx` | `VendorDocumentUpload` to `PartnerDocumentUpload` |
-| `src/components/vendor/VendorEmployeeForm.tsx` | `VendorEmployeeForm` to `PartnerEmployeeForm` |
-| `src/components/admin/VendorApproval.tsx` | Already renamed UI text; internal component stays |
-| `src/components/admin/VendorDetailsDialog.tsx` | Already renamed UI text |
-| `src/components/admin/VendorStatsCards.tsx` | Already renamed UI text |
-| `src/components/admin/VendorAutoPayoutSettings.tsx` | Internal rename |
+**Already fixed** in previous changes -- the breadcrumb already shows "Admin Panel", "Partner Panel", or "Employee Panel" based on `user.role`. Verify this works correctly.
 
-#### Phase F: AdminSidebar + AdminLayout
-- Already mostly done in previous changes
-- Update any remaining "Host" or "Vendor" display text to "Partner"
+**Student Dashboard (`StudentDashboard.tsx`):**
+- Title already says "Student Dashboard" -- no change needed
 
-#### Phase G: Remaining consumer file updates
-- `src/components/admin/CouponManagement.tsx` -- update vendor references
-- `src/components/admin/SeatTransferManagement.tsx` -- update type imports
-- `src/components/admin/NotificationManagement.tsx` -- update service imports
-- `src/components/vendor/AutoPayoutSettings.tsx` -- update service imports
-- `src/components/vendor/InstantSettlementDialog.tsx` -- update service imports
-- `src/pages/RoomManagement.tsx` -- update service imports
+**Partner Dashboard (`VendorDashboard.tsx`):**
+- Title already says "Partner Dashboard" -- no change needed
 
-### Important Constraints
+**HostDashboard.tsx:**
+- Title already says "Partner Dashboard" -- no change needed
 
-- Database `app_role` enum values `vendor` and `vendor_employee` are NOT changed (would break auth and RLS)
-- File/folder paths on disk stay the same (renaming folders breaks imports)
-- Backward-compatible type/export aliases are added so nothing breaks during transition
-- All role checks in code continue using `'vendor'` and `'vendor_employee'` strings
+---
 
-### Estimated Scope
-- 1 database migration
-- ~35 frontend files edited
-- No breaking changes to API endpoints or database schema
+### 4. Fix Loading States
+
+**A) Replace text "Loading..." with skeleton loaders**
+
+Most components already use `<Skeleton>` (DynamicStatisticsCards, OccupancyChart, RevenueChart, DashboardExpiringBookings). The following need skeletons added:
+
+| File | Current | Fix |
+|---|---|---|
+| `StudentDashboard.tsx` line 345-347 | Spinner div | Replace with skeleton cards matching the layout |
+| `VendorApproval.tsx` | Table loading state | Add skeleton table rows |
+| `AdminBookingsList.tsx` | Check current loading state | Add skeleton rows if missing |
+
+**B) Add loading timeout (5 seconds)**
+
+Create a custom hook `src/hooks/use-loading-timeout.ts`:
+- Wraps a loading state
+- After 5 seconds of continuous loading, sets a `timedOut` flag
+- Components can then show "Unable to load data. Please retry." with a retry button
+
+Apply this hook to:
+- `DynamicStatisticsCards.tsx`
+- `DashboardStatistics.tsx`
+- `StudentDashboard.tsx`
+- `VendorApproval.tsx`
+
+**C) Prevent duplicate API calls**
+
+Already partially implemented with `hasFetchedRef` pattern in:
+- `DashboardStatistics.tsx`
+- `DynamicStatisticsCards.tsx`
+- `RevenueChart.tsx`
+- `DashboardExpiringBookings.tsx`
+
+Verify and add to any remaining components that don't have it.
+
+---
+
+### 5. Clean UI Improvements
+
+**A) Empty state cards design:**
+- Icon (from Lucide) in muted color
+- Title in `text-sm font-medium`
+- Description in `text-xs text-muted-foreground`
+- Optional retry `Button variant="outline" size="sm"`
+- Card background: `bg-muted/20` with subtle border
+
+**B) Remove red error text:**
+- All "destructive" toasts for data loading failures get removed
+- Keep "destructive" toasts only for user-initiated action failures (e.g., "Failed to delete", "Failed to update")
+- Action failures can still show toasts since the user explicitly triggered them
+
+---
+
+### 6. Stability Fixes
+
+**A) Error Boundary improvements (`ErrorBoundary.tsx`):**
+- Already implemented, no changes needed
+- Already wraps StudentDashboard
+
+**B) Add ErrorBoundary wrapping to:**
+- `DashboardStatistics` component
+- `DynamicStatisticsCards` component
+- `VendorApproval` component
+- Each chart component individually (so one chart failing doesn't break the whole dashboard)
+
+**C) Fix console warnings:**
+- The ResponsiveContainer warnings in recharts are caused by fixed-width parent containers
+- Fix by removing explicit width/height props from chart containers or ensuring parent containers are fluid
+
+---
+
+### Technical Details
+
+**New files to create:**
+1. `src/components/ui/empty-state.tsx` -- Reusable empty/error state component
+2. `src/hooks/use-loading-timeout.ts` -- Loading timeout hook
+
+**Files to edit (~20 files):**
+1. `src/components/admin/DynamicStatisticsCards.tsx` -- Remove error toast, add timeout, add inline error state
+2. `src/hooks/use-dashboard-statistics.ts` -- Remove error toast trigger, keep error state
+3. `src/components/admin/DashboardStatistics.tsx` -- Remove error toast, add empty state, wrap sub-components in ErrorBoundary
+4. `src/components/admin/DashboardExpiringBookings.tsx` -- Remove error toast, use empty state
+5. `src/components/admin/OccupancyChart.tsx` -- Add empty state for no data, wrap in ErrorBoundary
+6. `src/components/admin/RevenueChart.tsx` -- Add empty state for no data, wrap in ErrorBoundary
+7. `src/components/admin/VendorApproval.tsx` -- Remove error toast, use empty state with "No Partners Found"
+8. `src/pages/StudentDashboard.tsx` -- Remove error toast, add skeleton loaders, add timeout
+9. `src/pages/Hostels.tsx` -- Remove error toast, use empty state "No Hostels Available"
+10. `src/pages/hotelManager/HostelManagement.tsx` -- Remove error toast, use empty state
+11. `src/pages/admin/ReviewsManagement.tsx` -- Remove error toast, use empty state
+12. `src/pages/StudentBookings.tsx` -- Remove error toast, use empty state
+13. `src/components/profile/ProfileManagement.tsx` -- Replace load-error toast with inline message
+14. `src/pages/AdminDashboard.tsx` -- Wrap content in ErrorBoundary
+15. `src/components/admin/AdminBookingsList.tsx` -- Add skeleton loading, remove error toasts for data fetch
+
+**No database changes required.**
 
