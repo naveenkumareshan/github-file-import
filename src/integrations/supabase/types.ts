@@ -272,6 +272,7 @@ export type Database = {
       seats: {
         Row: {
           cabin_id: string
+          category: string
           col_index: number
           created_at: string
           floor: number
@@ -289,6 +290,7 @@ export type Database = {
         }
         Insert: {
           cabin_id: string
+          category?: string
           col_index?: number
           created_at?: string
           floor?: number
@@ -306,6 +308,7 @@ export type Database = {
         }
         Update: {
           cabin_id?: string
+          category?: string
           col_index?: number
           created_at?: string
           floor?: number

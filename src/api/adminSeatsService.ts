@@ -21,6 +21,7 @@ export interface SeatData {
   sectionId?: string;
   rowIndex?: number;
   colIndex?: number;
+  category?: string;
 }
 
 const mapRow = (row: any): any => ({
@@ -36,6 +37,7 @@ const mapRow = (row: any): any => ({
   unavailableUntil: row.unavailable_until,
   sharingType: row.sharing_type,
   sharingCapacity: row.sharing_capacity,
+  category: row.category || 'Non-AC',
 });
 
 export const adminSeatsService = {
@@ -107,6 +109,7 @@ export const adminSeatsService = {
         is_hot_selling: seatData.isHotSelling || false,
         sharing_type: seatData.sharingType || 'private',
         sharing_capacity: seatData.sharingCapacity || 4,
+        category: seatData.category || 'Non-AC',
       }).select().single();
       if (error) throw error;
       return { success: true, data: mapRow(data) };
@@ -130,6 +133,7 @@ export const adminSeatsService = {
       }
       if (updates.sharingType !== undefined) updateData.sharing_type = updates.sharingType;
       if (updates.sharingCapacity !== undefined) updateData.sharing_capacity = updates.sharingCapacity;
+      if (updates.category !== undefined) updateData.category = updates.category;
 
       const { data, error } = await supabase.from('seats').update(updateData).eq('id', id).select().single();
       if (error) throw error;
@@ -165,6 +169,7 @@ export const adminSeatsService = {
         sharing_capacity: s.sharingCapacity || 4,
         row_index: s.rowIndex || 0,
         col_index: s.colIndex || 0,
+        category: s.category || 'Non-AC',
       }));
       const { data, error } = await supabase.from('seats').insert(records).select();
       if (error) throw error;
