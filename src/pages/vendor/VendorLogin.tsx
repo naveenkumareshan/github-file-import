@@ -1,7 +1,6 @@
 
 import React, { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
-import DemoCredentials, { DemoAccount } from '@/components/auth/DemoCredentials';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,23 +9,6 @@ import { AlertCircle, Eye, EyeOff, Building2 } from 'lucide-react';
 
 import { useAuth } from '@/hooks/use-auth';
 import { toast } from '@/hooks/use-toast';
-
-const VENDOR_DEMO_ACCOUNTS: DemoAccount[] = [
-  {
-    label: 'Partner (Vendor)',
-    email: 'host@inhalestays.com',
-    password: 'Host@123',
-    description: 'Property owner / Partner account',
-    accessRights: ['Dashboard', 'Hostel Mgmt', 'Reading Rooms', 'Bookings', 'Seat Transfer', 'Employees', 'Payouts', 'Reviews', 'Profile'],
-  },
-  {
-    label: 'Partner Employee',
-    email: 'employee@inhalestays.com',
-    password: 'Employee@123',
-    description: 'Partner staff with role-based permissions',
-    accessRights: ['Dashboard (if permitted)', 'Bookings (if permitted)', 'Seat Map (if permitted)', 'Reports (if permitted)'],
-  },
-];
 
 const VendorLogin: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -221,10 +203,6 @@ const VendorLogin: React.FC = () => {
             </form>
           </CardContent>
         </Card>
-        <DemoCredentials
-          accounts={VENDOR_DEMO_ACCOUNTS}
-          onSelect={(email, password) => setFormData({ email, password })}
-        />
       </div>
     </div>
   );
