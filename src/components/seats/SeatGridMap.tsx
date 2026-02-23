@@ -70,10 +70,6 @@ export const SeatGridMap: React.FC<SeatGridMapProps> = ({
       return 'bg-[#D3E4FD] text-blue-600 border-blue-200 cursor-not-allowed';
     }
     
-    if (seat.isHotSelling) {
-      return 'bg-[#FFDEE2] text-pink-800 border-pink-300 hover:bg-pink-200';
-    }
-    
     return 'bg-[#d4f7c4] text-cabin-green border-cabin-green hover:bg-cabin-green/10';
   };
 
@@ -187,7 +183,7 @@ export const SeatGridMap: React.FC<SeatGridMapProps> = ({
               <div>
                 Status: {
                   seat.isAvailable
-                    ? seat.isHotSelling ? "Hot Selling" : "Available"
+                    ? "Available"
                     : "Unavailable"
                 }
               </div>
@@ -234,10 +230,6 @@ export const SeatGridMap: React.FC<SeatGridMapProps> = ({
         <div className="flex items-center">
           <div className="w-4 h-4 bg-cabin-dark rounded-sm mr-2"></div>
           <span>Selected</span>
-        </div>
-        <div className="flex items-center">
-          <div className="w-4 h-4 bg-[#FFDEE2] border border-pink-300 rounded-sm mr-2"></div>
-          <span>Hot Selling</span>
         </div>
         <div className="flex items-center">
           <div className="w-4 h-4 bg-[#D3E4FD] border border-blue-200 rounded-sm mr-2"></div>

@@ -88,10 +88,6 @@ export const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
       return "bg-[#D3E4FD] text-blue-600 border-blue-200 cursor-not-allowed";
     }
 
-    if (seat.isHotSelling){
-      return "bg-[#FFDEE2] text-pink-800 border-pink-300 hover:bg-pink-200";
-    }
-
     return "bg-[#d4f7c4] text-cabin-green border-cabin-green hover:bg-cabin-green/10";
   };
 
@@ -291,9 +287,7 @@ export const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
                     <div>
                       Status:{" "}
                       {seat.isAvailable
-                        ? seat.isHotSelling
-                          ? "Hot Selling"
-                          : "Available"
+                        ? "Available"
                         : "Unavailable"}
                     </div>
                     <div>Price: ₹{seat.price}/month</div>
@@ -318,10 +312,6 @@ export const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
           <span>Selected</span>
         </div>
         <div className="flex items-center">
-          <div className="w-4 h-4 bg-[#FFDEE2] border border-pink-300 rounded-sm mr-2"></div>
-          <span>Hot Selling (+₹25)</span>
-        </div>
-        <div className="flex items-center">
           <div className="w-4 h-4 bg-[#D3E4FD] border border-blue-200 rounded-sm mr-2"></div>
           <span>Unavailable</span>
         </div>
@@ -331,9 +321,6 @@ export const SeatMapEditor: React.FC<SeatMapEditorProps> = ({
         <div className="mt-4 p-2 bg-cabin-light/20 rounded-md text-center text-xs">
           <p>
             Seat #{hoveredSeat.number} - ₹{hoveredSeat.price}/month
-            {hoveredSeat.isHotSelling && (
-              <span className="text-pink-600 ml-1">(Hot selling!)</span>
-            )}
           </p>
         </div>
       )}

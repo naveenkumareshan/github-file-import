@@ -306,36 +306,7 @@ const SeatManagement = () => {
     }
   };
 
-  const handleToggleHotSelling = async (seat: Seat) => {
-    try {
-      const updatedSeat = { ...seat, isHotSelling: !seat.isHotSelling };
-      const response = await adminSeatsService.updateSeat(
-        seat._id,
-        updatedSeat,
-      );
-
-      if (response.success) {
-        setSeats(
-          seats.map((s) =>
-            s._id === seat._id ? { ...s, isHotSelling: !s.isHotSelling } : s,
-          ),
-        );
-        toast({
-          title: "Success",
-          description: `Seat ${seat.number} ${updatedSeat.isHotSelling ? "activated" : "deactivated"} successfully`,
-        });
-      } else {
-        throw new Error(response.message || "Failed to update seat");
-      }
-    } catch (error) {
-      console.error("Error updating seat:", error);
-      toast({
-        title: "Error",
-        description: String(error),
-        variant: "destructive",
-      });
-    }
-  };
+  // handleToggleHotSelling removed
 
   const handlePriceChange = async (seat: Seat, price: number) => {
     try {
@@ -436,9 +407,7 @@ const SeatManagement = () => {
         ...selectedSeat,
         formattedPrice: `₹${selectedSeat.price}/month`,
         status: selectedSeat.isAvailable
-          ? selectedSeat.isHotSelling
-            ? "Hot Selling"
-            : "Available"
+          ? "Available"
           : "Unavailable",
       }
     : null;
@@ -683,19 +652,6 @@ const SeatManagement = () => {
                         Update
                       </Button>
                     </div>
-                    <div className="flex items-center ">
-                      <p className="text-sm font-medium">Hot Selling</p>
-                      <div className="flex items-center space-x-2">
-                        <Switch
-                          id="seat-status"
-                          checked={selectedSeat.isHotSelling}
-                          onCheckedChange={() =>
-                            handleToggleHotSelling(selectedSeat)
-                          }
-                        />
-                      </div>
-                    </div>
-
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-medium">Availability</p>
                       <div className="flex items-center space-x-2">

@@ -13,7 +13,7 @@ const routeLabels: Record<string, string> = {
   "/admin/students-create": "Create User",
   "/admin/students-import": "Import Users",
   "/admin/coupons": "Coupons",
-  "/admin/vendors": "Hosts",
+  "/admin/vendors": "Partners",
   "/admin/rooms": "Reading Rooms",
   "/admin/hostels": "Hostels",
   "/admin/reports": "Reports",
@@ -59,7 +59,7 @@ const AdminLayout: React.FC = () => {
               <SidebarTrigger className="-ml-1" />
               <div className="mx-2 h-4 w-px bg-border" />
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <span>{user?.role === "admin" ? "Admin" : user?.role === "vendor_employee" ? "Employee" : "Host"} Panel</span>
+                <span>{user?.role === "admin" ? "Admin" : user?.role === "vendor_employee" ? "Employee" : "Partner"} Panel</span>
                 <span>/</span>
                 <span className="text-foreground font-medium text-xs">{pageLabel}</span>
               </div>

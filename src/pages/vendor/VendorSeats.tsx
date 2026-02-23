@@ -44,7 +44,7 @@ const VendorSeats: React.FC = () => {
   const { user } = useAuth();
 
   const isSeatStatus = (v: string): v is Exclude<SeatFilters['status'], 'all'> =>
-  ['available', 'occupied', 'hot-selling'].includes(v);
+  ['available', 'occupied'].includes(v);
 
   // Build filters object
   const filters: SeatFilters = {
@@ -163,27 +163,9 @@ const VendorSeats: React.FC = () => {
     }
   };
 
-  const handleToggleHotSelling = async (seat: VendorSeat) => {
-    setUpdating(true);
-    try {
-      const result = await vendorSeatsService.toggleHotSelling(seat._id, !seat.isHotSelling);
-      if (result.success) {
-        toast({ title: "Success", description: "Hot selling status updated" });
-        fetchSeats();
-      } else {
-        toast({ title: "Error", description: "Failed to update hot selling status", variant: "destructive" });
-      }
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to update hot selling status", variant: "destructive" });
-    } finally {
-      setUpdating(false);
-    }
-  };
-
   function getSeatStatus(seat) {
     if (seat.currentBooking) return "Occupied";
     if (!seat.isAvailable) return "Un Available";
-    if (seat.isHotSelling) return "Hot";
     return "Available";
   }
 
@@ -316,7 +298,6 @@ const VendorSeats: React.FC = () => {
                       <SelectItem value="all">All Seats</SelectItem>
                       <SelectItem value="available">Available</SelectItem>
                       <SelectItem value="occupied">Occupied</SelectItem>
-                      <SelectItem value="hot-selling">Hot Selling</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -342,13 +323,11 @@ const VendorSeats: React.FC = () => {
                             <p className="text-sm text-muted-foreground">{seat.cabinName}</p>
                           </div>
                           <div className="flex gap-1">
-                            <Badge 
+                          <Badge 
                               variant={seat.isAvailable ? "default" : "secondary"}
                               className={
                                 seat.isAvailable 
-                                  ? seat.isHotSelling 
-                                    ? "bg-orange-100 text-orange-800"
-                                    : "bg-green-100 text-green-800"
+                                  ? "bg-green-100 text-green-800"
                                   : "bg-red-100 text-red-800"
                               }
                             >
@@ -439,9 +418,7 @@ const VendorSeats: React.FC = () => {
                         variant={seat.isAvailable ? "default" : "secondary"}
                         className={
                           seat.isAvailable
-                            ? seat.isHotSelling
-                              ? "bg-orange-100 text-orange-800"
-                              : "bg-green-100 text-green-800"
+                            ? "bg-green-100 text-green-800"
                             : "bg-red-100 text-red-800"
                         }
                       >
@@ -464,16 +441,6 @@ const VendorSeats: React.FC = () => {
                           </Button>
                         )
                       }
-                      {seat.isAvailable && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleToggleHotSelling(seat)}
-                          disabled={updating}
-                        >
-                          {seat.isHotSelling ? "Remove Hot" : "Mark Hot"}
-                        </Button>
-                      )}
                       <Button
                         variant="outline"
                         size="sm"

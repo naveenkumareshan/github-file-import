@@ -1,7 +1,7 @@
 
 import React from "react";
 
-type SeatStatus = 'available' | 'selected' | 'sold' | 'hot';
+type SeatStatus = 'available' | 'selected' | 'sold';
 
 export interface RoomSeat {
   id: number;
@@ -24,7 +24,6 @@ const RoomSeatButton: React.FC<RoomSeatButtonProps> = ({ seat, onClick, onSeatCl
     available: 'bg-green-500',
     selected: 'bg-blue-500',
     sold: 'bg-red-500',
-    hot: 'bg-orange-500',
   };
 
   return (

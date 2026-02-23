@@ -214,7 +214,7 @@ const VendorRegister: React.FC = () => {
       if (response.success) {
         toast({
           title: "Registration Successful!",
-          description: "Your Host application has been submitted for review.",
+          description: "Your Partner application has been submitted for review.",
         });
         navigate('/host/login');
       } else {
@@ -724,7 +724,7 @@ const VendorRegister: React.FC = () => {
               <Building2 className="h-6 w-6 text-primary-foreground" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">Host Partnership Application</CardTitle>
+          <CardTitle className="text-2xl font-bold">Partner Application</CardTitle>
           <p className="text-muted-foreground">
             Join our network and expand your business reach
           </p>

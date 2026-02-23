@@ -53,7 +53,7 @@ const VendorApproval: React.FC = () => {
     } else {
       toast({
         title: "Error",
-        description: "Failed to fetch Hosts",
+        description: "Failed to fetch Partners",
         variant: "destructive"
       });
     }
@@ -77,7 +77,7 @@ const VendorApproval: React.FC = () => {
     if (result.success) {
       toast({
         title: "Success",
-        description: `Host ${action}ed successfully`
+        description: `Partner ${action}ed successfully`
       });
       fetchVendors(); // Refresh the list
       setRejectionReason('');
@@ -85,7 +85,7 @@ const VendorApproval: React.FC = () => {
     } else {
       toast({
         title: "Error",
-        description: result.error?.message || `Failed to ${action} Host`,
+        description: result.error?.message || `Failed to ${action} Partner`,
         variant: "destructive"
       });
     }
@@ -97,14 +97,14 @@ const VendorApproval: React.FC = () => {
     if (result.success) {
       toast({
         title: "Success",
-        description: "Host details updated successfully"
+        description: "Partner details updated successfully"
       });
       fetchVendors(); // Refresh the list
       setSelectedVendor(result.data.data); // Update selected vendor with new data
     } else {
       toast({
         title: "Error",
-        description: result.error?.message || "Failed to update Host details",
+        description: result.error?.message || "Failed to update Partner details",
         variant: "destructive"
       });
     }
@@ -121,18 +121,18 @@ const VendorApproval: React.FC = () => {
       const url = window.URL.createObjectURL(new Blob([result.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `Hosts_${new Date().toISOString().split('T')[0]}.xlsx`);
+      link.setAttribute('download', `Partners_${new Date().toISOString().split('T')[0]}.xlsx`);
       document.body.appendChild(link);
       link.click();
       link.remove();
       toast({
         title: "Success",
-        description: "Hosts data exported successfully"
+        description: "Partners data exported successfully"
       });
     } else {
       toast({
         title: "Error",
-        description: "Failed to export Hosts data",
+        description: "Failed to export Partners data",
         variant: "destructive"
       });
     }
@@ -161,7 +161,7 @@ const VendorApproval: React.FC = () => {
   const columns = [
     {
       accessorKey: 'vendorId',
-      header: 'Host ID',
+      header: 'Partner ID',
       cell: ({ row }: { row: { original: Vendor } }) => (
         <div className="font-mono text-sm">{row.original.vendorId}</div>
       )
@@ -270,7 +270,7 @@ const VendorApproval: React.FC = () => {
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Reject Host Application</DialogTitle>
+                    <DialogTitle>Reject Partner Application</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4">
                     <div>
@@ -321,10 +321,10 @@ const VendorApproval: React.FC = () => {
         <div>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
             <span>Admin Panel</span><span>/</span>
-            <span className="text-foreground font-medium">Hosts</span>
+            <span className="text-foreground font-medium">Partners</span>
           </div>
-          <h1 className="text-lg font-semibold tracking-tight">Host Management</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">Review and manage host applications</p>
+          <h1 className="text-lg font-semibold tracking-tight">Partner Management</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Review and manage partner applications</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)}>
@@ -389,7 +389,7 @@ const VendorApproval: React.FC = () => {
 
       <Card className="border border-border/60 rounded-xl shadow-sm">
         <div className="flex items-center justify-between py-3 px-4 border-b">
-          <span className="text-sm font-medium text-foreground">Hosts</span>
+          <span className="text-sm font-medium text-foreground">Partners</span>
           <span className="text-xs text-muted-foreground">{totalCount} total</span>
         </div>
         <CardContent>
