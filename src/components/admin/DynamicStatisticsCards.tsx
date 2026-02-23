@@ -5,8 +5,6 @@ import { useDashboardStatistics } from '@/hooks/use-dashboard-statistics';
 import { BarChart, TrendingUp, Users, AlertCircle, UserCheck } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { adminBookingsService } from '@/api/adminBookingsService';
-import { useLoadingTimeout } from '@/hooks/use-loading-timeout';
-import { EmptyState } from '@/components/ui/empty-state';
 
 export function DynamicStatisticsCards() {
   const { statistics, loading, error } = useDashboardStatistics();
@@ -16,7 +14,6 @@ export function DynamicStatisticsCards() {
     occupancyPercentage: 0
   });
   const [residentsLoading, setResidentsLoading] = useState(true);
-  const timedOut = useLoadingTimeout(loading || residentsLoading);
 
 const hasFetched = useRef(false);
 
@@ -39,19 +36,6 @@ useEffect(() => {
   fetchActiveResidents();
   hasFetched.current = true;
 }, []);
-
-  if (timedOut) {
-    return (
-      <div className="mb-8">
-        <EmptyState
-          icon={AlertCircle}
-          title="Unable to load statistics"
-          description="Unable to fetch data. Please refresh."
-          onRetry={() => window.location.reload()}
-        />
-      </div>
-    );
-  }
 
   return (
     <div className="grid md:grid-cols-4 gap-6 mb-8">
