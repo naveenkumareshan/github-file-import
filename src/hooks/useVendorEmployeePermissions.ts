@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
-export interface VendorEmployeePermissions {
+export interface PartnerEmployeePermissions {
   view_bookings: boolean;
   manage_bookings: boolean;
   view_reading_rooms: boolean;
@@ -20,9 +20,9 @@ export interface VendorEmployeePermissions {
   manage_reviews:boolean;
 }
 
-export const useVendorEmployeePermissions = () => {
+export const usePartnerEmployeePermissions = () => {
   const { user } = useAuth();
-  const [permissions, setPermissions] = useState<VendorEmployeePermissions>({
+  const [permissions, setPermissions] = useState<PartnerEmployeePermissions>({
     view_bookings: false,
     manage_bookings: false,
     view_reading_rooms: false,
@@ -47,7 +47,7 @@ export const useVendorEmployeePermissions = () => {
         try {
           // In a real app, this would fetch from an API
           // For now, we'll simulate permissions based on user data
-          const mockPermissions: VendorEmployeePermissions = {
+          const mockPermissions: PartnerEmployeePermissions = {
             view_bookings: user?.permissions?.includes('view_bookings') || false,
             manage_bookings: user?.permissions?.includes('manage_bookings') || false,
             view_reading_rooms: user?.permissions?.includes('view_reading_rooms') || false,
@@ -95,11 +95,11 @@ export const useVendorEmployeePermissions = () => {
     fetchPermissions();
   }, [user]);
 
-  const hasPermission = (permission: keyof VendorEmployeePermissions): boolean => {
+  const hasPermission = (permission: keyof PartnerEmployeePermissions): boolean => {
     return permissions[permission] || false;
   };
 
-  const hasAnyPermission = (permissionList: (keyof VendorEmployeePermissions)[]): boolean => {
+  const hasAnyPermission = (permissionList: (keyof PartnerEmployeePermissions)[]): boolean => {
     return permissionList.some(permission => hasPermission(permission));
   };
 
@@ -110,3 +110,9 @@ export const useVendorEmployeePermissions = () => {
     loading
   };
 };
+
+/** @deprecated Use usePartnerEmployeePermissions instead */
+export const useVendorEmployeePermissions = usePartnerEmployeePermissions;
+
+/** @deprecated Use PartnerEmployeePermissions instead */
+export type VendorEmployeePermissions = PartnerEmployeePermissions;

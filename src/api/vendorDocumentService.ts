@@ -74,3 +74,5 @@ export const vendorDocumentService = {
     }
   }
 };
+
+export const partnerDocumentService = vendorDocumentService;

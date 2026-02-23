@@ -100,3 +100,5 @@ export const vendorSeatsService = {
     }
   }
 };
+
+export const partnerSeatsService = vendorSeatsService;

@@ -114,10 +114,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
       if (error) {
+        if (error.message?.includes('Email not confirmed')) {
+          return { success: false, error: 'Please verify your email address before logging in. Check your inbox for a confirmation link.' };
+        }
         return { success: false, error: error.message };
       }
 
       if (data.user) {
+        // Wait for onAuthStateChange to populate user state
+        await new Promise<void>((resolve) => {
+          const checkUser = () => {
+            if (user !== null) {
+              resolve();
+            } else {
+              setTimeout(checkUser, 100);
+            }
+          };
+          // Give it a short delay then start checking
+          setTimeout(checkUser, 200);
+          // Timeout after 5 seconds to avoid infinite wait
+          setTimeout(resolve, 5000);
+        });
         return { success: true };
       }
 

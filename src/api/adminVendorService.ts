@@ -68,3 +68,5 @@ export const adminVendorService = {
     }
   }
 };
+
+export const adminPartnerService = adminVendorService;

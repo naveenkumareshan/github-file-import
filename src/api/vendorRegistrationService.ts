@@ -49,3 +49,6 @@ export const vendorRegistrationService = {
     }
   }
 };
+
+/** @deprecated Use partnerRegistrationService instead */
+export const partnerRegistrationService = vendorRegistrationService;

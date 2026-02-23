@@ -46,7 +46,7 @@ const HostDashboard = () => {
         <div className="flex flex-col md:flex-row justify-between items-center mb-8">
           <div>
             <h1 className="text-2xl md:text-3xl font-serif font-bold text-cabin-dark">Partner Dashboard</h1>
-            <p className="text-cabin-dark/70">Manage accommodations and resident services</p>
+            <p className="text-cabin-dark/70">Manage accommodations and partner services</p>
           </div>
           
           <div className="mt-4 md:mt-0 space-x-2">

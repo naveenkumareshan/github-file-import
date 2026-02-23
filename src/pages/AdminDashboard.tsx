@@ -10,7 +10,7 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { Link } from "react-router-dom";
-import { FileText, Users, LayoutDashboard } from "lucide-react";
+import { FileText, Users, LayoutDashboard, ExternalLink } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { DashboardStatistics } from "@/components/admin/DashboardStatistics";
 import { UserSessionsManagement } from "@/components/admin/UserSessionsManagement";
@@ -66,6 +66,14 @@ const AdminDashboard: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {user?.role === 'admin' && (
+            <a href="/partner/login" target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" size="sm" className="flex items-center gap-1.5">
+                <ExternalLink className="h-4 w-4" />
+                Partner Portal
+              </Button>
+            </a>
+          )}
           <Link to="/admin/reports">
             <Button variant="outline" size="sm" className="flex items-center gap-1.5">
               <FileText className="h-4 w-4" />
@@ -75,7 +83,7 @@ const AdminDashboard: React.FC = () => {
         </div>
       </div>
 
-      {(user.role === 'admin' || user.role === 'vendor' || hasPermission('view_dashboard')) && (
+      {(user?.role === 'admin' || user?.role === 'vendor' || hasPermission('view_dashboard')) && (
         <Card className="shadow-sm">
           <CardContent className="p-0">
             <Tabs value={activeTab} onValueChange={handleTabChange}>
@@ -85,7 +93,7 @@ const AdminDashboard: React.FC = () => {
                     <LayoutDashboard className="h-3.5 w-3.5" />
                     Overview
                   </TabsTrigger>
-                  {user.role === 'admin' && (
+                  {user?.role === 'admin' && (
                     <TabsTrigger value="sessions" className="flex items-center gap-1.5 text-sm">
                       <Users className="h-3.5 w-3.5" />
                       User Sessions
