@@ -79,3 +79,5 @@ export const vendorProfileService = {
     }
   }
 };
+
+export const partnerProfileService = vendorProfileService;

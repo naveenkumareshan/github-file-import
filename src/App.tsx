@@ -136,7 +136,9 @@ function App() {
               <Route path="banners" element={<BannerManagementPage />} />
             </Route>
 
-            {/* ── Vendor routes ── */}
+            {/* ── Partner routes (formerly vendor/host) ── */}
+            <Route path="/partner/login" element={<VendorLogin />} />
+            <Route path="/partner/register" element={<VendorRegister />} />
             <Route path="/vendor/login" element={<VendorLogin />} />
             <Route path="/vendor/register" element={<VendorRegister />} />
             <Route path="/host/login" element={<VendorLogin />} />

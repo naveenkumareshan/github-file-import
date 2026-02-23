@@ -216,7 +216,7 @@ const VendorRegister: React.FC = () => {
           title: "Registration Successful!",
           description: "Your Partner application has been submitted for review.",
         });
-        navigate('/host/login');
+        navigate('/partner/login');
       } else {
         toast({
           title: "Registration Failed",
@@ -832,7 +832,7 @@ const VendorRegister: React.FC = () => {
           <div className="mt-6 text-center text-sm space-y-2">
             <div>
               Already have an account?{' '}
-              <Link to="/host/login" className="text-primary hover:underline">
+              <Link to="/partner/login" className="text-primary hover:underline">
                 Sign In
               </Link>
             </div>

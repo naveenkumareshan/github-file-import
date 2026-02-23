@@ -208,7 +208,7 @@ const VendorLogin: React.FC = () => {
 
               <div className="text-center text-sm text-muted-foreground">
                 New Partner?{' '}
-                <Link to="/host/register" className="text-primary hover:underline">
+                <Link to="/partner/register" className="text-primary hover:underline">
                   Apply for partnership
                 </Link>
               </div>

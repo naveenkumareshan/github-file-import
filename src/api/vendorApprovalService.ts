@@ -188,3 +188,5 @@ export const vendorApprovalService = {
     }
   }
 };
+
+export const partnerApprovalService = vendorApprovalService;

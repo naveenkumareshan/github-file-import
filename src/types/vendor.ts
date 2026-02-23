@@ -1,5 +1,5 @@
 
-export interface VendorEmployee {
+export interface PartnerEmployee {
   _id: string;
   id: string;
   vendorId: string;
@@ -15,8 +15,10 @@ export interface VendorEmployee {
   updatedAt: string;
 }
 
+/** @deprecated Use PartnerEmployee instead */
+export type VendorEmployee = PartnerEmployee;
 
-export interface VendorBooking {
+export interface PartnerBooking {
   id: string;
   vendorId: string;
   propertyId: string;
@@ -32,3 +34,6 @@ export interface VendorBooking {
   bookingType: 'cabin' | 'hostel';
   createdAt: string;
 }
+
+/** @deprecated Use PartnerBooking instead */
+export type VendorBooking = PartnerBooking;
