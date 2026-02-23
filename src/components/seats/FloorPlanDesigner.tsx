@@ -720,7 +720,7 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
             const theme = getSectionTheme(section);
             const colorClass = isStructural
               ? (STRUCTURAL_COLORS[section.structuralLabel || 'Custom'] || STRUCTURAL_COLORS.Custom)
-              : `bg-background ${theme.border}`;
+              : `${theme.border}`;
 
             return (
               <div
@@ -733,6 +733,7 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
                   height: section.height,
                   cursor: draggingSection === section.id ? 'grabbing' : 'grab',
                   zIndex: draggingSection === section.id ? 50 : 3,
+                  backgroundColor: layoutImage ? 'rgba(255,255,255,0.35)' : 'hsl(var(--background))',
                 }}
                 onMouseDown={e => handleSectionMouseDown(e, section.id, section.position)}
               >
