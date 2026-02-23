@@ -1,0 +1,1 @@
+ALTER TABLE public.cabins ADD COLUMN layout_image text;
