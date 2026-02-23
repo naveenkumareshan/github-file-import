@@ -28,6 +28,12 @@ export interface FloorPlanSeat {
   category?: string;
 }
 
+export interface SeatCategoryOption {
+  id: string;
+  name: string;
+  price: number;
+}
+
 interface FloorPlanDesignerProps {
   cabinId: string;
   roomWidth: number;
@@ -39,14 +45,14 @@ interface FloorPlanDesignerProps {
   onSave: () => void;
   onDeleteSeat?: (seatId: string) => void;
   onPlaceSeat?: (position: { x: number; y: number }, number: number, price: number, category: string) => void;
+  onSeatMove?: (seatId: string, position: { x: number; y: number }) => void;
   layoutImage?: string | null;
   layoutImageOpacity?: number;
   onLayoutImageChange?: (image: string | null) => void;
   onLayoutImageOpacityChange?: (opacity: number) => void;
   isSaving?: boolean;
+  categories?: SeatCategoryOption[];
 }
-
-const SEAT_CATEGORIES = ['AC', 'Non-AC', 'Premium', 'Economy'] as const;
 
 export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
   cabinId,
@@ -59,11 +65,13 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
   onSave,
   onDeleteSeat,
   onPlaceSeat,
+  onSeatMove,
   layoutImage,
   layoutImageOpacity = 30,
   onLayoutImageChange,
   onLayoutImageOpacityChange,
   isSaving,
+  categories = [],
 }) => {
   const canvasRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -78,6 +86,10 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
 
   // Pending seat for dialog
   const [pendingSeat, setPendingSeat] = useState<{ x: number; y: number } | null>(null);
+
+  // Dragging state
+  const [draggingSeatId, setDraggingSeatId] = useState<string | null>(null);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
   // Update nextSeatNumber when seats change
   useEffect(() => {
@@ -101,7 +113,6 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
 
   // ── Canvas mouse handlers ──
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
-    // Placement mode: show dialog instead of immediate creation
     if (placementMode && onPlaceSeat) {
       const pos = getCanvasPos(e);
       if (pos.x >= 0 && pos.y >= 0 && pos.x <= roomWidth && pos.y <= roomHeight) {
@@ -110,25 +121,60 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
       return;
     }
 
-    setIsPanning(true);
-    setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+    if (!draggingSeatId) {
+      setIsPanning(true);
+      setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+    }
   };
 
   const handleCanvasMouseMove = (e: React.MouseEvent) => {
+    if (draggingSeatId) {
+      const pos = getCanvasPos(e);
+      const newX = Math.max(0, Math.min(roomWidth, Math.round(pos.x - dragOffset.x)));
+      const newY = Math.max(0, Math.min(roomHeight, Math.round(pos.y - dragOffset.y)));
+      onSeatsChange(seats.map(s =>
+        s._id === draggingSeatId ? { ...s, position: { x: newX, y: newY } } : s
+      ));
+      return;
+    }
     if (isPanning) {
       setPan({ x: e.clientX - panStart.x, y: e.clientY - panStart.y });
     }
   };
 
   const handleCanvasMouseUp = () => {
+    if (draggingSeatId) {
+      const seat = seats.find(s => s._id === draggingSeatId);
+      if (seat && onSeatMove) {
+        onSeatMove(seat._id, seat.position);
+      }
+      setDraggingSeatId(null);
+      return;
+    }
     setIsPanning(false);
   };
 
   useEffect(() => {
-    const handler = () => setIsPanning(false);
+    const handler = () => {
+      if (draggingSeatId) {
+        const seat = seats.find(s => s._id === draggingSeatId);
+        if (seat && onSeatMove) onSeatMove(seat._id, seat.position);
+        setDraggingSeatId(null);
+      }
+      setIsPanning(false);
+    };
     window.addEventListener('mouseup', handler);
     return () => window.removeEventListener('mouseup', handler);
-  }, []);
+  }, [draggingSeatId, seats, onSeatMove]);
+
+  // ── Seat drag start ──
+  const handleSeatMouseDown = (e: React.MouseEvent, seat: FloorPlanSeat) => {
+    if (placementMode) return;
+    e.stopPropagation();
+    const pos = getCanvasPos(e);
+    setDragOffset({ x: pos.x - seat.position.x, y: pos.y - seat.position.y });
+    setDraggingSeatId(seat._id);
+  };
 
   // ── Layout image upload ──
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -165,11 +211,12 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
     setPendingSeat(null);
   };
 
+  const defaultCategory = categories.length > 0 ? categories[0] : null;
+
   return (
     <div className="space-y-4">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2 p-3 bg-muted/50 rounded-lg border">
-        {/* Upload layout image */}
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
         {layoutImage ? (
           <div className="flex items-center gap-2">
@@ -195,7 +242,6 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
 
         <div className="h-6 w-px bg-border" />
 
-        {/* Place Seats toggle */}
         <Button
           variant={placementMode ? 'default' : 'outline'}
           size="sm"
@@ -211,7 +257,6 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
 
         <div className="flex-1" />
 
-        {/* Zoom controls */}
         <div className="flex items-center gap-1">
           <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleZoomOut}><ZoomOut className="h-3.5 w-3.5" /></Button>
           <span className="text-xs w-12 text-center">{Math.round(zoom * 100)}%</span>
@@ -229,7 +274,10 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
       {/* Canvas */}
       <div
         className="relative overflow-hidden border rounded-lg bg-muted/30"
-        style={{ height: '600px', cursor: placementMode ? 'crosshair' : (isPanning ? 'grabbing' : 'grab') }}
+        style={{
+          height: '600px',
+          cursor: placementMode ? 'crosshair' : draggingSeatId ? 'grabbing' : (isPanning ? 'grabbing' : 'grab'),
+        }}
         onMouseDown={handleCanvasMouseDown}
         onMouseMove={handleCanvasMouseMove}
         onMouseUp={handleCanvasMouseUp}
@@ -245,7 +293,6 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
             transformOrigin: '0 0',
           }}
         >
-          {/* Background layout image */}
           {layoutImage && (
             <img
               src={layoutImage}
@@ -255,10 +302,10 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
             />
           )}
 
-          {/* Render all seats */}
           {seats.map(seat => {
             const isSelected = selectedSeat?._id === seat._id;
             const isBooked = !seat.isAvailable;
+            const isDragging = draggingSeatId === seat._id;
 
             let seatClass = 'bg-emerald-50 border-emerald-400 text-emerald-800';
             if (isSelected) seatClass = 'bg-primary border-primary text-primary-foreground ring-2 ring-primary/50';
@@ -268,19 +315,21 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
               <div key={seat._id} className="group absolute" style={{
                 left: seat.position.x - 18,
                 top: seat.position.y - 13,
-                zIndex: isSelected ? 20 : 5,
+                zIndex: isDragging ? 30 : isSelected ? 20 : 5,
+                cursor: placementMode ? 'crosshair' : 'move',
               }}>
                 <button
-                  className={`flex items-center justify-center rounded border text-[10px] font-bold select-none transition-all ${seatClass}`}
+                  className={`flex items-center justify-center rounded border text-[10px] font-bold select-none transition-all ${seatClass} ${isDragging ? 'shadow-lg scale-110' : ''}`}
                   style={{ width: 36, height: 26 }}
+                  onMouseDown={e => handleSeatMouseDown(e, seat)}
                   onClick={e => {
                     e.stopPropagation();
-                    onSeatSelect(isSelected ? null : seat);
+                    if (!draggingSeatId) onSeatSelect(isSelected ? null : seat);
                   }}
                 >
                   {seat.number}
                 </button>
-                {onDeleteSeat && (
+                {onDeleteSeat && !isDragging && (
                   <button
                     className="absolute -top-2 -right-2 hidden group-hover:flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[8px]"
                     onClick={e => {
@@ -318,7 +367,8 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
       <SeatPlacementDialog
         open={!!pendingSeat}
         defaultNumber={nextSeatNumber}
-        defaultPrice={2000}
+        defaultPrice={defaultCategory?.price ?? 2000}
+        categories={categories}
         onConfirm={handlePlacementConfirm}
         onCancel={() => setPendingSeat(null)}
       />
@@ -331,6 +381,7 @@ interface SeatPlacementDialogProps {
   open: boolean;
   defaultNumber: number;
   defaultPrice: number;
+  categories: SeatCategoryOption[];
   onConfirm: (number: number, category: string, price: number) => void;
   onCancel: () => void;
 }
@@ -339,19 +390,33 @@ const SeatPlacementDialog: React.FC<SeatPlacementDialogProps> = ({
   open,
   defaultNumber,
   defaultPrice,
+  categories,
   onConfirm,
   onCancel,
 }) => {
   const [seatNumber, setSeatNumber] = useState(defaultNumber);
-  const [category, setCategory] = useState('Non-AC');
+  const [category, setCategory] = useState('');
   const [price, setPrice] = useState(defaultPrice);
 
   useEffect(() => {
     if (open) {
       setSeatNumber(defaultNumber);
-      setPrice(defaultPrice);
+      const defaultCat = categories.length > 0 ? categories[0].name : 'Non-AC';
+      setCategory(defaultCat);
+      const catPrice = categories.find(c => c.name === defaultCat)?.price;
+      setPrice(catPrice ?? defaultPrice);
     }
-  }, [open, defaultNumber, defaultPrice]);
+  }, [open, defaultNumber, defaultPrice, categories]);
+
+  const handleCategoryChange = (catName: string) => {
+    setCategory(catName);
+    const cat = categories.find(c => c.name === catName);
+    if (cat) setPrice(cat.price);
+  };
+
+  const categoryList = categories.length > 0 ? categories : [
+    { id: '1', name: 'Non-AC', price: defaultPrice },
+  ];
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) onCancel(); }}>
@@ -366,11 +431,13 @@ const SeatPlacementDialog: React.FC<SeatPlacementDialogProps> = ({
           </div>
           <div>
             <Label>Category</Label>
-            <RadioGroup value={category} onValueChange={setCategory} className="flex flex-wrap gap-3 mt-2">
-              {SEAT_CATEGORIES.map(cat => (
-                <div key={cat} className="flex items-center space-x-1.5">
-                  <RadioGroupItem value={cat} id={`cat-${cat}`} />
-                  <Label htmlFor={`cat-${cat}`} className="text-sm cursor-pointer">{cat}</Label>
+            <RadioGroup value={category} onValueChange={handleCategoryChange} className="flex flex-wrap gap-3 mt-2">
+              {categoryList.map(cat => (
+                <div key={cat.id || cat.name} className="flex items-center space-x-1.5">
+                  <RadioGroupItem value={cat.name} id={`cat-${cat.name}`} />
+                  <Label htmlFor={`cat-${cat.name}`} className="text-sm cursor-pointer">
+                    {cat.name} (₹{cat.price})
+                  </Label>
                 </div>
               ))}
             </RadioGroup>

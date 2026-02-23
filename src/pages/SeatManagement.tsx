@@ -8,8 +8,15 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { adminCabinsService } from "@/api/adminCabinsService";
 import { adminSeatsService, SeatData } from "@/api/adminSeatsService";
-import { ArrowLeft, Building, Plus, Trash2 } from "lucide-react";
+import { seatCategoryService, SeatCategory } from "@/api/seatCategoryService";
+import { ArrowLeft, Building, Plus, Trash2, Settings, Pencil } from "lucide-react";
 import { FloorPlanDesigner, FloorPlanSeat } from "@/components/seats/FloorPlanDesigner";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
 
 const SeatManagement = () => {
   const { cabinId } = useParams<{ cabinId: string }>();
@@ -23,7 +30,6 @@ const SeatManagement = () => {
   const [layoutImage, setLayoutImage] = useState<string | null>(null);
   const [layoutImageOpacity, setLayoutImageOpacity] = useState(30);
 
-  // Room dimensions
   const [roomWidth, setRoomWidth] = useState(800);
   const [roomHeight, setRoomHeight] = useState(600);
 
@@ -34,11 +40,18 @@ const SeatManagement = () => {
   const [editingFloorId, setEditingFloorId] = useState<number | null>(null);
   const [showAddFloorForm, setShowAddFloorForm] = useState(false);
 
-  // Seat details
-  const [price, setPrice] = useState(0);
+  // Categories
+  const [categories, setCategories] = useState<SeatCategory[]>([]);
+  const [showCategoryDialog, setShowCategoryDialog] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<SeatCategory | null>(null);
+  const [catName, setCatName] = useState("");
+  const [catPrice, setCatPrice] = useState(0);
 
   useEffect(() => {
-    if (cabinId) fetchCabinData(cabinId);
+    if (cabinId) {
+      fetchCabinData(cabinId);
+      fetchCategories(cabinId);
+    }
   }, [cabinId]);
 
   useEffect(() => {
@@ -76,18 +89,18 @@ const SeatManagement = () => {
     }
   };
 
+  const fetchCategories = async (id: string) => {
+    const res = await seatCategoryService.getCategories(id);
+    if (res.success) setCategories(res.data);
+  };
+
   const handleSave = async () => {
     if (!cabinId) return;
     setIsSaving(true);
     try {
       await adminCabinsService.updateCabinLayout(cabinId, [], roomWidth, roomHeight, 20, [], layoutImage);
-
-      const seatsToUpdate = seats.map(s => ({
-        _id: s._id,
-        position: s.position,
-      }));
+      const seatsToUpdate = seats.map(s => ({ _id: s._id, position: s.position }));
       await adminSeatsService.updateSeatPositions(seatsToUpdate);
-
       toast({ title: "Layout saved successfully" });
     } catch (e) {
       toast({ title: "Error saving layout", variant: "destructive" });
@@ -111,14 +124,8 @@ const SeatManagement = () => {
     if (!cabinId) return;
     try {
       const seatData: SeatData = {
-        number,
-        floor: selectedFloor,
-        cabinId,
-        price,
-        position,
-        isAvailable: true,
-        isHotSelling: false,
-        category,
+        number, floor: selectedFloor, cabinId, price, position,
+        isAvailable: true, isHotSelling: false, category,
       };
       const res = await adminSeatsService.createSeat(seatData);
       if (res.success && res.data) {
@@ -127,6 +134,14 @@ const SeatManagement = () => {
       }
     } catch (e) {
       toast({ title: "Error placing seat", variant: "destructive" });
+    }
+  };
+
+  const handleSeatMove = async (seatId: string, position: { x: number; y: number }) => {
+    try {
+      await adminSeatsService.updateSeatPositions([{ _id: seatId, position }]);
+    } catch (e) {
+      console.error('Error saving seat position:', e);
     }
   };
 
@@ -146,17 +161,19 @@ const SeatManagement = () => {
     }
   };
 
-  const handlePriceUpdate = async () => {
+  const handleCategoryUpdate = async (newCategory: string) => {
     if (!selectedSeat) return;
+    const cat = categories.find(c => c.name === newCategory);
+    const newPrice = cat?.price ?? selectedSeat.price;
     try {
-      const res = await adminSeatsService.updateSeat(selectedSeat._id, { price });
+      const res = await adminSeatsService.updateSeat(selectedSeat._id, { category: newCategory, price: newPrice });
       if (res.success) {
-        setSeats(seats.map(s => s._id === selectedSeat._id ? { ...s, price } : s));
-        setSelectedSeat({ ...selectedSeat, price });
-        toast({ title: `Price updated for seat ${selectedSeat.number}` });
+        setSeats(seats.map(s => s._id === selectedSeat._id ? { ...s, category: newCategory, price: newPrice } : s));
+        setSelectedSeat({ ...selectedSeat, category: newCategory, price: newPrice });
+        toast({ title: `Category updated to ${newCategory}` });
       }
     } catch (e) {
-      toast({ title: "Error", variant: "destructive" });
+      toast({ title: "Error updating category", variant: "destructive" });
     }
   };
 
@@ -177,18 +194,48 @@ const SeatManagement = () => {
     if (!floorNumber || !cabin) return;
     try {
       const res = await adminCabinsService.addUpdateCabinFloor(cabin.id, {
-        floorId: editingFloorId,
-        number: floorNumber,
+        floorId: editingFloorId, number: floorNumber,
       });
       if (res.success) {
         setFloors(res.data.floors);
         toast({ title: editingFloorId ? "Floor updated" : "Floor added" });
-        setFloorNumber("");
-        setEditingFloorId(null);
-        setShowAddFloorForm(false);
+        setFloorNumber(""); setEditingFloorId(null); setShowAddFloorForm(false);
       }
     } catch (e) {
       toast({ title: "Error", variant: "destructive" });
+    }
+  };
+
+  // ── Category CRUD ──
+  const openAddCategory = () => {
+    setEditingCategory(null); setCatName(""); setCatPrice(0); setShowCategoryDialog(true);
+  };
+  const openEditCategory = (cat: SeatCategory) => {
+    setEditingCategory(cat); setCatName(cat.name); setCatPrice(cat.price); setShowCategoryDialog(true);
+  };
+  const handleSaveCategory = async () => {
+    if (!catName.trim() || !cabinId) return;
+    if (editingCategory) {
+      const res = await seatCategoryService.updateCategory(editingCategory.id, { name: catName, price: catPrice });
+      if (res.success) {
+        toast({ title: "Category updated" });
+        fetchCategories(cabinId);
+      }
+    } else {
+      const res = await seatCategoryService.createCategory(cabinId, catName, catPrice);
+      if (res.success) {
+        toast({ title: "Category added" });
+        fetchCategories(cabinId);
+      }
+    }
+    setShowCategoryDialog(false);
+  };
+  const handleDeleteCategory = async (id: string) => {
+    if (!cabinId) return;
+    const res = await seatCategoryService.deleteCategory(id);
+    if (res.success) {
+      toast({ title: "Category deleted" });
+      fetchCategories(cabinId);
     }
   };
 
@@ -221,6 +268,38 @@ const SeatManagement = () => {
             <Switch checked={cabin?.is_active || false} onCheckedChange={toggleCabinStatus} />
           </div>
         </CardHeader>
+      </Card>
+
+      {/* Category Management */}
+      <Card>
+        <CardHeader className="flex flex-row justify-between items-center pb-2">
+          <CardTitle className="text-lg flex items-center gap-2"><Settings className="h-4 w-4" /> Seat Categories & Pricing</CardTitle>
+          <Button size="sm" variant="outline" onClick={openAddCategory}><Plus className="h-3.5 w-3.5 mr-1" /> Add Category</Button>
+        </CardHeader>
+        <CardContent>
+          {categories.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No categories yet. Add one to get started.</p>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+              {categories.map(cat => (
+                <div key={cat.id} className="border rounded-lg p-3 flex flex-col gap-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-sm">{cat.name}</span>
+                    <div className="flex gap-1">
+                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => openEditCategory(cat)}>
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteCategory(cat.id)}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                  <span className="text-xs text-muted-foreground">₹{cat.price}/month</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
       </Card>
 
       {/* Floor selector */}
@@ -278,16 +357,18 @@ const SeatManagement = () => {
             roomHeight={roomHeight}
             seats={seats}
             onSeatsChange={setSeats}
-            onSeatSelect={seat => { setSelectedSeat(seat); if (seat) setPrice(seat.price); }}
+            onSeatSelect={seat => { setSelectedSeat(seat); }}
             selectedSeat={selectedSeat}
             onSave={handleSave}
             onDeleteSeat={handleDeleteSeat}
             onPlaceSeat={handlePlaceSeat}
+            onSeatMove={handleSeatMove}
             layoutImage={layoutImage}
             layoutImageOpacity={layoutImageOpacity}
             onLayoutImageChange={setLayoutImage}
             onLayoutImageOpacityChange={setLayoutImageOpacity}
             isSaving={isSaving}
+            categories={categories.map(c => ({ id: c.id, name: c.name, price: c.price }))}
           />
         </CardContent>
       </Card>
@@ -304,10 +385,22 @@ const SeatManagement = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
                 <Label className="text-sm font-medium">Category</Label>
-                <p className="text-sm mt-1">{selectedSeat.category || 'Non-AC'}</p>
+                <Select value={selectedSeat.category || 'Non-AC'} onValueChange={handleCategoryUpdate}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map(cat => (
+                      <SelectItem key={cat.id} value={cat.name}>{cat.name} (₹{cat.price})</SelectItem>
+                    ))}
+                    {categories.length === 0 && (
+                      <SelectItem value="Non-AC">Non-AC</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label className="text-sm font-medium">Status</Label>
@@ -320,21 +413,37 @@ const SeatManagement = () => {
               </div>
               <div>
                 <Label className="text-sm font-medium">Price (₹/month)</Label>
-                <div className="flex items-center gap-2 mt-1">
-                  <Input type="number" className="w-28" value={price} onChange={e => setPrice(+e.target.value)} />
-                  <Button size="sm" onClick={handlePriceUpdate}>Update</Button>
-                </div>
-              </div>
-              <div>
-                <Label className="text-sm font-medium">Position</Label>
-                <p className="text-sm text-muted-foreground mt-1">
-                  X: {selectedSeat.position.x}, Y: {selectedSeat.position.y}
-                </p>
+                <p className="text-sm mt-1">₹{selectedSeat.price}</p>
               </div>
             </div>
           </CardContent>
         </Card>
       )}
+
+      {/* Category Management Dialog */}
+      <Dialog open={showCategoryDialog} onOpenChange={setShowCategoryDialog}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{editingCategory ? "Edit Category" : "Add Category"}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div>
+              <Label>Category Name</Label>
+              <Input value={catName} onChange={e => setCatName(e.target.value)} placeholder="e.g. AC, Premium" />
+            </div>
+            <div>
+              <Label>Default Price (₹/month)</Label>
+              <Input type="number" min={0} value={catPrice} onChange={e => setCatPrice(+e.target.value || 0)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCategoryDialog(false)}>Cancel</Button>
+            <Button onClick={handleSaveCategory} disabled={!catName.trim()}>
+              {editingCategory ? "Update" : "Add"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
