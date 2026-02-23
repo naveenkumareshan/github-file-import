@@ -18,6 +18,9 @@ export interface SeatData {
   unavailableUntil?: string;
   sharingType?: string;
   sharingCapacity?: number;
+  sectionId?: string;
+  rowIndex?: number;
+  colIndex?: number;
 }
 
 const mapRow = (row: any): any => ({
@@ -160,6 +163,8 @@ export const adminSeatsService = {
         is_hot_selling: s.isHotSelling || false,
         sharing_type: s.sharingType || 'private',
         sharing_capacity: s.sharingCapacity || 4,
+        row_index: s.rowIndex || 0,
+        col_index: s.colIndex || 0,
       }));
       const { data, error } = await supabase.from('seats').insert(records).select();
       if (error) throw error;

@@ -1,24 +1,12 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import {
-  TooltipProvider,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
+  TooltipProvider, Tooltip, TooltipContent, TooltipTrigger,
 } from '@/components/ui/tooltip';
-import {
-  DoorOpen, ToiletIcon, Wind, MonitorPlay, AirVent,
-  ZoomIn, ZoomOut, Maximize,
-} from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize, Building2 } from 'lucide-react';
 import { RoomWalls } from './RoomWalls';
 import { format } from 'date-fns';
-
-interface RoomElement {
-  id: string;
-  type: string;
-  position: { x: number; y: number };
-  rotation?: number;
-}
+import type { Section } from './FloorPlanDesigner';
 
 interface ViewerSeat {
   _id: string;
@@ -29,11 +17,12 @@ interface ViewerSeat {
   isAvailable: boolean;
   unavailableUntil?: string;
   conflictingBookings?: any[];
+  sectionId?: string;
 }
 
 interface FloorPlanViewerProps {
   seats: ViewerSeat[];
-  roomElements: RoomElement[];
+  sections: Section[];
   roomWidth: number;
   roomHeight: number;
   onSeatSelect?: (seat: ViewerSeat) => void;
@@ -41,17 +30,17 @@ interface FloorPlanViewerProps {
   dateRange?: { start: Date; end: Date };
 }
 
-const ELEMENT_ICONS: Record<string, React.ElementType> = {
-  door: DoorOpen, bath: ToiletIcon, window: Wind, screen: MonitorPlay, AC: AirVent,
-};
-
-const ELEMENT_LABELS: Record<string, string> = {
-  door: 'Door', bath: 'Bath', window: 'Window', screen: 'Screen', AC: 'AC',
+const STRUCTURAL_COLORS: Record<string, string> = {
+  Washroom: 'bg-blue-100 border-blue-300 text-blue-700',
+  Office: 'bg-amber-100 border-amber-300 text-amber-700',
+  Lockers: 'bg-violet-100 border-violet-300 text-violet-700',
+  Storage: 'bg-stone-100 border-stone-300 text-stone-700',
+  Custom: 'bg-muted border-border text-muted-foreground',
 };
 
 export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
   seats,
-  roomElements,
+  sections,
   roomWidth,
   roomHeight,
   onSeatSelect,
@@ -79,17 +68,62 @@ export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
     setIsPanning(true);
     setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
   };
-
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isPanning) return;
     setPan({ x: e.clientX - panStart.x, y: e.clientY - panStart.y });
   };
-
   const handleMouseUp = () => setIsPanning(false);
-
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     setZoom(z => Math.max(0.25, Math.min(z + (e.deltaY > 0 ? -0.1 : 0.1), 3)));
+  };
+
+  const renderSectionSeats = (section: Section) => {
+    if (section.type !== 'seats') return null;
+    const sectionSeats = seats.filter(s => s.sectionId === section.id);
+
+    return sectionSeats.map(seat => {
+      const isSelected = selectedSeat?._id === seat._id;
+      const isBooked = !seat.isAvailable;
+
+      let seatClass = 'bg-emerald-50 border-emerald-400 text-emerald-800 hover:bg-emerald-100 cursor-pointer';
+      if (isSelected) seatClass = 'bg-primary border-primary text-primary-foreground ring-2 ring-primary/50 cursor-pointer';
+      else if (isBooked) seatClass = 'bg-muted border-muted-foreground/30 text-muted-foreground cursor-not-allowed';
+
+      return (
+        <Tooltip key={seat._id}>
+          <TooltipTrigger asChild>
+            <button
+              className={`absolute flex items-center justify-center rounded border text-[10px] font-bold transition-all ${seatClass}`}
+              style={{
+                left: seat.position.x - section.position.x,
+                top: seat.position.y - section.position.y,
+                width: 36,
+                height: 26,
+                zIndex: isSelected ? 20 : 10,
+              }}
+              onClick={e => {
+                e.stopPropagation();
+                if (seat.isAvailable && onSeatSelect) onSeatSelect(seat);
+              }}
+              disabled={isBooked}
+            >
+              {seat.number}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <div className="text-xs">
+              <p className="font-bold">Seat {seat.number}</p>
+              <p>₹{seat.price}/month</p>
+              <p>{seat.isAvailable ? '✅ Available' : '❌ Booked'}</p>
+              {!seat.isAvailable && seat.unavailableUntil && (
+                <p>Until: {format(new Date(seat.unavailableUntil), 'dd MMM yyyy')}</p>
+              )}
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      );
+    });
   };
 
   return (
@@ -125,68 +159,41 @@ export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
           <RoomWalls width={roomWidth} height={roomHeight} />
 
           <TooltipProvider>
-            {/* Room elements */}
-            {roomElements.map(element => {
-              const Icon = ELEMENT_ICONS[element.type] || DoorOpen;
+            {/* Sections */}
+            {sections.map(section => {
+              const isStructural = section.type === 'structural';
+              const colorClass = isStructural
+                ? (STRUCTURAL_COLORS[section.structuralLabel || 'Custom'] || STRUCTURAL_COLORS.Custom)
+                : 'bg-background border-primary/30';
+
               return (
                 <div
-                  key={element.id}
-                  className="absolute flex items-center gap-1 px-2 py-1 rounded bg-background/80 border text-xs font-medium pointer-events-none select-none"
+                  key={section.id}
+                  className={`absolute rounded-lg border-2 overflow-hidden ${colorClass}`}
                   style={{
-                    left: element.position.x,
-                    top: element.position.y,
-                    transform: `rotate(${element.rotation || 0}deg)`,
-                    transformOrigin: 'center',
-                    zIndex: 5,
+                    left: section.position.x,
+                    top: section.position.y,
+                    width: section.width,
+                    height: section.height,
+                    zIndex: 3,
                   }}
                 >
-                  <Icon className="h-4 w-4" />
-                  <span>{ELEMENT_LABELS[element.type] || element.type}</span>
+                  {/* Section label */}
+                  <div className="px-2 py-1 border-b border-inherit bg-inherit">
+                    <span className="text-xs font-semibold">{section.name}</span>
+                  </div>
+
+                  {/* Section body */}
+                  <div className="relative w-full" style={{ height: section.height - 28 }}>
+                    {isStructural ? (
+                      <div className="flex items-center justify-center h-full">
+                        <Building2 className="h-8 w-8 opacity-30" />
+                      </div>
+                    ) : (
+                      renderSectionSeats(section)
+                    )}
+                  </div>
                 </div>
-              );
-            })}
-
-            {/* Seats */}
-            {seats.map(seat => {
-              const isSelected = selectedSeat?._id === seat._id;
-              const isBooked = !seat.isAvailable;
-
-              let bgClass = 'bg-emerald-500/20 border-emerald-500 text-emerald-700 hover:bg-emerald-500/30 cursor-pointer';
-              if (isSelected) bgClass = 'bg-primary border-primary text-primary-foreground ring-2 ring-primary/50 cursor-pointer';
-              else if (isBooked) bgClass = 'bg-destructive/15 border-destructive/40 text-destructive cursor-not-allowed';
-
-              return (
-                <Tooltip key={seat._id}>
-                  <TooltipTrigger asChild>
-                    <button
-                      className={`absolute flex items-center justify-center rounded border text-[11px] font-bold transition-all ${bgClass}`}
-                      style={{
-                        left: seat.position.x,
-                        top: seat.position.y,
-                        width: 36,
-                        height: 26,
-                        zIndex: isSelected ? 20 : 10,
-                      }}
-                      onClick={e => {
-                        e.stopPropagation();
-                        if (seat.isAvailable && onSeatSelect) onSeatSelect(seat);
-                      }}
-                      disabled={isBooked}
-                    >
-                      {seat.number}
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <div className="text-xs">
-                      <p className="font-bold">Seat {seat.number}</p>
-                      <p>₹{seat.price}/month</p>
-                      <p>{seat.isAvailable ? '✅ Available' : '❌ Booked'}</p>
-                      {!seat.isAvailable && seat.unavailableUntil && (
-                        <p>Until: {format(new Date(seat.unavailableUntil), 'dd MMM yyyy')}</p>
-                      )}
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
               );
             })}
           </TooltipProvider>
@@ -196,7 +203,7 @@ export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
       {/* Legend */}
       <div className="flex items-center justify-center gap-4 text-xs">
         <div className="flex items-center gap-1.5">
-          <div className="w-4 h-3 rounded border border-emerald-500 bg-emerald-500/20" />
+          <div className="w-4 h-3 rounded border border-emerald-400 bg-emerald-50" />
           <span>Available</span>
         </div>
         <div className="flex items-center gap-1.5">
@@ -204,7 +211,7 @@ export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
           <span>Selected</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-4 h-3 rounded border border-destructive/40 bg-destructive/15" />
+          <div className="w-4 h-3 rounded border border-muted-foreground/30 bg-muted" />
           <span>Booked</span>
         </div>
       </div>

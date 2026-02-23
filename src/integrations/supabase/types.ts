@@ -148,6 +148,7 @@ export type Database = {
           room_elements: Json | null
           room_height: number
           room_width: number
+          sections: Json
           state: string | null
         }
         Insert: {
@@ -169,6 +170,7 @@ export type Database = {
           room_elements?: Json | null
           room_height?: number
           room_width?: number
+          sections?: Json
           state?: string | null
         }
         Update: {
@@ -190,6 +192,7 @@ export type Database = {
           room_elements?: Json | null
           room_height?: number
           room_width?: number
+          sections?: Json
           state?: string | null
         }
         Relationships: []
