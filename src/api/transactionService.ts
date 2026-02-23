@@ -1,5 +1,4 @@
-
-import axios from './axiosConfig';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TransactionData {
   bookingId: string;
@@ -10,84 +9,113 @@ interface TransactionData {
   additionalMonths?: number;
   newEndDate?: string;
   paymentMethod?: string;
+  appliedCoupon?: any;
 }
 
 export const transactionService = {
-  // Create a new transaction
   createTransaction: async (data: TransactionData) => {
     try {
-      const response = await axios.post('/transactions', data);
-      return { success: true, data: response.data };
-    } catch (error) {
+      // Store transaction info directly on the booking
+      const { data: booking, error } = await supabase
+        .from('bookings')
+        .update({
+          total_price: data.amount,
+          payment_status: 'pending',
+        })
+        .eq('id', data.bookingId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      return {
+        success: true,
+        data: {
+          data: {
+            _id: booking.id,
+            transactionId: booking.id,
+          },
+        },
+      };
+    } catch (error: any) {
       console.error('Error creating transaction:', error);
-      return { success: false, error: error.response?.data || error.message };
+      return { success: false, error: error.message };
     }
   },
 
   createTransactionByAdmin: async (data: TransactionData) => {
-    try {
-      const response = await axios.post('/transactions/by-admin', data);
-      return { success: true, data: response.data };
-    } catch (error) {
-      console.error('Error creating transaction:', error);
-      return { success: false, error: error.response?.data || error.message };
-    }
+    return transactionService.createTransaction(data);
   },
 
-  // Get transaction by ID
   getTransaction: async (transactionId: string) => {
     try {
-      const response = await axios.get(`/transactions/${transactionId}`);
-      return { success: true, data: response.data };
-    } catch (error) {
-      console.error('Error fetching transaction:', error);
-      return { success: false, error: error.response?.data || error.message };
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('id', transactionId)
+        .single();
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error: any) {
+      return { success: false, error: error.message };
     }
   },
 
-  // Update transaction status
-  updateTransactionStatus: async (bookingId: string, status: string, paymentData?: object) => {
+  updateTransactionStatus: async (bookingId: string, status: string, paymentData?: any) => {
     try {
-      const response = await axios.put(`/transactions/${bookingId}/status`, {
-        status,
-        ...paymentData
-      });
-      return { success: true, data: response.data };
-    } catch (error) {
+      const updateData: any = { payment_status: status };
+      if (paymentData?.razorpay_order_id) updateData.razorpay_order_id = paymentData.razorpay_order_id;
+      if (paymentData?.razorpay_payment_id) updateData.razorpay_payment_id = paymentData.razorpay_payment_id;
+      if (paymentData?.razorpay_signature) updateData.razorpay_signature = paymentData.razorpay_signature;
+
+      const { data, error } = await supabase
+        .from('bookings')
+        .update(updateData)
+        .eq('id', bookingId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error: any) {
       console.error('Error updating transaction status:', error);
-      return { success: false, error: error.response?.data || error.message };
+      return { success: false, error: error.message };
     }
   },
 
-  // Process renewal after successful payment
   processRenewal: async (transactionId: string, paymentData: unknown) => {
-    try {
-      const response = await axios.post(`/transactions/${transactionId}/process-renewal`, paymentData);
-      return { success: true, data: response.data };
-    } catch (error) {
-      console.error('Error processing renewal:', error);
-      return { success: false, error: error.response?.data || error.message };
-    }
+    return transactionService.updateTransactionStatus(transactionId, 'completed', paymentData);
   },
 
-  // Get user transactions
   getUserTransactions: async () => {
     try {
-      const response = await axios.get('/transactions/user-transactions');
-      return { success: true, data: response.data };
-    } catch (error) {
-      console.error('Error fetching user transactions:', error);
-      return { success: false, error: error.response?.data || error.message };
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (error: any) {
+      return { success: false, error: error.message };
     }
   },
-    // Get user transactions
-  getBookingTransactions: async (bookingId) => {
+
+  getBookingTransactions: async (bookingId: string) => {
     try {
-      const response = await axios.get(`/transactions/booking/${bookingId}`);
-      return { success: true, data: response.data };
-    } catch (error) {
-      console.error('Error fetching user transactions:', error);
-      return { success: false, error: error.response?.data || error.message };
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('id', bookingId);
+
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (error: any) {
+      return { success: false, error: error.message };
     }
-  }
+  },
 };

@@ -1,5 +1,4 @@
-
-import axios from './axiosConfig';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface RazorpayOrderParams {
   amount: number;
@@ -8,7 +7,7 @@ export interface RazorpayOrderParams {
   bookingType: 'cabin' | 'hostel' | 'laundry';
   bookingDuration?: 'daily' | 'weekly' | 'monthly';
   durationCount?: number;
-  notes?: Record<string, any>; // Add support for notes
+  notes?: Record<string, any>;
 }
 
 export interface RazorpayVerifyParams {
@@ -44,77 +43,54 @@ declare global {
   }
 }
 
-const loadRazorpayScript = (): Promise<boolean> => {
-  return new Promise((resolve) => {
-    if (typeof window !== "undefined" && (window as any).Razorpay) {
-      return resolve(true);
-    }
-
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-  });
-};
-
-
-// Razorpay service
 export const razorpayService = {
-  // Create order
   createOrder: async (params: RazorpayOrderParams) => {
     try {
-      const response = await axios.post('/payments/razorpay/create-order', params);
+      const { data, error } = await supabase.functions.invoke('razorpay-create-order', {
+        body: params,
+      });
+
+      if (error) throw error;
+
       return {
         success: true,
-        data: response.data.data
+        data: data,
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Razorpay create order error:', error);
       return {
         success: false,
         error: {
-          message: error.response?.data?.message || 'Failed to create Razorpay order'
-        }
+          message: error.message || 'Failed to create Razorpay order',
+        },
       };
     }
   },
-  
-  // Verify payment
+
   verifyPayment: async (params: RazorpayVerifyParams) => {
     try {
-      const response = await axios.post('/payments/razorpay/verify', params);
+      const { data, error } = await supabase.functions.invoke('razorpay-verify-payment', {
+        body: params,
+      });
+
+      if (error) throw error;
+
       return {
         success: true,
-        data: response.data.data
+        data: data,
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Razorpay verify payment error:', error);
       return {
         success: false,
         error: {
-          message: error.response?.data?.message || 'Failed to verify payment'
-        }
+          message: error.message || 'Failed to verify payment',
+        },
       };
     }
-  }
-  ,
- // verify-transaction-payment
+  },
+
   verifyTransactionPayment: async (params: RazorpayVerifyParams) => {
-    try {
-      const response = await axios.post('/payments/razorpay/verify-transaction-payment', params);
-      return {
-        success: true,
-        data: response.data.data
-      };
-    } catch (error) {
-      console.error('Razorpay verify payment error:', error);
-      return {
-        success: false,
-        error: {
-          message: error.response?.data?.message || 'Failed to verify payment'
-        }
-      };
-    }
-  }
+    return razorpayService.verifyPayment(params);
+  },
 };

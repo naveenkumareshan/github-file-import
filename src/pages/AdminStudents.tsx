@@ -81,7 +81,11 @@ const AdminStudents = () => {
   const [totalUsers, setTotalUsers] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [role, setRole] = useState("student");
+  const [includeInactive, setIncludeInactive] = useState(false);
+  const [loadingBookings, setLoadingBookings] = useState(false);
   const { user } = useAuth();
+
+  const setIncludeInactive_ = (val: boolean) => setIncludeInactive(val);
 
   useEffect(() => {
     fetchStudents();

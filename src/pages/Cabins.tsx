@@ -11,19 +11,17 @@ import { Cabin as FrontendCabin } from '../data/cabinsData';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { Loader2 } from 'lucide-react';
 
-// Define backend Cabin type
+// Define backend Cabin type (Supabase schema)
 interface BackendCabin {
-  _id: string;
+  id: string;
   name: string;
   description: string;
   price: number;
   capacity?: number;
   amenities?: string[];
-  imageUrl?: string;
+  image_url?: string;
   category: 'standard' | 'premium' | 'luxury';
-  isActive: boolean;
-  cabinCode?: string;
-  serialNumber: string;
+  is_active: boolean;
 }
 
 const Cabins = () => {
@@ -43,21 +41,19 @@ const Cabins = () => {
         if (response.success) {
           // Transform API cabins to match frontend model with required id property
           const transformedCabins = Array.isArray(response.data) ? response.data
-            .filter((cabin: BackendCabin) => cabin.isActive)
+            .filter((cabin: BackendCabin) => cabin.is_active !== false)
             .map((cabin: BackendCabin, index: number): FrontendCabin => ({
               id: String(index + 1),
-              _id: cabin._id,
+              _id: cabin.id,
               name: cabin.name,
-              description: cabin.description,
+              description: cabin.description || '',
               price: cabin.price,
               capacity: cabin.capacity || 1,
               amenities: cabin.amenities || [],
-              imageSrc: cabin.imageUrl || 'https://images.unsplash.com/photo-1513694203232-719a280e022f',
-              imageUrl: cabin.imageUrl || 'https://images.unsplash.com/photo-1513694203232-719a280e022f',
-              category: cabin.category,
-              isActive: cabin.isActive,
-              serialNumber: cabin.serialNumber,
-              cabinCode: cabin.cabinCode
+              imageSrc: cabin.image_url || 'https://images.unsplash.com/photo-1513694203232-719a280e022f',
+              imageUrl: cabin.image_url || 'https://images.unsplash.com/photo-1513694203232-719a280e022f',
+              category: cabin.category || 'standard',
+              isActive: cabin.is_active !== false,
             })) : [];
           
           setCabins(transformedCabins);

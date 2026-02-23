@@ -65,6 +65,10 @@ export type Database = {
           end_date: string | null
           id: string
           payment_status: string | null
+          razorpay_order_id: string | null
+          razorpay_payment_id: string | null
+          razorpay_signature: string | null
+          seat_id: string | null
           seat_number: number | null
           start_date: string | null
           total_price: number | null
@@ -79,6 +83,10 @@ export type Database = {
           end_date?: string | null
           id?: string
           payment_status?: string | null
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          razorpay_signature?: string | null
+          seat_id?: string | null
           seat_number?: number | null
           start_date?: string | null
           total_price?: number | null
@@ -93,6 +101,10 @@ export type Database = {
           end_date?: string | null
           id?: string
           payment_status?: string | null
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          razorpay_signature?: string | null
+          seat_id?: string | null
           seat_number?: number | null
           start_date?: string | null
           total_price?: number | null
@@ -107,6 +119,13 @@ export type Database = {
             referencedRelation: "cabins"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "bookings_seat_id_fkey"
+            columns: ["seat_id"]
+            isOneToOne: false
+            referencedRelation: "seats"
+            referencedColumns: ["id"]
+          },
         ]
       }
       cabins: {
@@ -118,12 +137,14 @@ export type Database = {
           city: string | null
           created_at: string | null
           description: string | null
+          floors: Json | null
           id: string
           image_url: string | null
           images: string[] | null
           is_active: boolean | null
           name: string
           price: number | null
+          room_elements: Json | null
           state: string | null
         }
         Insert: {
@@ -134,12 +155,14 @@ export type Database = {
           city?: string | null
           created_at?: string | null
           description?: string | null
+          floors?: Json | null
           id?: string
           image_url?: string | null
           images?: string[] | null
           is_active?: boolean | null
           name: string
           price?: number | null
+          room_elements?: Json | null
           state?: string | null
         }
         Update: {
@@ -150,12 +173,14 @@ export type Database = {
           city?: string | null
           created_at?: string | null
           description?: string | null
+          floors?: Json | null
           id?: string
           image_url?: string | null
           images?: string[] | null
           is_active?: boolean | null
           name?: string
           price?: number | null
+          room_elements?: Json | null
           state?: string | null
         }
         Relationships: []
@@ -228,6 +253,62 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      seats: {
+        Row: {
+          cabin_id: string
+          created_at: string
+          floor: number
+          id: string
+          is_available: boolean
+          is_hot_selling: boolean
+          number: number
+          position_x: number
+          position_y: number
+          price: number
+          sharing_capacity: number
+          sharing_type: string
+          unavailable_until: string | null
+        }
+        Insert: {
+          cabin_id: string
+          created_at?: string
+          floor?: number
+          id?: string
+          is_available?: boolean
+          is_hot_selling?: boolean
+          number: number
+          position_x?: number
+          position_y?: number
+          price?: number
+          sharing_capacity?: number
+          sharing_type?: string
+          unavailable_until?: string | null
+        }
+        Update: {
+          cabin_id?: string
+          created_at?: string
+          floor?: number
+          id?: string
+          is_available?: boolean
+          is_hot_selling?: boolean
+          number?: number
+          position_x?: number
+          position_y?: number
+          price?: number
+          sharing_capacity?: number
+          sharing_type?: string
+          unavailable_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seats_cabin_id_fkey"
+            columns: ["cabin_id"]
+            isOneToOne: false
+            referencedRelation: "cabins"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
