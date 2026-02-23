@@ -51,7 +51,7 @@ const AdminDashboard: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-3">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -101,7 +101,7 @@ const AdminDashboard: React.FC = () => {
                   )}
                 </TabsList>
               </div>
-              <div className="p-6">
+              <div className="p-4">
                 <TabsContent value="dashboard" className="mt-0">
                   <DashboardStatistics />
                 </TabsContent>

@@ -327,129 +327,81 @@ const AdminBookingsList = () => {
 
   return (
      <div  className="min-w-[100px]">
-      {/* Filters */}
+      {/* Compact Single-Row Filters */}
+      <div className="flex flex-wrap items-center gap-2 mb-3">
+        <Input
+          placeholder="Search booking ID, name..."
+          value={filters.search}
+          onChange={(e) => handleFilterChange("search", e.target.value)}
+          className="h-8 text-sm w-48"
+        />
+        <Select
+          value={filters.status}
+          onValueChange={(value) => handleFilterChange("status", value)}
+        >
+          <SelectTrigger className="h-8 text-sm w-32">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="completed">Completed</SelectItem>
+            <SelectItem value="cancelled">Cancelled</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select
+          value={filters.sortBy}
+          onValueChange={(value) => handleFilterChange("sortBy", value)}
+        >
+          <SelectTrigger className="h-8 text-sm w-32">
+            <SelectValue placeholder="Sort by" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="createdAt">Created Date</SelectItem>
+            <SelectItem value="startDate">Start Date</SelectItem>
+            <SelectItem value="endDate">End Date</SelectItem>
+            <SelectItem value="totalPrice">Amount</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select
+          value={filters.order}
+          onValueChange={(value) => handleFilterChange("order", value as "asc" | "desc")}
+        >
+          <SelectTrigger className="h-8 text-sm w-16">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="desc">↓</SelectItem>
+            <SelectItem value="asc">↑</SelectItem>
+          </SelectContent>
+        </Select>
+        <Input
+          type="date"
+          placeholder="From"
+          value={filters.startDate}
+          onChange={(e) => handleFilterChange("startDate", e.target.value)}
+          className="h-8 text-sm w-36"
+        />
+        <Input
+          type="date"
+          placeholder="To"
+          value={filters.endDate}
+          onChange={(e) => handleFilterChange("endDate", e.target.value)}
+          className="h-8 text-sm w-36"
+        />
+        <Button variant="outline" size="sm" className="h-8 text-sm" onClick={clearFilters}>
+          Clear
+        </Button>
+        <Button variant="outline" size="sm" className="h-8 text-sm" onClick={() => exportData("csv")}>
+          <Download className="h-3 w-3 mr-1" />
+          CSV
+        </Button>
+        <Button variant="outline" size="sm" className="h-8 text-sm" onClick={() => exportData("xlsx")}>
+          <FileSpreadsheet className="h-3 w-3 mr-1" />
+          Excel
+        </Button>
+      </div>
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-4 w-4" />
-            Filters & Export
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-            <div>
-              <Label htmlFor="search">Search</Label>
-              <Input
-                id="search"
-                placeholder="Booking ID, student name..."
-                value={filters.search}
-                onChange={(e) => handleFilterChange("search", e.target.value)}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="status">Booking Status</Label>
-              <Select
-                value={filters.status}
-                onValueChange={(value) => handleFilterChange("status", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="sortBy">Sort By</Label>
-              <Select
-                value={filters.sortBy}
-                onValueChange={(value) => handleFilterChange("sortBy", value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="createdAt">Created Date</SelectItem>
-                  <SelectItem value="startDate">Start Date</SelectItem>
-                  <SelectItem value="endDate">End Date</SelectItem>
-                  <SelectItem value="totalPrice">Amount</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <div>
-              <Label htmlFor="startDate">Start Date</Label>
-              <Input
-                id="startDate"
-                type="date"
-                value={filters.startDate}
-                onChange={(e) =>
-                  handleFilterChange("startDate", e.target.value)
-                }
-              />
-            </div>
-            <div>
-              <Label htmlFor="endDate">End Date</Label>
-              <Input
-                id="endDate"
-                type="date"
-                value={filters.endDate}
-                onChange={(e) => handleFilterChange("endDate", e.target.value)}
-              />
-            </div>
-            <div className="flex items-end gap-2">
-              <Button variant="outline" onClick={clearFilters}>
-                Clear Filters
-              </Button>
-              <Select
-                value={filters.order}
-                onValueChange={(value) =>
-                  handleFilterChange("order", value as "asc" | "desc")
-                }
-              >
-                <SelectTrigger className="w-20">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="desc">↓</SelectItem>
-                  <SelectItem value="asc">↑</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => exportData("csv")}
-              className="flex items-center gap-2"
-            >
-              <Download className="h-4 w-4" />
-              Export CSV
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => exportData("xlsx")}
-              className="flex items-center gap-2"
-            >
-              <FileSpreadsheet className="h-4 w-4" />
-              Export Excel
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>All Bookings</CardTitle>
-        </CardHeader>
         <CardContent>
           {bookings.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
@@ -598,9 +550,8 @@ const AdminBookingsList = () => {
       </Card>
       
       {bookings.length > 0 && (
-        <Card>
-          <CardContent>
-            <Pagination className="mt-6">
+      <div className="flex justify-center mt-2">
+            <Pagination>
               <PaginationContent>
                 <PaginationItem>
                   <PaginationPrevious
@@ -689,8 +640,7 @@ const AdminBookingsList = () => {
                 </PaginationItem>
               </PaginationContent>
             </Pagination>
-          </CardContent>
-        </Card>
+      </div>
       )}
     </div>
   );

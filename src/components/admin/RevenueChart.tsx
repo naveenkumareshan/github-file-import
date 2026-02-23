@@ -50,11 +50,11 @@ useEffect(() => {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Monthly Revenue</CardTitle>
+      <CardHeader className="pb-2 pt-4 px-4">
+        <CardTitle className="text-sm font-semibold">Monthly Revenue</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-[300px] w-full">
+        <div className="h-[220px] w-full">
           {loading ? (
             <div className="space-y-2">
               <Skeleton className="h-4 w-full" />

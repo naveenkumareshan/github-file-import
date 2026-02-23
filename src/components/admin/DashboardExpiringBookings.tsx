@@ -46,7 +46,7 @@ export function DashboardExpiringBookings() {
 
   return (
     <Card>
-      <CardHeader className="pb-2">
+      <CardHeader className="pb-1 pt-3 px-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-2">
             <Calendar className="h-4 w-4" />
@@ -73,9 +73,9 @@ export function DashboardExpiringBookings() {
         ) : (
           <div className="space-y-2">
             {expiringBookings.map((booking) => (
-              <div 
+                <div 
                 key={booking._id} 
-                className="flex justify-between items-center p-2 rounded-md hover:bg-muted cursor-pointer"
+                className="flex justify-between items-center p-1.5 rounded-md hover:bg-muted cursor-pointer"
                 onClick={() => navigate(`/admin/bookings/${booking._id}`)}
               >
                 <div>

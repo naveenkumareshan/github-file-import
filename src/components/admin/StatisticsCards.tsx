@@ -17,51 +17,51 @@ interface StatisticsCardsProps {
 
 export function StatisticsCards({ data }: StatisticsCardsProps) {
   return (
-    <div className="grid md:grid-cols-4 gap-4 mb-6">
-      <Card className="shadow-sm border-border/60 rounded-xl">
-        <CardHeader className="pb-2 flex flex-row items-center justify-between">
-          <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Revenue</CardTitle>
-          <TrendingUp className="h-4 w-4 text-emerald-600" />
-        </CardHeader>
-        <CardContent>
-          <p className="text-2xl font-bold text-foreground">₹{data.totalRevenue.toLocaleString()}</p>
-          {data.revenueToday !== undefined && (
-            <p className="text-xs text-emerald-600 mt-1">₹{data.revenueToday.toLocaleString()} today</p>
-          )}
-        </CardContent>
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+      <Card className="shadow-none border rounded-lg">
+        <div className="p-3 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Revenue</p>
+            <p className="text-xl font-bold mt-0.5">₹{data.totalRevenue.toLocaleString()}</p>
+            {data.revenueToday !== undefined && (
+              <p className="text-[10px] text-emerald-600">₹{data.revenueToday.toLocaleString()} today</p>
+            )}
+          </div>
+          <TrendingUp className="h-3.5 w-3.5 text-emerald-600" />
+        </div>
       </Card>
-      
-      <Card className="shadow-sm border-border/60 rounded-xl">
-        <CardHeader className="pb-2 flex flex-row items-center justify-between">
-          <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Active Residents</CardTitle>
-          <Users className="h-4 w-4 text-blue-600" />
-        </CardHeader>
-        <CardContent>
-          <p className="text-2xl font-bold text-foreground">{data.activeSubscriptions}</p>
-          {data.occupancyRate !== undefined && (
-            <p className="text-xs text-muted-foreground mt-1">{data.occupancyRate}% occupancy</p>
-          )}
-        </CardContent>
+
+      <Card className="shadow-none border rounded-lg">
+        <div className="p-3 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Active Residents</p>
+            <p className="text-xl font-bold mt-0.5">{data.activeSubscriptions}</p>
+            {data.occupancyRate !== undefined && (
+              <p className="text-[10px] text-muted-foreground">{data.occupancyRate}% occupancy</p>
+            )}
+          </div>
+          <Users className="h-3.5 w-3.5 text-blue-600" />
+        </div>
       </Card>
-      
-      <Card className="shadow-sm border-border/60 rounded-xl">
-        <CardHeader className="pb-2 flex flex-row items-center justify-between">
-          <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">New This Month</CardTitle>
-          <UserPlus className="h-4 w-4 text-violet-600" />
-        </CardHeader>
-        <CardContent>
-          <p className="text-2xl font-bold text-foreground">{data.newSubscriptionsThisMonth}</p>
-        </CardContent>
+
+      <Card className="shadow-none border rounded-lg">
+        <div className="p-3 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">New This Month</p>
+            <p className="text-xl font-bold mt-0.5">{data.newSubscriptionsThisMonth}</p>
+          </div>
+          <UserPlus className="h-3.5 w-3.5 text-violet-600" />
+        </div>
       </Card>
-      
-      <Card className="shadow-sm border-border/60 rounded-xl">
-        <CardHeader className="pb-2 flex flex-row items-center justify-between">
-          <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Pending Payments</CardTitle>
-          <AlertCircle className="h-4 w-4 text-amber-600" />
-        </CardHeader>
-        <CardContent>
-          <p className="text-2xl font-bold text-foreground">₹{data.pendingPayments.toLocaleString()}</p>
-        </CardContent>
+
+      <Card className="shadow-none border rounded-lg">
+        <div className="p-3 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Pending Payments</p>
+            <p className="text-xl font-bold mt-0.5">₹{data.pendingPayments.toLocaleString()}</p>
+          </div>
+          <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
+        </div>
       </Card>
     </div>
   );

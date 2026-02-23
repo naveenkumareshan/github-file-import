@@ -60,7 +60,7 @@ export function DashboardStatistics() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <ErrorBoundary>
         <DynamicStatisticsCards />
       </ErrorBoundary>
@@ -136,7 +136,7 @@ export function DashboardStatistics() {
       </Card>
       
       {/* Charts Row */}
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid md:grid-cols-2 gap-3">
         <ErrorBoundary>
           <RevenueChart />
         </ErrorBoundary>

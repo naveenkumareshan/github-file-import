@@ -38,85 +38,59 @@ useEffect(() => {
 }, []);
 
   return (
-    <div className="grid md:grid-cols-4 gap-6 mb-8">
-      {/* Total Revenue Card */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <BarChart className="h-4 w-4" />
-            Total Revenue
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <Skeleton className="h-8 w-24" />
-          ) : (
-            <>
-              <p className="text-3xl font-bold">₹{statistics.totalRevenue.toLocaleString()}</p>
-              <p className="text-sm text-green-600 mt-1">
-                ₹{statistics.revenueToday.toLocaleString()} today
-              </p>
-            </>
-          )}
-        </CardContent>
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+      <Card className="shadow-none border rounded-lg">
+        <div className="p-3 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Revenue</p>
+            {loading ? <Skeleton className="h-6 w-20 mt-1" /> : (
+              <>
+                <p className="text-xl font-bold mt-0.5">₹{statistics.totalRevenue.toLocaleString()}</p>
+                <p className="text-[10px] text-emerald-600">₹{statistics.revenueToday.toLocaleString()} today</p>
+              </>
+            )}
+          </div>
+          <BarChart className="h-3.5 w-3.5 text-muted-foreground" />
+        </div>
       </Card>
-      
-      {/* Active Residents Card */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <UserCheck className="h-4 w-4" />
-            Active Residents
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {residentsLoading ? (
-            <Skeleton className="h-8 w-16" />
-          ) : (
-            <>
-              <p className="text-3xl font-bold">{activeResidents.activeResidents}</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                {activeResidents.occupancyPercentage}% occupancy
-              </p>
-            </>
-          )}
-        </CardContent>
+
+      <Card className="shadow-none border rounded-lg">
+        <div className="p-3 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Active Residents</p>
+            {residentsLoading ? <Skeleton className="h-6 w-14 mt-1" /> : (
+              <>
+                <p className="text-xl font-bold mt-0.5">{activeResidents.activeResidents}</p>
+                <p className="text-[10px] text-muted-foreground">{activeResidents.occupancyPercentage}% occupancy</p>
+              </>
+            )}
+          </div>
+          <UserCheck className="h-3.5 w-3.5 text-muted-foreground" />
+        </div>
       </Card>
-      
-      {/* Seats Availability Card */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <TrendingUp className="h-4 w-4" />
-            Seat Availability
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <Skeleton className="h-8 w-16" />
-          ) : (
-            <>
-              <p className="text-3xl font-bold">{statistics.availableSeats}</p>
-            </>
-          )}
-        </CardContent>
+
+      <Card className="shadow-none border rounded-lg">
+        <div className="p-3 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Seat Availability</p>
+            {loading ? <Skeleton className="h-6 w-14 mt-1" /> : (
+              <p className="text-xl font-bold mt-0.5">{statistics.availableSeats}</p>
+            )}
+          </div>
+          <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
+        </div>
       </Card>
-      
-      {/* Pending Payments Card */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <AlertCircle className="h-4 w-4" />
-            Pending Payments
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <Skeleton className="h-8 w-24" />
-          ) : (
-            <p className="text-3xl font-bold">₹{statistics.pendingPayments.toLocaleString()}</p>
-          )}
-        </CardContent>
+
+      <Card className="shadow-none border rounded-lg">
+        <div className="p-3 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Pending Payments</p>
+            {loading ? <Skeleton className="h-6 w-20 mt-1" /> : (
+              <p className="text-xl font-bold mt-0.5">₹{statistics.pendingPayments.toLocaleString()}</p>
+            )}
+          </div>
+          <AlertCircle className="h-3.5 w-3.5 text-muted-foreground" />
+        </div>
       </Card>
     </div>
   );
