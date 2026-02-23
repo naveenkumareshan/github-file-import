@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Users, Check, X, AlertTriangle, TrendingUp, Clock1 } from 'lucide-react';
 import { vendorApprovalService } from '@/api/vendorApprovalService';
 
@@ -39,100 +39,43 @@ export const VendorStatsCards: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
         {Array.from({ length: 6 }).map((_, i) => (
-          <Card key={i}>
-            <CardContent className="p-6">
+          <Card key={i} className="shadow-none border">
+            <div className="p-3">
               <div className="animate-pulse">
-                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                <div className="h-8 bg-gray-200 rounded w-1/2"></div>
+                <div className="h-3 bg-muted rounded w-3/4 mb-2"></div>
+                <div className="h-5 bg-muted rounded w-1/2"></div>
               </div>
-            </CardContent>
+            </div>
           </Card>
         ))}
       </div>
     );
   }
 
+  const cards = [
+    { label: 'Total Partners', value: stats.totalVendors, icon: Users, color: 'text-muted-foreground' },
+    { label: 'Pending', value: stats.pendingApprovals, icon: Clock1, color: 'text-blue-600' },
+    { label: 'Approved', value: stats.approvedVendors, icon: Check, color: 'text-green-600' },
+    { label: 'Rejected', value: stats.rejectedVendors, icon: X, color: 'text-red-600' },
+    { label: 'Suspended', value: stats.suspendedVendors, icon: AlertTriangle, color: 'text-yellow-600' },
+    { label: 'Revenue', value: `₹${stats.totalRevenue.toLocaleString()}`, icon: TrendingUp, color: 'text-green-600' },
+  ];
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Partners</CardTitle>
-          <Users className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{stats.totalVendors}</div>
-          <p className="text-xs text-muted-foreground">
-            +{stats.monthlyGrowth}% from last month
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Pending Approvals</CardTitle>
-          <Clock1 className="h-4 w-4 text-blue-600" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-blue-600">{stats.pendingApprovals}</div>
-          <p className="text-xs text-muted-foreground">
-            Awaiting review
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Approved</CardTitle>
-          <Check className="h-4 w-4 text-green-600" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-green-600">{stats.approvedVendors}</div>
-          <p className="text-xs text-muted-foreground">
-            Active vendors
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Rejected</CardTitle>
-          <X className="h-4 w-4 text-red-600" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-red-600">{stats.rejectedVendors}</div>
-          <p className="text-xs text-muted-foreground">
-            Applications rejected
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Suspended</CardTitle>
-          <AlertTriangle className="h-4 w-4 text-yellow-600" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-yellow-600">{stats.suspendedVendors}</div>
-          <p className="text-xs text-muted-foreground">
-            Suspended accounts
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-          <TrendingUp className="h-4 w-4 text-green-600" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">₹{stats.totalRevenue.toLocaleString()}</div>
-          <p className="text-xs text-muted-foreground">
-            All time revenue
-          </p>
-        </CardContent>
-      </Card>
+    <div className="grid grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
+      {cards.map((card) => (
+        <Card key={card.label} className="shadow-none border">
+          <div className="p-3">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-muted-foreground">{card.label}</span>
+              <card.icon className={`h-3.5 w-3.5 ${card.color}`} />
+            </div>
+            <div className={`text-xl font-bold ${card.color === 'text-muted-foreground' ? '' : card.color}`}>{card.value}</div>
+          </div>
+        </Card>
+      ))}
     </div>
   );
 };

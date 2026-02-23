@@ -153,10 +153,6 @@ const HostelManagement = () => {
       <div className="flex flex-col gap-4">
         {/* Page Header */}
         <div>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-            <span>Admin Panel</span><span>/</span>
-            <span className="text-foreground font-medium">Manage Hostels</span>
-          </div>
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-lg font-semibold tracking-tight">Manage Hostels</h1>

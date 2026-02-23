@@ -316,10 +316,6 @@ const VendorApproval: React.FC = () => {
     <div className="space-y-4">
       <div className="flex justify-between items-start">
         <div>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-            <span>Admin Panel</span><span>/</span>
-            <span className="text-foreground font-medium">Partners</span>
-          </div>
           <h1 className="text-lg font-semibold tracking-tight">Partner Management</h1>
           <p className="text-xs text-muted-foreground mt-0.5">Review and manage partner applications</p>
         </div>

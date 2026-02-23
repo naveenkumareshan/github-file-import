@@ -12,10 +12,6 @@ const SeatTransferManagementPage: React.FC = () => {
     <div className="flex flex-col gap-4">
       {/* Page Header */}
       <div>
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-          <span>Admin Panel</span><span>/</span>
-          <span className="text-foreground font-medium">Transfer Seat</span>
-        </div>
         <h1 className="text-lg font-semibold tracking-tight">Transfer Seat</h1>
         <p className="text-xs text-muted-foreground mt-0.5">Manage and review seat transfers across reading rooms.</p>
       </div>

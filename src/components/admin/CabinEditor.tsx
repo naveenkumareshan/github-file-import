@@ -162,7 +162,7 @@ export function CabinEditor({
       return;
     }
 
-    if (!cabin.imageUrl || cabin.imageUrl === "/placeholder.svg") {
+    if ((!cabin.images || cabin.images.length === 0) && (!cabin.imageUrl || cabin.imageUrl === "/placeholder.svg")) {
       setValidationError("Please upload at least one image");
       setActiveTab("details");
       return;

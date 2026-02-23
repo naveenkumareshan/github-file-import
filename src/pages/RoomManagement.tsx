@@ -368,11 +368,6 @@ const RoomManagement = () => {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-            <span>Admin Panel</span>
-            <span>/</span>
-            <span className="text-foreground font-medium">Reading Rooms</span>
-          </div>
           <h1 className="text-lg font-semibold tracking-tight">Reading Room Management</h1>
           <p className="text-muted-foreground text-xs mt-0.5">
             Configure and manage your reading room inventory.
