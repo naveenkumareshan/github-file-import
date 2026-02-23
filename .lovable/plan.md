@@ -1,204 +1,51 @@
 
 
-## Fix Reading Room System + Booking Flow + Razorpay Integration
+## Add Test Payment Mode + Fix Build Error
 
-### Root Cause Analysis
+### 1. Fix gl-matrix Build Error
 
-After auditing the entire codebase, here are the **root causes** of all failures:
+The TypeScript errors come from `gl-matrix` (a dependency of `maplibre-gl`). The fix is to add `"skipLibCheck": true` to `tsconfig.node.json` as well -- or more reliably, exclude `node_modules` from type checking by ensuring `include` only covers `src`.
 
-| Issue | Root Cause |
-|---|---|
-| SeatManagement crashes | `floors` column doesn't exist in `cabins` table; `adminSeatsService` calls localhost:5000 via axios |
-| AdminStudents crashes | `includeInactive` and `loadingBookings` variables used but never declared |
-| Student can't see rooms | `Cabins.tsx` maps `cabin._id` / `cabin.isActive` / `cabin.imageUrl` but Supabase returns `id` / `is_active` / `image_url` |
-| Seats don't work | No `seats` table exists in the database; both `seatsService` and `adminSeatsService` call localhost:5000 |
-| Booking flow breaks at payment | `transactionService`, `razorpayService`, `adminUsersService` all call localhost:5000 via axios |
-| Razorpay doesn't work | Order creation and payment verification hit Express backend which isn't running |
-
-### Implementation Plan
+**File:** `tsconfig.node.json` -- add `skipLibCheck: true`
 
 ---
 
-#### Phase 1: Fix Immediate Build Crashes
+### 2. Add Test Payment Mode to Razorpay Checkout
 
-**File: `src/pages/AdminStudents.tsx`**
-- Add missing `useState` declarations for `includeInactive` (boolean, default `false`) and `loadingBookings` (boolean, default `false`)
-- These are referenced throughout the component but were never declared
-
----
-
-#### Phase 2: Create `seats` Table in Database
-
-Create a new migration with a `seats` table that mirrors the MongoDB Seat model:
-
-```text
-seats table:
-- id (uuid, primary key)
-- number (integer, required)
-- floor (integer, default 1)
-- cabin_id (uuid, references cabins.id)
-- is_available (boolean, default true)
-- price (numeric, required)
-- position_x (numeric, required)
-- position_y (numeric, required)
-- is_hot_selling (boolean, default false)
-- unavailable_until (timestamptz, nullable)
-- sharing_type (text, default 'private')
-- sharing_capacity (integer, default 4)
-- created_at (timestamptz)
-```
-
-RLS policies:
-- Public can view seats for active cabins (SELECT)
-- Admins can manage all seats (ALL)
-
-Index on `cabin_id` for fast lookups.
-
----
-
-#### Phase 3: Add `floors` Column to `cabins` Table
-
-Add a `floors` JSONB column (default `'[]'`) to the cabins table so floor management works without a separate table.
-
----
-
-#### Phase 4: Rewrite Seat Services to Use Cloud Database
-
-**File: `src/api/adminSeatsService.ts`** -- Complete rewrite from axios to Supabase SDK
-
-All methods will query the new `seats` table directly:
-- `getSeatsByCabin(cabinId, floor)` -- filter by `cabin_id` and `floor`
-- `createSeat / bulkCreateSeats` -- insert into `seats` table
-- `updateSeat / bulkUpdateSeats` -- update by id
-- `deleteSeat` -- delete by id
-- `updateSeatPositions` -- bulk update positions
-
-**File: `src/api/seatsService.ts`** -- Complete rewrite from axios to Supabase SDK
-
-Student-facing seat queries:
-- `getSeatsByCabin(cabinId, floor)` -- public read
-- `getAvailableSeatsForDateRange(cabinId, floor, startDate, endDate)` -- check against bookings table for conflicts
-- `checkSeatAvailability` / `checkSeatsAvailabilityBulk` -- cross-reference with bookings
-
----
-
-#### Phase 5: Fix Student-Facing Room Display
-
-**File: `src/pages/Cabins.tsx`**
-- Fix field mapping: `cabin._id` to `cabin.id`, `cabin.isActive` to `cabin.is_active`, `cabin.imageUrl` to `cabin.image_url`
-- The `cabinsService` already returns Supabase data, but this page transforms it using old MongoDB field names
-
-**File: `src/components/search/CabinSearchResults.tsx`**
-- Fix `cabin._id` references to use `cabin.id`
-- Fix `cabin.imageSrc` to use `cabin.image_url`
-- Handle missing `location` object gracefully (show city/area from flat columns instead)
-
-**File: `src/pages/BookSeat.tsx`**
-- Already partially fixed but `floors` is hardcoded to `[]`; read from cabin's new `floors` JSONB column
-
----
-
-#### Phase 6: Fix SeatManagement Admin Page
-
-**File: `src/pages/SeatManagement.tsx`**
-- Fix `floors` handling: read from `cabinResponse.data.floors` (JSONB) with fallback to `[]`
-- Fix `cabin._id` references to use `cabin.id` (Supabase uses `id`)
-- Fix `cabin.isActive` to `cabin.is_active`
-- `addUpdateCabinFloor` will update the `floors` JSONB column via `adminCabinsService`
-- Fix `handleSeatSelect` null safety (line 182: `selectedSeat.price` when `selectedSeat` may be null)
-
-**File: `src/api/adminCabinsService.ts`**
-- Implement `addUpdateCabinFloor` to actually update the `floors` JSONB column
-- Implement `updateCabinLayout` to store room elements (add `room_elements` JSONB column)
-
----
-
-#### Phase 7: Rewrite AdminUsersService to Use Cloud Database
-
-**File: `src/api/adminUsersService.ts`** -- Complete rewrite from axios to Supabase SDK
-
-- `getUsers(filters)` -- query `profiles` table joined with `user_roles`, with pagination and search
-- `getUserById(userId)` -- query single profile
-- `updateUser(userId, data)` -- update profile
-- `getBookingsByUserId(filters)` -- query `bookings` table filtered by user_id
-
----
-
-#### Phase 8: Razorpay Payment Integration via Edge Functions
-
-Since Razorpay order creation and verification require server-side secret keys, we need edge functions.
-
-**New edge function: `supabase/functions/razorpay-create-order/index.ts`**
-- Accepts `{ amount, currency, bookingId, bookingType }` 
-- Creates Razorpay order using server-side key
-- Returns order object with `id`, `amount`, `currency`, `KEY_ID`
-- Requires `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` secrets
-
-**New edge function: `supabase/functions/razorpay-verify-payment/index.ts`**
-- Accepts `{ razorpay_payment_id, razorpay_order_id, razorpay_signature, bookingId }`
-- Verifies HMAC signature using `RAZORPAY_KEY_SECRET`
-- On success: updates booking `payment_status` to `completed`
-- Returns verification result
-
-**File: `src/api/razorpayService.ts`** -- Rewrite to use edge functions
-- `createOrder` calls `supabase.functions.invoke('razorpay-create-order')`
-- `verifyPayment` calls `supabase.functions.invoke('razorpay-verify-payment')`
-
-**File: `src/api/transactionService.ts`** -- Rewrite to use Supabase
-- Create a `transactions` table in the database
-- Or simplify: store payment info directly on the `bookings` table (add `razorpay_order_id`, `razorpay_payment_id` columns)
+Since you don't have Razorpay keys yet, add a **simulated test mode** that bypasses Razorpay entirely and directly confirms the booking.
 
 **File: `src/components/payment/RazorpayCheckout.tsx`**
-- Update to use the new edge-function-based `razorpayService`
-- Remove dependency on `transactionService` axios calls
-- Simplify flow: create booking (already done) -> create Razorpay order (edge function) -> verify payment (edge function) -> update booking status
+
+Changes:
+- Add a test mode check: if Razorpay keys aren't configured (edge function returns a specific error), fall back to a simulated payment
+- In test mode: skip Razorpay SDK loading, directly update booking status to `completed`, show a toast saying "Test Payment - Booking Confirmed", and call `onSuccess`
+- This lets you test the full booking flow without real keys
+
+**File: `supabase/functions/razorpay-create-order/index.ts`**
+
+Changes:
+- If `RAZORPAY_KEY_ID` or `RAZORPAY_KEY_SECRET` are not set, return a response with `{ testMode: true }` instead of an error
+- This signals the frontend to simulate the payment
+
+**File: `supabase/functions/razorpay-verify-payment/index.ts`**
+
+Changes:
+- Accept a `testMode: true` flag in the request body
+- If test mode, skip signature verification and directly mark booking as confirmed
+- Still update the booking record in the database
 
 ---
 
-#### Phase 9: Add `room_elements` Column to `cabins` Table
+### Technical Details
 
-Add a `room_elements` JSONB column (default `'[]'`) so room layout elements persist.
+The flow becomes:
 
----
+1. Student clicks "Pay Now"
+2. Frontend calls `razorpay-create-order` edge function
+3. Edge function detects no Razorpay keys -- returns `{ testMode: true }`
+4. Frontend skips Razorpay popup, calls `razorpay-verify-payment` with `testMode: true`
+5. Edge function updates booking to `payment_status: completed`
+6. Frontend shows success toast and redirects
 
-### Database Migration Summary
-
-New migration adds:
-1. `seats` table with RLS policies and index
-2. `floors` JSONB column to `cabins` table (default `'[]'`)
-3. `room_elements` JSONB column to `cabins` table (default `'[]'`)
-4. Payment-related columns to `bookings` table: `razorpay_order_id`, `razorpay_payment_id`, `razorpay_signature`
-
-### Secret Requirements
-
-Before Razorpay works, two secrets must be configured:
-- `RAZORPAY_KEY_ID`
-- `RAZORPAY_KEY_SECRET`
-
-### Files Modified/Created Summary
-
-| File | Action |
-|---|---|
-| `src/pages/AdminStudents.tsx` | Fix: add missing state variables |
-| `src/pages/Cabins.tsx` | Fix: field name mapping |
-| `src/pages/BookSeat.tsx` | Fix: floors from JSONB |
-| `src/pages/SeatManagement.tsx` | Fix: id mapping, floors, null safety |
-| `src/api/adminSeatsService.ts` | Rewrite: axios to Supabase |
-| `src/api/seatsService.ts` | Rewrite: axios to Supabase |
-| `src/api/adminUsersService.ts` | Rewrite: axios to Supabase |
-| `src/api/adminCabinsService.ts` | Fix: implement floor/layout methods |
-| `src/api/razorpayService.ts` | Rewrite: axios to edge functions |
-| `src/api/transactionService.ts` | Rewrite: axios to Supabase |
-| `src/components/payment/RazorpayCheckout.tsx` | Fix: use new services |
-| `src/components/search/CabinSearchResults.tsx` | Fix: field mapping |
-| `supabase/functions/razorpay-create-order/index.ts` | New: edge function |
-| `supabase/functions/razorpay-verify-payment/index.ts` | New: edge function |
-| Database migration | New: seats table, cabins columns, booking columns |
-
-### What This Does NOT Change
-
-- The Express backend code in `/backend/` remains untouched (not used)
-- Hostel booking flow (separate system, not in scope)
-- Laundry system
-- Vendor/Partner management
+When you add real keys later, the test mode automatically disables and real Razorpay takes over -- no code changes needed.
 
