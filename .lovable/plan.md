@@ -1,95 +1,116 @@
 
 
-## Image-Based Click-to-Place Seat Mapping
+## Simplify Layout Builder + Add Seat Placement Popup with Category
 
-### Concept
-Add a new "Click to Place" mode to the existing floor plan designer. After uploading a background image (which visually shows seat locations), the admin switches to placement mode and simply clicks on each seat position in the image. Each click creates a seat at that spot. The admin can then assign seat number and price via a quick popup.
+### What Changes
 
-### How It Works
+**1. Remove unnecessary UI elements from the toolbar and canvas:**
+- Remove **Width (W) and Height (H)** dimension inputs from toolbar
+- Remove **"Add Seat Section"** button
+- Remove **"Wall Element"** dropdown (Door, Window, Screen, AC, Bath)
+- Remove **RoomWalls** component rendering (Front Wall / Back Wall labels and border)
+- Remove **GridOverlay** component rendering
+- Remove the **Grid toggle** button
+- Remove the **section editor dialog** and all section-related rendering
+- Keep: Upload Layout, Place Seats, Zoom controls, Save Layout, opacity slider
 
-1. Admin uploads a floor plan image (existing feature -- already works)
-2. Admin clicks a new **"Place Seats"** toggle button in the toolbar
-3. Canvas cursor changes to a crosshair
-4. Each click on the canvas creates a new seat at that exact position (saved to DB immediately)
-5. A small popup appears after each click to let admin set seat number and price (with auto-incrementing defaults)
-6. Seats render as numbered markers on top of the image
-7. Admin can click existing seats to edit/delete them (existing feature)
-8. Click "Place Seats" again to exit placement mode
+**2. Show a popup dialog every time a seat is placed:**
+When the admin clicks on the canvas in placement mode, instead of immediately creating the seat, show a small dialog with:
+- **Seat Number** (auto-filled, editable)
+- **Category** selector: AC / Non-AC / Premium / Economy (radio group or select)
+- **Price** (auto-filled from default, editable)
+- Confirm / Cancel buttons
 
-No sections needed -- seats are placed directly on the canvas without requiring a section container. This is the simplest possible workflow.
+Only after the admin confirms does the seat get saved to the database.
 
-### Changes
-
-**File: `src/components/seats/FloorPlanDesigner.tsx`**
-
-- Add `placementMode` boolean state
-- Add "Place Seats" toggle button in toolbar (with MousePointerClick icon)
-- When `placementMode` is true:
-  - Canvas click creates a seat instead of panning
-  - Cursor shows as crosshair
-  - Show a small inline popover after placement with auto-filled seat number and default price (editable)
-- New prop: `onPlaceSeat: (position: {x: number, y: number}, number: number, price: number) => void`
-- Allow seats without a sectionId (free-placed seats render directly on canvas, not inside a section)
-- Render free-placed seats (those with no sectionId) directly on the canvas at their absolute position
-
-**File: `src/pages/SeatManagement.tsx`**
-
-- Add `handlePlaceSeat(position, number, price)` handler that calls `adminSeatsService.createSeat()` and adds to local state
-- Pass it as `onPlaceSeat` prop to FloorPlanDesigner
-- No changes to existing section-based workflow -- both approaches coexist
+**3. Add `category` column to seats table:**
+A new text column to store the seat category (e.g., "AC", "Non-AC", "Premium").
 
 ### Technical Details
 
-#### FloorPlanDesigner.tsx - New State and Logic
-
-```text
-New state:
-- placementMode: boolean (false by default)
-- nextSeatNumber: number (auto-incremented from max existing seat number)
-- placementPrice: number (default 2000, persists between placements)
-
-Toolbar addition:
-[Place Seats] toggle button -- active state highlighted
-
-Canvas click handler update:
-- If placementMode && !dragging && !resizing:
-  - Get canvas position from click
-  - Call onPlaceSeat(position, nextSeatNumber, placementPrice)
-  - Increment nextSeatNumber
-
-Free-placed seat rendering:
-- Filter seats where sectionId is undefined/null
-- Render them as absolute-positioned buttons on the canvas (same style as section seats)
+#### Database Migration
+```sql
+ALTER TABLE public.seats ADD COLUMN category text NOT NULL DEFAULT 'Non-AC';
 ```
 
-#### SeatManagement.tsx - New Handler
+#### `src/components/seats/FloorPlanDesigner.tsx`
 
-```text
-handlePlaceSeat = async (position, number, price) => {
-  const seatData = {
-    number,
-    floor: selectedFloor,
-    cabinId,
-    price,
-    position,
-    isAvailable: true,
-    isHotSelling: false,
-  };
-  const res = await adminSeatsService.createSeat(seatData);
-  if (res.success) {
-    setSeats(prev => [...prev, res.data]);
-    toast({ title: `Seat #${number} placed` });
-  }
-};
+**Remove from toolbar:**
+- W/H dimension inputs (lines 601-608)
+- Grid toggle button (lines 612-614)
+- "Add Seat Section" button (lines 619-621)
+- "Wall Element" dropdown (lines 624-638)
+- All dividers related to removed items
+
+**Remove from canvas rendering:**
+- `<RoomWalls>` component (line 736)
+- `<GridOverlay>` component (line 737)
+- Wall elements rendering block (lines 740-770)
+- Sections rendering block (lines 773-841)
+- Section legend items (lines 899-907)
+- Section editor dialog (lines 910-920)
+
+**Remove state/logic:**
+- `showGrid`, wall element dragging state, section dragging/resizing state, section editor state
+- `handleAddSeatSection`, `handleAddWallElement`, `handleDeleteElement`, `constrainToWall`, resize handlers, section drag handlers
+- Remove `STRUCTURAL_COLORS`, `WALL_ELEMENT_TYPES`, `WALL_ELEMENT_STYLES`, resize-related types
+
+**Modify placement mode click handler:**
+- Instead of calling `onPlaceSeat` immediately, set a `pendingSeat` state with the clicked position
+- Show a `SeatPlacementDialog` with seat number, category selector, and price
+- On confirm, call `onPlaceSeat` with the full details including category
+- On cancel, clear `pendingSeat`
+
+**New `SeatPlacementDialog` component (inline in same file):**
+- Props: open, position, defaultNumber, defaultPrice, onConfirm, onCancel
+- Fields: Seat Number (input), Category (radio group: AC, Non-AC, Premium, Economy), Price (input)
+- On confirm calls back with `{ number, category, price }`
+
+**Update `onPlaceSeat` prop signature:**
+```typescript
+onPlaceSeat?: (position: {x: number, y: number}, number: number, price: number, category: string) => void;
 ```
 
-### No Database Changes Required
-Seats already support being created without a sectionId. The existing `seats` table schema works as-is.
+**Update `FloorPlanSeat` type:**
+```typescript
+export interface FloorPlanSeat {
+  // ... existing fields
+  category?: string;
+}
+```
+
+#### `src/api/adminSeatsService.ts`
+
+- Add `category` to `SeatData` interface
+- Add `category` to `mapRow` function
+- Add `category` to `createSeat`, `updateSeat`, `bulkCreateSeats` methods
+
+#### `src/pages/SeatManagement.tsx`
+
+- Update `handlePlaceSeat` to accept and pass `category` parameter
+- Update seat details panel to show category
+- Remove props no longer needed: `onGenerateSeatsForSection`, `onAddSeatToSection`, `onDeleteSectionWithSeats`, section-related state
+- Keep: `onPlaceSeat`, `onDeleteSeat`, layout image handling, save, floors
+
+#### Props cleanup on FloorPlanDesigner
+Remove these props (no longer needed):
+- `gridSize`, `onRoomDimensionsChange`
+- `sections`, `onSectionsChange`
+- `roomElements`, `onRoomElementsChange`
+- `onGenerateSeatsForSection`, `onAddSeatToSection`, `onDeleteSectionWithSeats`
+
+Keep:
+- `cabinId`, `roomWidth`, `roomHeight`, `seats`, `onSeatsChange`
+- `onSeatSelect`, `selectedSeat`, `onSave`, `onDeleteSeat`, `onPlaceSeat`
+- `layoutImage`, `layoutImageOpacity`, `onLayoutImageChange`, `onLayoutImageOpacityChange`
+- `isSaving`
 
 ### Files Summary
 
 | File | Action |
 |---|---|
-| `src/components/seats/FloorPlanDesigner.tsx` | Add placement mode toggle, crosshair cursor, click-to-place logic, free-placed seat rendering, price input in toolbar |
-| `src/pages/SeatManagement.tsx` | Add `handlePlaceSeat` handler, pass as prop |
+| Database migration | Add `category` text column to `seats` |
+| `src/components/seats/FloorPlanDesigner.tsx` | Major cleanup: remove walls, grid, sections, wall elements; add SeatPlacementDialog popup with category |
+| `src/pages/SeatManagement.tsx` | Simplify props, add category to placement handler and seat details |
+| `src/api/adminSeatsService.ts` | Add `category` field to create/update/map |
 
