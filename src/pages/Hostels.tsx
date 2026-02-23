@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { hostelService } from '@/api/hostelService';
 import { Search, MapPin, Hotel } from 'lucide-react';
+import { getImageUrl } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
 export default function Hostels() {
@@ -188,7 +189,7 @@ export default function Hostels() {
                 <div className="relative flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden bg-muted">
                   {hostel.logoImage ? (
                     <img
-                      src={import.meta.env.VITE_BASE_URL + hostel.logoImage}
+                      src={getImageUrl(hostel.logoImage)}
                       alt={hostel.name}
                       className="w-full h-full object-cover"
                     />

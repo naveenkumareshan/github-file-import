@@ -15,6 +15,7 @@ import { useAuth } from '@/hooks/use-auth';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { Bed, Building, CreditCard, Calendar, ArrowRight, ChevronLeft } from 'lucide-react';
 import { format, addMonths, addWeeks, addDays } from 'date-fns';
+import { getImageUrl } from '@/lib/utils';
 
 interface BookingPeriod {
   type: 'daily' | 'weekly' | 'monthly';
@@ -315,7 +316,7 @@ const HostelBooking = () => {
                   <div className="flex items-center gap-4">
                     <div className="h-20 w-20 rounded overflow-hidden bg-muted flex-shrink-0">
                       {room.imageSrc ? (
-                        <img src={import.meta.env.VITE_BASE_URL + room.imageSrc} alt={room.name} className="h-full w-full object-cover" />
+                        <img src={getImageUrl(room.imageSrc)} alt={room.name} className="h-full w-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
                           <Bed className="h-10 w-10 text-muted-foreground" />

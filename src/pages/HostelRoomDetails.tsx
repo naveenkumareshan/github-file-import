@@ -26,6 +26,7 @@ import {
   ImageIcon,
 } from "lucide-react";
 import { CabinImageSlider } from "@/components/CabinImageSlider";
+import { getImageUrl } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -203,7 +204,7 @@ const HostelRoomDetails = () => {
                         {hostel.logoImage ? (
                           <img
                             src={
-                              import.meta.env.VITE_BASE_URL + hostel.logoImage
+                              getImageUrl(hostel.logoImage)
                             }
                             alt={hostel.name}
                             className="h-16 w-16 object-cover rounded-md"
@@ -283,7 +284,7 @@ const HostelRoomDetails = () => {
     >
       {room.imageSrc ? (
         <img
-          src={import.meta.env.VITE_BASE_URL + room.imageSrc}
+          src={getImageUrl(room.imageSrc)}
           alt={room.name}
           className="h-full w-full object-cover"
         />
@@ -489,7 +490,7 @@ const HostelRoomDetails = () => {
                 <div className="w-full aspect-video bg-muted rounded-lg overflow-hidden">
                   {selectedImage ? (
                     <img
-                      src={import.meta.env.VITE_BASE_URL + selectedImage}
+                      src={getImageUrl(selectedImage)}
                       alt={selectedRoom.name}
                       className="w-full h-full object-contain"
                     />
@@ -512,7 +513,7 @@ const HostelRoomDetails = () => {
                         }`}
                       >
                         <img
-                          src={import.meta.env.VITE_BASE_URL + img}
+                          src={getImageUrl(img)}
                           alt={`Room image ${index + 1}`}
                           className="w-full h-full object-cover"
                         />

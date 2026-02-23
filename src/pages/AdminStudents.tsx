@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { getImageUrl } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -369,12 +370,12 @@ const AdminStudents = () => {
                               {student.userId}
                               {student.profilePicture && (
                                 <a
-                                  href={import.meta.env.VITE_BASE_URL + student.profilePicture}
+                                  href={getImageUrl(student.profilePicture)}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                 >
                                   <img
-                                    src={import.meta.env.VITE_BASE_URL + student.profilePicture}
+                                    src={getImageUrl(student.profilePicture)}
                                     alt={student?.userId}
                                     className="w-8 h-8 rounded-full object-cover cursor-pointer mt-1"
                                   />
@@ -463,18 +464,12 @@ const AdminStudents = () => {
                     {/* <User  /> */}
                     {selectedStudent.profilePicture && (
                                 <a
-                                  href={
-                                    import.meta.env.VITE_BASE_URL +
-                                    selectedStudent.profilePicture
-                                  }
+                                  href={getImageUrl(selectedStudent.profilePicture)}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                 >
                                   <img
-                                    src={
-                                      import.meta.env.VITE_BASE_URL +
-                                      selectedStudent.profilePicture
-                                    }
+                                    src={getImageUrl(selectedStudent.profilePicture)}
                                     alt={selectedStudent?.userId}
                                     className="w-20 h-20 object-contain cursor-pointer"
                                   />

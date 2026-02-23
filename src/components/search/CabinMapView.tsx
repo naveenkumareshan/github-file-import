@@ -1,5 +1,6 @@
 
 import React, { useEffect, useRef, useState } from 'react';
+import { getImageUrl } from '@/lib/utils';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useNavigate } from 'react-router-dom';
@@ -288,7 +289,7 @@ export const CabinMapView = ({ cabins, selectedLocation, loading }: CabinMapView
           <CardContent className="p-4">
             <div className="flex gap-4">
               <img
-                src={selectedCabin.imageSrc ? import.meta.env.VITE_BASE_URL + selectedCabin.imageSrc : '/placeholder.svg'} 
+                src={getImageUrl(selectedCabin.imageSrc) || '/placeholder.svg'} 
                 alt={selectedCabin.name}
                 className="w-20 h-20 object-cover rounded-lg"
               />

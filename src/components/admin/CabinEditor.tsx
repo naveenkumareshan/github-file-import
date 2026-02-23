@@ -22,7 +22,7 @@ import {
 import { LocationSelector } from "../forms/LocationSelector";
 import MapPicker from "./MapPicker";
 
-const baseURL = import.meta.env.VITE_BASE_URL || "http://localhost:5000/api";
+import { getImageUrl } from '@/lib/utils';
 
 interface CabinEditorProps {
   onSave: (cabin: any) => void;
@@ -430,7 +430,7 @@ export function CabinEditor({
                       cabin.imageUrl !== "/placeholder.svg" && (
                         <div className="aspect-video mb-4 overflow-hidden rounded-md">
                           <img
-                            src={baseURL + cabin.imageSrc}
+                            src={getImageUrl(cabin.imageSrc)}
                             alt={cabin.name}
                             className="w-full h-full object-cover"
                           />

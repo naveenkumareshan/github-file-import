@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Expand } from 'lucide-react';
+import { getImageUrl } from '@/lib/utils';
 import { 
   Carousel, 
   CarouselContent, 
@@ -68,7 +69,7 @@ export function CabinImageSlider({ images, className = '' }: CabinImageSliderPro
             <CarouselItem key={index}>
               <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-muted">
                 <img 
-                  src={import.meta.env.VITE_BASE_URL + image} 
+                  src={getImageUrl(image)} 
                   alt={`Cabin view ${index + 1}`} 
                   className="w-full h-full object-cover"
                   onClick={openModal}
@@ -122,7 +123,7 @@ export function CabinImageSlider({ images, className = '' }: CabinImageSliderPro
               onClick={() => handleThumbnailClick(index)}
             >
               <img 
-                src={import.meta.env.VITE_BASE_URL + image} 
+                src={getImageUrl(image)} 
                 alt={`Thumbnail ${index + 1}`}
                 className="w-full h-full object-cover"
               />
@@ -136,7 +137,7 @@ export function CabinImageSlider({ images, className = '' }: CabinImageSliderPro
         <DialogContent className="max-w-4xl w-[90vw] p-1 bg-black border-none">
           <div className="relative h-[80vh] flex items-center justify-center">
             <img 
-              src={import.meta.env.VITE_BASE_URL +  imagesToShow[currentIndex]} 
+              src={getImageUrl(imagesToShow[currentIndex])} 
               alt={`Gallery image ${currentIndex + 1}`} 
               className="max-h-full max-w-full object-contain"
             />

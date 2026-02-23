@@ -100,12 +100,14 @@ const RoomManagement = () => {
       const response = await adminCabinsService.getAllCabins(filters);
       
       if (response.success) {
-        const processedCabins = response.data.map((cabin: any) => ({
+        const processedCabins = (response.data || []).map((cabin: any) => ({
           ...cabin,
-          _id: cabin._id || cabin.id,
-          id: cabin.id || cabin._id,
-          imageUrl: cabin.imageUrl || cabin.imageUrl || '/placeholder.svg',
-          isActive: cabin.isActive !== false
+          _id: cabin.id,
+          id: cabin.id,
+          imageUrl: cabin.image_url || '/placeholder.svg',
+          imageSrc: cabin.image_url || '/placeholder.svg',
+          images: cabin.images || [],
+          isActive: cabin.is_active !== false,
         }));
         
         setCabins(processedCabins);
@@ -164,7 +166,7 @@ const RoomManagement = () => {
           description: "Reading Room deleted successfully"
         });
         
-        setCabins(prevCabins => prevCabins.filter(cabin => cabin._id !== cabinId));
+        setCabins(prevCabins => prevCabins.filter(cabin => cabin._id !== cabinId && cabin.id !== cabinId));
       } else {
         throw new Error(response.message || 'Failed to delete cabin');
       }
@@ -219,7 +221,7 @@ const RoomManagement = () => {
         };
         
         if (selectedCabin) {
-          response = await adminCabinsService.updateCabin(selectedCabin._id, cabinDataStore);
+          response = await adminCabinsService.updateCabin(selectedCabin.id || selectedCabin._id, cabinDataStore);
         } else {
           response = await adminCabinsService.createCabin(cabinDataStore);
         }
