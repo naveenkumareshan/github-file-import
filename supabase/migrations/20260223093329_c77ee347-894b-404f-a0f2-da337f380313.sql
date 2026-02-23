@@ -1,0 +1,1 @@
+ALTER TABLE cabins ADD COLUMN sections jsonb NOT NULL DEFAULT '[]'::jsonb;

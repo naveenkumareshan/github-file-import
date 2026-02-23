@@ -9,8 +9,7 @@ import { toast } from "@/hooks/use-toast";
 import { adminCabinsService } from "@/api/adminCabinsService";
 import { adminSeatsService, SeatData } from "@/api/adminSeatsService";
 import { ArrowLeft, Building, Plus } from "lucide-react";
-import { FloorPlanDesigner, FloorPlanSeat, RoomElement } from "@/components/seats/FloorPlanDesigner";
-import { GeneratedSeat } from "@/components/seats/AutoSeatGenerator";
+import { FloorPlanDesigner, FloorPlanSeat, RoomElement, Section } from "@/components/seats/FloorPlanDesigner";
 
 const SeatManagement = () => {
   const { cabinId } = useParams<{ cabinId: string }>();
@@ -18,6 +17,7 @@ const SeatManagement = () => {
 
   const [cabin, setCabin] = useState<any>(null);
   const [seats, setSeats] = useState<FloorPlanSeat[]>([]);
+  const [sections, setSections] = useState<Section[]>([]);
   const [selectedSeat, setSelectedSeat] = useState<FloorPlanSeat | null>(null);
   const [loading, setLoading] = useState(true);
   const [roomElements, setRoomElements] = useState<RoomElement[]>([]);
@@ -58,6 +58,7 @@ const SeatManagement = () => {
         setRoomHeight(d.room_height || 600);
         setGridSize(d.grid_size || 20);
         setRoomElements(Array.isArray(d.room_elements) && d.room_elements.length > 0 ? d.room_elements : []);
+        setSections(Array.isArray(d.sections) ? d.sections : []);
       }
     } catch (e) {
       console.error(e);
@@ -66,11 +67,24 @@ const SeatManagement = () => {
     }
   };
 
+  const assignSectionIds = (seatList: FloorPlanSeat[], sectionList: Section[]): FloorPlanSeat[] => {
+    return seatList.map(seat => {
+      const matchingSection = sectionList.find(s =>
+        s.type === 'seats' &&
+        seat.position.x >= s.position.x &&
+        seat.position.x < s.position.x + s.width &&
+        seat.position.y >= s.position.y &&
+        seat.position.y < s.position.y + s.height
+      );
+      return { ...seat, sectionId: matchingSection?.id };
+    });
+  };
+
   const fetchSeats = async (id: string, floor: number) => {
     try {
       setLoading(true);
       const res = await adminSeatsService.getSeatsByCabin(id, floor.toString());
-      if (res.success) setSeats(res.data);
+      if (res.success) setSeats(assignSectionIds(res.data, sections));
     } catch (e) {
       console.error(e);
     } finally {
@@ -82,10 +96,8 @@ const SeatManagement = () => {
     if (!cabinId) return;
     setIsSaving(true);
     try {
-      // Save room dimensions + elements
-      await adminCabinsService.updateCabinLayout(cabinId, roomElements, roomWidth, roomHeight, gridSize);
+      await adminCabinsService.updateCabinLayout(cabinId, roomElements, roomWidth, roomHeight, gridSize, sections);
 
-      // Save seat positions
       const seatsToUpdate = seats.map(s => ({
         _id: s._id,
         position: s.position,
@@ -100,22 +112,65 @@ const SeatManagement = () => {
     }
   };
 
-  const handleBulkCreateSeats = async (generated: GeneratedSeat[]) => {
-    if (!cabinId) return;
+  const handleGenerateSeatsForSection = async (section: Section) => {
+    if (!cabinId || section.type !== 'seats') return;
     try {
-      const newSeats: SeatData[] = generated.map(s => ({
-        number: s.number,
-        floor: selectedFloor,
-        cabinId,
-        price: s.price,
-        position: s.position,
-        isAvailable: true,
-        isHotSelling: false,
-      }));
+      // Remove existing seats for this section
+      const existingSeats = seats.filter(s => s.sectionId === section.id);
+      for (const s of existingSeats) {
+        await adminSeatsService.deleteSeat(s._id);
+      }
+
+      // Generate new seats
+      const rows = section.rows || 5;
+      const cols = section.cols || 6;
+      const spacing = section.seatSpacing || 50;
+      const aisleAfter = section.aisleAfterCol || 0;
+      const seatPrice = section.price || 2000;
+
+      // Count existing seats to determine starting number
+      const otherSeats = seats.filter(s => s.sectionId !== section.id);
+      let seatNumber = otherSeats.length > 0
+        ? Math.max(...otherSeats.map(s => s.number)) + 1
+        : 1;
+
+      const startX = section.position.x + 10;
+      const startY = section.position.y + 34; // After header
+
+      const newSeats: SeatData[] = [];
+      for (let r = 0; r < rows; r++) {
+        let colOffset = 0;
+        for (let c = 0; c < cols; c++) {
+          if (aisleAfter > 0 && c > 0 && c % aisleAfter === 0) {
+            colOffset += spacing * 0.6;
+          }
+
+          const x = Math.round(startX + c * spacing + colOffset);
+          const y = Math.round(startY + r * (spacing * 0.6));
+
+          // Boundary check
+          if (x + 36 > section.position.x + section.width - 5) continue;
+          if (y + 26 > section.position.y + section.height - 5) continue;
+
+          newSeats.push({
+            number: seatNumber++,
+            floor: selectedFloor,
+            cabinId,
+            price: seatPrice,
+            position: { x, y },
+            isAvailable: true,
+            isHotSelling: false,
+            sectionId: section.id,
+            rowIndex: r,
+            colIndex: c,
+          });
+        }
+      }
+
       const res = await adminSeatsService.bulkCreateSeats(newSeats);
       if (res.success) {
         await fetchSeats(cabinId, selectedFloor);
-        toast({ title: `${generated.length} seats generated successfully` });
+        toast({ title: `${newSeats.length} seats generated for "${section.name}"` });
       }
     } catch (e) {
       toast({ title: "Error generating seats", variant: "destructive" });
@@ -194,12 +249,10 @@ const SeatManagement = () => {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
       <Button variant="outline" size="sm" onClick={() => navigate(-1)} className="flex items-center gap-2">
         <ArrowLeft className="h-4 w-4" /> Back to Rooms
       </Button>
 
-      {/* Room info card */}
       <Card>
         <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-2">
           <div>
@@ -219,14 +272,11 @@ const SeatManagement = () => {
 
       {/* Floor selector */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Floors</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle className="text-lg">Floors</CardTitle></CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3 mb-4">
             {floors.map((floor: any) => (
-              <div
-                key={floor.id}
+              <div key={floor.id}
                 className={`border rounded-lg p-3 flex flex-col items-center gap-1 cursor-pointer transition-all ${
                   selectedFloor === floor.id ? "bg-primary/10 border-primary shadow-sm" : "hover:border-primary/50"
                 }`}
@@ -234,21 +284,12 @@ const SeatManagement = () => {
               >
                 <Building className="h-5 w-5" />
                 <span className="text-sm font-medium">Floor {floor.number}</span>
-                <Button
-                  size="sm" variant="ghost" className="text-xs h-6 px-2"
-                  onClick={e => {
-                    e.stopPropagation();
-                    setFloorNumber(floor.number.toString());
-                    setEditingFloorId(floor.id);
-                    setShowAddFloorForm(true);
-                  }}
-                >
-                  Edit
-                </Button>
+                <Button size="sm" variant="ghost" className="text-xs h-6 px-2"
+                  onClick={e => { e.stopPropagation(); setFloorNumber(floor.number.toString()); setEditingFloorId(floor.id); setShowAddFloorForm(true); }}
+                >Edit</Button>
               </div>
             ))}
-            <div
-              className="border border-dashed rounded-lg p-3 flex flex-col items-center gap-1 cursor-pointer text-muted-foreground hover:border-primary/50"
+            <div className="border border-dashed rounded-lg p-3 flex flex-col items-center gap-1 cursor-pointer text-muted-foreground hover:border-primary/50"
               onClick={() => { setFloorNumber(""); setEditingFloorId(null); setShowAddFloorForm(true); }}
             >
               <Plus className="h-5 w-5" />
@@ -276,9 +317,7 @@ const SeatManagement = () => {
 
       {/* Floor Plan Designer */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Floor Plan Designer</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle className="text-lg">Floor Plan Designer</CardTitle></CardHeader>
         <CardContent>
           <FloorPlanDesigner
             cabinId={cabinId || ""}
@@ -286,14 +325,16 @@ const SeatManagement = () => {
             roomHeight={roomHeight}
             gridSize={gridSize}
             seats={seats}
+            sections={sections}
             roomElements={roomElements}
             onRoomDimensionsChange={(w, h, g) => { setRoomWidth(w); setRoomHeight(h); setGridSize(g); }}
             onSeatsChange={setSeats}
+            onSectionsChange={setSections}
             onRoomElementsChange={setRoomElements}
             onSeatSelect={seat => { setSelectedSeat(seat); if (seat) setPrice(seat.price); }}
             selectedSeat={selectedSeat}
             onSave={handleSave}
-            onBulkCreateSeats={handleBulkCreateSeats}
+            onGenerateSeatsForSection={handleGenerateSeatsForSection}
             isSaving={isSaving}
           />
         </CardContent>
@@ -302,9 +343,7 @@ const SeatManagement = () => {
       {/* Selected seat details */}
       {selectedSeat && (
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Seat #{selectedSeat.number} Details</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle className="text-lg">Seat #{selectedSeat.number} Details</CardTitle></CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>

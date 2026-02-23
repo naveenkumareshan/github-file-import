@@ -11,6 +11,7 @@ import {
 import { Building, CalendarIcon, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FloorPlanViewer } from "./FloorPlanViewer";
+import type { Section } from "./FloorPlanDesigner";
 import { seatsService, SeatAvailabilityResponse } from "@/api/seatsService";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +36,7 @@ interface DateBasedSeatMapProps {
   startDate?: Date;
   endDate?: Date;
   roomElements?: RoomElement[];
+  sections?: Section[];
 }
 
 const DateBasedSeatMapComponent: React.FC<DateBasedSeatMapProps> = ({
@@ -46,6 +48,7 @@ const DateBasedSeatMapComponent: React.FC<DateBasedSeatMapProps> = ({
   startDate: propStartDate,
   endDate: propEndDate,
   roomElements = [],
+  sections = [],
 }) => {
   const [startDate, setStartDate] = useState<Date>(propStartDate || new Date());
   const [endDate, setEndDate] = useState<Date>(
@@ -374,7 +377,7 @@ const DateBasedSeatMapComponent: React.FC<DateBasedSeatMapProps> = ({
           ) : (
             <FloorPlanViewer
               seats={transformedSeats}
-              roomElements={roomElements}
+              sections={sections}
               roomWidth={800}
               roomHeight={600}
               onSeatSelect={onSeatSelect}

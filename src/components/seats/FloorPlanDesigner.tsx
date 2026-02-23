@@ -1,29 +1,37 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/use-toast';
 import {
-  TooltipProvider,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog';
 import {
-  DoorOpen, ToiletIcon, Wind, MonitorPlay, AirVent,
-  Save, RotateCw, Trash2, Grid3X3, ZoomIn, ZoomOut, Maximize,
-  Plus, GripHorizontal,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import {
+  Save, Grid3X3, ZoomIn, ZoomOut, Maximize, Plus, LayoutGrid,
+  Trash2, GripHorizontal, Building2, Edit,
 } from 'lucide-react';
-import { GridOverlay } from './GridOverlay';
 import { RoomWalls } from './RoomWalls';
-import { AutoSeatGenerator, GeneratedSeat } from './AutoSeatGenerator';
+import { GridOverlay } from './GridOverlay';
 
-export interface RoomElement {
+// ── Types ──────────────────────────────────────────────────────────
+export interface Section {
   id: string;
-  type: 'door' | 'bath' | 'window' | 'screen' | 'AC';
+  name: string;
+  type: 'seats' | 'structural';
   position: { x: number; y: number };
-  rotation?: number;
+  width: number;
+  height: number;
+  rows?: number;
+  cols?: number;
+  aisleAfterCol?: number;
+  seatSpacing?: number;
+  price?: number;
+  structuralLabel?: string; // e.g. "Washroom", "Office"
+  color?: string;
 }
 
 export interface FloorPlanSeat {
@@ -38,6 +46,14 @@ export interface FloorPlanSeat {
   unavailableUntil?: string;
   rowIndex?: number;
   colIndex?: number;
+  sectionId?: string;
+}
+
+export interface RoomElement {
+  id: string;
+  type: 'door' | 'bath' | 'window' | 'screen' | 'AC';
+  position: { x: number; y: number };
+  rotation?: number;
 }
 
 interface FloorPlanDesignerProps {
@@ -46,27 +62,27 @@ interface FloorPlanDesignerProps {
   roomHeight: number;
   gridSize: number;
   seats: FloorPlanSeat[];
+  sections: Section[];
   roomElements: RoomElement[];
   onRoomDimensionsChange: (w: number, h: number, g: number) => void;
   onSeatsChange: (seats: FloorPlanSeat[]) => void;
+  onSectionsChange: (sections: Section[]) => void;
   onRoomElementsChange: (elements: RoomElement[]) => void;
   onSeatSelect: (seat: FloorPlanSeat | null) => void;
   selectedSeat: FloorPlanSeat | null;
   onSave: () => void;
-  onBulkCreateSeats: (seats: GeneratedSeat[]) => void;
+  onGenerateSeatsForSection: (section: Section) => void;
   isSaving?: boolean;
 }
 
-const ELEMENT_ICONS: Record<string, React.ElementType> = {
-  door: DoorOpen,
-  bath: ToiletIcon,
-  window: Wind,
-  screen: MonitorPlay,
-  AC: AirVent,
-};
+const STRUCTURAL_TYPES = ['Washroom', 'Office', 'Lockers', 'Storage', 'Custom'];
 
-const ELEMENT_LABELS: Record<string, string> = {
-  door: 'Door', bath: 'Bath', window: 'Window', screen: 'Screen', AC: 'AC',
+const STRUCTURAL_COLORS: Record<string, string> = {
+  Washroom: 'bg-blue-100 border-blue-300 text-blue-700',
+  Office: 'bg-amber-100 border-amber-300 text-amber-700',
+  Lockers: 'bg-violet-100 border-violet-300 text-violet-700',
+  Storage: 'bg-stone-100 border-stone-300 text-stone-700',
+  Custom: 'bg-muted border-border text-muted-foreground',
 };
 
 export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
@@ -75,14 +91,16 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
   roomHeight,
   gridSize,
   seats,
+  sections,
   roomElements,
   onRoomDimensionsChange,
   onSeatsChange,
+  onSectionsChange,
   onRoomElementsChange,
   onSeatSelect,
   selectedSeat,
   onSave,
-  onBulkCreateSeats,
+  onGenerateSeatsForSection,
   isSaving,
 }) => {
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -91,79 +109,19 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
-  const [dragging, setDragging] = useState<{ type: 'seat' | 'element'; id: string } | null>(null);
+
+  // Section dragging
+  const [draggingSection, setDraggingSection] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [showAutoGen, setShowAutoGen] = useState(false);
-  const [isDirty, setIsDirty] = useState(false);
+
+  // Section editor
+  const [editingSection, setEditingSection] = useState<Section | null>(null);
+  const [showSectionEditor, setShowSectionEditor] = useState(false);
+  const [showAddStructural, setShowAddStructural] = useState(false);
 
   const snap = useCallback((val: number) => Math.round(val / gridSize) * gridSize, [gridSize]);
 
-  const clamp = useCallback((x: number, y: number, itemW: number, itemH: number) => ({
-    x: Math.max(gridSize, Math.min(snap(x), roomWidth - itemW - gridSize)),
-    y: Math.max(gridSize, Math.min(snap(y), roomHeight - itemH - gridSize)),
-  }), [gridSize, roomWidth, roomHeight, snap]);
-
-  // Wall constraint for elements
-  const constrainToWall = useCallback((type: string, x: number, y: number) => {
-    const pos = { x: snap(x), y: snap(y) };
-    const wallThreshold = gridSize * 2;
-
-    if (type === 'door' || type === 'window') {
-      // Snap to nearest wall
-      const distLeft = pos.x;
-      const distRight = roomWidth - pos.x;
-      const distTop = pos.y;
-      const distBottom = roomHeight - pos.y;
-      const minDist = Math.min(distLeft, distRight, distTop, distBottom);
-
-      if (minDist === distLeft) pos.x = gridSize;
-      else if (minDist === distRight) pos.x = roomWidth - gridSize * 4;
-      else if (minDist === distTop) pos.y = gridSize;
-      else pos.y = roomHeight - gridSize * 2;
-    } else if (type === 'screen') {
-      pos.y = gridSize; // Front wall only
-    } else if (type === 'AC') {
-      pos.y = gridSize; // Top wall
-    } else if (type === 'bath') {
-      // Corner or wall
-      const distLeft = pos.x;
-      const distRight = roomWidth - pos.x;
-      const distTop = pos.y;
-      const distBottom = roomHeight - pos.y;
-      const minDist = Math.min(distLeft, distRight, distTop, distBottom);
-      if (minDist === distLeft) pos.x = gridSize;
-      else if (minDist === distRight) pos.x = roomWidth - gridSize * 4;
-      if (minDist === distTop) pos.y = gridSize;
-      else if (minDist === distBottom) pos.y = roomHeight - gridSize * 3;
-    }
-    return pos;
-  }, [gridSize, roomWidth, roomHeight, snap]);
-
-  const handleAddElement = (type: RoomElement['type']) => {
-    const pos = constrainToWall(type, roomWidth / 2, roomHeight / 2);
-    const newElement: RoomElement = {
-      id: `${type}-${Date.now()}`,
-      type,
-      position: pos,
-      rotation: 0,
-    };
-    onRoomElementsChange([...roomElements, newElement]);
-    setIsDirty(true);
-  };
-
-  const handleRotateElement = (id: string) => {
-    onRoomElementsChange(roomElements.map(el =>
-      el.id === id ? { ...el, rotation: ((el.rotation || 0) + 90) % 360 } : el
-    ));
-    setIsDirty(true);
-  };
-
-  const handleRemoveElement = (id: string) => {
-    onRoomElementsChange(roomElements.filter(el => el.id !== id));
-    setIsDirty(true);
-  };
-
-  // --- Mouse handlers for dragging ---
+  // ── Canvas coordinate helpers ──
   const getCanvasPos = useCallback((e: React.MouseEvent) => {
     if (!canvasRef.current) return { x: 0, y: 0 };
     const rect = canvasRef.current.getBoundingClientRect();
@@ -173,74 +131,102 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
     };
   }, [pan, zoom]);
 
-  const handleMouseDown = (e: React.MouseEvent, type: 'seat' | 'element', id: string, itemPos: { x: number; y: number }) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const pos = getCanvasPos(e);
-    setDragging({ type, id });
-    setDragOffset({ x: pos.x - itemPos.x, y: pos.y - itemPos.y });
+  // ── Section CRUD ──
+  const handleAddSeatSection = () => {
+    const newSection: Section = {
+      id: `section-${Date.now()}`,
+      name: 'New Section',
+      type: 'seats',
+      position: { x: snap(40), y: snap(80) },
+      width: 400,
+      height: 300,
+      rows: 5,
+      cols: 6,
+      aisleAfterCol: 3,
+      seatSpacing: 50,
+      price: 2000,
+    };
+    onSectionsChange([...sections, newSection]);
+    setEditingSection(newSection);
+    setShowSectionEditor(true);
   };
 
+  const handleAddStructural = (label: string) => {
+    const newSection: Section = {
+      id: `struct-${Date.now()}`,
+      name: label,
+      type: 'structural',
+      position: { x: snap(40), y: snap(roomHeight - 160) },
+      width: 150,
+      height: 100,
+      structuralLabel: label,
+    };
+    onSectionsChange([...sections, newSection]);
+    setShowAddStructural(false);
+  };
+
+  const handleDeleteSection = (id: string) => {
+    onSectionsChange(sections.filter(s => s.id !== id));
+    // Remove seats belonging to this section
+    onSeatsChange(seats.filter(s => s.sectionId !== id));
+    if (editingSection?.id === id) {
+      setEditingSection(null);
+      setShowSectionEditor(false);
+    }
+  };
+
+  const handleUpdateSection = (updated: Section) => {
+    onSectionsChange(sections.map(s => s.id === updated.id ? updated : s));
+    setEditingSection(updated);
+  };
+
+  // ── Section dragging ──
+  const handleSectionMouseDown = (e: React.MouseEvent, sectionId: string, pos: { x: number; y: number }) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const canvasPos = getCanvasPos(e);
+    setDraggingSection(sectionId);
+    setDragOffset({ x: canvasPos.x - pos.x, y: canvasPos.y - pos.y });
+  };
+
+  // ── Canvas mouse handlers ──
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
-    if (dragging) return;
-    // Start panning
+    if (draggingSection) return;
     setIsPanning(true);
     setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
   };
 
   const handleCanvasMouseMove = (e: React.MouseEvent) => {
-    if (isPanning && !dragging) {
+    if (isPanning && !draggingSection) {
       setPan({ x: e.clientX - panStart.x, y: e.clientY - panStart.y });
       return;
     }
-
-    if (!dragging) return;
+    if (!draggingSection) return;
 
     const pos = getCanvasPos(e);
-    const newX = pos.x - dragOffset.x;
-    const newY = pos.y - dragOffset.y;
+    const newX = snap(pos.x - dragOffset.x);
+    const newY = snap(pos.y - dragOffset.y);
 
-    if (dragging.type === 'seat') {
-      const clamped = clamp(newX, newY, 36, 26);
-      // Check overlap
-      const hasOverlap = seats.some(s =>
-        s._id !== dragging.id &&
-        Math.abs(s.position.x - clamped.x) < 36 &&
-        Math.abs(s.position.y - clamped.y) < 26
-      );
-
-      onSeatsChange(seats.map(s =>
-        s._id === dragging.id ? { ...s, position: clamped } : s
-      ));
-
-      if (hasOverlap) {
-        // Visual feedback could be added here
-      }
-      setIsDirty(true);
-    } else {
-      const element = roomElements.find(el => el.id === dragging.id);
-      if (element) {
-        const constrained = constrainToWall(element.type, newX, newY);
-        onRoomElementsChange(roomElements.map(el =>
-          el.id === dragging.id ? { ...el, position: constrained } : el
-        ));
-        setIsDirty(true);
-      }
+    const section = sections.find(s => s.id === draggingSection);
+    if (section) {
+      const clampedX = Math.max(gridSize, Math.min(newX, roomWidth - section.width - gridSize));
+      const clampedY = Math.max(gridSize, Math.min(newY, roomHeight - section.height - gridSize));
+      handleUpdateSection({ ...section, position: { x: clampedX, y: clampedY } });
     }
   };
 
   const handleCanvasMouseUp = () => {
-    setDragging(null);
+    setDraggingSection(null);
     setIsPanning(false);
   };
 
   useEffect(() => {
-    const handler = () => { setDragging(null); setIsPanning(false); };
+    const handler = () => { setDraggingSection(null); setIsPanning(false); };
     window.addEventListener('mouseup', handler);
     return () => window.removeEventListener('mouseup', handler);
   }, []);
 
-  // Zoom controls
+  // ── Zoom ──
   const handleZoomIn = () => setZoom(z => Math.min(z + 0.25, 3));
   const handleZoomOut = () => setZoom(z => Math.max(z - 0.25, 0.25));
   const handleFitToScreen = () => {
@@ -248,25 +234,46 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
     const container = canvasRef.current.parentElement;
     const scaleX = (container.clientWidth - 40) / roomWidth;
     const scaleY = (container.clientHeight - 40) / roomHeight;
-    const newZoom = Math.min(scaleX, scaleY, 1.5);
-    setZoom(newZoom);
+    setZoom(Math.min(scaleX, scaleY, 1.5));
     setPan({ x: 20, y: 20 });
   };
-
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
-    const delta = e.deltaY > 0 ? -0.1 : 0.1;
-    setZoom(z => Math.max(0.25, Math.min(z + delta, 3)));
+    setZoom(z => Math.max(0.25, Math.min(z + (e.deltaY > 0 ? -0.1 : 0.1), 3)));
   };
 
-  const handleAutoGenerate = (generatedSeats: GeneratedSeat[]) => {
-    onBulkCreateSeats(generatedSeats);
-    setIsDirty(true);
-  };
+  // ── Render seats within a section ──
+  const renderSectionSeats = (section: Section) => {
+    if (section.type !== 'seats') return null;
+    const sectionSeats = seats.filter(s => s.sectionId === section.id);
+    return sectionSeats.map(seat => {
+      const isSelected = selectedSeat?._id === seat._id;
+      const isBooked = !seat.isAvailable;
 
-  const handleSave = () => {
-    onSave();
-    setIsDirty(false);
+      let seatClass = 'bg-emerald-50 border-emerald-400 text-emerald-800';
+      if (isSelected) seatClass = 'bg-primary border-primary text-primary-foreground ring-2 ring-primary/50';
+      else if (isBooked) seatClass = 'bg-muted border-muted-foreground/30 text-muted-foreground';
+
+      return (
+        <button
+          key={seat._id}
+          className={`absolute flex items-center justify-center rounded border text-[10px] font-bold select-none transition-all ${seatClass}`}
+          style={{
+            left: seat.position.x - section.position.x,
+            top: seat.position.y - section.position.y,
+            width: 36,
+            height: 26,
+            zIndex: isSelected ? 20 : 5,
+          }}
+          onClick={e => {
+            e.stopPropagation();
+            onSeatSelect(isSelected ? null : seat);
+          }}
+        >
+          {seat.number}
+        </button>
+      );
+    });
   };
 
   return (
@@ -276,55 +283,27 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
         {/* Room dimensions */}
         <div className="flex items-center gap-1.5">
           <Label className="text-xs whitespace-nowrap">W:</Label>
-          <Input
-            type="number"
-            className="w-20 h-8 text-xs"
-            value={roomWidth}
-            min={400} max={1600} step={20}
-            onChange={e => onRoomDimensionsChange(+e.target.value || 800, roomHeight, gridSize)}
-          />
+          <Input type="number" className="w-20 h-8 text-xs" value={roomWidth} min={400} max={2000} step={20}
+            onChange={e => onRoomDimensionsChange(+e.target.value || 800, roomHeight, gridSize)} />
           <Label className="text-xs whitespace-nowrap">H:</Label>
-          <Input
-            type="number"
-            className="w-20 h-8 text-xs"
-            value={roomHeight}
-            min={300} max={1200} step={20}
-            onChange={e => onRoomDimensionsChange(roomWidth, +e.target.value || 600, gridSize)}
-          />
-          <Label className="text-xs whitespace-nowrap">Grid:</Label>
-          <Input
-            type="number"
-            className="w-16 h-8 text-xs"
-            value={gridSize}
-            min={10} max={40} step={10}
-            onChange={e => onRoomDimensionsChange(roomWidth, roomHeight, +e.target.value || 20)}
-          />
+          <Input type="number" className="w-20 h-8 text-xs" value={roomHeight} min={300} max={1600} step={20}
+            onChange={e => onRoomDimensionsChange(roomWidth, +e.target.value || 600, gridSize)} />
         </div>
 
         <div className="h-6 w-px bg-border" />
 
-        {/* Grid toggle */}
         <Button variant={showGrid ? 'default' : 'outline'} size="sm" className="h-8" onClick={() => setShowGrid(!showGrid)}>
           <Grid3X3 className="h-3.5 w-3.5 mr-1" /> Grid
         </Button>
 
         <div className="h-6 w-px bg-border" />
 
-        {/* Element buttons */}
-        {(['door', 'bath', 'window', 'screen', 'AC'] as const).map(type => {
-          const Icon = ELEMENT_ICONS[type];
-          return (
-            <Button key={type} variant="outline" size="sm" className="h-8" onClick={() => handleAddElement(type)}>
-              <Icon className="h-3.5 w-3.5 mr-1" /> {ELEMENT_LABELS[type]}
-            </Button>
-          );
-        })}
-
-        <div className="h-6 w-px bg-border" />
-
-        {/* Auto generate */}
-        <Button variant="outline" size="sm" className="h-8" onClick={() => setShowAutoGen(true)}>
-          <Grid3X3 className="h-3.5 w-3.5 mr-1" /> Auto Generate
+        {/* Add section buttons */}
+        <Button variant="outline" size="sm" className="h-8" onClick={handleAddSeatSection}>
+          <LayoutGrid className="h-3.5 w-3.5 mr-1" /> Add Seat Section
+        </Button>
+        <Button variant="outline" size="sm" className="h-8" onClick={() => setShowAddStructural(true)}>
+          <Building2 className="h-3.5 w-3.5 mr-1" /> Add Structure
         </Button>
 
         <div className="flex-1" />
@@ -339,8 +318,7 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
 
         <div className="h-6 w-px bg-border" />
 
-        {/* Save */}
-        <Button size="sm" className="h-8" onClick={handleSave} disabled={isSaving}>
+        <Button size="sm" className="h-8" onClick={onSave} disabled={isSaving}>
           <Save className="h-3.5 w-3.5 mr-1" /> {isSaving ? 'Saving...' : 'Save Layout'}
         </Button>
       </div>
@@ -364,99 +342,72 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
             transformOrigin: '0 0',
           }}
         >
-          {/* Room walls */}
           <RoomWalls width={roomWidth} height={roomHeight} />
-
-          {/* Grid overlay */}
           <GridOverlay width={roomWidth} height={roomHeight} gridSize={gridSize} visible={showGrid} />
 
-          {/* Room elements */}
-          <TooltipProvider>
-            {roomElements.map(element => {
-              const Icon = ELEMENT_ICONS[element.type];
-              return (
-                <div
-                  key={element.id}
-                  className="absolute flex items-center gap-1 px-2 py-1 rounded bg-background border shadow-sm text-xs font-medium select-none"
-                  style={{
-                    left: element.position.x,
-                    top: element.position.y,
-                    cursor: dragging?.id === element.id ? 'grabbing' : 'grab',
-                    zIndex: dragging?.id === element.id ? 50 : 10,
-                    transform: `rotate(${element.rotation || 0}deg)`,
-                    transformOrigin: 'center',
-                  }}
-                  onMouseDown={e => handleMouseDown(e, 'element', element.id, element.position)}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span>{ELEMENT_LABELS[element.type]}</span>
-                  <div className="flex gap-0.5 ml-1">
+          {/* Render sections */}
+          {sections.map(section => {
+            const isStructural = section.type === 'structural';
+            const colorClass = isStructural
+              ? (STRUCTURAL_COLORS[section.structuralLabel || 'Custom'] || STRUCTURAL_COLORS.Custom)
+              : 'bg-background border-primary/40';
+
+            return (
+              <div
+                key={section.id}
+                className={`absolute rounded-lg border-2 select-none overflow-hidden ${colorClass}`}
+                style={{
+                  left: section.position.x,
+                  top: section.position.y,
+                  width: section.width,
+                  height: section.height,
+                  cursor: draggingSection === section.id ? 'grabbing' : 'grab',
+                  zIndex: draggingSection === section.id ? 50 : 3,
+                }}
+                onMouseDown={e => handleSectionMouseDown(e, section.id, section.position)}
+              >
+                {/* Section header */}
+                <div className="flex items-center justify-between px-2 py-1 bg-inherit border-b border-inherit">
+                  <div className="flex items-center gap-1">
+                    <GripHorizontal className="h-3 w-3 opacity-50" />
+                    <span className="text-xs font-semibold truncate">{section.name}</span>
+                  </div>
+                  <div className="flex gap-0.5">
                     <button
                       className="p-0.5 hover:bg-muted rounded"
-                      onClick={e => { e.stopPropagation(); handleRotateElement(element.id); }}
+                      onClick={e => { e.stopPropagation(); setEditingSection(section); setShowSectionEditor(true); }}
                     >
-                      <RotateCw className="h-3 w-3" />
+                      <Edit className="h-3 w-3" />
                     </button>
                     <button
                       className="p-0.5 hover:bg-destructive/10 rounded text-destructive"
-                      onClick={e => { e.stopPropagation(); handleRemoveElement(element.id); }}
+                      onClick={e => { e.stopPropagation(); handleDeleteSection(section.id); }}
                     >
                       <Trash2 className="h-3 w-3" />
                     </button>
                   </div>
                 </div>
-              );
-            })}
 
-            {/* Seats */}
-            {seats.map(seat => {
-              const isSelected = selectedSeat?._id === seat._id;
-              const isBooked = !seat.isAvailable;
-
-              let bgClass = 'bg-emerald-500/20 border-emerald-500 text-emerald-700';
-              if (isSelected) bgClass = 'bg-primary border-primary text-primary-foreground ring-2 ring-primary/50';
-              else if (isBooked) bgClass = 'bg-destructive/15 border-destructive/40 text-destructive';
-
-              return (
-                <Tooltip key={seat._id}>
-                  <TooltipTrigger asChild>
-                    <button
-                      className={`absolute flex items-center justify-center rounded border text-[11px] font-bold select-none transition-all ${bgClass}`}
-                      style={{
-                        left: seat.position.x,
-                        top: seat.position.y,
-                        width: 36,
-                        height: 26,
-                        cursor: dragging?.id === seat._id ? 'grabbing' : 'grab',
-                        zIndex: dragging?.id === seat._id ? 50 : (isSelected ? 20 : 5),
-                      }}
-                      onMouseDown={e => handleMouseDown(e, 'seat', seat._id, seat.position)}
-                      onClick={e => {
-                        e.stopPropagation();
-                        onSeatSelect(isSelected ? null : seat);
-                      }}
-                    >
-                      {seat.number}
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <div className="text-xs">
-                      <p className="font-bold">Seat {seat.number}</p>
-                      <p>₹{seat.price}/month</p>
-                      <p>{seat.isAvailable ? 'Available' : 'Booked/Blocked'}</p>
+                {/* Section body */}
+                <div className="relative w-full" style={{ height: section.height - 28 }}>
+                  {isStructural ? (
+                    <div className="flex items-center justify-center h-full">
+                      <Building2 className="h-8 w-8 opacity-30" />
                     </div>
-                  </TooltipContent>
-                </Tooltip>
-              );
-            })}
-          </TooltipProvider>
+                  ) : (
+                    renderSectionSeats(section)
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
       {/* Legend */}
       <div className="flex items-center justify-center gap-4 text-xs">
         <div className="flex items-center gap-1.5">
-          <div className="w-4 h-3 rounded border border-emerald-500 bg-emerald-500/20" />
+          <div className="w-4 h-3 rounded border border-emerald-400 bg-emerald-50" />
           <span>Available</span>
         </div>
         <div className="flex items-center gap-1.5">
@@ -464,21 +415,176 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
           <span>Selected</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-4 h-3 rounded border border-destructive/40 bg-destructive/15" />
+          <div className="w-4 h-3 rounded border border-muted-foreground/30 bg-muted" />
           <span>Booked/Blocked</span>
         </div>
       </div>
 
-      {/* Auto seat generator dialog */}
-      <AutoSeatGenerator
-        open={showAutoGen}
-        onOpenChange={setShowAutoGen}
-        onGenerate={handleAutoGenerate}
-        roomWidth={roomWidth}
-        roomHeight={roomHeight}
-        gridSize={gridSize}
-        existingSeatCount={seats.length}
-      />
+      {/* Add structural dialog */}
+      <Dialog open={showAddStructural} onOpenChange={setShowAddStructural}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Add Structure</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-2 py-4">
+            {STRUCTURAL_TYPES.map(label => (
+              <Button key={label} variant="outline" className="h-16 flex-col gap-1" onClick={() => handleAddStructural(label)}>
+                <Building2 className="h-5 w-5" />
+                <span className="text-xs">{label}</span>
+              </Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Section editor dialog */}
+      {editingSection && (
+        <SectionEditorDialog
+          section={editingSection}
+          open={showSectionEditor}
+          onOpenChange={setShowSectionEditor}
+          onUpdate={handleUpdateSection}
+          onGenerateSeats={onGenerateSeatsForSection}
+          onDelete={handleDeleteSection}
+        />
+      )}
     </div>
+  );
+};
+
+// ── Section Editor Dialog ──────────────────────────────────────────
+interface SectionEditorDialogProps {
+  section: Section;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onUpdate: (section: Section) => void;
+  onGenerateSeats: (section: Section) => void;
+  onDelete: (id: string) => void;
+}
+
+const SectionEditorDialog: React.FC<SectionEditorDialogProps> = ({
+  section,
+  open,
+  onOpenChange,
+  onUpdate,
+  onGenerateSeats,
+  onDelete,
+}) => {
+  const [local, setLocal] = useState<Section>(section);
+
+  useEffect(() => { setLocal(section); }, [section]);
+
+  const update = (partial: Partial<Section>) => setLocal(prev => ({ ...prev, ...partial }));
+
+  const handleSave = () => {
+    onUpdate(local);
+    onOpenChange(false);
+  };
+
+  const handleGenerateSeats = () => {
+    onUpdate(local);
+    onGenerateSeats(local);
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <LayoutGrid className="h-5 w-5" />
+            Edit Section
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="grid gap-4 py-4">
+          <div>
+            <Label>Section Name</Label>
+            <Input value={local.name} onChange={e => update({ name: e.target.value })} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Width (px)</Label>
+              <Input type="number" min={100} max={1200} value={local.width}
+                onChange={e => update({ width: +e.target.value || 200 })} />
+            </div>
+            <div>
+              <Label>Height (px)</Label>
+              <Input type="number" min={80} max={800} value={local.height}
+                onChange={e => update({ height: +e.target.value || 150 })} />
+            </div>
+          </div>
+
+          {local.type === 'seats' && (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Rows</Label>
+                  <Input type="number" min={1} max={20} value={local.rows || 5}
+                    onChange={e => update({ rows: +e.target.value || 1 })} />
+                </div>
+                <div>
+                  <Label>Columns</Label>
+                  <Input type="number" min={1} max={30} value={local.cols || 6}
+                    onChange={e => update({ cols: +e.target.value || 1 })} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Aisle After Col</Label>
+                  <Input type="number" min={0} max={local.cols || 30} value={local.aisleAfterCol || 0}
+                    onChange={e => update({ aisleAfterCol: +e.target.value || 0 })} />
+                </div>
+                <div>
+                  <Label>Spacing (px)</Label>
+                  <Input type="number" min={30} max={100} value={local.seatSpacing || 50}
+                    onChange={e => update({ seatSpacing: +e.target.value || 50 })} />
+                </div>
+              </div>
+              <div>
+                <Label>Price per Seat (₹/month)</Label>
+                <Input type="number" min={0} value={local.price || 0}
+                  onChange={e => update({ price: +e.target.value || 0 })} />
+              </div>
+
+              <div className="bg-muted rounded-lg p-3 text-sm">
+                <p><strong>Preview:</strong> {(local.rows || 0) * (local.cols || 0)} seats in {local.rows} rows × {local.cols} columns</p>
+                {(local.aisleAfterCol || 0) > 0 && (
+                  <p className="text-muted-foreground">Aisle gap after every {local.aisleAfterCol} seats</p>
+                )}
+              </div>
+            </>
+          )}
+
+          {local.type === 'structural' && (
+            <div>
+              <Label>Label</Label>
+              <Select value={local.structuralLabel || 'Custom'} onValueChange={v => update({ structuralLabel: v, name: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {STRUCTURAL_TYPES.map(t => (
+                    <SelectItem key={t} value={t}>{t}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="flex gap-2">
+          <Button variant="destructive" size="sm" onClick={() => { onDelete(local.id); onOpenChange(false); }}>
+            <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
+          </Button>
+          <div className="flex-1" />
+          {local.type === 'seats' && (
+            <Button variant="outline" onClick={handleGenerateSeats}>
+              <Grid3X3 className="h-3.5 w-3.5 mr-1" /> Generate Seats
+            </Button>
+          )}
+          <Button onClick={handleSave}>Save Section</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };

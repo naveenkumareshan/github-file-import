@@ -234,12 +234,13 @@ export const adminCabinsService = {
     return { success: true, data: {} };
   },
 
-  updateCabinLayout: async (cabinId: string, roomElements: RoomElement[], roomWidth?: number, roomHeight?: number, gridSize?: number) => {
+  updateCabinLayout: async (cabinId: string, roomElements: RoomElement[], roomWidth?: number, roomHeight?: number, gridSize?: number, sections?: any[]) => {
     try {
       const updateData: any = { room_elements: roomElements };
       if (roomWidth !== undefined) updateData.room_width = roomWidth;
       if (roomHeight !== undefined) updateData.room_height = roomHeight;
       if (gridSize !== undefined) updateData.grid_size = gridSize;
+      if (sections !== undefined) updateData.sections = sections;
 
       const { data, error } = await supabase
         .from('cabins')
