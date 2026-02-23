@@ -1,163 +1,90 @@
 
 
-## Redesign: BookMyShow-Style Section-Based Layout Designer
+## Fix: Floor Plan Designer - Walls, Section Resize, Seat Add/Delete
 
-Transform the current individual-seat canvas into a **section-based floor plan** like the reference image, where seats are organized into named zones (e.g., "Non AC Cabins", "AC Cabins") with structural elements (Washroom, Office, Lockers) shown as labeled rectangles.
+### Issues Found
 
-### What Changes
+1. **No wall elements** -- The toolbar lacks buttons to add Door, Window, Screen, AC, Bath elements. The `roomElements` state exists but has no UI to manage it.
+2. **Section resize not working** -- The Section Editor dialog has width/height inputs, but changes only update `local` state. When "Save Section" is clicked, `onUpdate(local)` is called which does update correctly, but the section on the canvas may not reflect changes if the section body area calculation has issues with the height.
+3. **No add/delete individual seats** -- Seats can only be generated in bulk via "Generate Seats". There's no button to add a single seat or delete a selected seat from the section.
+4. **Deleted seats persist** -- When a section is deleted via `handleDeleteSection`, it calls `onSeatsChange(seats.filter(s => s.sectionId !== id))` which only removes from local state. The actual database records are NOT deleted. When the page reloads, deleted seats reappear. Similarly, "Generate Seats" deletes old seats from DB but the `fetchSeats` call may not properly re-assign section IDs due to a race condition with `sections` state.
 
-The current system places individual seats freely on a canvas. The new system introduces **Sections** -- named rectangular zones that contain auto-generated seat grids. Structural elements become labeled rectangles instead of small icons.
+### Fixes
 
-### Key Concepts
+#### 1. Add Wall Elements (Door, Window, Screen, AC, Bath)
 
-**Section (Zone):** A named rectangular area on the floor plan (e.g., "Non AC Cabins", "AC Cabins"). Each section has:
-- Name/label
-- Position (x, y) on the canvas
-- Width and height
-- Seat grid configuration (rows, columns, seat spacing)
-- Seats auto-generated within the section boundary
-- Section type: "seats" or "structural" (Washroom, Office, Lockers)
+Add a toolbar dropdown/buttons for wall elements in FloorPlanDesigner. Each element renders as a labeled icon on the canvas, constrained to wall edges. Elements are draggable along walls only. Add edit/delete controls on each element.
 
-**Seat:** Still lives in the `seats` table, but now has a `section_id` linking it to a section. Sections own their seat arrangement.
+**Files:** `FloorPlanDesigner.tsx`
 
-**Structural Elements:** Washroom, Office, Lockers rendered as labeled rectangles (not small icons) matching the reference image style.
+#### 2. Fix Section Resize
 
----
+The Section Editor dialog width/height inputs work, but the issue is that `handleUpdateSection` updates the sections array correctly. The real problem is that when reducing size, seats outside the new boundary still render. Fix: after resizing, warn or auto-remove seats that fall outside the new boundary. Also ensure the section body height calculation (`section.height - 28`) properly updates.
 
-### Database Changes
+**Files:** `FloorPlanDesigner.tsx`
 
-Add a `sections` JSONB column to `cabins` table to store section definitions:
+#### 3. Add Individual Seat Add/Delete
 
-```sql
-ALTER TABLE cabins ADD COLUMN sections jsonb NOT NULL DEFAULT '[]'::jsonb;
-```
+- Add a "Delete Seat" button in the selected seat details card (SeatManagement.tsx)
+- Add an "Add Seat" button inside each seat section on the canvas or in the section editor
+- Delete calls `adminSeatsService.deleteSeat()` AND removes from local state
+- Add creates a seat at the next available position within the section
 
-Each section in the JSON:
-```json
-{
-  "id": "section-1",
-  "name": "Non AC Cabins",
-  "type": "seats",
-  "position": { "x": 40, "y": 80 },
-  "width": 500,
-  "height": 350,
-  "rows": 7,
-  "cols": 8,
-  "aisleAfterCol": 4,
-  "seatSpacing": 50,
-  "labelPosition": "bottom"
-}
-```
+**Files:** `FloorPlanDesigner.tsx`, `SeatManagement.tsx`
 
-Structural elements stored as sections with `type: "structural"`:
-```json
-{
-  "id": "struct-1",
-  "name": "Washroom",
-  "type": "structural",
-  "position": { "x": 100, "y": 500 },
-  "width": 150,
-  "height": 100
-}
-```
+#### 4. Fix Deleted Seats Persisting
 
-No new tables needed -- sections are part of the cabin layout config.
+- When deleting a section, also delete its seats from the database (not just local state)
+- When generating seats for a section, ensure `fetchSeats` properly re-assigns section IDs by using the LATEST sections state
+- Add a `handleDeleteSeat` function that deletes from both DB and local state
+
+**Files:** `SeatManagement.tsx`, `FloorPlanDesigner.tsx`
 
 ---
 
-### Component Changes
+### Technical Details
 
-#### 1. FloorPlanDesigner.tsx (Complete Rewrite)
+#### FloorPlanDesigner.tsx Changes
 
-Replace the current individual-seat canvas with a section-based designer:
-
-**Toolbar:**
-- Room dimensions (W/H/Grid) -- keep existing
-- "Add Seat Section" button -- creates a new named zone
-- "Add Structure" dropdown (Washroom, Office, Lockers, Custom)
-- Grid toggle, Zoom controls, Save -- keep existing
-
-**Canvas:**
-- Sections rendered as bordered rectangles with title labels
-- Seats auto-generated inside each section based on rows/cols config
-- Structural elements rendered as grey labeled rectangles (like the reference)
-- Sections are draggable and resizable
-- Section label text shown inside or below the section boundary
-
-**Section Editor Panel (right sidebar or dialog):**
-When a section is selected, show:
-- Section name input
-- Rows and Columns inputs
-- Aisle after X seats
-- Seat spacing
-- Price per seat in this section
-- "Regenerate Seats" button
-- Delete section button
-
-**Seat rendering within sections:**
-- Seats arranged in a grid within the section boundary
-- Numbered sequentially within the section
-- Color-coded: green (available), teal border (like reference), red (booked), grey (blocked)
-- Match the reference image's clean, compact seat blocks with numbers inside
-
-#### 2. FloorPlanViewer.tsx (Update)
-
-- Read sections from cabin data
-- Render section boundaries with labels
-- Render structural elements as labeled rectangles
-- Seats clickable for booking (green = available, greyed = booked)
-- Same zoom/pan controls
-
-#### 3. AutoSeatGenerator.tsx (Remove as standalone)
-
-Seat generation becomes part of the section creation workflow. When admin creates a section and specifies rows/cols, seats are auto-generated within that section.
-
-#### 4. SeatManagement.tsx (Update)
-
-- Pass sections data to FloorPlanDesigner
-- Handle section CRUD operations
-- Save sections to cabin `sections` column
-- When a section's seat config changes, bulk create/delete seats for that section
-
-#### 5. adminCabinsService.ts (Update)
-
-- `updateCabinLayout` now also saves `sections` JSONB
-
-#### 6. DateBasedSeatMap.tsx (Update)
-
-- Pass sections data to FloorPlanViewer for proper section-based rendering
-
----
-
-### Visual Design (Matching Reference Image)
-
+**New toolbar buttons for wall elements:**
 ```text
-+================================================================+
-|                                                                  |
-|  +-- Non AC Cabins ---------------------------------+           |
-|  | [50] [49] [36] [35]    [22] [21] [8]  [7]       |           |
-|  | [51] [48] [37] [34]    [23] [20] [9]  [6]       |           |
-|  | [52] [47] [38] [33]    [24] [19] [10] [5]       |           |
-|  | ...                                               |           |
-|  +---------------------------------------------------+           |
-|                                                                  |
-|  [Lockers]   +-- AC Cabins --+  +-- AC Cabins --+              |
-|              | [8]  [25]     |  | [26] [43]     |              |
-|              | [9]  [24]     |  | [27] [42]     |              |
-|              | ...           |  | ...           |              |
-|              +---------------+  +---------------+              |
-|                                                                  |
-|  +----------+  +----------+  +----------+                       |
-|  | Washroom |  | Washroom |  |  Office  |                       |
-|  +----------+  +----------+  +----------+                       |
-+================================================================+
+[Add Seat Section] [Add Structure] [Add Wall Element v]
+                                     - Door
+                                     - Window
+                                     - Screen
+                                     - AC
+                                     - Bath
 ```
 
-**Seat styling (matching reference):**
-- Light background with colored border
-- Seat number centered inside
-- Compact size (~40x30px)
-- Green/teal border for available, grey for structural areas
+**Wall element rendering:**
+- Each element renders as a small labeled rectangle (40x30px) with an icon
+- Constrained to room edges: Door/Window on any wall, Screen on front wall, AC on top wall
+- Draggable along wall edges only
+- Click to select, show delete button
+
+**New props needed:**
+- `onDeleteSeat: (seatId: string) => void` -- for deleting individual seats from DB
+- `onAddSeatToSection: (section: Section) => void` -- for adding a single seat to a section
+- `onDeleteSectionWithSeats: (sectionId: string) => void` -- for deleting section + its DB seats
+
+**Section resize fix:**
+- When section width/height is reduced in the editor and saved, check if any seats fall outside the new boundary and remove them (with confirmation)
+
+#### SeatManagement.tsx Changes
+
+**New handlers:**
+- `handleDeleteSeat(seatId)` -- calls `adminSeatsService.deleteSeat(id)`, removes from local seats state
+- `handleAddSeatToSection(section)` -- creates a single seat at the next available grid position within the section
+- `handleDeleteSectionWithSeats(sectionId)` -- deletes all section seats from DB, then removes section from state
+
+**Fix `fetchSeats` race condition:**
+- Use a ref or pass sections directly to `assignSectionIds` from the latest state, not the stale closure value
+
+**Add "Delete Seat" button** in the selected seat details card
+
+#### RoomWalls.tsx Changes
+
+Keep as-is (already renders proper wall boundaries).
 
 ---
 
@@ -165,20 +92,6 @@ Seat generation becomes part of the section creation workflow. When admin create
 
 | File | Action |
 |---|---|
-| Database migration | Add `sections` JSONB column to `cabins` |
-| `src/components/seats/FloorPlanDesigner.tsx` | Major rewrite: section-based canvas |
-| `src/components/seats/FloorPlanViewer.tsx` | Update: render sections and structures |
-| `src/components/seats/AutoSeatGenerator.tsx` | Refactor: integrated into section creation |
-| `src/components/seats/RoomWalls.tsx` | Minor update: thicker walls, no labels |
-| `src/pages/SeatManagement.tsx` | Update: manage sections state |
-| `src/api/adminCabinsService.ts` | Update: save sections in layout |
-| `src/components/seats/DateBasedSeatMap.tsx` | Update: pass sections to viewer |
-
-### What Stays the Same
-
-- Database `seats` table structure (unchanged)
-- Booking flow (SeatBookingForm, payment)
-- Zoom/pan controls (same concept)
-- Floor management system
-- All seat CRUD API services
+| `src/components/seats/FloorPlanDesigner.tsx` | Add wall element buttons, wall element rendering/dragging, individual seat delete button on canvas, fix section resize behavior, add `onDeleteSeat`/`onAddSeatToSection`/`onDeleteSectionWithSeats` props |
+| `src/pages/SeatManagement.tsx` | Add `handleDeleteSeat`, `handleAddSeatToSection`, `handleDeleteSectionWithSeats` handlers, fix sections race condition in `fetchSeats`, add Delete Seat button in seat details card |
 
