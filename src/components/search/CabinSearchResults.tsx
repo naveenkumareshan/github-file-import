@@ -7,19 +7,23 @@ import { MapPin, Star, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface CabinResult {
-  _id: string;
+  _id?: string;
+  id?: string;
   name: string;
   description: string;
   price: number;
   capacity: number;
   amenities: string[];
-  imageSrc: string;
+  imageSrc?: string;
+  image_url?: string;
   category: 'standard' | 'premium' | 'luxury';
-  location: {
-    coordinates: { latitude: number; longitude: number };
-    fullAddress: string;
-    city: { _id: string; name: string };
-    state: { _id: string; name: string };
+  city?: string;
+  area?: string;
+  location?: {
+    coordinates?: { latitude: number; longitude: number };
+    fullAddress?: string;
+    city?: { _id: string; name: string };
+    state?: { _id: string; name: string };
     area?: { _id: string; name: string };
   };
   averageRating?: number;
@@ -88,13 +92,16 @@ export const CabinSearchResults = ({
       <p className="text-[11px] text-muted-foreground">{cabins.length} rooms found</p>
 
       <div className="space-y-2.5">
-        {cabins.map((cabin) => (
-          <Link to={`/book-seat/${cabin._id}`} key={cabin._id} className="block">
+        {cabins.map((cabin) => {
+          const cabinId = cabin.id || cabin._id;
+          const imgSrc = cabin.imageSrc || cabin.image_url || '/placeholder.svg';
+          return (
+          <Link to={`/book-seat/${cabinId}`} key={cabinId} className="block">
             <div className="flex gap-3 p-3 bg-card rounded-2xl border border-border hover:border-primary/30 hover:shadow-sm transition-all active:scale-[0.99]">
               {/* Image */}
               <div className="relative flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden bg-muted">
                 <img
-                  src={getImageUrl(cabin.imageSrc) || '/placeholder.svg'}
+                  src={getImageUrl(imgSrc) || '/placeholder.svg'}
                   alt={cabin.name}
                   className="w-full h-full object-cover"
                 />
@@ -117,7 +124,7 @@ export const CabinSearchResults = ({
                   <div className="flex items-center gap-0.5 mt-0.5">
                     <MapPin className="h-3 w-3 text-muted-foreground flex-shrink-0" />
                     <span className="text-[11px] text-muted-foreground truncate">
-                      {cabin.location?.area ? cabin.location.area.name + ', ' : ''}{cabin.location?.city?.name}
+                      {cabin.location?.area ? cabin.location.area.name + ', ' : (cabin.area ? cabin.area + ', ' : '')}{cabin.location?.city?.name || cabin.city || ''}
                     </span>
                   </div>
 
@@ -154,7 +161,8 @@ export const CabinSearchResults = ({
               </div>
             </div>
           </Link>
-        ))}
+          );
+        })}
       </div>
 
       {/* Load More */}

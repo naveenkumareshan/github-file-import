@@ -3,3 +3,12 @@ project_id = "wzjzrivtemnqlqqpaybh"
 [auth.password]
 hibp_enabled = true
 min_length = 6
+
+[functions.admin-reset-password]
+verify_jwt = false
+
+[functions.razorpay-create-order]
+verify_jwt = false
+
+[functions.razorpay-verify-payment]
+verify_jwt = false

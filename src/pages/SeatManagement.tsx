@@ -68,7 +68,7 @@ const SeatManagement = () => {
     if (!number) return toast({ title: "Enter floor number" });
 
     try {
-      const response = await adminCabinsService.addUpdateCabinFloor(cabin._id, {
+      const response = await adminCabinsService.addUpdateCabinFloor(cabin?.id || cabin?._id || '', {
         floorId: editingFloorId, // pass floorId if editing
         number,
       });
@@ -111,16 +111,26 @@ const SeatManagement = () => {
       // Fetch cabin details
       const cabinResponse = await adminCabinsService.getCabinById(id);
       if (cabinResponse.success) {
-        setFloors(cabinResponse.data.floors);
-        setCabin(cabinResponse.data);
-        setSeatPrice(cabinResponse.data.price || 0);
+        const cabinData = cabinResponse.data;
+        setFloors(Array.isArray(cabinData.floors) ? cabinData.floors : []);
+        setCabin({
+          _id: cabinData.id,
+          id: cabinData.id,
+          name: cabinData.name,
+          description: cabinData.description || '',
+          price: cabinData.price || 0,
+          capacity: cabinData.capacity || 0,
+          isActive: cabinData.is_active !== false,
+          category: cabinData.category || 'standard',
+        });
+        setSeatPrice(cabinData.price || 0);
 
         // Set room elements from cabin data if available
         if (
-          cabinResponse.data.roomElements &&
-          cabinResponse.data.roomElements.length > 0
+          Array.isArray(cabinData.room_elements) &&
+          cabinData.room_elements.length > 0
         ) {
-          setRoomElements(cabinResponse.data.roomElements);
+          setRoomElements(cabinData.room_elements);
         } else {
           // Initialize with default elements if none exist
           setRoomElements([
@@ -178,8 +188,9 @@ const SeatManagement = () => {
   };
 
   const handleSeatSelect = (seat: Seat) => {
-    setSelectedSeat(seat === selectedSeat ? null : seat);
-    setPrice(selectedSeat.price);
+    const newSeat = seat === selectedSeat ? null : seat;
+    setSelectedSeat(newSeat);
+    setPrice(newSeat?.price || 0);
   };
 
   const toggleCabinStatus = async () => {

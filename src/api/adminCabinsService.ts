@@ -234,11 +234,55 @@ export const adminCabinsService = {
     return { success: true, data: {} };
   },
 
-  updateCabinLayout: async (cabinId: string, _roomElements: RoomElement[]) => {
-    return { success: true, data: null };
+  updateCabinLayout: async (cabinId: string, roomElements: RoomElement[]) => {
+    try {
+      const { data, error } = await supabase
+        .from('cabins')
+        .update({ room_elements: roomElements })
+        .eq('id', cabinId)
+        .select()
+        .single();
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error updating cabin layout:', error);
+      return { success: false, data: null, error: { message: error instanceof Error ? error.message : 'Failed' } };
+    }
   },
 
-  addUpdateCabinFloor: async (id: string, data: { floorId: number; number: string }) => {
-    return { success: true, data: null };
+  addUpdateCabinFloor: async (id: string, data: { floorId: number | null; number: string }) => {
+    try {
+      // Get current floors
+      const { data: cabin, error: fetchError } = await supabase
+        .from('cabins')
+        .select('floors')
+        .eq('id', id)
+        .single();
+      if (fetchError) throw fetchError;
+
+      let floors: any[] = Array.isArray(cabin?.floors) ? [...(cabin.floors as any[])] : [];
+
+      if (data.floorId !== null && data.floorId !== undefined) {
+        // Update existing floor
+        floors = floors.map((f: any) => f.id === data.floorId ? { ...f, number: parseInt(data.number) } : f);
+      } else {
+        // Add new floor
+        const newId = floors.length > 0 ? Math.max(...floors.map((f: any) => f.id)) + 1 : 1;
+        floors.push({ id: newId, number: parseInt(data.number) });
+      }
+
+      const { data: updated, error } = await supabase
+        .from('cabins')
+        .update({ floors })
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+
+      return { success: true, data: { floors: updated.floors || [] } };
+    } catch (error) {
+      console.error('Error updating floors:', error);
+      return { success: false, data: null, message: error instanceof Error ? error.message : 'Failed' };
+    }
   },
 };
