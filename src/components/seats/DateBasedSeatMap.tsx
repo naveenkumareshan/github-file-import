@@ -11,7 +11,7 @@ import {
 import { Building, CalendarIcon, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FloorPlanViewer } from "./FloorPlanViewer";
-import type { Section } from "./FloorPlanDesigner";
+// Section type removed - no longer needed
 import { seatsService, SeatAvailabilityResponse } from "@/api/seatsService";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -36,7 +36,7 @@ interface DateBasedSeatMapProps {
   startDate?: Date;
   endDate?: Date;
   roomElements?: RoomElement[];
-  sections?: Section[];
+  sections?: any[];
 }
 
 const DateBasedSeatMapComponent: React.FC<DateBasedSeatMapProps> = ({

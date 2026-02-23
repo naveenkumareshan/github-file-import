@@ -3,10 +3,8 @@ import { Button } from '@/components/ui/button';
 import {
   TooltipProvider, Tooltip, TooltipContent, TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { ZoomIn, ZoomOut, Maximize, Building2 } from 'lucide-react';
-import { RoomWalls } from './RoomWalls';
+import { ZoomIn, ZoomOut, Maximize } from 'lucide-react';
 import { format } from 'date-fns';
-import type { Section } from './FloorPlanDesigner';
 
 interface ViewerSeat {
   _id: string;
@@ -18,34 +16,31 @@ interface ViewerSeat {
   unavailableUntil?: string;
   conflictingBookings?: any[];
   sectionId?: string;
+  category?: string;
 }
 
 interface FloorPlanViewerProps {
   seats: ViewerSeat[];
-  sections: Section[];
   roomWidth: number;
   roomHeight: number;
   onSeatSelect?: (seat: ViewerSeat) => void;
   selectedSeat?: ViewerSeat | null;
   dateRange?: { start: Date; end: Date };
+  layoutImage?: string | null;
+  layoutImageOpacity?: number;
+  // Keep sections prop for backward compat but ignore it
+  sections?: any[];
 }
-
-const STRUCTURAL_COLORS: Record<string, string> = {
-  Washroom: 'bg-blue-100 border-blue-300 text-blue-700',
-  Office: 'bg-amber-100 border-amber-300 text-amber-700',
-  Lockers: 'bg-violet-100 border-violet-300 text-violet-700',
-  Storage: 'bg-stone-100 border-stone-300 text-stone-700',
-  Custom: 'bg-muted border-border text-muted-foreground',
-};
 
 export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
   seats,
-  sections,
   roomWidth,
   roomHeight,
   onSeatSelect,
   selectedSeat,
   dateRange,
+  layoutImage,
+  layoutImageOpacity = 30,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(1);
@@ -78,54 +73,6 @@ export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
     setZoom(z => Math.max(0.25, Math.min(z + (e.deltaY > 0 ? -0.1 : 0.1), 3)));
   };
 
-  const renderSectionSeats = (section: Section) => {
-    if (section.type !== 'seats') return null;
-    const sectionSeats = seats.filter(s => s.sectionId === section.id);
-
-    return sectionSeats.map(seat => {
-      const isSelected = selectedSeat?._id === seat._id;
-      const isBooked = !seat.isAvailable;
-
-      let seatClass = 'bg-emerald-50 border-emerald-400 text-emerald-800 hover:bg-emerald-100 cursor-pointer';
-      if (isSelected) seatClass = 'bg-primary border-primary text-primary-foreground ring-2 ring-primary/50 cursor-pointer';
-      else if (isBooked) seatClass = 'bg-muted border-muted-foreground/30 text-muted-foreground cursor-not-allowed';
-
-      return (
-        <Tooltip key={seat._id}>
-          <TooltipTrigger asChild>
-            <button
-              className={`absolute flex items-center justify-center rounded border text-[10px] font-bold transition-all ${seatClass}`}
-              style={{
-                left: seat.position.x - section.position.x,
-                top: seat.position.y - section.position.y,
-                width: 36,
-                height: 26,
-                zIndex: isSelected ? 20 : 10,
-              }}
-              onClick={e => {
-                e.stopPropagation();
-                if (seat.isAvailable && onSeatSelect) onSeatSelect(seat);
-              }}
-              disabled={isBooked}
-            >
-              {seat.number}
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <div className="text-xs">
-              <p className="font-bold">Seat {seat.number}</p>
-              <p>₹{seat.price}/month</p>
-              <p>{seat.isAvailable ? '✅ Available' : '❌ Booked'}</p>
-              {!seat.isAvailable && seat.unavailableUntil && (
-                <p>Until: {format(new Date(seat.unavailableUntil), 'dd MMM yyyy')}</p>
-              )}
-            </div>
-          </TooltipContent>
-        </Tooltip>
-      );
-    });
-  };
-
   return (
     <div className="space-y-3">
       {/* Zoom controls */}
@@ -156,44 +103,58 @@ export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
             transformOrigin: '0 0',
           }}
         >
-          <RoomWalls width={roomWidth} height={roomHeight} />
+          {/* Background layout image */}
+          {layoutImage && (
+            <img
+              src={layoutImage}
+              alt="Layout background"
+              className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+              style={{ opacity: layoutImageOpacity / 100, zIndex: 0 }}
+            />
+          )}
 
           <TooltipProvider>
-            {/* Sections */}
-            {sections.map(section => {
-              const isStructural = section.type === 'structural';
-              const colorClass = isStructural
-                ? (STRUCTURAL_COLORS[section.structuralLabel || 'Custom'] || STRUCTURAL_COLORS.Custom)
-                : 'bg-background border-primary/30';
+            {seats.map(seat => {
+              const isSelected = selectedSeat?._id === seat._id;
+              const isBooked = !seat.isAvailable;
+
+              let seatClass = 'bg-emerald-50 border-emerald-400 text-emerald-800 hover:bg-emerald-100 cursor-pointer';
+              if (isSelected) seatClass = 'bg-primary border-primary text-primary-foreground ring-2 ring-primary/50 cursor-pointer';
+              else if (isBooked) seatClass = 'bg-muted border-muted-foreground/30 text-muted-foreground cursor-not-allowed';
 
               return (
-                <div
-                  key={section.id}
-                  className={`absolute rounded-lg border-2 overflow-hidden ${colorClass}`}
-                  style={{
-                    left: section.position.x,
-                    top: section.position.y,
-                    width: section.width,
-                    height: section.height,
-                    zIndex: 3,
-                  }}
-                >
-                  {/* Section label */}
-                  <div className="px-2 py-1 border-b border-inherit bg-inherit">
-                    <span className="text-xs font-semibold">{section.name}</span>
-                  </div>
-
-                  {/* Section body */}
-                  <div className="relative w-full" style={{ height: section.height - 28 }}>
-                    {isStructural ? (
-                      <div className="flex items-center justify-center h-full">
-                        <Building2 className="h-8 w-8 opacity-30" />
-                      </div>
-                    ) : (
-                      renderSectionSeats(section)
-                    )}
-                  </div>
-                </div>
+                <Tooltip key={seat._id}>
+                  <TooltipTrigger asChild>
+                    <button
+                      className={`absolute flex items-center justify-center rounded border text-[10px] font-bold transition-all ${seatClass}`}
+                      style={{
+                        left: seat.position.x - 18,
+                        top: seat.position.y - 13,
+                        width: 36,
+                        height: 26,
+                        zIndex: isSelected ? 20 : 10,
+                      }}
+                      onClick={e => {
+                        e.stopPropagation();
+                        if (seat.isAvailable && onSeatSelect) onSeatSelect(seat);
+                      }}
+                      disabled={isBooked}
+                    >
+                      {seat.number}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <div className="text-xs">
+                      <p className="font-bold">Seat {seat.number}</p>
+                      {seat.category && <p>{seat.category}</p>}
+                      <p>₹{seat.price}/month</p>
+                      <p>{seat.isAvailable ? '✅ Available' : '❌ Booked'}</p>
+                      {!seat.isAvailable && seat.unavailableUntil && (
+                        <p>Until: {format(new Date(seat.unavailableUntil), 'dd MMM yyyy')}</p>
+                      )}
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
               );
             })}
           </TooltipProvider>
