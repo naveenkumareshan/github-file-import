@@ -101,7 +101,6 @@ const ReviewManagement: React.FC = () => {
       }
     } catch (error) {
       console.error('Error fetching data:', error);
-      toast({ title: "Error", description: "Failed to load reviews", variant: "destructive" });
     } finally {
       setLoading(false);
     }

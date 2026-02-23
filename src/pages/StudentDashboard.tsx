@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Navigation } from '@/components/Navigation';
 import { Footer } from '@/components/Footer';
 import { bookingsService } from '@/api/bookingsService';
@@ -190,11 +191,6 @@ const StudentDashboard: React.FC = () => {
       }
     } catch (error) {
       console.error('Error fetching booking data:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load booking data",
-        variant: "destructive"
-      });
     } finally {
       setLoading(false);
     }
@@ -342,8 +338,26 @@ const StudentDashboard: React.FC = () => {
                       </CardHeader>
                       <CardContent>
                         {loading ? (
-                          <div className="flex justify-center py-8">
-                            <div className="animate-spin h-8 w-8 border-4 border-cabin-wood border-t-transparent rounded-full"></div>
+                          <div className="space-y-3 py-4">
+                            {[...Array(2)].map((_, i) => (
+                              <div key={i} className="rounded-2xl border p-5 space-y-3">
+                                <div className="flex justify-between">
+                                  <div className="space-y-2">
+                                    <Skeleton className="h-5 w-40" />
+                                    <Skeleton className="h-3 w-24" />
+                                  </div>
+                                  <Skeleton className="h-6 w-20 rounded-full" />
+                                </div>
+                                <div className="grid grid-cols-4 gap-4">
+                                  {[...Array(4)].map((_, j) => (
+                                    <div key={j} className="space-y-1">
+                                      <Skeleton className="h-3 w-12" />
+                                      <Skeleton className="h-4 w-20" />
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         ) : currentBookings.length === 0 ? (
                           <div className="text-center py-8">

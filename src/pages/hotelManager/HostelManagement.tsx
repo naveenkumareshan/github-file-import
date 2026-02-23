@@ -88,13 +88,12 @@ const HostelManagement = () => {
         }));
         setHostels(transformedHostels);
       } else {
-        setError('Failed to load hostels');
-        toast({ title: "Error", description: "Failed to load hostels", variant: "destructive" });
+        setError('No hostels available');
+        console.error('Failed to load hostels');
       }
     } catch (error) {
       console.error('Error fetching hostels:', error);
-      setError('Failed to load hostels');
-      toast({ title: "Error", description: "Failed to load hostels", variant: "destructive" });
+      setError('Unable to fetch data. Please refresh.');
     } finally {
       setLoading(false);
     }
@@ -176,7 +175,12 @@ const HostelManagement = () => {
                 <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
               </div>
             ) : error ? (
-              <div className="text-center py-6 text-red-500 text-sm">{error}</div>
+              <div className="flex flex-col items-center justify-center py-16">
+                <Building2 className="h-10 w-10 text-muted-foreground/30 mb-3" />
+                <p className="text-sm font-medium">No Hostels Available</p>
+                <p className="text-xs text-muted-foreground mb-4">Unable to fetch data. Please refresh.</p>
+                <Button onClick={() => fetchHostels()} variant="outline" size="sm">Retry</Button>
+              </div>
             ) : hostels.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16">
                 <Building2 className="h-10 w-10 text-muted-foreground/30 mb-3" />

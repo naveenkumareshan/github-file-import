@@ -8,11 +8,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { adminBookingsService } from '@/api/adminBookingsService';
 import { OccupancyChart } from './OccupancyChart';
 import { RevenueChart } from './RevenueChart';
-import { toast } from '@/hooks/use-toast';
 import { DashboardExpiringBookings } from './DashboardExpiringBookings';
 import { TrendingUp } from 'lucide-react';
+import ErrorBoundary from '@/components/ErrorBoundary';
+import { EmptyState } from '@/components/ui/empty-state';
 
-// Interface for top filling rooms data
 interface TopFillingRoom {
   id: string;
   name: string;
@@ -25,54 +25,45 @@ interface TopFillingRoom {
 export function DashboardStatistics() {
   const [topFillingRooms, setTopFillingRooms] = useState<TopFillingRoom[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState(false);
   const hasFetchedRef = useRef(false);
 
-  useEffect(() => {
-     if (hasFetchedRef.current) return;
-      hasFetchedRef.current = true;
-
-    const fetchDashboardData = async () => {
-      try {
-        setLoading(true);
-        
-        
-        // Fetch top filling rooms data
-        const topRoomsResponse = await adminBookingsService.getTopFillingRooms();
-        if (topRoomsResponse.success && topRoomsResponse.data) {
-          setTopFillingRooms(topRoomsResponse.data.slice(0, 10)); // Show only top 5 rooms
-        }
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load dashboard data",
-          variant: "destructive"
-        });
-      } finally {
-        setLoading(false);
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      setError(false);
+      const topRoomsResponse = await adminBookingsService.getTopFillingRooms();
+      if (topRoomsResponse.success && topRoomsResponse.data) {
+        setTopFillingRooms(topRoomsResponse.data.slice(0, 10));
       }
-    };
-    
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err);
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
     fetchDashboardData();
   }, []);
   
   const getCategoryBadgeColor = (category: string) => {
     switch (category.toLowerCase()) {
-      case 'luxury':
-        return 'bg-purple-500 hover:bg-purple-600';
-      case 'premium':
-        return 'bg-blue-500 hover:bg-blue-600';
-      case 'standard':
-        return 'bg-green-500 hover:bg-green-600';
-      default:
-        return 'bg-gray-500 hover:bg-gray-600';
+      case 'luxury': return 'bg-purple-500 hover:bg-purple-600';
+      case 'premium': return 'bg-blue-500 hover:bg-blue-600';
+      case 'standard': return 'bg-green-500 hover:bg-green-600';
+      default: return 'bg-gray-500 hover:bg-gray-600';
     }
   };
 
   return (
     <div className="space-y-6">
-      {/* Dynamic Statistics Cards */}
-      <DynamicStatisticsCards />
+      <ErrorBoundary>
+        <DynamicStatisticsCards />
+      </ErrorBoundary>
 
       {/* Top Filling Reading Rooms */}
       <Card className="shadow-sm">
@@ -94,6 +85,15 @@ export function DashboardStatistics() {
                 <Skeleton key={i} className="h-12 w-full" />
               ))}
             </div>
+          ) : error ? (
+            <EmptyState
+              icon={TrendingUp}
+              title="No data available"
+              description="Unable to fetch data. Please refresh."
+              onRetry={() => { hasFetchedRef.current = false; fetchDashboardData(); }}
+            />
+          ) : topFillingRooms.length === 0 ? (
+            <EmptyState icon={TrendingUp} title="No room data available" />
           ) : (
             <Table>
               <TableHeader>
@@ -137,12 +137,18 @@ export function DashboardStatistics() {
       
       {/* Charts Row */}
       <div className="grid md:grid-cols-2 gap-6">
-        <RevenueChart />
-        <OccupancyChart />
+        <ErrorBoundary>
+          <RevenueChart />
+        </ErrorBoundary>
+        <ErrorBoundary>
+          <OccupancyChart />
+        </ErrorBoundary>
       </div>
       
       {/* Expiring Bookings */}
-      <DashboardExpiringBookings />
+      <ErrorBoundary>
+        <DashboardExpiringBookings />
+      </ErrorBoundary>
     </div>
   );
 }
