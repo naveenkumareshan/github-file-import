@@ -47,11 +47,20 @@ Deno.serve(async (req) => {
     const RAZORPAY_KEY_ID = Deno.env.get("RAZORPAY_KEY_ID");
     const RAZORPAY_KEY_SECRET = Deno.env.get("RAZORPAY_KEY_SECRET");
 
+    // Test mode: return simulated order if keys not configured
     if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
-      return new Response(JSON.stringify({ error: "Razorpay keys not configured" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({
+          testMode: true,
+          id: `test_order_${Date.now()}`,
+          amount: Math.round(amount * 100),
+          currency,
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
     // Create Razorpay order
@@ -62,7 +71,7 @@ Deno.serve(async (req) => {
         Authorization: "Basic " + btoa(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`),
       },
       body: JSON.stringify({
-        amount: Math.round(amount * 100), // Convert to paise
+        amount: Math.round(amount * 100),
         currency,
         receipt: `booking_${bookingId}`,
         notes: {
@@ -85,7 +94,6 @@ Deno.serve(async (req) => {
 
     const order = await orderResponse.json();
 
-    // Update booking with razorpay_order_id
     const adminClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
