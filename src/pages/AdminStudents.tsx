@@ -35,12 +35,13 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { Search, User, ChevronLeft, ChevronRight, Edit } from "lucide-react";
+import { Search, User, ChevronLeft, ChevronRight, Edit, KeyRound } from "lucide-react";
 import { adminUsersService } from "../api/adminUsersService";
 import { toast } from "@/hooks/use-toast";
 import ErrorBoundary from "../components/ErrorBoundary";
 import { StudentEditDialog } from "@/components/admin/StudentEditDialog";
 import { useAuth } from "@/contexts/AuthContext";
+import { AdminResetPasswordDialog } from "@/components/admin/AdminResetPasswordDialog";
 
 interface Student {
   _id: string;
@@ -71,9 +72,8 @@ const AdminStudents = () => {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
   const [studentBookings, setStudentBookings] = useState<any>([]);
-  const [loadingBookings, setLoadingBookings] = useState(false);
-  const [includeInactive, setIncludeInactive] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -421,6 +421,19 @@ const AdminStudents = () => {
                                     Edit
                                   </Button>
                                 )}
+                              {user.role == "admin" && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedStudent(student);
+                                    setIsResetPasswordOpen(true);
+                                  }}
+                                >
+                                  <KeyRound className="h-4 w-4 mr-1" />
+                                  Reset Password
+                                </Button>
+                              )}
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -625,6 +638,17 @@ const AdminStudents = () => {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Admin Reset Password Dialog */}
+        {selectedStudent && (
+          <AdminResetPasswordDialog
+            open={isResetPasswordOpen}
+            onClose={() => setIsResetPasswordOpen(false)}
+            userId={selectedStudent.id || selectedStudent._id}
+            userName={selectedStudent.name}
+            userEmail={selectedStudent.email}
+          />
+        )}
       </div>
     </ErrorBoundary>
   );

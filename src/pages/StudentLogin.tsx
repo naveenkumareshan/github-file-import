@@ -19,7 +19,6 @@ import { Separator } from "@/components/ui/separator";
 import { SocialLoginButtons } from "@/components/auth/SocialLoginButtons";
 import { AlertCircle, Eye, EyeOff } from "lucide-react";
 
-const StudentLogin
 const StudentLogin = () => {
   const navigate = useNavigate();
   const location = useLocation();
