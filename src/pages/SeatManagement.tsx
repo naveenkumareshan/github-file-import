@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import { adminCabinsService } from "@/api/adminCabinsService";
 import { adminSeatsService, SeatData } from "@/api/adminSeatsService";
-import { ArrowLeft, Building, Plus } from "lucide-react";
+import { ArrowLeft, Building, Plus, Trash2 } from "lucide-react";
 import { FloorPlanDesigner, FloorPlanSeat, RoomElement, Section } from "@/components/seats/FloorPlanDesigner";
 
 const SeatManagement = () => {
@@ -38,6 +38,10 @@ const SeatManagement = () => {
   // Seat details
   const [price, setPrice] = useState(0);
 
+  // Use ref for sections to avoid stale closure in fetchSeats
+  const sectionsRef = useRef<Section[]>([]);
+  useEffect(() => { sectionsRef.current = sections; }, [sections]);
+
   useEffect(() => {
     if (cabinId) fetchCabinData(cabinId);
   }, [cabinId]);
@@ -58,7 +62,9 @@ const SeatManagement = () => {
         setRoomHeight(d.room_height || 600);
         setGridSize(d.grid_size || 20);
         setRoomElements(Array.isArray(d.room_elements) && d.room_elements.length > 0 ? d.room_elements : []);
-        setSections(Array.isArray(d.sections) ? d.sections : []);
+        const loadedSections = Array.isArray(d.sections) ? d.sections : [];
+        setSections(loadedSections);
+        sectionsRef.current = loadedSections;
       }
     } catch (e) {
       console.error(e);
@@ -84,7 +90,7 @@ const SeatManagement = () => {
     try {
       setLoading(true);
       const res = await adminSeatsService.getSeatsByCabin(id, floor.toString());
-      if (res.success) setSeats(assignSectionIds(res.data, sections));
+      if (res.success) setSeats(assignSectionIds(res.data, sectionsRef.current));
     } catch (e) {
       console.error(e);
     } finally {
@@ -115,7 +121,7 @@ const SeatManagement = () => {
   const handleGenerateSeatsForSection = async (section: Section) => {
     if (!cabinId || section.type !== 'seats') return;
     try {
-      // Remove existing seats for this section
+      // Remove existing seats for this section from DB
       const existingSeats = seats.filter(s => s.sectionId === section.id);
       for (const s of existingSeats) {
         await adminSeatsService.deleteSeat(s._id);
@@ -128,14 +134,13 @@ const SeatManagement = () => {
       const aisleAfter = section.aisleAfterCol || 0;
       const seatPrice = section.price || 2000;
 
-      // Count existing seats to determine starting number
       const otherSeats = seats.filter(s => s.sectionId !== section.id);
       let seatNumber = otherSeats.length > 0
         ? Math.max(...otherSeats.map(s => s.number)) + 1
         : 1;
 
       const startX = section.position.x + 10;
-      const startY = section.position.y + 34; // After header
+      const startY = section.position.y + 34;
 
       const newSeats: SeatData[] = [];
       for (let r = 0; r < rows; r++) {
@@ -148,7 +153,6 @@ const SeatManagement = () => {
           const x = Math.round(startX + c * spacing + colOffset);
           const y = Math.round(startY + r * (spacing * 0.6));
 
-          // Boundary check
           if (x + 36 > section.position.x + section.width - 5) continue;
           if (y + 26 > section.position.y + section.height - 5) continue;
 
@@ -174,6 +178,104 @@ const SeatManagement = () => {
       }
     } catch (e) {
       toast({ title: "Error generating seats", variant: "destructive" });
+    }
+  };
+
+  // ── Individual seat delete (DB + local) ──
+  const handleDeleteSeat = async (seatId: string) => {
+    try {
+      await adminSeatsService.deleteSeat(seatId);
+      setSeats(prev => prev.filter(s => s._id !== seatId));
+      if (selectedSeat?._id === seatId) setSelectedSeat(null);
+      toast({ title: "Seat deleted" });
+    } catch (e) {
+      toast({ title: "Error deleting seat", variant: "destructive" });
+    }
+  };
+
+  // ── Add single seat to section ──
+  const handleAddSeatToSection = async (section: Section) => {
+    if (!cabinId) return;
+    try {
+      const sectionSeats = seats.filter(s => s.sectionId === section.id);
+      const maxNumber = seats.length > 0 ? Math.max(...seats.map(s => s.number)) : 0;
+      const spacing = section.seatSpacing || 50;
+
+      // Find next available grid position
+      const startX = section.position.x + 10;
+      const startY = section.position.y + 34;
+      const cols = section.cols || 6;
+      const aisleAfter = section.aisleAfterCol || 0;
+
+      let placed = false;
+      let x = 0, y = 0, rowIdx = 0, colIdx = 0;
+
+      for (let r = 0; r < 50 && !placed; r++) {
+        let colOffset = 0;
+        for (let c = 0; c < cols && !placed; c++) {
+          if (aisleAfter > 0 && c > 0 && c % aisleAfter === 0) {
+            colOffset += spacing * 0.6;
+          }
+          x = Math.round(startX + c * spacing + colOffset);
+          y = Math.round(startY + r * (spacing * 0.6));
+
+          if (x + 36 > section.position.x + section.width - 5) continue;
+          if (y + 26 > section.position.y + section.height - 5) continue;
+
+          // Check if position is already occupied
+          const occupied = sectionSeats.some(s =>
+            Math.abs(s.position.x - x) < 20 && Math.abs(s.position.y - y) < 15
+          );
+          if (!occupied) {
+            placed = true;
+            rowIdx = r;
+            colIdx = c;
+          }
+        }
+      }
+
+      if (!placed) {
+        toast({ title: "No space available in section", variant: "destructive" });
+        return;
+      }
+
+      const seatData: SeatData = {
+        number: maxNumber + 1,
+        floor: selectedFloor,
+        cabinId,
+        price: section.price || 2000,
+        position: { x, y },
+        isAvailable: true,
+        isHotSelling: false,
+        sectionId: section.id,
+        rowIndex: rowIdx,
+        colIndex: colIdx,
+      };
+
+      const res = await adminSeatsService.createSeat(seatData);
+      if (res.success && res.data) {
+        setSeats(prev => [...prev, { ...res.data, sectionId: section.id }]);
+        toast({ title: `Seat #${seatData.number} added` });
+      }
+    } catch (e) {
+      toast({ title: "Error adding seat", variant: "destructive" });
+    }
+  };
+
+  // ── Delete section with all its seats from DB ──
+  const handleDeleteSectionWithSeats = async (sectionId: string) => {
+    try {
+      const sectionSeats = seats.filter(s => s.sectionId === sectionId);
+      // Delete all seats from DB
+      for (const s of sectionSeats) {
+        await adminSeatsService.deleteSeat(s._id);
+      }
+      // Remove from local state
+      setSections(prev => prev.filter(s => s.id !== sectionId));
+      setSeats(prev => prev.filter(s => s.sectionId !== sectionId));
+      toast({ title: "Section and its seats deleted" });
+    } catch (e) {
+      toast({ title: "Error deleting section", variant: "destructive" });
     }
   };
 
@@ -335,6 +437,9 @@ const SeatManagement = () => {
             selectedSeat={selectedSeat}
             onSave={handleSave}
             onGenerateSeatsForSection={handleGenerateSeatsForSection}
+            onDeleteSeat={handleDeleteSeat}
+            onAddSeatToSection={handleAddSeatToSection}
+            onDeleteSectionWithSeats={handleDeleteSectionWithSeats}
             isSaving={isSaving}
           />
         </CardContent>
@@ -343,7 +448,14 @@ const SeatManagement = () => {
       {/* Selected seat details */}
       {selectedSeat && (
         <Card>
-          <CardHeader><CardTitle className="text-lg">Seat #{selectedSeat.number} Details</CardTitle></CardHeader>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">Seat #{selectedSeat.number} Details</CardTitle>
+              <Button variant="destructive" size="sm" onClick={() => handleDeleteSeat(selectedSeat._id)}>
+                <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete Seat
+              </Button>
+            </div>
+          </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>

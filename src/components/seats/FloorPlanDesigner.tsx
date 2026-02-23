@@ -2,7 +2,6 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/use-toast';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -11,8 +10,12 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   Save, Grid3X3, ZoomIn, ZoomOut, Maximize, Plus, LayoutGrid,
-  Trash2, GripHorizontal, Building2, Edit,
+  Trash2, GripHorizontal, Building2, Edit, DoorOpen, Wind, Monitor,
+  Snowflake, Bath, ChevronDown,
 } from 'lucide-react';
 import { RoomWalls } from './RoomWalls';
 import { GridOverlay } from './GridOverlay';
@@ -30,7 +33,7 @@ export interface Section {
   aisleAfterCol?: number;
   seatSpacing?: number;
   price?: number;
-  structuralLabel?: string; // e.g. "Washroom", "Office"
+  structuralLabel?: string;
   color?: string;
 }
 
@@ -72,6 +75,9 @@ interface FloorPlanDesignerProps {
   selectedSeat: FloorPlanSeat | null;
   onSave: () => void;
   onGenerateSeatsForSection: (section: Section) => void;
+  onDeleteSeat?: (seatId: string) => void;
+  onAddSeatToSection?: (section: Section) => void;
+  onDeleteSectionWithSeats?: (sectionId: string) => void;
   isSaving?: boolean;
 }
 
@@ -83,6 +89,22 @@ const STRUCTURAL_COLORS: Record<string, string> = {
   Lockers: 'bg-violet-100 border-violet-300 text-violet-700',
   Storage: 'bg-stone-100 border-stone-300 text-stone-700',
   Custom: 'bg-muted border-border text-muted-foreground',
+};
+
+const WALL_ELEMENT_TYPES: { type: RoomElement['type']; label: string; icon: React.ReactNode }[] = [
+  { type: 'door', label: 'Door', icon: <DoorOpen className="h-4 w-4" /> },
+  { type: 'window', label: 'Window', icon: <Wind className="h-4 w-4" /> },
+  { type: 'screen', label: 'Screen', icon: <Monitor className="h-4 w-4" /> },
+  { type: 'AC', label: 'AC', icon: <Snowflake className="h-4 w-4" /> },
+  { type: 'bath', label: 'Bath', icon: <Bath className="h-4 w-4" /> },
+];
+
+const WALL_ELEMENT_STYLES: Record<string, string> = {
+  door: 'bg-orange-100 border-orange-400 text-orange-700',
+  window: 'bg-sky-100 border-sky-400 text-sky-700',
+  screen: 'bg-indigo-100 border-indigo-400 text-indigo-700',
+  AC: 'bg-cyan-100 border-cyan-400 text-cyan-700',
+  bath: 'bg-teal-100 border-teal-400 text-teal-700',
 };
 
 export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
@@ -101,6 +123,9 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
   selectedSeat,
   onSave,
   onGenerateSeatsForSection,
+  onDeleteSeat,
+  onAddSeatToSection,
+  onDeleteSectionWithSeats,
   isSaving,
 }) => {
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -113,6 +138,11 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
   // Section dragging
   const [draggingSection, setDraggingSection] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
+  // Wall element dragging
+  const [draggingElement, setDraggingElement] = useState<string | null>(null);
+  const [elementDragOffset, setElementDragOffset] = useState({ x: 0, y: 0 });
+  const [selectedElement, setSelectedElement] = useState<string | null>(null);
 
   // Section editor
   const [editingSection, setEditingSection] = useState<Section | null>(null);
@@ -166,9 +196,12 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
   };
 
   const handleDeleteSection = (id: string) => {
-    onSectionsChange(sections.filter(s => s.id !== id));
-    // Remove seats belonging to this section
-    onSeatsChange(seats.filter(s => s.sectionId !== id));
+    if (onDeleteSectionWithSeats) {
+      onDeleteSectionWithSeats(id);
+    } else {
+      onSectionsChange(sections.filter(s => s.id !== id));
+      onSeatsChange(seats.filter(s => s.sectionId !== id));
+    }
     if (editingSection?.id === id) {
       setEditingSection(null);
       setShowSectionEditor(false);
@@ -176,8 +209,64 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
   };
 
   const handleUpdateSection = (updated: Section) => {
+    // Check if section shrunk — remove out-of-bounds seats
+    const sectionSeats = seats.filter(s => s.sectionId === updated.id);
+    const outOfBounds = sectionSeats.filter(seat => {
+      const relX = seat.position.x - updated.position.x;
+      const relY = seat.position.y - updated.position.y;
+      return relX + 36 > updated.width - 5 || relY + 26 > updated.height - 5 || relX < 0 || relY < 28;
+    });
+
+    if (outOfBounds.length > 0) {
+      // Delete out-of-bounds seats from DB
+      outOfBounds.forEach(seat => {
+        if (onDeleteSeat) onDeleteSeat(seat._id);
+      });
+      const outIds = new Set(outOfBounds.map(s => s._id));
+      onSeatsChange(seats.filter(s => !outIds.has(s._id)));
+      toast({ title: `${outOfBounds.length} seat(s) removed (outside new boundary)` });
+    }
+
     onSectionsChange(sections.map(s => s.id === updated.id ? updated : s));
     setEditingSection(updated);
+  };
+
+  // ── Wall element CRUD ──
+  const handleAddWallElement = (type: RoomElement['type']) => {
+    // Place on wall edge based on type
+    let pos = { x: 0, y: 0 };
+    if (type === 'door') pos = { x: roomWidth / 2 - 20, y: roomHeight - 4 }; // bottom wall
+    else if (type === 'window') pos = { x: 4, y: roomHeight / 2 - 15 }; // left wall
+    else if (type === 'screen') pos = { x: roomWidth / 2 - 20, y: 4 }; // top wall
+    else if (type === 'AC') pos = { x: roomWidth - 44, y: 4 }; // top-right
+    else if (type === 'bath') pos = { x: 4, y: 4 }; // top-left
+
+    const newEl: RoomElement = {
+      id: `elem-${Date.now()}`,
+      type,
+      position: pos,
+    };
+    onRoomElementsChange([...roomElements, newEl]);
+  };
+
+  const handleDeleteElement = (id: string) => {
+    onRoomElementsChange(roomElements.filter(e => e.id !== id));
+    if (selectedElement === id) setSelectedElement(null);
+  };
+
+  // Constrain element to wall edges
+  const constrainToWall = (pos: { x: number; y: number }, elW: number, elH: number) => {
+    const margin = 4;
+    const distTop = pos.y;
+    const distBottom = roomHeight - pos.y - elH;
+    const distLeft = pos.x;
+    const distRight = roomWidth - pos.x - elW;
+    const minDist = Math.min(distTop, distBottom, distLeft, distRight);
+
+    if (minDist === distTop) return { x: Math.max(margin, Math.min(pos.x, roomWidth - elW - margin)), y: margin };
+    if (minDist === distBottom) return { x: Math.max(margin, Math.min(pos.x, roomWidth - elW - margin)), y: roomHeight - elH - margin };
+    if (minDist === distLeft) return { x: margin, y: Math.max(margin, Math.min(pos.y, roomHeight - elH - margin)) };
+    return { x: roomWidth - elW - margin, y: Math.max(margin, Math.min(pos.y, roomHeight - elH - margin)) };
   };
 
   // ── Section dragging ──
@@ -189,39 +278,74 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
     setDragOffset({ x: canvasPos.x - pos.x, y: canvasPos.y - pos.y });
   };
 
+  // ── Element dragging ──
+  const handleElementMouseDown = (e: React.MouseEvent, elemId: string, pos: { x: number; y: number }) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const canvasPos = getCanvasPos(e);
+    setDraggingElement(elemId);
+    setElementDragOffset({ x: canvasPos.x - pos.x, y: canvasPos.y - pos.y });
+    setSelectedElement(elemId);
+  };
+
   // ── Canvas mouse handlers ──
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
-    if (draggingSection) return;
+    if (draggingSection || draggingElement) return;
+    setSelectedElement(null);
     setIsPanning(true);
     setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
   };
 
   const handleCanvasMouseMove = (e: React.MouseEvent) => {
-    if (isPanning && !draggingSection) {
+    if (isPanning && !draggingSection && !draggingElement) {
       setPan({ x: e.clientX - panStart.x, y: e.clientY - panStart.y });
       return;
     }
-    if (!draggingSection) return;
 
-    const pos = getCanvasPos(e);
-    const newX = snap(pos.x - dragOffset.x);
-    const newY = snap(pos.y - dragOffset.y);
+    if (draggingSection) {
+      const pos = getCanvasPos(e);
+      const newX = snap(pos.x - dragOffset.x);
+      const newY = snap(pos.y - dragOffset.y);
+      const section = sections.find(s => s.id === draggingSection);
+      if (section) {
+        const clampedX = Math.max(gridSize, Math.min(newX, roomWidth - section.width - gridSize));
+        const clampedY = Math.max(gridSize, Math.min(newY, roomHeight - section.height - gridSize));
+        // Move seats with section
+        const dx = clampedX - section.position.x;
+        const dy = clampedY - section.position.y;
+        if (dx !== 0 || dy !== 0) {
+          onSeatsChange(seats.map(s =>
+            s.sectionId === draggingSection
+              ? { ...s, position: { x: s.position.x + dx, y: s.position.y + dy } }
+              : s
+          ));
+          onSectionsChange(sections.map(s =>
+            s.id === draggingSection ? { ...s, position: { x: clampedX, y: clampedY } } : s
+          ));
+        }
+      }
+      return;
+    }
 
-    const section = sections.find(s => s.id === draggingSection);
-    if (section) {
-      const clampedX = Math.max(gridSize, Math.min(newX, roomWidth - section.width - gridSize));
-      const clampedY = Math.max(gridSize, Math.min(newY, roomHeight - section.height - gridSize));
-      handleUpdateSection({ ...section, position: { x: clampedX, y: clampedY } });
+    if (draggingElement) {
+      const pos = getCanvasPos(e);
+      const newX = pos.x - elementDragOffset.x;
+      const newY = pos.y - elementDragOffset.y;
+      const constrained = constrainToWall({ x: newX, y: newY }, 40, 30);
+      onRoomElementsChange(roomElements.map(el =>
+        el.id === draggingElement ? { ...el, position: constrained } : el
+      ));
     }
   };
 
   const handleCanvasMouseUp = () => {
     setDraggingSection(null);
+    setDraggingElement(null);
     setIsPanning(false);
   };
 
   useEffect(() => {
-    const handler = () => { setDraggingSection(null); setIsPanning(false); };
+    const handler = () => { setDraggingSection(null); setDraggingElement(null); setIsPanning(false); };
     window.addEventListener('mouseup', handler);
     return () => window.removeEventListener('mouseup', handler);
   }, []);
@@ -255,25 +379,48 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
       else if (isBooked) seatClass = 'bg-muted border-muted-foreground/30 text-muted-foreground';
 
       return (
-        <button
-          key={seat._id}
-          className={`absolute flex items-center justify-center rounded border text-[10px] font-bold select-none transition-all ${seatClass}`}
-          style={{
-            left: seat.position.x - section.position.x,
-            top: seat.position.y - section.position.y,
-            width: 36,
-            height: 26,
-            zIndex: isSelected ? 20 : 5,
-          }}
-          onClick={e => {
-            e.stopPropagation();
-            onSeatSelect(isSelected ? null : seat);
-          }}
-        >
-          {seat.number}
-        </button>
+        <div key={seat._id} className="group absolute" style={{
+          left: seat.position.x - section.position.x,
+          top: seat.position.y - section.position.y,
+          zIndex: isSelected ? 20 : 5,
+        }}>
+          <button
+            className={`flex items-center justify-center rounded border text-[10px] font-bold select-none transition-all ${seatClass}`}
+            style={{ width: 36, height: 26 }}
+            onClick={e => {
+              e.stopPropagation();
+              onSeatSelect(isSelected ? null : seat);
+            }}
+          >
+            {seat.number}
+          </button>
+          {/* Individual delete button on hover */}
+          {onDeleteSeat && (
+            <button
+              className="absolute -top-2 -right-2 hidden group-hover:flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[8px]"
+              onClick={e => {
+                e.stopPropagation();
+                onDeleteSeat(seat._id);
+              }}
+              title="Delete seat"
+            >
+              ×
+            </button>
+          )}
+        </div>
       );
     });
+  };
+
+  // ── Get wall element icon ──
+  const getElementIcon = (type: RoomElement['type']) => {
+    switch (type) {
+      case 'door': return <DoorOpen className="h-3.5 w-3.5" />;
+      case 'window': return <Wind className="h-3.5 w-3.5" />;
+      case 'screen': return <Monitor className="h-3.5 w-3.5" />;
+      case 'AC': return <Snowflake className="h-3.5 w-3.5" />;
+      case 'bath': return <Bath className="h-3.5 w-3.5" />;
+    }
   };
 
   return (
@@ -305,6 +452,23 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
         <Button variant="outline" size="sm" className="h-8" onClick={() => setShowAddStructural(true)}>
           <Building2 className="h-3.5 w-3.5 mr-1" /> Add Structure
         </Button>
+
+        {/* Wall elements dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="h-8">
+              <DoorOpen className="h-3.5 w-3.5 mr-1" /> Wall Element <ChevronDown className="h-3 w-3 ml-1" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            {WALL_ELEMENT_TYPES.map(item => (
+              <DropdownMenuItem key={item.type} onClick={() => handleAddWallElement(item.type)}>
+                {item.icon}
+                <span className="ml-2">{item.label}</span>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <div className="flex-1" />
 
@@ -345,6 +509,39 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
           <RoomWalls width={roomWidth} height={roomHeight} />
           <GridOverlay width={roomWidth} height={roomHeight} gridSize={gridSize} visible={showGrid} />
 
+          {/* Render wall elements */}
+          {roomElements.map(elem => {
+            const styleClass = WALL_ELEMENT_STYLES[elem.type] || 'bg-muted border-border text-muted-foreground';
+            const isSelected = selectedElement === elem.id;
+            return (
+              <div
+                key={elem.id}
+                className={`absolute flex flex-col items-center justify-center rounded border-2 select-none text-[9px] font-semibold ${styleClass} ${isSelected ? 'ring-2 ring-primary' : ''}`}
+                style={{
+                  left: elem.position.x,
+                  top: elem.position.y,
+                  width: 40,
+                  height: 30,
+                  cursor: draggingElement === elem.id ? 'grabbing' : 'grab',
+                  zIndex: draggingElement === elem.id ? 60 : 10,
+                }}
+                onMouseDown={e => handleElementMouseDown(e, elem.id, elem.position)}
+                onClick={e => { e.stopPropagation(); setSelectedElement(elem.id); }}
+              >
+                {getElementIcon(elem.type)}
+                <span className="leading-none mt-0.5">{elem.type}</span>
+                {isSelected && (
+                  <button
+                    className="absolute -top-2 -right-2 h-4 w-4 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[8px]"
+                    onClick={e => { e.stopPropagation(); handleDeleteElement(elem.id); }}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            );
+          })}
+
           {/* Render sections */}
           {sections.map(section => {
             const isStructural = section.type === 'structural';
@@ -373,6 +570,15 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
                     <span className="text-xs font-semibold truncate">{section.name}</span>
                   </div>
                   <div className="flex gap-0.5">
+                    {!isStructural && onAddSeatToSection && (
+                      <button
+                        className="p-0.5 hover:bg-primary/10 rounded text-primary"
+                        onClick={e => { e.stopPropagation(); onAddSeatToSection(section); }}
+                        title="Add seat"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </button>
+                    )}
                     <button
                       className="p-0.5 hover:bg-muted rounded"
                       onClick={e => { e.stopPropagation(); setEditingSection(section); setShowSectionEditor(true); }}
@@ -418,6 +624,12 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
           <div className="w-4 h-3 rounded border border-muted-foreground/30 bg-muted" />
           <span>Booked/Blocked</span>
         </div>
+        {roomElements.length > 0 && (
+          <div className="flex items-center gap-1.5">
+            <div className="w-4 h-3 rounded border-2 border-orange-400 bg-orange-100" />
+            <span>Wall Element</span>
+          </div>
+        )}
       </div>
 
       {/* Add structural dialog */}
