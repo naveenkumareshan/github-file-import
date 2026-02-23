@@ -1,25 +1,11 @@
 
 
-## Plan: Internal Rename, Fix Login, and Add Partner Login to Admin Dashboard
+## Implementation Plan: Fix Login, Add Partner Portal Button, Full Internal Rename
 
-### 1. Fix Login Issues (Critical - Do First)
+### 1. Fix Login Issues (Database + Auth)
 
-**Root Cause:** Two problems found:
+**Database Migration** -- Update the `handle_new_user` trigger to auto-insert a default `student` role into `user_roles`:
 
-**A) No role auto-created on registration**
-The `handle_new_user` database trigger creates a `profiles` row but does NOT insert into `user_roles`. After registration, `fetchUserRole()` returns `'student'` by default (which works), but could cause issues if RLS policies depend on a row existing.
-
-**Fix:** Update the `handle_new_user` trigger to also insert a default `'student'` role into `user_roles`.
-
-**B) Email confirmation may block login**
-After registration, the app says "You can now log in" but if email confirmation is required, login fails silently. The auth context then leaves the user in a broken state, causing blank pages.
-
-**Fix:**
-- Update `AuthContext.tsx` to handle the timing issue: ensure the login function waits for the auth state to fully resolve before returning success
-- Add proper error messaging when email is not confirmed
-- Add a guard in `AdminDashboard.tsx` line 78 where `user.role` is accessed without null safety (`user.role === 'admin'` when `user` could still be null)
-
-**Database migration:**
 ```sql
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger
@@ -41,80 +27,106 @@ END;
 $$;
 ```
 
+**Also create the trigger** if it doesn't exist:
+```sql
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+```
+
+**AuthContext.tsx fixes:**
+- Add a login wait mechanism: after `signInWithPassword` succeeds, wait for the `onAuthStateChange` callback to populate the user state before returning success
+- Add null safety guard so `user.role` access never crashes on null user
+- Better error message for email not confirmed
+
+**AdminDashboard.tsx fix:**
+- Line 78: Change `user.role === 'admin'` to `user?.role === 'admin'` (null safety)
+- Line 88: Same null safety fix
+
 ---
 
-### 2. Add "Login as Partner" to Admin Dashboard
+### 2. Add "Partner Portal" Button to Admin Dashboard
 
-Add a button in the Admin Dashboard header area that opens the Partner login page (`/vendor/login`) in a new tab, or navigates to it directly.
-
-**File:** `src/pages/AdminDashboard.tsx`
-- Add a "Partner Portal" button next to the existing "Reports" button
-- Only visible to admin role users
-- Opens `/partner/login` (or `/vendor/login`) in a new tab
+**File: `src/pages/AdminDashboard.tsx`**
+- Add an `ExternalLink` icon import
+- Add a "Partner Portal" button next to "Reports" (only visible when `user?.role === 'admin'`)
+- Opens `/partner/login` in a new tab
 
 ---
 
 ### 3. Full Internal Rename: vendor/host to partner
 
-This is a large-scale rename across the entire frontend codebase. It will be done in phases:
+This renames all internal variable names, component names, type names, service names, and hook names. File paths on disk stay the same to avoid breaking imports. Database role values (`vendor`, `vendor_employee`) stay unchanged.
 
-**Phase A - Route paths and App.tsx:**
-- `/vendor/login` -> `/partner/login` (keep `/vendor/login` as redirect for backwards compat)
-- `/host/login` -> `/partner/login`
-- `/host/register` -> `/partner/register`
-- Update all `Link` references to use `/partner/` paths
-- Update `AdminLayout.tsx` route labels
+#### Phase A: Routes (App.tsx)
+- Add `/partner/login` and `/partner/register` routes pointing to the same components
+- Keep `/vendor/login`, `/vendor/register`, `/host/login`, `/host/register` as aliases for backward compatibility
+- Rename lazy import variable names: `VendorLogin` to `PartnerLogin`, `VendorRegister` to `PartnerRegister`, etc.
 
-**Phase B - Page and component file renames (import paths):**
-- `src/pages/vendor/VendorLogin.tsx` -> rename exports/component names to `PartnerLogin`
-- `src/pages/vendor/VendorRegister.tsx` -> `PartnerRegister`
-- `src/pages/vendor/VendorDashboard.tsx` -> `PartnerDashboard`
-- `src/pages/vendor/VendorProfile.tsx` -> `PartnerProfile`
-- `src/pages/vendor/VendorEmployees.tsx` -> `PartnerEmployees`
-- `src/pages/vendor/VendorSeats.tsx` -> `PartnerSeats`
-- `src/components/vendor/VendorProfile.tsx` -> `PartnerProfile`
-- `src/components/vendor/VendorPayouts.tsx` -> `PartnerPayouts`
-- `src/components/vendor/VendorDocumentUpload.tsx` -> `PartnerDocumentUpload`
-- `src/components/vendor/VendorEmployeeForm.tsx` -> `PartnerEmployeeForm`
-- `src/components/admin/VendorApproval.tsx` -> `PartnerApproval`
-- `src/components/admin/VendorDetailsDialog.tsx` -> `PartnerDetailsDialog`
-- `src/components/admin/VendorStatsCards.tsx` -> `PartnerStatsCards`
-- `src/components/admin/VendorAutoPayoutSettings.tsx` -> `PartnerAutoPayoutSettings`
-- `src/pages/HostDashboard.tsx` -> `PartnerDashboard`
+#### Phase B: Type Definitions (`src/types/vendor.ts`)
+- `VendorEmployee` renamed to `PartnerEmployee` (add `export type VendorEmployee = PartnerEmployee` for backward compat)
+- `VendorBooking` renamed to `PartnerBooking` (add `export type VendorBooking = PartnerBooking` for backward compat)
 
-Note: File paths on disk will stay the same (renaming folders breaks too many things). Only the exported component names and all internal variable/type references will change.
+#### Phase C: Hook Rename (`src/hooks/useVendorEmployeePermissions.ts`)
+- Rename `VendorEmployeePermissions` to `PartnerEmployeePermissions`
+- Rename `useVendorEmployeePermissions` to `usePartnerEmployeePermissions`
+- Add backward-compatible re-export: `export const useVendorEmployeePermissions = usePartnerEmployeePermissions`
+- Update all 4 consuming files to use new name
 
-**Phase C - Type definitions:**
-- `src/types/vendor.ts` -> rename types: `VendorEmployee` -> `PartnerEmployee`, `VendorBooking` -> `PartnerBooking`
-- Update all imports referencing these types
+#### Phase D: API Services (keep file paths, rename exports)
+Files affected (rename exported object/type names):
+- `src/api/vendorService.ts`: `vendorService` stays as-is (too many consumers), just add `export const partnerService = vendorService`
+- `src/api/vendorSeatsService.ts`: Add `export const partnerSeatsService = vendorSeatsService`
+- `src/api/vendorRegistrationService.ts`: Add `export const partnerRegistrationService = vendorRegistrationService`
+- `src/api/vendorProfileService.ts`: Add `export const partnerProfileService = vendorProfileService`
+- `src/api/vendorApprovalService.ts`: Add `export const partnerApprovalService = vendorApprovalService`
+- `src/api/vendorDocumentService.ts`: Add `export const partnerDocumentService = vendorDocumentService`
+- `src/api/adminVendorService.ts`: Add `export const adminPartnerService = adminVendorService`
+- `src/api/adminVendorDocumentService.ts`: Add `export const adminPartnerDocumentService = adminVendorDocumentService`
 
-**Phase D - API services:**
-- Rename exported objects/functions in:
-  - `vendorService.ts`, `vendorProfileService.ts`, `vendorRegistrationService.ts`
-  - `vendorDocumentService.ts`, `vendorSeatsService.ts`
-  - `adminVendorService.ts`, `adminVendorDocumentService.ts`
-  - `vendorApprovalService.ts`
-- Update all consuming files
+#### Phase E: Component Internal Renames
+These files get their exported component/function names updated, plus any remaining "Host" or "Vendor" UI text changed to "Partner":
 
-**Phase E - Hooks:**
-- `useVendorEmployeePermissions.ts` -> rename hook to `usePartnerEmployeePermissions`
-- Update all imports
+| File | Component Rename |
+|---|---|
+| `src/pages/vendor/VendorLogin.tsx` | `VendorLogin` to `PartnerLogin`, update `/host/register` link to `/partner/register`, `/host/login` to `/partner/login` |
+| `src/pages/vendor/VendorRegister.tsx` | `VendorRegister` to `PartnerRegister`, update `/host/login` links to `/partner/login` |
+| `src/pages/vendor/VendorDashboard.tsx` | `VendorDashboard` to `PartnerDashboard` |
+| `src/pages/vendor/VendorProfile.tsx` | `VendorProfilePage` to `PartnerProfilePage` |
+| `src/pages/vendor/VendorEmployees.tsx` | `VendorEmployees` to `PartnerEmployees`, update `VendorEmployee` type imports |
+| `src/pages/vendor/VendorSeats.tsx` | `VendorSeats` to `PartnerSeats`, remove leftover `handleToggleHotSelling` reference, update imports |
+| `src/pages/HostDashboard.tsx` | `HostDashboard` to `PartnerDashboard` |
+| `src/components/vendor/VendorProfile.tsx` | `VendorProfile` to `PartnerProfile` |
+| `src/components/vendor/VendorPayouts.tsx` | Keep named export as-is (too many references) |
+| `src/components/vendor/VendorDocumentUpload.tsx` | `VendorDocumentUpload` to `PartnerDocumentUpload` |
+| `src/components/vendor/VendorEmployeeForm.tsx` | `VendorEmployeeForm` to `PartnerEmployeeForm` |
+| `src/components/admin/VendorApproval.tsx` | Already renamed UI text; internal component stays |
+| `src/components/admin/VendorDetailsDialog.tsx` | Already renamed UI text |
+| `src/components/admin/VendorStatsCards.tsx` | Already renamed UI text |
+| `src/components/admin/VendorAutoPayoutSettings.tsx` | Internal rename |
 
-**Phase F - AuthContext and ProtectedRoute:**
-- Keep `'vendor'` and `'vendor_employee'` as internal role enum values (these match the database `app_role` enum and MUST NOT change)
-- Update display labels only (already done in previous changes)
+#### Phase F: AdminSidebar + AdminLayout
+- Already mostly done in previous changes
+- Update any remaining "Host" or "Vendor" display text to "Partner"
 
-**Phase G - AdminSidebar and AdminLayout:**
-- Update any remaining internal references
+#### Phase G: Remaining consumer file updates
+- `src/components/admin/CouponManagement.tsx` -- update vendor references
+- `src/components/admin/SeatTransferManagement.tsx` -- update type imports
+- `src/components/admin/NotificationManagement.tsx` -- update service imports
+- `src/components/vendor/AutoPayoutSettings.tsx` -- update service imports
+- `src/components/vendor/InstantSettlementDialog.tsx` -- update service imports
+- `src/pages/RoomManagement.tsx` -- update service imports
 
 ### Important Constraints
 
-- The database `app_role` enum values (`vendor`, `vendor_employee`) will NOT change -- this would break authentication and RLS policies
-- Backend files (in `backend/`) are Express/Node.js and cannot run in Lovable -- renaming them is cosmetic only
-- The rename is UI/frontend code only; all Supabase role checks continue using `'vendor'` internally
+- Database `app_role` enum values `vendor` and `vendor_employee` are NOT changed (would break auth and RLS)
+- File/folder paths on disk stay the same (renaming folders breaks imports)
+- Backward-compatible type/export aliases are added so nothing breaks during transition
+- All role checks in code continue using `'vendor'` and `'vendor_employee'` strings
 
 ### Estimated Scope
-- ~30-40 files will be edited
-- Login fix requires 1 database migration + 2 file edits
-- Partner login button requires 1 file edit
+- 1 database migration
+- ~35 frontend files edited
+- No breaking changes to API endpoints or database schema
 
