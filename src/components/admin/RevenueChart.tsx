@@ -2,13 +2,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { BarChart as BarChartIcon } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
 import { adminBookingsService } from '@/api/adminBookingsService';
+import { EmptyState } from '@/components/ui/empty-state';
 
 export function RevenueChart() {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
  const fetched = useRef(false);
 
@@ -26,8 +29,9 @@ useEffect(() => {
         }));
         setData(chartData);
       }
-    } catch (error) {
-      console.error('Error fetching monthly revenue:', error);
+    } catch (err) {
+      console.error('Error fetching monthly revenue:', err);
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -59,6 +63,11 @@ useEffect(() => {
               <Skeleton className="h-[240px] w-full" />
             </div>
           ) : (
+            error ? (
+              <EmptyState icon={BarChartIcon} title="No revenue data" description="Unable to fetch data. Please refresh." />
+            ) : data.length === 0 ? (
+              <EmptyState icon={BarChartIcon} title="No revenue data available" />
+            ) : (
             <ChartContainer config={config}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data}>
@@ -76,6 +85,7 @@ useEffect(() => {
                 </BarChart>
               </ResponsiveContainer>
             </ChartContainer>
+            )
           )}
         </div>
       </CardContent>

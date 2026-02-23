@@ -1,31 +1,37 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
 import { adminBookingsService } from '@/api/adminBookingsService';
+import { EmptyState } from '@/components/ui/empty-state';
+import { TrendingUp } from 'lucide-react';
 
 export function OccupancyChart() {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const fetched = useRef(false);
 
   useEffect(() => {
+    if (fetched.current) return;
+    fetched.current = true;
     const fetchMonthlyOccupancy = async () => {
       try {
         setLoading(true);
         const response = await adminBookingsService.getMonthlyOccupancy();
         
         if (response.success && response.data) {
-          // Transform the data for the chart
           const chartData = response.data.map((month: any) => ({
-            name: month.monthName.slice(0, 3), // Convert to short form (Jan, Feb, etc.)
+            name: month.monthName.slice(0, 3),
             occupancy: month.occupancyRate
           }));
           setData(chartData);
         }
-      } catch (error) {
-        console.error('Error fetching monthly occupancy:', error);
+      } catch (err) {
+        console.error('Error fetching monthly occupancy:', err);
+        setError(true);
       } finally {
         setLoading(false);
       }
@@ -55,6 +61,11 @@ export function OccupancyChart() {
               <Skeleton className="h-[240px] w-full" />
             </div>
           ) : (
+            error ? (
+              <EmptyState icon={TrendingUp} title="No occupancy data" description="Unable to fetch data. Please refresh." />
+            ) : data.length === 0 ? (
+              <EmptyState icon={TrendingUp} title="No occupancy data available" />
+            ) : (
             <ChartContainer config={config}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={data}>
@@ -75,6 +86,7 @@ export function OccupancyChart() {
                 </LineChart>
               </ResponsiveContainer>
             </ChartContainer>
+            )
           )}
         </div>
       </CardContent>

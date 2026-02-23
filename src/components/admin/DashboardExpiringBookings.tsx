@@ -8,7 +8,6 @@ import { adminBookingsService } from '@/api/adminBookingsService';
 import { Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
-import { toast } from '@/hooks/use-toast';
 
 export function DashboardExpiringBookings() {
   const [expiringBookings, setExpiringBookings] = useState<any[]>([]);
@@ -29,11 +28,6 @@ export function DashboardExpiringBookings() {
         }
       } catch (error) {
         console.error('Error fetching expiring bookings:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load expiring bookings",
-          variant: "destructive"
-        });
       } finally {
         setLoading(false);
       }

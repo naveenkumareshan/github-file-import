@@ -112,7 +112,7 @@ export const ProfileManagement = () => {
         setProfile(mapped);
       }
     } catch {
-      toast({ title: 'Error', description: 'Failed to load profile data', variant: 'destructive' });
+      console.error('Failed to load profile data');
     }
   };
 

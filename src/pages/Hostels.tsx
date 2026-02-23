@@ -35,8 +35,8 @@ export default function Hostels() {
       const response = await hostelService.getAllHostels(filters);
       setHostels(response.data || []);
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch hostels');
-      toast({ title: 'Error', description: 'Failed to load hostels', variant: 'destructive' });
+      setError('No hostels available at the moment.');
+      console.error('Error fetching hostels:', err);
     } finally { setLoading(false); }
   };
 
@@ -164,7 +164,10 @@ export default function Hostels() {
             ))}
           </div>
         ) : error ? (
-          <div className="text-center py-12 text-destructive text-[13px]">{error}</div>
+          <div className="text-center py-12">
+            <p className="text-[14px] font-medium text-foreground mb-1">No Hostels Available</p>
+            <p className="text-[12px] text-muted-foreground">Unable to fetch data. Please refresh.</p>
+          </div>
         ) : filteredHostels.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-[14px] font-medium text-foreground mb-1">No hostels found</p>

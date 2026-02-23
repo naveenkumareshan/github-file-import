@@ -51,11 +51,7 @@ const VendorApproval: React.FC = () => {
       setTotalPages(data.totalPages);
       setTotalCount(data.totalCount);
     } else {
-      toast({
-        title: "Error",
-        description: "Failed to fetch Partners",
-        variant: "destructive"
-      });
+      console.error('Failed to fetch Partners');
     }
     setLoading(false);
   }, [currentPage, filters, toast]);
@@ -394,8 +390,25 @@ const VendorApproval: React.FC = () => {
         </div>
         <CardContent>
           {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <div className="space-y-2 p-4">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <Skeleton className="h-10 w-10 rounded" />
+                  <div className="flex-1 space-y-1.5">
+                    <Skeleton className="h-4 w-1/3" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                  <Skeleton className="h-6 w-16 rounded-full" />
+                </div>
+              ))}
+            </div>
+          ) : vendors.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center mb-3">
+                <User className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <p className="text-sm font-medium">No Partners Found</p>
+              <p className="text-xs text-muted-foreground mt-1">No partner applications match your filters.</p>
             </div>
           ) : (
             <>

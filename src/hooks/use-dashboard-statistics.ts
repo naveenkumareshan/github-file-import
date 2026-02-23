@@ -42,16 +42,10 @@ export function useDashboardStatistics() {
       setLoading(true);
       setError(null);
       try {
-        // Fetch booking stats with period set to 'month' for consistency
         const bookingStats = await adminBookingsService.getBookingStats('month');
-        
-        // Fetch seat availability
         const seatsResponse = await adminSeatsService.getActiveSeatsCountSeats({isAvailable:true});
         const revenueResponse = await adminBookingsService.getRevenueByTransaction();
 
-        
-        
-        // Fetch occupancy data for current month
         const now = new Date();
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
         const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString();
@@ -61,7 +55,6 @@ export function useDashboardStatistics() {
           endDate: endOfMonth
         });
         
-        // Calculate available and pending seats
         let availableSeats = 0;
         const pendingSeats = 0;
         
@@ -69,7 +62,6 @@ export function useDashboardStatistics() {
           availableSeats = seatsResponse.data;
         }
         
-        // Parse data from API responses
         const dashboardStats: DashboardStatistics = {
           totalRevenue: revenueResponse.success ? revenueResponse.data?.totalRevenue || 0 : 0,
           revenueToday: revenueResponse.success ? revenueResponse.data?.todayRevenue || 0 : 0,

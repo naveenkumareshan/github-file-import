@@ -81,7 +81,6 @@ const StudentBookings = () => {
       setPastBookings(historyRes.success ? historyRes.data.map(mapBooking) : []);
     } catch (error) {
       console.error('Error fetching bookings:', error);
-      toast({ title: 'Error', description: 'Failed to fetch your bookings', variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
