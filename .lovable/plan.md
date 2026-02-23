@@ -1,170 +1,163 @@
 
 
-## Redesign: Professional Floor-Plan Based Seating Designer
+## Redesign: BookMyShow-Style Section-Based Layout Designer
 
-This is a major redesign of the Room Layout & Seat Management system, replacing the current free-floating icon canvas with a structured, professional floor-plan editor with walls, grid snapping, auto-generation, and real booking integration.
+Transform the current individual-seat canvas into a **section-based floor plan** like the reference image, where seats are organized into named zones (e.g., "Non AC Cabins", "AC Cabins") with structural elements (Washroom, Office, Lockers) shown as labeled rectangles.
 
 ### What Changes
 
-The current system has two separate sections (RoomElementPositioner for layout elements + SeatMapEditor for seats) with free-floating placement on a plain grey canvas. This will be unified into a single structured room designer with visible walls, a snap grid, and an auto seat generator.
+The current system places individual seats freely on a canvas. The new system introduces **Sections** -- named rectangular zones that contain auto-generated seat grids. Structural elements become labeled rectangles instead of small icons.
 
-### Architecture
+### Key Concepts
 
-**New Components:**
-- `src/components/seats/FloorPlanDesigner.tsx` -- The main admin designer component (replaces both RoomElementPositioner and SeatMapEditor on the SeatManagement page)
-- `src/components/seats/FloorPlanViewer.tsx` -- Read-only student view (replaces SeatGridMap in the booking flow)
-- `src/components/seats/AutoSeatGenerator.tsx` -- Dialog/panel for auto-generating classroom-style seat layouts
-- `src/components/seats/RoomWalls.tsx` -- SVG-based room boundary renderer with wall edges
-- `src/components/seats/GridOverlay.tsx` -- Configurable grid overlay for snap alignment
+**Section (Zone):** A named rectangular area on the floor plan (e.g., "Non AC Cabins", "AC Cabins"). Each section has:
+- Name/label
+- Position (x, y) on the canvas
+- Width and height
+- Seat grid configuration (rows, columns, seat spacing)
+- Seats auto-generated within the section boundary
+- Section type: "seats" or "structural" (Washroom, Office, Lockers)
 
-**Modified Files:**
-- `src/pages/SeatManagement.tsx` -- Replace RoomElementPositioner + SeatMapEditor with single FloorPlanDesigner
-- `src/components/seats/DateBasedSeatMap.tsx` -- Use FloorPlanViewer instead of SeatGridMap
-- `src/components/seats/SeatBookingForm.tsx` -- Minor: pass room dimensions to DateBasedSeatMap
-- `src/api/adminCabinsService.ts` -- Update layout save to include room dimensions
+**Seat:** Still lives in the `seats` table, but now has a `section_id` linking it to a section. Sections own their seat arrangement.
 
-**Database Changes:**
-- Add `room_width` (integer, default 800) and `room_height` (integer, default 600) columns to `cabins` table
-- Add `grid_size` (integer, default 20) column to `cabins` table
-- Add `row` and `col` (integer) columns to `seats` table for structured seat positioning
-
-**Removed (replaced):**
-- `src/components/admin/RoomElementPositioner.tsx` -- Functionality absorbed into FloorPlanDesigner
-- `src/components/seats/SeatGridMap.tsx` -- Replaced by FloorPlanViewer
+**Structural Elements:** Washroom, Office, Lockers rendered as labeled rectangles (not small icons) matching the reference image style.
 
 ---
 
-### Technical Details
+### Database Changes
 
-#### 1. Room Boundary System (RoomWalls.tsx)
+Add a `sections` JSONB column to `cabins` table to store section definitions:
 
-An SVG-based component that renders 4 visible walls as thick bordered lines around the room area. Admin can configure room width (400-1600px) and height (300-1200px) via input fields. All content is clipped inside the room boundary -- nothing can be placed outside.
-
-```text
-+------ Room (configurable W x H) ------+
-|  [Door]                        [Window]|
-|                                        |
-|   [1] [2] [3] [4]    [5] [6] [7] [8]  |
-|   [9] [10][11][12]   [13][14][15][16]  |
-|                                        |
-|  [AC]                        [Screen]  |
-+----------------------------------------+
+```sql
+ALTER TABLE cabins ADD COLUMN sections jsonb NOT NULL DEFAULT '[]'::jsonb;
 ```
 
-#### 2. Grid System (GridOverlay.tsx)
-
-- Renders a dot or line grid inside the room boundaries
-- Configurable grid size (10px, 20px, 40px)
-- All elements and seats snap to grid intersections on drag
-- Snap formula: `Math.round(pos / gridSize) * gridSize`
-- Grid can be toggled on/off via a toolbar button
-
-#### 3. FloorPlanDesigner.tsx (Admin Editor)
-
-The unified editor component with:
-
-**Toolbar:** Room dimensions inputs | Grid toggle | Element buttons (Door, Bath, Window, Screen, AC) | Auto Generate Seats | Save Layout
-
-**Canvas:** SVG/div-based room with:
-- Visible wall borders (4px solid border)
-- Optional grid overlay
-- Draggable room elements (snapped to grid, constrained to room boundary)
-- Draggable seats (snapped to grid, constrained to room boundary)
-- Overlap detection: warn if seat placed on another seat's position
-
-**Element Placement Rules:**
-- Door/Window: constrained to wall edges (position.y === 0 or position.y === roomHeight or position.x === 0 or position.x === roomWidth)
-- Screen: constrained to top wall (position.y near 0)
-- AC: constrained to top wall
-- Bath: constrained to corners or wall edges
-
-**Seat Properties Panel (right side or bottom):** When a seat is selected, show its number, row, column, price, availability toggle, and delete button.
-
-**State Management:** All positions stored as grid-snapped coordinates. On save, the structured JSON is sent to the backend:
+Each section in the JSON:
 ```json
 {
-  "room_width": 800,
-  "room_height": 600,
-  "grid_size": 20,
-  "room_elements": [{"id": "door-1", "type": "door", "position": {"x": 0, "y": 200}}],
-  "seats": [{"id": "...", "number": 1, "row": 0, "col": 0, "position": {"x": 60, "y": 100}}]
+  "id": "section-1",
+  "name": "Non AC Cabins",
+  "type": "seats",
+  "position": { "x": 40, "y": 80 },
+  "width": 500,
+  "height": 350,
+  "rows": 7,
+  "cols": 8,
+  "aisleAfterCol": 4,
+  "seatSpacing": 50,
+  "labelPosition": "bottom"
 }
 ```
 
-#### 4. Auto Seat Generator (AutoSeatGenerator.tsx)
+Structural elements stored as sections with `type: "structural"`:
+```json
+{
+  "id": "struct-1",
+  "name": "Washroom",
+  "type": "structural",
+  "position": { "x": 100, "y": 500 },
+  "width": 150,
+  "height": 100
+}
+```
 
-A dialog that accepts:
-- Number of rows (e.g., 5)
-- Seats per row (e.g., 8)
-- Aisle after X seats (e.g., 4 -- creates a gap)
-- Seat spacing (pixels, default 50)
-- Starting price (per seat)
+No new tables needed -- sections are part of the cabin layout config.
 
-Generates a classroom-style layout:
+---
+
+### Component Changes
+
+#### 1. FloorPlanDesigner.tsx (Complete Rewrite)
+
+Replace the current individual-seat canvas with a section-based designer:
+
+**Toolbar:**
+- Room dimensions (W/H/Grid) -- keep existing
+- "Add Seat Section" button -- creates a new named zone
+- "Add Structure" dropdown (Washroom, Office, Lockers, Custom)
+- Grid toggle, Zoom controls, Save -- keep existing
+
+**Canvas:**
+- Sections rendered as bordered rectangles with title labels
+- Seats auto-generated inside each section based on rows/cols config
+- Structural elements rendered as grey labeled rectangles (like the reference)
+- Sections are draggable and resizable
+- Section label text shown inside or below the section boundary
+
+**Section Editor Panel (right sidebar or dialog):**
+When a section is selected, show:
+- Section name input
+- Rows and Columns inputs
+- Aisle after X seats
+- Seat spacing
+- Price per seat in this section
+- "Regenerate Seats" button
+- Delete section button
+
+**Seat rendering within sections:**
+- Seats arranged in a grid within the section boundary
+- Numbered sequentially within the section
+- Color-coded: green (available), teal border (like reference), red (booked), grey (blocked)
+- Match the reference image's clean, compact seat blocks with numbers inside
+
+#### 2. FloorPlanViewer.tsx (Update)
+
+- Read sections from cabin data
+- Render section boundaries with labels
+- Render structural elements as labeled rectangles
+- Seats clickable for booking (green = available, greyed = booked)
+- Same zoom/pan controls
+
+#### 3. AutoSeatGenerator.tsx (Remove as standalone)
+
+Seat generation becomes part of the section creation workflow. When admin creates a section and specifies rows/cols, seats are auto-generated within that section.
+
+#### 4. SeatManagement.tsx (Update)
+
+- Pass sections data to FloorPlanDesigner
+- Handle section CRUD operations
+- Save sections to cabin `sections` column
+- When a section's seat config changes, bulk create/delete seats for that section
+
+#### 5. adminCabinsService.ts (Update)
+
+- `updateCabinLayout` now also saves `sections` JSONB
+
+#### 6. DateBasedSeatMap.tsx (Update)
+
+- Pass sections data to FloorPlanViewer for proper section-based rendering
+
+---
+
+### Visual Design (Matching Reference Image)
+
 ```text
-Row 1:  [1] [2] [3] [4]  ___  [5] [6] [7] [8]
-Row 2:  [9] [10][11][12]  ___  [13][14][15][16]
-...
++================================================================+
+|                                                                  |
+|  +-- Non AC Cabins ---------------------------------+           |
+|  | [50] [49] [36] [35]    [22] [21] [8]  [7]       |           |
+|  | [51] [48] [37] [34]    [23] [20] [9]  [6]       |           |
+|  | [52] [47] [38] [33]    [24] [19] [10] [5]       |           |
+|  | ...                                               |           |
+|  +---------------------------------------------------+           |
+|                                                                  |
+|  [Lockers]   +-- AC Cabins --+  +-- AC Cabins --+              |
+|              | [8]  [25]     |  | [26] [43]     |              |
+|              | [9]  [24]     |  | [27] [42]     |              |
+|              | ...           |  | ...           |              |
+|              +---------------+  +---------------+              |
+|                                                                  |
+|  +----------+  +----------+  +----------+                       |
+|  | Washroom |  | Washroom |  |  Office  |                       |
+|  +----------+  +----------+  +----------+                       |
++================================================================+
 ```
 
-After generation, seats appear in the canvas and can be manually repositioned by dragging. The generated seats are created in the database via `adminSeatsService.bulkCreateSeats`.
-
-#### 5. FloorPlanViewer.tsx (Student View)
-
-Read-only version of the floor plan that:
-- Shows room walls and elements (non-interactive)
-- Displays seats with booking-aware coloring:
-  - Green: Available (clickable)
-  - Red: Booked (disabled, tooltip shows booking info)
-  - Grey: Blocked by admin
-  - Blue outline: Currently selected
-- On seat click, calls `onSeatSelect` to proceed to booking
-- Supports zoom via CSS transform scale (buttons: zoom in, zoom out, fit-to-screen)
-- Supports pan via mouse drag on the background (transform translate)
-
-This replaces `SeatGridMap` in `DateBasedSeatMap.tsx`.
-
-#### 6. Zoom & Pan Controls
-
-Both FloorPlanDesigner and FloorPlanViewer include:
-- Zoom in/out buttons (+/- or mouse wheel)
-- Fit to screen button (calculates scale to fit room in viewport)
-- Pan by dragging the background
-- Implemented via CSS `transform: scale(zoom) translate(panX, panY)` on the room container
-- Zoom range: 0.25x to 3x
-
-#### 7. Database Migration
-
-```sql
-ALTER TABLE cabins ADD COLUMN room_width integer NOT NULL DEFAULT 800;
-ALTER TABLE cabins ADD COLUMN room_height integer NOT NULL DEFAULT 600;
-ALTER TABLE cabins ADD COLUMN grid_size integer NOT NULL DEFAULT 20;
-
-ALTER TABLE seats ADD COLUMN row_index integer NOT NULL DEFAULT 0;
-ALTER TABLE seats ADD COLUMN col_index integer NOT NULL DEFAULT 0;
-```
-
-#### 8. Save Flow
-
-When admin clicks "Save Layout":
-1. Update `cabins` table: `room_width`, `room_height`, `grid_size`, `room_elements` (JSONB)
-2. For each seat: update `position_x`, `position_y`, `row_index`, `col_index` via `adminSeatsService.updateSeatPositions`
-3. Toast confirmation on success
-
-#### 9. Integration with SeatManagement.tsx
-
-The current page structure:
-- Card 1: Room Layout & Elements (RoomElementPositioner) -- REMOVED
-- Card 2: Seat Management (floors, add seats, SeatMapEditor) -- RESTRUCTURED
-
-New structure:
-- Card 1: Room Settings (dimensions, grid size, floor selector)
-- Card 2: FloorPlanDesigner (unified canvas with elements + seats + auto-generate)
-- Seat details panel below or beside the canvas
-
-#### 10. Booking Integration (already working)
-
-The existing flow: seat click -> DateBasedSeatMap -> SeatBookingForm -> create booking -> payment remains unchanged. The only change is replacing SeatGridMap with FloorPlanViewer inside DateBasedSeatMap for a more professional visual.
+**Seat styling (matching reference):**
+- Light background with colored border
+- Seat number centered inside
+- Compact size (~40x30px)
+- Green/teal border for available, grey for structural areas
 
 ---
 
@@ -172,20 +165,20 @@ The existing flow: seat click -> DateBasedSeatMap -> SeatBookingForm -> create b
 
 | File | Action |
 |---|---|
-| Database migration | New: add room dimensions to cabins, row/col to seats |
-| `src/components/seats/FloorPlanDesigner.tsx` | New: unified admin editor |
-| `src/components/seats/FloorPlanViewer.tsx` | New: read-only student view |
-| `src/components/seats/AutoSeatGenerator.tsx` | New: auto seat generation dialog |
-| `src/components/seats/RoomWalls.tsx` | New: SVG room boundary renderer |
-| `src/components/seats/GridOverlay.tsx` | New: grid overlay component |
-| `src/pages/SeatManagement.tsx` | Rewrite: use FloorPlanDesigner |
-| `src/components/seats/DateBasedSeatMap.tsx` | Edit: use FloorPlanViewer |
-| `src/api/adminCabinsService.ts` | Edit: save room dimensions |
+| Database migration | Add `sections` JSONB column to `cabins` |
+| `src/components/seats/FloorPlanDesigner.tsx` | Major rewrite: section-based canvas |
+| `src/components/seats/FloorPlanViewer.tsx` | Update: render sections and structures |
+| `src/components/seats/AutoSeatGenerator.tsx` | Refactor: integrated into section creation |
+| `src/components/seats/RoomWalls.tsx` | Minor update: thicker walls, no labels |
+| `src/pages/SeatManagement.tsx` | Update: manage sections state |
+| `src/api/adminCabinsService.ts` | Update: save sections in layout |
+| `src/components/seats/DateBasedSeatMap.tsx` | Update: pass sections to viewer |
 
 ### What Stays the Same
 
-- Booking flow (SeatBookingForm, RazorpayCheckout)
-- Database `seats` table structure (adding columns, not changing existing)
+- Database `seats` table structure (unchanged)
+- Booking flow (SeatBookingForm, payment)
+- Zoom/pan controls (same concept)
 - Floor management system
-- All API services for seat CRUD
+- All seat CRUD API services
 
