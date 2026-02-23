@@ -136,7 +136,7 @@ export const VendorDetailsDialog: React.FC<VendorDetailsDialogProps> = ({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-2xl">Host Details</DialogTitle>
+            <DialogTitle className="text-2xl">Partner Details</DialogTitle>
             <div className="flex items-center gap-2">
               <Badge className={`${getStatusColor(vendor.status)} border-0`}>
                 <span className="capitalize">{vendor.status}</span>
@@ -181,7 +181,7 @@ export const VendorDetailsDialog: React.FC<VendorDetailsDialogProps> = ({
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-sm font-medium">Host ID</Label>
+                    <Label className="text-sm font-medium">Partner ID</Label>
                     <p className="font-mono text-sm bg-muted p-2 rounded">{vendor.vendorId}</p>
                   </div>
                   <div>
@@ -524,13 +524,13 @@ export const VendorDetailsDialog: React.FC<VendorDetailsDialogProps> = ({
           <TabsContent value="actions" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Host Actions</CardTitle>
+                <CardTitle>Partner Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {vendor.status === 'pending' && (
                   <>
                     <div className="space-y-4 p-4 border border-green-200 rounded-lg bg-green-50">
-                      <h3 className="font-medium text-green-800">Approve Host</h3>
+                      <h3 className="font-medium text-green-800">Approve Partner</h3>
                       <div>
                         <Label htmlFor="commissionRate">Commission Rate (%)</Label>
                         <Input
@@ -551,12 +551,12 @@ export const VendorDetailsDialog: React.FC<VendorDetailsDialogProps> = ({
                       </div>
                       <Button onClick={handleApprove} className="w-full bg-green-600 hover:bg-green-700">
                         <Check className="h-4 w-4 mr-2" />
-                        Approve Host
+                        Approve Partner
                       </Button>
                     </div>
 
                     <div className="space-y-4 p-4 border border-red-200 rounded-lg bg-red-50">
-                      <h3 className="font-medium text-red-800">Reject Host</h3>
+                      <h3 className="font-medium text-red-800">Reject Partner</h3>
                       <div>
                         <Label htmlFor="rejectionReason">Rejection Reason *</Label>
                         <Textarea
@@ -581,7 +581,7 @@ export const VendorDetailsDialog: React.FC<VendorDetailsDialogProps> = ({
                 {vendor.status === 'suspended' && (
                   <>
                     <div className="space-y-4 p-4 border border-green-200 rounded-lg bg-green-50">
-                      <h3 className="font-medium text-green-800">Approve Host</h3>
+                      <h3 className="font-medium text-green-800">Approve Partner</h3>
                       <div>
                         <Label htmlFor="commissionRate">Commission Rate (%)</Label>
                         <Input
@@ -602,7 +602,7 @@ export const VendorDetailsDialog: React.FC<VendorDetailsDialogProps> = ({
                       </div>
                       <Button onClick={handleApprove} className="w-full bg-green-600 hover:bg-green-700">
                         <Check className="h-4 w-4 mr-2" />
-                        Activate Host
+                        Activate Partner
                       </Button>
                     </div>
                   </>
@@ -610,7 +610,7 @@ export const VendorDetailsDialog: React.FC<VendorDetailsDialogProps> = ({
 
                 {vendor.status === 'approved' && (
                   <div className="space-y-4 p-4 border border-yellow-200 rounded-lg bg-yellow-50">
-                    <h3 className="font-medium text-yellow-800">Suspend Host</h3>
+                    <h3 className="font-medium text-yellow-800">Suspend Partner</h3>
                     <div>
                       <Label htmlFor="suspendNotes">Suspension Notes</Label>
                       <Textarea
@@ -621,20 +621,20 @@ export const VendorDetailsDialog: React.FC<VendorDetailsDialogProps> = ({
                     </div>
                     <Button onClick={handleSuspend} className="w-full bg-yellow-600 hover:bg-yellow-700">
                       <AlertTriangle className="h-4 w-4 mr-2" />
-                      Suspend Host
+                      Suspend Partner
                     </Button>
                   </div>
                 )}
 
                 {vendor.status === 'rejected' && (
                   <div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
-                    <p className="text-center text-muted-foreground">This Host application has been rejected.</p>
+                    <p className="text-center text-muted-foreground">This Partner application has been rejected.</p>
                   </div>
                 )}
 
                 {vendor.status === 'suspended' && (
                   <div className="p-4 border border-orange-200 rounded-lg bg-orange-50">
-                    <p className="text-center text-orange-800">This Host is currently suspended.</p>
+                    <p className="text-center text-orange-800">This Partner is currently suspended.</p>
                   </div>
                 )}
               </CardContent>

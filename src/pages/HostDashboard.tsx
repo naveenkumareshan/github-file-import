@@ -13,7 +13,7 @@ const mockChatThreads = [
   {
     id: 201,
     studentName: "Jenny Wilson",
-    hostName: "Host",
+    hostName: "Partner",
     lastMessage: "I need to report an issue with the water heater in my room.",
     timestamp: "Today, 10:30 AM",
     unread: true
@@ -21,7 +21,7 @@ const mockChatThreads = [
   {
     id: 202,
     studentName: "Cameron Williamson",
-    hostName: "Host",
+    hostName: "Partner",
     lastMessage: "Thanks for fixing the ceiling fan. It works perfectly now.",
     timestamp: "Yesterday, 3:15 PM",
     unread: false
@@ -45,7 +45,7 @@ const HostDashboard = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row justify-between items-center mb-8">
           <div>
-            <h1 className="text-2xl md:text-3xl font-serif font-bold text-cabin-dark">Host Dashboard</h1>
+            <h1 className="text-2xl md:text-3xl font-serif font-bold text-cabin-dark">Partner Dashboard</h1>
             <p className="text-cabin-dark/70">Manage accommodations and resident services</p>
           </div>
           

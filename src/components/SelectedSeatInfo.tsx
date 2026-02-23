@@ -23,9 +23,6 @@ export const SelectedSeatInfo: React.FC<SelectedSeatInfoProps> = ({ seat }) => {
             <p className="text-cabin-green font-bold text-lg">₹{seat.price}/month</p>
           </div>
         </div>
-        {seat.status === "hot" && (
-          <div className="text-pink-700 font-medium mt-1">🔥 This is a hot selling seat!</div>
-        )}
         {seat.status === "sold" && (
           <div className="text-blue-700 font-medium mt-1">Sold out</div>
         )}

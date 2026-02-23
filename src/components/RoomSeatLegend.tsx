@@ -17,7 +17,6 @@ function LegendBox({ color, label }: LegendBoxProps) {
 export const RoomSeatLegend = () => (
   <div className="mt-4 flex flex-wrap gap-6 items-center justify-center">
     <LegendBox color="border-cabin-green bg-[#d4f7c4]" label="Available" />
-    <LegendBox color="bg-[#FFDEE2] border-pink-300" label="Hot Selling" />
     <LegendBox color="bg-cabin-dark" label="Selected" />
     <LegendBox color="bg-[#D3E4FD] border-blue-200" label="Sold" />
   </div>

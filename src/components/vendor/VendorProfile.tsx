@@ -151,7 +151,7 @@ export const VendorProfile: React.FC = () => {
               </div>
               <div>
                 <CardTitle className="text-2xl">{profile.businessName}</CardTitle>
-                <p className="text-muted-foreground">Host ID: {profile.vendorId}</p>
+                <p className="text-muted-foreground">Partner ID: {profile.vendorId}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">

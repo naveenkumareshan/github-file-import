@@ -26,7 +26,7 @@ const VendorDashboard: React.FC = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row justify-between items-center mb-8">
           <div>
-            <h1 className="text-2xl md:text-3xl font-serif font-bold text-cabin-dark">Host Dashboard</h1>
+            <h1 className="text-2xl md:text-3xl font-serif font-bold text-cabin-dark">Partner Dashboard</h1>
             <p className="text-cabin-dark/70">Manage your properties and track earnings</p>
           </div>
           

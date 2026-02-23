@@ -226,10 +226,10 @@ export function AdminSidebar() {
         ],
       },
       {
-        title: 'Hosts',
-        url: '/admin/vendors',
-        icon: UserCheck,
-        roles: ['admin']
+      title: 'Partners',
+      url: '/admin/vendors',
+      icon: UserCheck,
+      roles: ['admin']
       },
       {
         title: 'Reports',
@@ -420,7 +420,7 @@ export function AdminSidebar() {
   const getRoleLabel = () => {
     switch (user?.role) {
       case 'admin': return 'Admin';
-      case 'vendor': return 'Host';
+      case 'vendor': return 'Partner';
       case 'vendor_employee': return 'Employee';
       default: return 'User';
     }

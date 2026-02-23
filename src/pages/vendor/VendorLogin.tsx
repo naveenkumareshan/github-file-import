@@ -13,17 +13,17 @@ import { toast } from '@/hooks/use-toast';
 
 const VENDOR_DEMO_ACCOUNTS: DemoAccount[] = [
   {
-    label: 'Host (Vendor)',
+    label: 'Partner (Vendor)',
     email: 'host@inhalestays.com',
     password: 'Host@123',
-    description: 'Property owner / Host account',
+    description: 'Property owner / Partner account',
     accessRights: ['Dashboard', 'Hostel Mgmt', 'Reading Rooms', 'Bookings', 'Seat Transfer', 'Employees', 'Payouts', 'Reviews', 'Profile'],
   },
   {
-    label: 'Host Employee',
+    label: 'Partner Employee',
     email: 'employee@inhalestays.com',
     password: 'Employee@123',
-    description: 'Host staff with role-based permissions',
+    description: 'Partner staff with role-based permissions',
     accessRights: ['Dashboard (if permitted)', 'Bookings (if permitted)', 'Seat Map (if permitted)', 'Reports (if permitted)'],
   },
 ];
@@ -94,7 +94,7 @@ const VendorLogin: React.FC = () => {
       if (result.success) {
         toast({
           title: "Welcome back!",
-          description: "Successfully logged in to Host portal",
+          description: "Successfully logged in to Partner portal",
         });
         navigate('/admin/dashboard');
       } else {
@@ -126,7 +126,7 @@ const VendorLogin: React.FC = () => {
                 <Building2 className="h-6 w-6 text-primary-foreground" />
               </div>
             </div>
-            <CardTitle className="text-2xl font-bold">Host Portal</CardTitle>
+            <CardTitle className="text-2xl font-bold">Partner Portal</CardTitle>
             <p className="text-muted-foreground">
               Sign in to manage your properties and bookings
             </p>
@@ -207,7 +207,7 @@ const VendorLogin: React.FC = () => {
               </Button>
 
               <div className="text-center text-sm text-muted-foreground">
-                New Host?{' '}
+                New Partner?{' '}
                 <Link to="/host/register" className="text-primary hover:underline">
                   Apply for partnership
                 </Link>
