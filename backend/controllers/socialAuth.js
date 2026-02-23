@@ -24,14 +24,14 @@ exports.socialLogin = async (req, res) => {
       if (!user.socialProvider || user.socialProvider !== provider || user.socialId !== providerId) {
         user.socialProvider = provider;
         user.socialId = providerId;
-        user.password = 'Inhale123';
+        user.password = require('crypto').randomBytes(16).toString('hex');
         if (profilePicture) {
           user.profilePicture = profilePicture;
         }
         await user.save();
       }
     } else {
-      const password = 'Inhale123';
+      const password = require('crypto').randomBytes(16).toString('hex');
       // Create new user
       user = await User.create({
         name,
@@ -164,7 +164,7 @@ exports.verifyGoogleToken = async (req, res) => {
         }
         await user.save();
       } else {
-      const password = 'Inhale123';
+      const password = require('crypto').randomBytes(16).toString('hex');
 
         // Create new user
         user = await User.create({

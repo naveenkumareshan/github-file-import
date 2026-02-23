@@ -94,7 +94,7 @@ exports.createBulkBookings = async (req, res) => {
         
         if (!user && !userWithEmail) {
           // Create new user account
-          const defaultPassword = 'Inhale123'; // You might want to generate a random password
+          const defaultPassword = require('crypto').randomBytes(16).toString('hex');
 
           user = await User.create({
             name: student.name,

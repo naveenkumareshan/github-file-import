@@ -8,24 +8,6 @@ import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { Footer } from '@/components/Footer';
-import DemoCredentials, { DemoAccount } from '@/components/auth/DemoCredentials';
-
-const ADMIN_DEMO_ACCOUNTS: DemoAccount[] = [
-  {
-    label: 'Admin',
-    email: 'admin@inhalestays.com',
-    password: 'Admin@123',
-    description: 'Full platform management',
-    accessRights: ['Dashboard', 'Bookings', 'Users', 'Rooms', 'Hostels', 'Reports', 'Payouts', 'Settings', 'Coupons', 'Notifications', 'Laundry Agent'],
-  },
-  {
-    label: 'Super Admin',
-    email: 'superadmin@inhalestays.com',
-    password: 'Super@123',
-    description: 'Unrestricted super-level access',
-    accessRights: ['All Admin rights', 'Vendor Approval', 'Super Admin Panel', 'Error Logs', 'Email Templates'],
-  },
-];
 
 const AdminLogin = () => {
   const navigate = useNavigate();
@@ -133,10 +115,6 @@ const AdminLogin = () => {
               </form>
             </CardContent>
           </Card>
-          <DemoCredentials
-            accounts={ADMIN_DEMO_ACCOUNTS}
-            onSelect={(email, password) => setFormData({ email, password })}
-          />
         </div>
       </div>
       

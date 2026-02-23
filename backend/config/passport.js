@@ -53,7 +53,7 @@ passport.use(new GoogleStrategy({
         profilePicture: profile.photos?.[0]?.value || '',
         phone: '',
         gender: '',
-        password:'Inhale123'
+        password: require('crypto').randomBytes(16).toString('hex')
       });
     } 
     // If user exists but hasn't linked Google account
