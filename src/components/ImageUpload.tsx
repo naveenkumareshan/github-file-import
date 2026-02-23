@@ -4,6 +4,7 @@ import { Button } from './ui/button';
 import { Upload, X, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { uploadService } from '@/api/uploadService';
+import { getImageUrl } from '@/lib/utils';
 
 export interface ImageUploadProps {
   onUpload: (url: string) => void;
@@ -15,7 +16,6 @@ export interface ImageUploadProps {
   allowedTypes?: string[];
   cabinId?: string; // Optional cabinId for cabin-specific uploads
 }
-const baseURL = import.meta.env.VITE_BASE_URL || 'http://localhost:5000/api';
 export function ImageUpload({ 
   onUpload, 
   onRemove,
@@ -163,7 +163,7 @@ export function ImageUpload({
           {allImages.map((img, index) => (
             <div key={index} className="relative border rounded-md overflow-hidden group">
               <img 
-                src={baseURL + img} 
+                src={getImageUrl(img)} 
                 alt={`Uploaded image ${index + 1}`} 
                 className="w-full h-24 object-cover"
               />

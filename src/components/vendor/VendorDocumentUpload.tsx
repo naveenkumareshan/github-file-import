@@ -20,6 +20,7 @@ import {
   X,
   Eye
 } from 'lucide-react';
+import { getImageUrl } from '@/lib/utils';
 
 interface DocumentType {
   key: string;
@@ -355,7 +356,7 @@ export const VendorDocumentUpload: React.FC = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => window.open(import.meta.env.VITE_BASE_URL + uploadedDoc.url, '_blank')}
+                          onClick={() => window.open(getImageUrl(uploadedDoc.url), '_blank')}
                         >
                           <Eye className="h-4 w-4 mr-1" />
                           View

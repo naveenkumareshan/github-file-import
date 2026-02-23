@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getImageUrl } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -377,12 +378,12 @@ const VendorSeats: React.FC = () => {
                             </p>
                             { seat.currentBooking.profilePicture &&
                               <a
-                                href={import.meta.env.VITE_BASE_URL + seat.currentBooking.profilePicture}
+                                href={getImageUrl(seat.currentBooking.profilePicture)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                               >
                                 <img
-                                  src={import.meta.env.VITE_BASE_URL + seat.currentBooking.profilePicture}
+                                  src={getImageUrl(seat.currentBooking.profilePicture)}
                                   alt={seat.currentBooking?.userId}
                                   className="w-15 h-20 object-contain cursor-pointer"
                                 />
@@ -461,12 +462,12 @@ const VendorSeats: React.FC = () => {
                           </div>
                             { seat.currentBooking.profilePicture &&
                               <a
-                                href={import.meta.env.VITE_BASE_URL + seat.currentBooking.profilePicture}
+                                href={getImageUrl(seat.currentBooking.profilePicture)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                               >
                                 <img
-                                  src={import.meta.env.VITE_BASE_URL + seat.currentBooking.profilePicture}
+                                  src={getImageUrl(seat.currentBooking.profilePicture)}
                                   alt={seat.currentBooking?.userId}
                                   className="w-10 h-10 object-contain cursor-pointer"
                                 />

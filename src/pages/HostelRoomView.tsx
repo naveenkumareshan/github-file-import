@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { getImageUrl } from '@/lib/utils';
 import { useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -166,7 +167,7 @@ const HostelRoomView = () => {
                 <div className="flex items-center gap-4 mb-4">
                   {hostel?.logoImage ? (
                     <img 
-                      src={ import.meta.env.VITE_BASE_URL + hostel.logoImage} 
+                      src={getImageUrl(hostel.logoImage)} 
                       alt={hostel.name} 
                       className="h-16 w-16 object-cover rounded-lg" 
                     />
@@ -239,7 +240,7 @@ const HostelRoomView = () => {
                                     onClick={() => handleOpenImageGallery(room)}
                                   >
                                     {room.imageSrc ? (
-                                      <img src={import.meta.env.VITE_BASE_URL + room.imageSrc} alt={room.name} className="h-full w-full object-cover" />
+                                      <img src={getImageUrl(room.imageSrc)} alt={room.name} className="h-full w-full object-cover" />
                                     ) : (
                                       <div className="h-full w-full bg-muted flex items-center justify-center">
                                         <Bed className="h-5 w-5 text-muted-foreground" />
@@ -342,7 +343,7 @@ const HostelRoomView = () => {
                     >
                       {selectedRoom.imageSrc ? (
                         <img 
-                          src={import.meta.env.VITE_BASE_URL + selectedRoom.imageSrc} 
+                          src={getImageUrl(selectedRoom.imageSrc)} 
                           alt={selectedRoom.name} 
                           className="w-full h-full object-cover" 
                         />
@@ -363,7 +364,7 @@ const HostelRoomView = () => {
                             onClick={() => handleOpenImageGallery(selectedRoom, img)}
                           >
                             <img 
-                              src={import.meta.env.VITE_BASE_URL + img} 
+                              src={getImageUrl(img)} 
                               alt={`${selectedRoom.name} image ${index + 1}`} 
                               className="w-full h-full object-cover" 
                             />
@@ -457,7 +458,7 @@ const HostelRoomView = () => {
                 <div className="w-full aspect-video bg-muted rounded-lg overflow-hidden">
                   {selectedImage ? (
                     <img 
-                      src={import.meta.env.VITE_BASE_URL + selectedImage} 
+                      src={getImageUrl(selectedImage)} 
                       alt={selectedRoom.name}
                       className="w-full h-full object-contain" 
                     />
@@ -480,7 +481,7 @@ const HostelRoomView = () => {
                         }`}
                       >
                         <img 
-                          src={import.meta.env.VITE_BASE_URL + img} 
+                          src={getImageUrl(img)} 
                           alt={`Room image ${index + 1}`} 
                           className="w-full h-full object-cover" 
                         />

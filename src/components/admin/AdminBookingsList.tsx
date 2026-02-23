@@ -33,6 +33,7 @@ import { adminBookingsService } from "@/api/adminBookingsService";
 import { useToast } from "@/hooks/use-toast";
 import { Filter, Download, FileSpreadsheet, Eye, TicketPercent } from "lucide-react";
 import { format } from "date-fns";
+import { getImageUrl } from "@/lib/utils";
 
 interface Booking {
   _id: string;
@@ -440,12 +441,12 @@ const AdminBookingsList = () => {
                         <div className="text-sm text-muted-foreground">
                           {booking.userId?.userId || "N/A"}
                           { booking.userId.profilePicture && <a
-                              href={import.meta.env.VITE_BASE_URL + booking.userId.profilePicture}
+                              href={getImageUrl(booking.userId.profilePicture)}
                               target="_blank"
                               rel="noopener noreferrer"
                             >
                               <img
-                                src={import.meta.env.VITE_BASE_URL + booking.userId.profilePicture}
+                                src={getImageUrl(booking.userId.profilePicture)}
                                 alt={booking.userId?.userId}
                                 className="w-10 h-10 object-contain cursor-pointer"
                               />

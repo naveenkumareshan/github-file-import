@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { hostelService, HostelData as HostelServiceData } from '@/api/hostelService';
+import { getImageUrl } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
@@ -208,7 +209,7 @@ const HostelManagement = () => {
                               onClick={() => handleOpenImageGallery(hostel)}
                             >
                               {hostel.logoImage ? (
-                                <img src={import.meta.env.VITE_BASE_URL + hostel.logoImage} alt={hostel.name} className="h-full w-full object-cover" />
+                                <img src={getImageUrl(hostel.logoImage)} alt={hostel.name} className="h-full w-full object-cover" />
                               ) : (
                                 <div className="h-full w-full bg-muted flex items-center justify-center">
                                   <Bed className="h-4 w-4 text-muted-foreground" />
@@ -282,7 +283,7 @@ const HostelManagement = () => {
               <div className="space-y-6">
                 <div className="w-full aspect-video bg-muted rounded-lg overflow-hidden">
                   {selectedImage ? (
-                    <img src={import.meta.env.VITE_BASE_URL + selectedImage} alt={selectedHostel.name} className="w-full h-full object-contain" />
+                    <img src={getImageUrl(selectedImage)} alt={selectedHostel.name} className="w-full h-full object-contain" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <Bed className="h-16 w-16 text-muted-foreground" />
@@ -297,7 +298,7 @@ const HostelManagement = () => {
                         onClick={() => setSelectedImage(img)}
                         className={`aspect-square rounded-md overflow-hidden cursor-pointer ${selectedImage === img ? 'ring-2 ring-primary' : ''}`}
                       >
-                        <img src={import.meta.env.VITE_BASE_URL + img} alt={`Room image ${index + 1}`} className="w-full h-full object-cover" />
+                        <img src={getImageUrl(img)} alt={`Room image ${index + 1}`} className="w-full h-full object-cover" />
                       </div>
                     ))}
                   </div>

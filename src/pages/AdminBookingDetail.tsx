@@ -11,6 +11,7 @@ import { adminUsersService } from '@/api/adminUsersService';
 import { hostelService } from '@/api/hostelService';
 import { BookingExtensionDialog } from '@/components/admin/BookingExtensionDialog';
 import { ChevronLeft, Clock, CreditCard, IndianRupee, RefreshCw, TicketPercent } from 'lucide-react';
+import { getImageUrl } from '@/lib/utils';
 import { transactionService } from '@/api/transactionService';
 import {
   Table,
@@ -551,12 +552,12 @@ const AdminBookingDetail = () => {
                   )}
                   { booking.userId.profilePicture &&
                   <a
-                    href={import.meta.env.VITE_BASE_URL + booking.userId.profilePicture}
+                    href={getImageUrl(booking.userId.profilePicture)}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
                     <img
-                      src={import.meta.env.VITE_BASE_URL + booking.userId.profilePicture}
+                      src={getImageUrl(booking.userId.profilePicture)}
                       alt={booking.userId?.userId}
                       className="w-30 h-30 object-contain cursor-pointer"
                     />

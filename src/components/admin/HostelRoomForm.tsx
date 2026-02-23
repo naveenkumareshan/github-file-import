@@ -28,6 +28,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Trash2, Image, Bed, Dice3 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { getImageUrl } from '@/lib/utils';
 
 // Define sharing option type that matches the required fields in HostelRoomData
 type SharingOptionType = {
@@ -501,7 +502,7 @@ export const HostelRoomForm: React.FC<HostelRoomFormProps> = ({
                           onClick={() => setAsMainImage(imageUrl)}
                         >
                           <img 
-                            src={import.meta.env.VITE_BASE_URL + imageUrl} 
+                            src={getImageUrl(imageUrl)} 
                             alt={`Room image ${index + 1}`} 
                             className="w-full h-20 object-cover"
                           />

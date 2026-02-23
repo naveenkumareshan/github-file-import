@@ -26,6 +26,7 @@ import { ImageUpload } from '@/components/ImageUpload';
 import { Badge, Plus, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { hostelService } from '@/api/hostelService';
+import { getImageUrl } from '@/lib/utils';
 import { RoomSharingOption, RoomWithSharingData } from '@/api/types';
 import { Checkbox } from '@/components/ui/checkbox';
 
@@ -434,7 +435,7 @@ export function AddRoomWithSharingForm({ hostelId, onSuccess, onClose }: AddRoom
                           onClick={() => setAsMainImage(imageUrl)}
                         >
                           <img 
-                            src={import.meta.env.VITE_BASE_URL + imageUrl} 
+                            src={getImageUrl(imageUrl)} 
                             alt={`Room image ${index + 1}`} 
                             className="w-full h-20 object-cover"
                           />

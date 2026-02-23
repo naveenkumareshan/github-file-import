@@ -14,6 +14,7 @@ import { Vendor } from '@/api/vendorApprovalService';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AdminVendorDocument, adminVendorDocumentService } from '@/api/adminVendorDocumentService';
 import { toast } from '../ui/use-toast';
+import { getImageUrl } from '@/lib/utils';
 
 interface VendorDetailsDialogProps {
   vendor: Vendor;
@@ -507,7 +508,7 @@ export const VendorDetailsDialog: React.FC<VendorDetailsDialogProps> = ({
                           )}
                         </div>
                         <Button variant="outline" size="sm" asChild>
-                          <a href={import.meta.env.VITE_BASE_URL + doc.url} target="_blank" rel="noopener noreferrer">
+                          <a href={getImageUrl(doc.url)} target="_blank" rel="noopener noreferrer">
                             View Document
                           </a>
                         </Button>

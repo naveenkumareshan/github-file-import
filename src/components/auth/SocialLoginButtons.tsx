@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { getImageUrl } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Facebook } from 'lucide-react';
 import { authService } from '@/api/authService';
@@ -162,7 +163,7 @@ function SocialButton({ provider, label, icon, onLoginSuccess, onLoginError }: S
       const left = window.innerWidth / 2 - width / 2;
       const top = window.innerHeight / 2 - height / 2;
       
-      const fullAuthUrl = (import.meta.env.VITE_BASE_URL || 'http://localhost:5000') + authUrl;
+      const fullAuthUrl = getImageUrl(authUrl); // Legacy social auth URL
       
       authWindow = window.open(
         fullAuthUrl,

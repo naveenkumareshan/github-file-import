@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { getImageUrl } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { MapPin, Star, Loader2 } from 'lucide-react';
@@ -93,7 +94,7 @@ export const CabinSearchResults = ({
               {/* Image */}
               <div className="relative flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden bg-muted">
                 <img
-                  src={cabin.imageSrc ? import.meta.env.VITE_BASE_URL + cabin.imageSrc : '/placeholder.svg'}
+                  src={getImageUrl(cabin.imageSrc) || '/placeholder.svg'}
                   alt={cabin.name}
                   className="w-full h-full object-cover"
                 />
