@@ -2,10 +2,8 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { razorpayService, RazorpayOrderParams, RazorpayOptions } from '@/api/razorpayService';
+import { razorpayService, RazorpayOrderParams } from '@/api/razorpayService';
 import { useAuth } from '@/hooks/use-auth';
-import { transactionService } from '@/api/transactionService';
-import { format } from 'date-fns';
 
 export interface RazorpayCheckoutProps {
   amount: number;
@@ -47,7 +45,7 @@ export function RazorpayCheckout({
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
-  const [currentTransaction, setCurrentTransaction] = useState<any>(null);
+  
 
   const loadRazorpayScript = (): Promise<boolean> => {
     return new Promise((resolve) => {
@@ -89,35 +87,12 @@ export function RazorpayCheckout({
         return;
       }
 
-      // Create order - use custom function if provided, otherwise use default implementation
+      // Create order - use custom function if provided, otherwise use default
       let order;
       if (createOrder) {
         order = await createOrder();
-        if (!order) {
-          throw new Error('Failed to create order');
-        }
+        if (!order) throw new Error('Failed to create order');
       } else {
-              // Create transaction first
-        const transactionData = {
-          bookingId: bookingId,
-          bookingType: 'cabin' as const,
-          transactionType: 'booking' as const,
-          amount: amount,
-          currency: 'INR',
-          additionalMonths: Number(durationCount),
-          newEndDate: format(endDate, 'yyyy-MM-dd'),
-          appliedCoupon: appliedCoupon ? {
-            couponId: appliedCoupon.coupon?._id,
-            couponCode: appliedCoupon.coupon?.code,
-            discountAmount: appliedCoupon.discountAmount,
-            couponType: appliedCoupon.coupon?.type,
-            couponValue: appliedCoupon.coupon?.value,
-            appliedAt: new Date()
-          } : null
-        };
-  
-        const transactionResponse = await transactionService.createTransaction(transactionData);
-        setCurrentTransaction(transactionResponse.data.data);
         const orderParams: RazorpayOrderParams = {
           amount,
           currency: 'INR',
@@ -125,28 +100,41 @@ export function RazorpayCheckout({
           bookingType,
           bookingDuration,
           durationCount,
-          notes: {
-            transactionId: transactionResponse.data.data._id
-          }
         };
-        
         const response = await razorpayService.createOrder(orderParams);
-        
         if (!response.success || !response.data) {
           throw new Error(response.error?.message || 'Failed to create order');
         }
-        
         order = response.data;
-
-        // Update transaction with Razorpay order ID
-        await transactionService.updateTransactionStatus(transactionResponse.data.data._id, 'pending', {
-          razorpay_order_id: order.id,
-          bookingId : transactionResponse.data.data.transactionId, 
-          transactionId : transactionResponse.data.data._id, 
-        });
       }
 
-      // Step 2: Prepare Razorpay options
+      // TEST MODE: skip Razorpay SDK, directly confirm
+      if (order.testMode) {
+        const verifyResponse = await razorpayService.verifyPayment({
+          razorpay_payment_id: `test_pay_${Date.now()}`,
+          razorpay_order_id: order.id,
+          razorpay_signature: 'test_signature',
+          bookingId,
+          bookingType,
+          bookingDuration,
+          durationCount,
+          testMode: true,
+        } as any);
+
+        if (verifyResponse.success) {
+          toast({
+            title: "Test Payment Successful",
+            description: "Booking confirmed (test mode - no real payment charged)",
+          });
+          onSuccess({ testMode: true, bookingId });
+        } else {
+          throw new Error(verifyResponse.error?.message || 'Test payment failed');
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      // REAL MODE: open Razorpay checkout
       const options = {
         key: order.KEY_ID,
         amount: order.amount,
@@ -159,12 +147,9 @@ export function RazorpayCheckout({
           email: user.email || '',
           contact: user.phone || ''
         },
-        theme: {
-          color: "#1fa763"
-        },
+        theme: { color: "#1fa763" },
         handler: async (paymentResponse: any) => {
           try {
-            // Verify the payment on server
             const verifyResponse = await razorpayService.verifyPayment({
               razorpay_payment_id: paymentResponse.razorpay_payment_id,
               razorpay_order_id: paymentResponse.razorpay_order_id,
@@ -174,21 +159,8 @@ export function RazorpayCheckout({
               bookingDuration,
               durationCount
             });
-            
             if (verifyResponse.success) {
-                // Update transaction status to completed
-              await transactionService.updateTransactionStatus(bookingId, 'completed', {
-                razorpay_payment_id: paymentResponse.razorpay_payment_id,
-                razorpay_signature: paymentResponse.razorpay_signature,
-                paymentResponse: paymentResponse,
-                bookingId : bookingId, 
-                transactionId : currentTransaction ? currentTransaction._id : '', 
-              });
-              toast({
-                title: "Payment successful",
-                description: "Your booking has been confirmed!"
-              });
-              
+              toast({ title: "Payment successful", description: "Your booking has been confirmed!" });
               onSuccess(paymentResponse);
             } else {
               throw new Error(verifyResponse.error?.message || 'Payment verification failed');
@@ -200,12 +172,8 @@ export function RazorpayCheckout({
               description: "Your payment was successful but we couldn't verify it. Please contact support.",
               variant: "destructive"
             });
-            
-            if (onError) {
-              onError(error);
-            } else if (onFailure) {
-              onFailure(error);
-            }
+            if (onError) onError(error);
+            else if (onFailure) onFailure(error);
           } finally {
             setIsLoading(false);
           }
@@ -213,15 +181,11 @@ export function RazorpayCheckout({
         modal: {
           ondismiss: () => {
             setIsLoading(false);
-            toast({
-              title: "Payment Cancelled",
-              description: "You cancelled the Razorpay payment",
-              variant: "destructive"
-            });
+            toast({ title: "Payment Cancelled", description: "You cancelled the payment", variant: "destructive" });
           }
         }
       };
-  
+
       const razorpay = new (window as any).Razorpay(options);
       razorpay.open();
   

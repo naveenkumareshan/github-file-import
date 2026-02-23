@@ -40,8 +40,36 @@ Deno.serve(async (req) => {
       razorpay_order_id,
       razorpay_signature,
       bookingId,
+      testMode,
     } = await req.json();
 
+    const adminClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    // Test mode: skip signature verification, directly confirm booking
+    if (testMode) {
+      const { error: updateError } = await adminClient
+        .from("bookings")
+        .update({ payment_status: "completed" })
+        .eq("id", bookingId);
+
+      if (updateError) {
+        console.error("Error updating booking in test mode:", updateError);
+        return new Response(
+          JSON.stringify({ error: "Failed to update booking status" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, testMode: true, message: "Test payment confirmed" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Real mode
     if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature || !bookingId) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
         status: 400,
@@ -57,17 +85,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Verify HMAC signature
     const encoder = new TextEncoder();
     const data = encoder.encode(`${razorpay_order_id}|${razorpay_payment_id}`);
     const key = encoder.encode(RAZORPAY_KEY_SECRET);
 
     const cryptoKey = await crypto.subtle.importKey(
-      "raw",
-      key,
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["sign"]
+      "raw", key, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
     );
 
     const signatureBuffer = await crypto.subtle.sign("HMAC", cryptoKey, data);
@@ -78,18 +101,9 @@ Deno.serve(async (req) => {
     if (generatedSignature !== razorpay_signature) {
       return new Response(
         JSON.stringify({ error: "Payment signature verification failed" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-
-    // Signature verified - update booking status using service role
-    const adminClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
 
     const { error: updateError } = await adminClient
       .from("bookings")
@@ -105,22 +119,13 @@ Deno.serve(async (req) => {
       console.error("Error updating booking:", updateError);
       return new Response(
         JSON.stringify({ error: "Failed to update booking status" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        message: "Payment verified and booking confirmed",
-      }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      JSON.stringify({ success: true, message: "Payment verified and booking confirmed" }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("Error:", error);
