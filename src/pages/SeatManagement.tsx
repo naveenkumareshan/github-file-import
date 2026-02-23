@@ -282,6 +282,29 @@ const SeatManagement = () => {
     }
   };
 
+  // ── Click-to-place seat handler ──
+  const handlePlaceSeat = async (position: { x: number; y: number }, number: number, price: number) => {
+    if (!cabinId) return;
+    try {
+      const seatData: SeatData = {
+        number,
+        floor: selectedFloor,
+        cabinId,
+        price,
+        position,
+        isAvailable: true,
+        isHotSelling: false,
+      };
+      const res = await adminSeatsService.createSeat(seatData);
+      if (res.success && res.data) {
+        setSeats(prev => [...prev, res.data]);
+        toast({ title: `Seat #${number} placed` });
+      }
+    } catch (e) {
+      toast({ title: "Error placing seat", variant: "destructive" });
+    }
+  };
+
   const handleToggleSeatAvailability = async () => {
     if (!selectedSeat) return;
     try {
@@ -443,6 +466,7 @@ const SeatManagement = () => {
             onDeleteSeat={handleDeleteSeat}
             onAddSeatToSection={handleAddSeatToSection}
             onDeleteSectionWithSeats={handleDeleteSectionWithSeats}
+            onPlaceSeat={handlePlaceSeat}
             layoutImage={layoutImage}
             layoutImageOpacity={layoutImageOpacity}
             onLayoutImageChange={setLayoutImage}

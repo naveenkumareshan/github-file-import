@@ -16,7 +16,7 @@ import {
 import {
   Save, Grid3X3, ZoomIn, ZoomOut, Maximize, Plus, LayoutGrid,
   Trash2, GripHorizontal, Building2, Edit, DoorOpen, Wind, Monitor,
-  Snowflake, Bath, ChevronDown, Image, X,
+  Snowflake, Bath, ChevronDown, Image, X, MousePointerClick,
 } from 'lucide-react';
 import { RoomWalls } from './RoomWalls';
 import { GridOverlay } from './GridOverlay';
@@ -79,6 +79,7 @@ interface FloorPlanDesignerProps {
   onDeleteSeat?: (seatId: string) => void;
   onAddSeatToSection?: (section: Section) => void;
   onDeleteSectionWithSeats?: (sectionId: string) => void;
+  onPlaceSeat?: (position: { x: number; y: number }, number: number, price: number) => void;
   layoutImage?: string | null;
   layoutImageOpacity?: number;
   onLayoutImageChange?: (image: string | null) => void;
@@ -160,6 +161,7 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
   onDeleteSeat,
   onAddSeatToSection,
   onDeleteSectionWithSeats,
+  onPlaceSeat,
   layoutImage,
   layoutImageOpacity = 30,
   onLayoutImageChange,
@@ -189,6 +191,21 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
   // Section editor
   const [editingSection, setEditingSection] = useState<Section | null>(null);
   const [showSectionEditor, setShowSectionEditor] = useState(false);
+
+  // Placement mode
+  const [placementMode, setPlacementMode] = useState(false);
+  const [nextSeatNumber, setNextSeatNumber] = useState(1);
+  const [placementPrice, setPlacementPrice] = useState(2000);
+
+  // Update nextSeatNumber when seats change
+  useEffect(() => {
+    if (seats.length > 0) {
+      const maxNum = Math.max(...seats.map(s => s.number));
+      setNextSeatNumber(maxNum + 1);
+    } else {
+      setNextSeatNumber(1);
+    }
+  }, [seats.length]);
 
   const snap = useCallback((val: number) => Math.round(val / gridSize) * gridSize, [gridSize]);
 
@@ -380,6 +397,18 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
     if (draggingSection || draggingElement || resizing) return;
     setSelectedElement(null);
+
+    // Placement mode: place a seat on click
+    if (placementMode && onPlaceSeat) {
+      const pos = getCanvasPos(e);
+      // Only place if within room bounds
+      if (pos.x >= 0 && pos.y >= 0 && pos.x <= roomWidth && pos.y <= roomHeight) {
+        onPlaceSeat({ x: Math.round(pos.x), y: Math.round(pos.y) }, nextSeatNumber, placementPrice);
+        setNextSeatNumber(prev => prev + 1);
+      }
+      return;
+    }
+
     setIsPanning(true);
     setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
   };
@@ -632,6 +661,32 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
           </Button>
         )}
 
+        <div className="h-6 w-px bg-border" />
+
+        {/* Place Seats toggle */}
+        <Button
+          variant={placementMode ? 'default' : 'outline'}
+          size="sm"
+          className="h-8"
+          onClick={() => setPlacementMode(!placementMode)}
+        >
+          <MousePointerClick className="h-3.5 w-3.5 mr-1" /> {placementMode ? 'Stop Placing' : 'Place Seats'}
+        </Button>
+
+        {placementMode && (
+          <div className="flex items-center gap-1.5">
+            <Label className="text-xs whitespace-nowrap">Price:</Label>
+            <Input
+              type="number"
+              className="w-20 h-8 text-xs"
+              value={placementPrice}
+              min={0}
+              onChange={e => setPlacementPrice(+e.target.value || 0)}
+            />
+            <span className="text-xs text-muted-foreground">Next: #{nextSeatNumber}</span>
+          </div>
+        )}
+
         <div className="flex-1" />
 
         {/* Zoom controls */}
@@ -652,7 +707,7 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
       {/* Canvas */}
       <div
         className="relative overflow-hidden border rounded-lg bg-muted/30"
-        style={{ height: '600px', cursor: resizing ? HANDLE_CURSORS[resizing.handle] : (isPanning ? 'grabbing' : 'grab') }}
+        style={{ height: '600px', cursor: placementMode ? 'crosshair' : (resizing ? HANDLE_CURSORS[resizing.handle] : (isPanning ? 'grabbing' : 'grab')) }}
         onMouseDown={handleCanvasMouseDown}
         onMouseMove={handleCanvasMouseMove}
         onMouseUp={handleCanvasMouseUp}
@@ -781,6 +836,46 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
                     renderSectionSeats(section)
                   )}
                 </div>
+              </div>
+            );
+          })}
+          {/* Render free-placed seats (no sectionId) */}
+          {seats.filter(s => !s.sectionId).map(seat => {
+            const isSelected = selectedSeat?._id === seat._id;
+            const isBooked = !seat.isAvailable;
+
+            let seatClass = 'bg-emerald-50 border-emerald-400 text-emerald-800';
+            if (isSelected) seatClass = 'bg-primary border-primary text-primary-foreground ring-2 ring-primary/50';
+            else if (isBooked) seatClass = 'bg-muted border-muted-foreground/30 text-muted-foreground';
+
+            return (
+              <div key={seat._id} className="group absolute" style={{
+                left: seat.position.x - 18,
+                top: seat.position.y - 13,
+                zIndex: isSelected ? 20 : 5,
+              }}>
+                <button
+                  className={`flex items-center justify-center rounded border text-[10px] font-bold select-none transition-all ${seatClass}`}
+                  style={{ width: 36, height: 26 }}
+                  onClick={e => {
+                    e.stopPropagation();
+                    onSeatSelect(isSelected ? null : seat);
+                  }}
+                >
+                  {seat.number}
+                </button>
+                {onDeleteSeat && (
+                  <button
+                    className="absolute -top-2 -right-2 hidden group-hover:flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[8px]"
+                    onClick={e => {
+                      e.stopPropagation();
+                      onDeleteSeat(seat._id);
+                    }}
+                    title="Delete seat"
+                  >
+                    ×
+                  </button>
+                )}
               </div>
             );
           })}
