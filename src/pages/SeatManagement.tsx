@@ -22,6 +22,8 @@ const SeatManagement = () => {
   const [loading, setLoading] = useState(true);
   const [roomElements, setRoomElements] = useState<RoomElement[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [layoutImage, setLayoutImage] = useState<string | null>(null);
+  const [layoutImageOpacity, setLayoutImageOpacity] = useState(30);
 
   // Room dimensions
   const [roomWidth, setRoomWidth] = useState(800);
@@ -65,6 +67,7 @@ const SeatManagement = () => {
         const loadedSections = Array.isArray(d.sections) ? d.sections : [];
         setSections(loadedSections);
         sectionsRef.current = loadedSections;
+        setLayoutImage(d.layout_image || null);
       }
     } catch (e) {
       console.error(e);
@@ -102,7 +105,7 @@ const SeatManagement = () => {
     if (!cabinId) return;
     setIsSaving(true);
     try {
-      await adminCabinsService.updateCabinLayout(cabinId, roomElements, roomWidth, roomHeight, gridSize, sections);
+      await adminCabinsService.updateCabinLayout(cabinId, roomElements, roomWidth, roomHeight, gridSize, sections, layoutImage);
 
       const seatsToUpdate = seats.map(s => ({
         _id: s._id,
@@ -440,6 +443,10 @@ const SeatManagement = () => {
             onDeleteSeat={handleDeleteSeat}
             onAddSeatToSection={handleAddSeatToSection}
             onDeleteSectionWithSeats={handleDeleteSectionWithSeats}
+            layoutImage={layoutImage}
+            layoutImageOpacity={layoutImageOpacity}
+            onLayoutImageChange={setLayoutImage}
+            onLayoutImageOpacityChange={setLayoutImageOpacity}
             isSaving={isSaving}
           />
         </CardContent>

@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
+import { Slider } from '@/components/ui/slider';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -15,7 +16,7 @@ import {
 import {
   Save, Grid3X3, ZoomIn, ZoomOut, Maximize, Plus, LayoutGrid,
   Trash2, GripHorizontal, Building2, Edit, DoorOpen, Wind, Monitor,
-  Snowflake, Bath, ChevronDown,
+  Snowflake, Bath, ChevronDown, Image, X,
 } from 'lucide-react';
 import { RoomWalls } from './RoomWalls';
 import { GridOverlay } from './GridOverlay';
@@ -78,10 +79,24 @@ interface FloorPlanDesignerProps {
   onDeleteSeat?: (seatId: string) => void;
   onAddSeatToSection?: (section: Section) => void;
   onDeleteSectionWithSeats?: (sectionId: string) => void;
+  layoutImage?: string | null;
+  layoutImageOpacity?: number;
+  onLayoutImageChange?: (image: string | null) => void;
+  onLayoutImageOpacityChange?: (opacity: number) => void;
   isSaving?: boolean;
 }
 
-const STRUCTURAL_TYPES = ['Washroom', 'Office', 'Lockers', 'Storage', 'Custom'];
+// ── Color themes ──
+const SECTION_COLORS: Record<string, { border: string; header: string; seat: string; dot: string }> = {
+  blue:    { border: 'border-blue-400',    header: 'bg-blue-100',    seat: 'bg-blue-50 border-blue-400 text-blue-800',    dot: 'bg-blue-400' },
+  green:   { border: 'border-emerald-400', header: 'bg-emerald-100', seat: 'bg-emerald-50 border-emerald-400 text-emerald-800', dot: 'bg-emerald-400' },
+  purple:  { border: 'border-purple-400',  header: 'bg-purple-100',  seat: 'bg-purple-50 border-purple-400 text-purple-800',  dot: 'bg-purple-400' },
+  orange:  { border: 'border-orange-400',  header: 'bg-orange-100',  seat: 'bg-orange-50 border-orange-400 text-orange-800',  dot: 'bg-orange-400' },
+  teal:    { border: 'border-teal-400',    header: 'bg-teal-100',    seat: 'bg-teal-50 border-teal-400 text-teal-800',    dot: 'bg-teal-400' },
+  rose:    { border: 'border-rose-400',    header: 'bg-rose-100',    seat: 'bg-rose-50 border-rose-400 text-rose-800',    dot: 'bg-rose-400' },
+  amber:   { border: 'border-amber-400',   header: 'bg-amber-100',   seat: 'bg-amber-50 border-amber-400 text-amber-800',   dot: 'bg-amber-400' },
+  indigo:  { border: 'border-indigo-400',  header: 'bg-indigo-100',  seat: 'bg-indigo-50 border-indigo-400 text-indigo-800',  dot: 'bg-indigo-400' },
+};
 
 const STRUCTURAL_COLORS: Record<string, string> = {
   Washroom: 'bg-blue-100 border-blue-300 text-blue-700',
@@ -107,6 +122,25 @@ const WALL_ELEMENT_STYLES: Record<string, string> = {
   bath: 'bg-teal-100 border-teal-400 text-teal-700',
 };
 
+type ResizeHandle = 'nw' | 'n' | 'ne' | 'w' | 'e' | 'sw' | 's' | 'se';
+
+interface ResizingState {
+  id: string;
+  handle: ResizeHandle;
+  startMouseX: number;
+  startMouseY: number;
+  startX: number;
+  startY: number;
+  startW: number;
+  startH: number;
+}
+
+const HANDLE_CURSORS: Record<ResizeHandle, string> = {
+  nw: 'nw-resize', n: 'n-resize', ne: 'ne-resize',
+  w: 'w-resize', e: 'e-resize',
+  sw: 'sw-resize', s: 's-resize', se: 'se-resize',
+};
+
 export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
   cabinId,
   roomWidth,
@@ -126,9 +160,14 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
   onDeleteSeat,
   onAddSeatToSection,
   onDeleteSectionWithSeats,
+  layoutImage,
+  layoutImageOpacity = 30,
+  onLayoutImageChange,
+  onLayoutImageOpacityChange,
   isSaving,
 }) => {
   const canvasRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [showGrid, setShowGrid] = useState(true);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -139,6 +178,9 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
   const [draggingSection, setDraggingSection] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
+  // Section resizing
+  const [resizing, setResizing] = useState<ResizingState | null>(null);
+
   // Wall element dragging
   const [draggingElement, setDraggingElement] = useState<string | null>(null);
   const [elementDragOffset, setElementDragOffset] = useState({ x: 0, y: 0 });
@@ -147,12 +189,11 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
   // Section editor
   const [editingSection, setEditingSection] = useState<Section | null>(null);
   const [showSectionEditor, setShowSectionEditor] = useState(false);
-  const [showAddStructural, setShowAddStructural] = useState(false);
 
   const snap = useCallback((val: number) => Math.round(val / gridSize) * gridSize, [gridSize]);
 
   // ── Canvas coordinate helpers ──
-  const getCanvasPos = useCallback((e: React.MouseEvent) => {
+  const getCanvasPos = useCallback((e: React.MouseEvent | MouseEvent) => {
     if (!canvasRef.current) return { x: 0, y: 0 };
     const rect = canvasRef.current.getBoundingClientRect();
     return {
@@ -175,24 +216,11 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
       aisleAfterCol: 3,
       seatSpacing: 50,
       price: 2000,
+      color: 'blue',
     };
     onSectionsChange([...sections, newSection]);
     setEditingSection(newSection);
     setShowSectionEditor(true);
-  };
-
-  const handleAddStructural = (label: string) => {
-    const newSection: Section = {
-      id: `struct-${Date.now()}`,
-      name: label,
-      type: 'structural',
-      position: { x: snap(40), y: snap(roomHeight - 160) },
-      width: 150,
-      height: 100,
-      structuralLabel: label,
-    };
-    onSectionsChange([...sections, newSection]);
-    setShowAddStructural(false);
   };
 
   const handleDeleteSection = (id: string) => {
@@ -218,7 +246,6 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
     });
 
     if (outOfBounds.length > 0) {
-      // Delete out-of-bounds seats from DB
       outOfBounds.forEach(seat => {
         if (onDeleteSeat) onDeleteSeat(seat._id);
       });
@@ -233,19 +260,14 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
 
   // ── Wall element CRUD ──
   const handleAddWallElement = (type: RoomElement['type']) => {
-    // Place on wall edge based on type
     let pos = { x: 0, y: 0 };
-    if (type === 'door') pos = { x: roomWidth / 2 - 20, y: roomHeight - 4 }; // bottom wall
-    else if (type === 'window') pos = { x: 4, y: roomHeight / 2 - 15 }; // left wall
-    else if (type === 'screen') pos = { x: roomWidth / 2 - 20, y: 4 }; // top wall
-    else if (type === 'AC') pos = { x: roomWidth - 44, y: 4 }; // top-right
-    else if (type === 'bath') pos = { x: 4, y: 4 }; // top-left
+    if (type === 'door') pos = { x: roomWidth / 2 - 20, y: roomHeight - 4 };
+    else if (type === 'window') pos = { x: 4, y: roomHeight / 2 - 15 };
+    else if (type === 'screen') pos = { x: roomWidth / 2 - 20, y: 4 };
+    else if (type === 'AC') pos = { x: roomWidth - 44, y: 4 };
+    else if (type === 'bath') pos = { x: 4, y: 4 };
 
-    const newEl: RoomElement = {
-      id: `elem-${Date.now()}`,
-      type,
-      position: pos,
-    };
+    const newEl: RoomElement = { id: `elem-${Date.now()}`, type, position: pos };
     onRoomElementsChange([...roomElements, newEl]);
   };
 
@@ -254,7 +276,6 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
     if (selectedElement === id) setSelectedElement(null);
   };
 
-  // Constrain element to wall edges
   const constrainToWall = (pos: { x: number; y: number }, elW: number, elH: number) => {
     const margin = 4;
     const distTop = pos.y;
@@ -268,6 +289,73 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
     if (minDist === distLeft) return { x: margin, y: Math.max(margin, Math.min(pos.y, roomHeight - elH - margin)) };
     return { x: roomWidth - elW - margin, y: Math.max(margin, Math.min(pos.y, roomHeight - elH - margin)) };
   };
+
+  // ── Resize handles ──
+  const handleResizeMouseDown = (e: React.MouseEvent, sectionId: string, handle: ResizeHandle) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const section = sections.find(s => s.id === sectionId);
+    if (!section) return;
+    const canvasPos = getCanvasPos(e);
+    setResizing({
+      id: sectionId,
+      handle,
+      startMouseX: canvasPos.x,
+      startMouseY: canvasPos.y,
+      startX: section.position.x,
+      startY: section.position.y,
+      startW: section.width,
+      startH: section.height,
+    });
+  };
+
+  const processResize = useCallback((canvasPos: { x: number; y: number }) => {
+    if (!resizing) return;
+    const dx = canvasPos.x - resizing.startMouseX;
+    const dy = canvasPos.y - resizing.startMouseY;
+    const h = resizing.handle;
+
+    let newX = resizing.startX;
+    let newY = resizing.startY;
+    let newW = resizing.startW;
+    let newH = resizing.startH;
+
+    if (h.includes('e')) newW = snap(Math.max(100, resizing.startW + dx));
+    if (h.includes('w')) { const dw = snap(dx); newX = resizing.startX + dw; newW = Math.max(100, resizing.startW - dw); }
+    if (h.includes('s')) newH = snap(Math.max(80, resizing.startH + dy));
+    if (h.includes('n')) { const dh = snap(dy); newY = resizing.startY + dh; newH = Math.max(80, resizing.startH - dh); }
+
+    // Clamp within room
+    newX = Math.max(gridSize, newX);
+    newY = Math.max(gridSize, newY);
+    if (newX + newW > roomWidth - gridSize) newW = roomWidth - gridSize - newX;
+    if (newY + newH > roomHeight - gridSize) newH = roomHeight - gridSize - newY;
+
+    onSectionsChange(sections.map(s =>
+      s.id === resizing.id ? { ...s, position: { x: newX, y: newY }, width: newW, height: newH } : s
+    ));
+  }, [resizing, sections, onSectionsChange, snap, gridSize, roomWidth, roomHeight]);
+
+  const finalizeResize = useCallback(() => {
+    if (!resizing) return;
+    const section = sections.find(s => s.id === resizing.id);
+    if (section) {
+      // Remove out-of-bounds seats
+      const sectionSeats = seats.filter(s => s.sectionId === section.id);
+      const outOfBounds = sectionSeats.filter(seat => {
+        const relX = seat.position.x - section.position.x;
+        const relY = seat.position.y - section.position.y;
+        return relX + 36 > section.width - 5 || relY + 26 > section.height - 5 || relX < 0 || relY < 28;
+      });
+      if (outOfBounds.length > 0) {
+        outOfBounds.forEach(seat => { if (onDeleteSeat) onDeleteSeat(seat._id); });
+        const outIds = new Set(outOfBounds.map(s => s._id));
+        onSeatsChange(seats.filter(s => !outIds.has(s._id)));
+        toast({ title: `${outOfBounds.length} seat(s) removed after resize` });
+      }
+    }
+    setResizing(null);
+  }, [resizing, sections, seats, onDeleteSeat, onSeatsChange]);
 
   // ── Section dragging ──
   const handleSectionMouseDown = (e: React.MouseEvent, sectionId: string, pos: { x: number; y: number }) => {
@@ -290,13 +378,19 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
 
   // ── Canvas mouse handlers ──
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
-    if (draggingSection || draggingElement) return;
+    if (draggingSection || draggingElement || resizing) return;
     setSelectedElement(null);
     setIsPanning(true);
     setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
   };
 
   const handleCanvasMouseMove = (e: React.MouseEvent) => {
+    if (resizing) {
+      const pos = getCanvasPos(e);
+      processResize(pos);
+      return;
+    }
+
     if (isPanning && !draggingSection && !draggingElement) {
       setPan({ x: e.clientX - panStart.x, y: e.clientY - panStart.y });
       return;
@@ -310,7 +404,6 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
       if (section) {
         const clampedX = Math.max(gridSize, Math.min(newX, roomWidth - section.width - gridSize));
         const clampedY = Math.max(gridSize, Math.min(newY, roomHeight - section.height - gridSize));
-        // Move seats with section
         const dx = clampedX - section.position.x;
         const dy = clampedY - section.position.y;
         if (dx !== 0 || dy !== 0) {
@@ -339,16 +432,34 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
   };
 
   const handleCanvasMouseUp = () => {
+    if (resizing) { finalizeResize(); return; }
     setDraggingSection(null);
     setDraggingElement(null);
     setIsPanning(false);
   };
 
   useEffect(() => {
-    const handler = () => { setDraggingSection(null); setDraggingElement(null); setIsPanning(false); };
+    const handler = () => {
+      if (resizing) finalizeResize();
+      setDraggingSection(null);
+      setDraggingElement(null);
+      setIsPanning(false);
+    };
     window.addEventListener('mouseup', handler);
     return () => window.removeEventListener('mouseup', handler);
-  }, []);
+  }, [resizing, finalizeResize]);
+
+  // ── Layout image upload ──
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !onLayoutImageChange) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      onLayoutImageChange(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
 
   // ── Zoom ──
   const handleZoomIn = () => setZoom(z => Math.min(z + 0.25, 3));
@@ -366,15 +477,23 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
     setZoom(z => Math.max(0.25, Math.min(z + (e.deltaY > 0 ? -0.1 : 0.1), 3)));
   };
 
+  // ── Get section color theme ──
+  const getSectionTheme = (section: Section) => {
+    const color = section.color || 'blue';
+    return SECTION_COLORS[color] || SECTION_COLORS.blue;
+  };
+
   // ── Render seats within a section ──
   const renderSectionSeats = (section: Section) => {
     if (section.type !== 'seats') return null;
     const sectionSeats = seats.filter(s => s.sectionId === section.id);
+    const theme = getSectionTheme(section);
+
     return sectionSeats.map(seat => {
       const isSelected = selectedSeat?._id === seat._id;
       const isBooked = !seat.isAvailable;
 
-      let seatClass = 'bg-emerald-50 border-emerald-400 text-emerald-800';
+      let seatClass = theme.seat;
       if (isSelected) seatClass = 'bg-primary border-primary text-primary-foreground ring-2 ring-primary/50';
       else if (isBooked) seatClass = 'bg-muted border-muted-foreground/30 text-muted-foreground';
 
@@ -394,7 +513,6 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
           >
             {seat.number}
           </button>
-          {/* Individual delete button on hover */}
           {onDeleteSeat && (
             <button
               className="absolute -top-2 -right-2 hidden group-hover:flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[8px]"
@@ -410,6 +528,29 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
         </div>
       );
     });
+  };
+
+  // ── Render resize handles for a section ──
+  const renderResizeHandles = (section: Section) => {
+    const handles: { handle: ResizeHandle; style: React.CSSProperties }[] = [
+      { handle: 'nw', style: { left: -4, top: -4 } },
+      { handle: 'n', style: { left: '50%', top: -4, transform: 'translateX(-50%)' } },
+      { handle: 'ne', style: { right: -4, top: -4 } },
+      { handle: 'w', style: { left: -4, top: '50%', transform: 'translateY(-50%)' } },
+      { handle: 'e', style: { right: -4, top: '50%', transform: 'translateY(-50%)' } },
+      { handle: 'sw', style: { left: -4, bottom: -4 } },
+      { handle: 's', style: { left: '50%', bottom: -4, transform: 'translateX(-50%)' } },
+      { handle: 'se', style: { right: -4, bottom: -4 } },
+    ];
+
+    return handles.map(({ handle, style }) => (
+      <div
+        key={handle}
+        className="absolute w-2 h-2 bg-primary border border-primary-foreground rounded-sm z-30"
+        style={{ ...style, cursor: HANDLE_CURSORS[handle] }}
+        onMouseDown={e => handleResizeMouseDown(e, section.id, handle)}
+      />
+    ));
   };
 
   // ── Get wall element icon ──
@@ -449,9 +590,6 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
         <Button variant="outline" size="sm" className="h-8" onClick={handleAddSeatSection}>
           <LayoutGrid className="h-3.5 w-3.5 mr-1" /> Add Seat Section
         </Button>
-        <Button variant="outline" size="sm" className="h-8" onClick={() => setShowAddStructural(true)}>
-          <Building2 className="h-3.5 w-3.5 mr-1" /> Add Structure
-        </Button>
 
         {/* Wall elements dropdown */}
         <DropdownMenu>
@@ -469,6 +607,30 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
+
+        {/* Upload layout image */}
+        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+        {layoutImage ? (
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <Label className="text-xs">Opacity:</Label>
+              <Slider
+                className="w-20"
+                min={5} max={80} step={5}
+                value={[layoutImageOpacity]}
+                onValueChange={([v]) => onLayoutImageOpacityChange?.(v)}
+              />
+              <span className="text-xs w-8">{layoutImageOpacity}%</span>
+            </div>
+            <Button variant="outline" size="sm" className="h-8" onClick={() => onLayoutImageChange?.(null)}>
+              <X className="h-3.5 w-3.5 mr-1" /> Remove
+            </Button>
+          </div>
+        ) : (
+          <Button variant="outline" size="sm" className="h-8" onClick={() => fileInputRef.current?.click()}>
+            <Image className="h-3.5 w-3.5 mr-1" /> Upload Layout
+          </Button>
+        )}
 
         <div className="flex-1" />
 
@@ -490,7 +652,7 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
       {/* Canvas */}
       <div
         className="relative overflow-hidden border rounded-lg bg-muted/30"
-        style={{ height: '600px', cursor: isPanning ? 'grabbing' : 'grab' }}
+        style={{ height: '600px', cursor: resizing ? HANDLE_CURSORS[resizing.handle] : (isPanning ? 'grabbing' : 'grab') }}
         onMouseDown={handleCanvasMouseDown}
         onMouseMove={handleCanvasMouseMove}
         onMouseUp={handleCanvasMouseUp}
@@ -506,6 +668,16 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
             transformOrigin: '0 0',
           }}
         >
+          {/* Background layout image */}
+          {layoutImage && (
+            <img
+              src={layoutImage}
+              alt="Layout background"
+              className="absolute inset-0 w-full h-full object-contain pointer-events-none"
+              style={{ opacity: layoutImageOpacity / 100, zIndex: 0 }}
+            />
+          )}
+
           <RoomWalls width={roomWidth} height={roomHeight} />
           <GridOverlay width={roomWidth} height={roomHeight} gridSize={gridSize} visible={showGrid} />
 
@@ -545,14 +717,15 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
           {/* Render sections */}
           {sections.map(section => {
             const isStructural = section.type === 'structural';
+            const theme = getSectionTheme(section);
             const colorClass = isStructural
               ? (STRUCTURAL_COLORS[section.structuralLabel || 'Custom'] || STRUCTURAL_COLORS.Custom)
-              : 'bg-background border-primary/40';
+              : `bg-background ${theme.border}`;
 
             return (
               <div
                 key={section.id}
-                className={`absolute rounded-lg border-2 select-none overflow-hidden ${colorClass}`}
+                className={`absolute rounded-lg border-2 select-none overflow-visible ${colorClass}`}
                 style={{
                   left: section.position.x,
                   top: section.position.y,
@@ -563,8 +736,11 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
                 }}
                 onMouseDown={e => handleSectionMouseDown(e, section.id, section.position)}
               >
+                {/* Resize handles */}
+                {renderResizeHandles(section)}
+
                 {/* Section header */}
-                <div className="flex items-center justify-between px-2 py-1 bg-inherit border-b border-inherit">
+                <div className={`flex items-center justify-between px-2 py-1 border-b border-inherit ${isStructural ? 'bg-inherit' : theme.header}`}>
                   <div className="flex items-center gap-1">
                     <GripHorizontal className="h-3 w-3 opacity-50" />
                     <span className="text-xs font-semibold truncate">{section.name}</span>
@@ -595,7 +771,7 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
                 </div>
 
                 {/* Section body */}
-                <div className="relative w-full" style={{ height: section.height - 28 }}>
+                <div className="relative w-full overflow-hidden" style={{ height: section.height - 28 }}>
                   {isStructural ? (
                     <div className="flex items-center justify-center h-full">
                       <Building2 className="h-8 w-8 opacity-30" />
@@ -610,8 +786,8 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
         </div>
       </div>
 
-      {/* Legend */}
-      <div className="flex items-center justify-center gap-4 text-xs">
+      {/* Legend with color-coded sections */}
+      <div className="flex flex-wrap items-center justify-center gap-4 text-xs">
         <div className="flex items-center gap-1.5">
           <div className="w-4 h-3 rounded border border-emerald-400 bg-emerald-50" />
           <span>Available</span>
@@ -624,30 +800,16 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
           <div className="w-4 h-3 rounded border border-muted-foreground/30 bg-muted" />
           <span>Booked/Blocked</span>
         </div>
-        {roomElements.length > 0 && (
-          <div className="flex items-center gap-1.5">
-            <div className="w-4 h-3 rounded border-2 border-orange-400 bg-orange-100" />
-            <span>Wall Element</span>
-          </div>
-        )}
+        {sections.filter(s => s.type === 'seats').map(section => {
+          const theme = getSectionTheme(section);
+          return (
+            <div key={section.id} className="flex items-center gap-1.5">
+              <div className={`w-3 h-3 rounded-full ${theme.dot}`} />
+              <span>{section.name}</span>
+            </div>
+          );
+        })}
       </div>
-
-      {/* Add structural dialog */}
-      <Dialog open={showAddStructural} onOpenChange={setShowAddStructural}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Add Structure</DialogTitle>
-          </DialogHeader>
-          <div className="grid grid-cols-2 gap-2 py-4">
-            {STRUCTURAL_TYPES.map(label => (
-              <Button key={label} variant="outline" className="h-16 flex-col gap-1" onClick={() => handleAddStructural(label)}>
-                <Building2 className="h-5 w-5" />
-                <span className="text-xs">{label}</span>
-              </Button>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Section editor dialog */}
       {editingSection && (
@@ -673,6 +835,8 @@ interface SectionEditorDialogProps {
   onGenerateSeats: (section: Section) => void;
   onDelete: (id: string) => void;
 }
+
+const COLOR_OPTIONS = Object.keys(SECTION_COLORS);
 
 const SectionEditorDialog: React.FC<SectionEditorDialogProps> = ({
   section,
@@ -714,6 +878,25 @@ const SectionEditorDialog: React.FC<SectionEditorDialogProps> = ({
             <Label>Section Name</Label>
             <Input value={local.name} onChange={e => update({ name: e.target.value })} />
           </div>
+
+          {/* Color theme picker */}
+          {local.type === 'seats' && (
+            <div>
+              <Label>Color Theme</Label>
+              <div className="flex gap-2 mt-1.5">
+                {COLOR_OPTIONS.map(color => (
+                  <button
+                    key={color}
+                    className={`w-7 h-7 rounded-full border-2 transition-all ${SECTION_COLORS[color].dot} ${
+                      (local.color || 'blue') === color ? 'ring-2 ring-offset-2 ring-primary scale-110' : 'opacity-70 hover:opacity-100'
+                    }`}
+                    onClick={() => update({ color })}
+                    title={color}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -772,14 +955,7 @@ const SectionEditorDialog: React.FC<SectionEditorDialogProps> = ({
           {local.type === 'structural' && (
             <div>
               <Label>Label</Label>
-              <Select value={local.structuralLabel || 'Custom'} onValueChange={v => update({ structuralLabel: v, name: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {STRUCTURAL_TYPES.map(t => (
-                    <SelectItem key={t} value={t}>{t}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Input value={local.structuralLabel || local.name} onChange={e => update({ structuralLabel: e.target.value, name: e.target.value })} />
             </div>
           )}
         </div>

@@ -143,6 +143,7 @@ export type Database = {
           image_url: string | null
           images: string[] | null
           is_active: boolean | null
+          layout_image: string | null
           name: string
           price: number | null
           room_elements: Json | null
@@ -165,6 +166,7 @@ export type Database = {
           image_url?: string | null
           images?: string[] | null
           is_active?: boolean | null
+          layout_image?: string | null
           name: string
           price?: number | null
           room_elements?: Json | null
@@ -187,6 +189,7 @@ export type Database = {
           image_url?: string | null
           images?: string[] | null
           is_active?: boolean | null
+          layout_image?: string | null
           name?: string
           price?: number | null
           room_elements?: Json | null
