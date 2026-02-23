@@ -269,6 +269,38 @@ export type Database = {
         }
         Relationships: []
       }
+      seat_categories: {
+        Row: {
+          cabin_id: string | null
+          created_at: string
+          id: string
+          name: string
+          price: number
+        }
+        Insert: {
+          cabin_id?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          price?: number
+        }
+        Update: {
+          cabin_id?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seat_categories_cabin_id_fkey"
+            columns: ["cabin_id"]
+            isOneToOne: false
+            referencedRelation: "cabins"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       seats: {
         Row: {
           cabin_id: string
