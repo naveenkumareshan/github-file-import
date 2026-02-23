@@ -1,0 +1,7 @@
+
+ALTER TABLE cabins ADD COLUMN room_width integer NOT NULL DEFAULT 800;
+ALTER TABLE cabins ADD COLUMN room_height integer NOT NULL DEFAULT 600;
+ALTER TABLE cabins ADD COLUMN grid_size integer NOT NULL DEFAULT 20;
+
+ALTER TABLE seats ADD COLUMN row_index integer NOT NULL DEFAULT 0;
+ALTER TABLE seats ADD COLUMN col_index integer NOT NULL DEFAULT 0;

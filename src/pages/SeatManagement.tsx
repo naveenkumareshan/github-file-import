@@ -6,698 +6,333 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
-import { SeatMapEditor, Seat } from "@/components/seats/SeatMapEditor";
-import {
-  RoomElementPositioner,
-  RoomElement,
-} from "@/components/admin/RoomElementPositioner";
 import { adminCabinsService } from "@/api/adminCabinsService";
 import { adminSeatsService, SeatData } from "@/api/adminSeatsService";
-import { ArrowLeft, Save, Plus, Building } from "lucide-react";
-
-interface CabinData {
-  _id: string;
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  capacity: number;
-  isActive: boolean;
-  category: "standard" | "premium" | "luxury";
-  serialNumber?: string;
-}
+import { ArrowLeft, Building, Plus } from "lucide-react";
+import { FloorPlanDesigner, FloorPlanSeat, RoomElement } from "@/components/seats/FloorPlanDesigner";
+import { GeneratedSeat } from "@/components/seats/AutoSeatGenerator";
 
 const SeatManagement = () => {
   const { cabinId } = useParams<{ cabinId: string }>();
   const navigate = useNavigate();
 
-  const [cabin, setCabin] = useState<CabinData | null>(null);
-  const [seats, setSeats] = useState<Seat[]>([]);
-  const [selectedSeat, setSelectedSeat] = useState<Seat | null>(null);
+  const [cabin, setCabin] = useState<any>(null);
+  const [seats, setSeats] = useState<FloorPlanSeat[]>([]);
+  const [selectedSeat, setSelectedSeat] = useState<FloorPlanSeat | null>(null);
   const [loading, setLoading] = useState(true);
   const [roomElements, setRoomElements] = useState<RoomElement[]>([]);
-  const [seatPrice, setSeatPrice] = useState<number>(0);
-  const [showAddSeatForm, setShowAddSeatForm] = useState(false);
-  const [numSeatsToAdd, setNumSeatsToAdd] = useState<number>(1);
-  const [isDragging, setIsDragging] = useState(false);
-  const [draggedSeats, setDraggedSeats] = useState<string[]>([]);
-  const [price, setPrice] = useState(0);
-  const [floors, setFloors] = useState([]);
-  const [selectedFloor, setSelectedFloor] = useState(1);
+  const [isSaving, setIsSaving] = useState(false);
 
+  // Room dimensions
+  const [roomWidth, setRoomWidth] = useState(800);
+  const [roomHeight, setRoomHeight] = useState(600);
+  const [gridSize, setGridSize] = useState(20);
+
+  // Floors
+  const [floors, setFloors] = useState<any[]>([]);
+  const [selectedFloor, setSelectedFloor] = useState(1);
   const [floorNumber, setFloorNumber] = useState("");
   const [editingFloorId, setEditingFloorId] = useState<number | null>(null);
   const [showAddFloorForm, setShowAddFloorForm] = useState(false);
 
-  const handleOpenAddFloor = () => {
-    setFloorNumber("");
-    setEditingFloorId(null);
-    setShowAddFloorForm(true);
-  };
-
-  const handleOpenEditFloor = (floor: { id: number; number: number }) => {
-    setFloorNumber(floor.number.toString());
-    setEditingFloorId(floor.id);
-    setShowAddFloorForm(true);
-  };
-
-
-
-  const handleAddOrUpdateFloor = async () => {
-    const number = floorNumber;
-    if (!number) return toast({ title: "Enter floor number" });
-
-    try {
-      const response = await adminCabinsService.addUpdateCabinFloor(cabin?.id || cabin?._id || '', {
-        floorId: editingFloorId, // pass floorId if editing
-        number,
-      });
-
-      if (response.success) {
-        setFloors(response.data.floors);
-        toast({
-          title: "Success",
-          description: editingFloorId ? "Floor updated" : "Floor added",
-        });
-        setFloorNumber("");
-        setEditingFloorId(null);
-        setShowAddFloorForm(false);
-      }
-    } catch (err: any) {
-      toast({
-        title: "Error",
-        description: err.message || "Something went wrong",
-        variant: "destructive",
-      });
-    }
-  };
+  // Seat details
+  const [price, setPrice] = useState(0);
 
   useEffect(() => {
-    if (cabinId) {
-      fetchCabinAndSeats(cabinId);
-    }
+    if (cabinId) fetchCabinData(cabinId);
   }, [cabinId]);
 
   useEffect(() => {
-    if (selectedFloor) {
-      fetchCabinSeats(cabinId, selectedFloor);
-    }
+    if (cabinId && selectedFloor) fetchSeats(cabinId, selectedFloor);
   }, [selectedFloor]);
 
-  const fetchCabinAndSeats = async (id: string) => {
+  const fetchCabinData = async (id: string) => {
     try {
       setLoading(true);
-
-      // Fetch cabin details
-      const cabinResponse = await adminCabinsService.getCabinById(id);
-      if (cabinResponse.success) {
-        const cabinData = cabinResponse.data;
-        setFloors(Array.isArray(cabinData.floors) ? cabinData.floors : []);
-        setCabin({
-          _id: cabinData.id,
-          id: cabinData.id,
-          name: cabinData.name,
-          description: cabinData.description || '',
-          price: cabinData.price || 0,
-          capacity: cabinData.capacity || 0,
-          isActive: cabinData.is_active !== false,
-          category: cabinData.category || 'standard',
-        });
-        setSeatPrice(cabinData.price || 0);
-
-        // Set room elements from cabin data if available
-        if (
-          Array.isArray(cabinData.room_elements) &&
-          cabinData.room_elements.length > 0
-        ) {
-          setRoomElements(cabinData.room_elements);
-        } else {
-          // Initialize with default elements if none exist
-          setRoomElements([
-            { id: "door-1", type: "door", position: { x: 20, y: 20 } },
-            { id: "bath-1", type: "bath", position: { x: 100, y: 20 } },
-          ]);
-        }
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to fetch cabin details",
-          variant: "destructive",
-        });
-        return;
+      const res = await adminCabinsService.getCabinById(id);
+      if (res.success) {
+        const d = res.data;
+        setCabin(d);
+        setFloors(Array.isArray(d.floors) ? d.floors : []);
+        setRoomWidth(d.room_width || 800);
+        setRoomHeight(d.room_height || 600);
+        setGridSize(d.grid_size || 20);
+        setRoomElements(Array.isArray(d.room_elements) && d.room_elements.length > 0 ? d.room_elements : []);
       }
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      toast({
-        title: "Error",
-        description: "An error occurred while fetching data",
-        variant: "destructive",
-      });
+    } catch (e) {
+      console.error(e);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchCabinSeats = async (id: string, selectedFloor: number) => {
+  const fetchSeats = async (id: string, floor: number) => {
     try {
       setLoading(true);
-      // Fetch seats for this cabin
-      const seatsResponse = await adminSeatsService.getSeatsByCabin(
-        id,
-        selectedFloor.toString(),
-      );
-      if (seatsResponse.success) {
-        setSeats(seatsResponse.data);
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to fetch seats",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error fetching data:", error);
-      toast({
-        title: "Error",
-        description: "An error occurred while fetching data",
-        variant: "destructive",
-      });
+      const res = await adminSeatsService.getSeatsByCabin(id, floor.toString());
+      if (res.success) setSeats(res.data);
+    } catch (e) {
+      console.error(e);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSeatSelect = (seat: Seat) => {
-    const newSeat = seat === selectedSeat ? null : seat;
-    setSelectedSeat(newSeat);
-    setPrice(newSeat?.price || 0);
+  const handleSave = async () => {
+    if (!cabinId) return;
+    setIsSaving(true);
+    try {
+      // Save room dimensions + elements
+      await adminCabinsService.updateCabinLayout(cabinId, roomElements, roomWidth, roomHeight, gridSize);
+
+      // Save seat positions
+      const seatsToUpdate = seats.map(s => ({
+        _id: s._id,
+        position: s.position,
+      }));
+      await adminSeatsService.updateSeatPositions(seatsToUpdate);
+
+      toast({ title: "Layout saved successfully" });
+    } catch (e) {
+      toast({ title: "Error saving layout", variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleBulkCreateSeats = async (generated: GeneratedSeat[]) => {
+    if (!cabinId) return;
+    try {
+      const newSeats: SeatData[] = generated.map(s => ({
+        number: s.number,
+        floor: selectedFloor,
+        cabinId,
+        price: s.price,
+        position: s.position,
+        isAvailable: true,
+        isHotSelling: false,
+      }));
+      const res = await adminSeatsService.bulkCreateSeats(newSeats);
+      if (res.success) {
+        await fetchSeats(cabinId, selectedFloor);
+        toast({ title: `${generated.length} seats generated successfully` });
+      }
+    } catch (e) {
+      toast({ title: "Error generating seats", variant: "destructive" });
+    }
+  };
+
+  const handleToggleSeatAvailability = async () => {
+    if (!selectedSeat) return;
+    try {
+      const res = await adminSeatsService.updateSeat(selectedSeat._id, {
+        isAvailable: !selectedSeat.isAvailable,
+      });
+      if (res.success) {
+        setSeats(seats.map(s => s._id === selectedSeat._id ? { ...s, isAvailable: !s.isAvailable } : s));
+        setSelectedSeat({ ...selectedSeat, isAvailable: !selectedSeat.isAvailable });
+        toast({ title: `Seat ${selectedSeat.number} updated` });
+      }
+    } catch (e) {
+      toast({ title: "Error", variant: "destructive" });
+    }
+  };
+
+  const handlePriceUpdate = async () => {
+    if (!selectedSeat) return;
+    try {
+      const res = await adminSeatsService.updateSeat(selectedSeat._id, { price });
+      if (res.success) {
+        setSeats(seats.map(s => s._id === selectedSeat._id ? { ...s, price } : s));
+        setSelectedSeat({ ...selectedSeat, price });
+        toast({ title: `Price updated for seat ${selectedSeat.number}` });
+      }
+    } catch (e) {
+      toast({ title: "Error", variant: "destructive" });
+    }
   };
 
   const toggleCabinStatus = async () => {
     if (!cabin) return;
-
     try {
-      const updatedCabin = { ...cabin, isActive: !cabin.isActive };
-      const response = await adminCabinsService.updateCabin(
-        cabin._id,
-        updatedCabin,
-      );
-
-      if (response.success) {
-        setCabin(response.data);
-        toast({
-          title: "Success",
-          description: `Reading room ${response.data.isActive ? "activated" : "deactivated"} successfully`,
-        });
-      } else {
-        throw new Error(response.message || "Failed to update cabin status");
+      const res = await adminCabinsService.updateCabin(cabin.id, { is_active: !cabin.is_active });
+      if (res.success) {
+        setCabin(res.data);
+        toast({ title: `Room ${res.data.is_active ? "activated" : "deactivated"}` });
       }
-    } catch (error) {
-      console.error("Error updating cabin status:", error);
-      toast({
-        title: "Error",
-        description: String(error),
-        variant: "destructive",
-      });
+    } catch (e) {
+      toast({ title: "Error", variant: "destructive" });
     }
   };
 
-  const handleSavePositions = async () => {
-    if (!cabinId) return;
-
+  const handleAddOrUpdateFloor = async () => {
+    if (!floorNumber || !cabin) return;
     try {
-      const seatsToUpdate = seats
-        // .filter(seat => draggedSeats.includes(seat._id))
-        .map((seat) => ({
-          _id: seat._id,
-          position: seat.position,
-        }));
-
-      const response =
-        await adminSeatsService.updateSeatPositions(seatsToUpdate);
-
-      if (response.success) {
-        toast({
-          title: "Success",
-          description: "Seat positions updated successfully",
-        });
-        setDraggedSeats([]);
-      } else {
-        throw new Error(response.message || "Failed to update seat positions");
-      }
-    } catch (error) {
-      console.error("Error saving seat positions:", error);
-      toast({
-        title: "Error",
-        description: String(error),
-        variant: "destructive",
+      const res = await adminCabinsService.addUpdateCabinFloor(cabin.id, {
+        floorId: editingFloorId,
+        number: floorNumber,
       });
+      if (res.success) {
+        setFloors(res.data.floors);
+        toast({ title: editingFloorId ? "Floor updated" : "Floor added" });
+        setFloorNumber("");
+        setEditingFloorId(null);
+        setShowAddFloorForm(false);
+      }
+    } catch (e) {
+      toast({ title: "Error", variant: "destructive" });
     }
   };
 
-  const handleSaveRoomElements = async (elements: RoomElement[]) => {
-    setRoomElements(elements);
-
-    try {
-      if (!cabinId) return;
-
-      const response = await adminCabinsService.updateCabinLayout(
-        cabinId,
-        elements,
-      );
-
-      if (response.success) {
-        toast({
-          title: "Success",
-          description: "Room layout saved successfully to database",
-        });
-      } else {
-        throw new Error(
-          response.error?.message || "Failed to save room layout",
-        );
-      }
-    } catch (error) {
-      console.error("Error saving room elements:", error);
-      toast({
-        title: "Error",
-        description: String(error),
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleToggleSeatAvailability = async (seat: Seat) => {
-    try {
-      const updatedSeat = { ...seat, isAvailable: !seat.isAvailable };
-      const response = await adminSeatsService.updateSeat(
-        seat._id,
-        updatedSeat,
-      );
-
-      if (response.success) {
-        setSeats(
-          seats.map((s) =>
-            s._id === seat._id ? { ...s, isAvailable: !s.isAvailable } : s,
-          ),
-        );
-        toast({
-          title: "Success",
-          description: `Seat ${seat.number} ${updatedSeat.isAvailable ? "activated" : "deactivated"} successfully`,
-        });
-      } else {
-        throw new Error(response.message || "Failed to update seat");
-      }
-    } catch (error) {
-      console.error("Error updating seat:", error);
-      toast({
-        title: "Error",
-        description: String(error),
-        variant: "destructive",
-      });
-    }
-  };
-
-  // handleToggleHotSelling removed
-
-  const handlePriceChange = async (seat: Seat, price: number) => {
-    try {
-      const updatedSeat = { ...seat, price: Number(price) };
-      const response = await adminSeatsService.updateSeat(
-        seat._id,
-        updatedSeat,
-      );
-
-      selectedSeat.price = Number(price);
-      setSelectedSeat(selectedSeat);
-
-      if (response.success) {
-        setSeats(
-          seats.map((s) =>
-            s._id === seat._id ? { ...s, isHotSelling: !s.isHotSelling } : s,
-          ),
-        );
-        toast({
-          title: "Success",
-          description: `Seat ${seat.number} updated successfully`,
-        });
-      } else {
-        throw new Error(response.message || "Failed to update seat");
-      }
-    } catch (error) {
-      console.error("Error updating seat:", error);
-      toast({
-        title: "Error",
-        description: String(error),
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleAddSeats = async () => {
-    if (!cabinId || numSeatsToAdd <= 0) return;
-
-    try {
-      // Get the next seat number
-      const nextSeatNumber =
-        seats.length > 0
-          ? Math.max(...seats.map((seat) => seat.number)) + 1
-          : 1;
-
-      const newSeats: SeatData[] = [];
-
-      // Generate positions for new seats
-      for (let i = 0; i < numSeatsToAdd; i++) {
-        // Calculate position - place in rows of 10
-        const row = Math.floor((seats.length + i) / 20);
-        const col = (seats.length + i) % 20;
-
-        newSeats.push({
-          number: nextSeatNumber + i,
-          floor: selectedFloor,
-          cabinId,
-          price: seatPrice,
-          position: {
-            x: 20 + col * 50,
-            y: 100 + row * 40,
-          },
-          isAvailable: true,
-          isHotSelling: false,
-        });
-      }
-
-      const response = await adminSeatsService.bulkCreateSeats(newSeats);
-
-      if (response.success) {
-        // Refresh the seats list
-        fetchCabinAndSeats(cabinId);
-        setShowAddSeatForm(false);
-        toast({
-          title: "Success",
-          description: `${numSeatsToAdd} seat(s) added successfully`,
-        });
-      } else {
-        throw new Error(response.message || "Failed to add seats");
-      }
-    } catch (error) {
-      console.error("Error adding seats:", error);
-      toast({
-        title: "Error",
-        description: String(error),
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleGoBack = () => {
-    navigate(-1);
-  };
-
-  // Extra data for the seat details panel
-  const seatDetails = selectedSeat
-    ? {
-        ...selectedSeat,
-        formattedPrice: `₹${selectedSeat.price}/month`,
-        status: selectedSeat.isAvailable
-          ? "Available"
-          : "Unavailable",
-      }
-    : null;
-
-  if (loading) {
+  if (loading && !cabin) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <div className="animate-spin h-8 w-8 border-4 border-cabin-wood border-t-transparent rounded-full"></div>
+        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleGoBack}
-        className="mb-4 flex items-center gap-2"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to Cabins
+    <div className="container mx-auto p-6 space-y-6">
+      {/* Header */}
+      <Button variant="outline" size="sm" onClick={() => navigate(-1)} className="flex items-center gap-2">
+        <ArrowLeft className="h-4 w-4" /> Back to Rooms
       </Button>
 
-      <Card className="mb-6">
+      {/* Room info card */}
+      <Card>
         <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-2">
           <div>
             <CardTitle className="text-2xl font-bold">{cabin?.name}</CardTitle>
             <p className="text-sm text-muted-foreground">
-              {cabin?.category} • {cabin?.capacity} capacity • ₹{cabin?.price}
-              /month
+              {cabin?.category} • {cabin?.capacity} capacity • ₹{cabin?.price}/month
             </p>
           </div>
           <div className="flex items-center space-x-2 mt-4 sm:mt-0">
-            <Label
-              htmlFor="cabin-status"
-              className={cabin?.isActive ? "text-green-500" : "text-red-500"}
-            >
-              {cabin?.isActive ? "Active" : "Inactive"}
+            <Label className={cabin?.is_active ? "text-emerald-600" : "text-destructive"}>
+              {cabin?.is_active ? "Active" : "Inactive"}
             </Label>
-            <Switch
-              id="cabin-status"
-              checked={cabin?.isActive || false}
-              onCheckedChange={toggleCabinStatus}
-            />
+            <Switch checked={cabin?.is_active || false} onCheckedChange={toggleCabinStatus} />
           </div>
         </CardHeader>
       </Card>
 
-      {/* Room Layout Section */}
-      <Card className="mb-6">
+      {/* Floor selector */}
+      <Card>
         <CardHeader>
-          <CardTitle>Room Layout & Elements</CardTitle>
+          <CardTitle className="text-lg">Floors</CardTitle>
         </CardHeader>
         <CardContent>
-          <RoomElementPositioner
-            roomId={cabinId || ""}
-            initialElements={roomElements}
-            onSave={handleSaveRoomElements}
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3 mb-4">
+            {floors.map((floor: any) => (
+              <div
+                key={floor.id}
+                className={`border rounded-lg p-3 flex flex-col items-center gap-1 cursor-pointer transition-all ${
+                  selectedFloor === floor.id ? "bg-primary/10 border-primary shadow-sm" : "hover:border-primary/50"
+                }`}
+                onClick={() => setSelectedFloor(floor.id)}
+              >
+                <Building className="h-5 w-5" />
+                <span className="text-sm font-medium">Floor {floor.number}</span>
+                <Button
+                  size="sm" variant="ghost" className="text-xs h-6 px-2"
+                  onClick={e => {
+                    e.stopPropagation();
+                    setFloorNumber(floor.number.toString());
+                    setEditingFloorId(floor.id);
+                    setShowAddFloorForm(true);
+                  }}
+                >
+                  Edit
+                </Button>
+              </div>
+            ))}
+            <div
+              className="border border-dashed rounded-lg p-3 flex flex-col items-center gap-1 cursor-pointer text-muted-foreground hover:border-primary/50"
+              onClick={() => { setFloorNumber(""); setEditingFloorId(null); setShowAddFloorForm(true); }}
+            >
+              <Plus className="h-5 w-5" />
+              <span className="text-sm font-medium">Add Floor</span>
+            </div>
+          </div>
+
+          {showAddFloorForm && (
+            <div className="border rounded-lg p-4">
+              <h3 className="font-medium mb-3">{editingFloorId ? "Update Floor" : "Add Floor"}</h3>
+              <div className="flex items-end gap-3">
+                <div>
+                  <Label>Floor Number</Label>
+                  <Input type="number" min={1} value={floorNumber} onChange={e => setFloorNumber(e.target.value)} className="w-32" />
+                </div>
+                <Button onClick={handleAddOrUpdateFloor} disabled={!floorNumber}>
+                  {editingFloorId ? "Update" : "Add"}
+                </Button>
+                <Button variant="outline" onClick={() => { setShowAddFloorForm(false); setFloorNumber(""); }}>Cancel</Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Floor Plan Designer */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Floor Plan Designer</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <FloorPlanDesigner
+            cabinId={cabinId || ""}
+            roomWidth={roomWidth}
+            roomHeight={roomHeight}
+            gridSize={gridSize}
+            seats={seats}
+            roomElements={roomElements}
+            onRoomDimensionsChange={(w, h, g) => { setRoomWidth(w); setRoomHeight(h); setGridSize(g); }}
+            onSeatsChange={setSeats}
+            onRoomElementsChange={setRoomElements}
+            onSeatSelect={seat => { setSelectedSeat(seat); if (seat) setPrice(seat.price); }}
+            selectedSeat={selectedSeat}
+            onSave={handleSave}
+            onBulkCreateSeats={handleBulkCreateSeats}
+            isSaving={isSaving}
           />
         </CardContent>
       </Card>
 
-      {/* Seat Management Section */}
-      <Card>
-        <CardHeader className="flex flex-row justify-between items-center">
-          <CardTitle>Seat Management</CardTitle>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
-            {floors.map((floor) => (
-              <div
-                key={floor.id}
-                className={`border rounded-md p-4 flex flex-col items-center justify-center gap-2 cursor-pointer
-                  ${selectedFloor === floor.id ? "bg-blue-100 border-blue-500" : "border-gray-300"}
-                `}
-                onClick={() => setSelectedFloor(floor.id)}
-              >
-                <Building className="h-6 w-6 text-gray-700" />
-                <span className="font-medium text-gray-800">Floor {floor.number}</span>
-                
-                {/* Edit button */}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="mt-2 px-2 py-1 text-sm"
-                  onClick={(e) => {
-                    e.stopPropagation(); // prevent card click
-                    handleOpenEditFloor(floor);
-                  }}
-                >
-                  ✎ Edit
-                </Button>
-              </div>
-            ))}
-
-            {/* Add Floor card */}
-            <div
-              className="border border-dashed rounded-md p-4 flex flex-col items-center justify-center gap-2 cursor-pointer text-gray-700"
-              onClick={handleOpenAddFloor}
-            >
-              <Plus className="h-6 w-6" />
-              <span className="font-medium">Add Floor</span>
-            </div>
-          </div>
-
-          <div className="flex gap-2 items-center">
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-2"
-              onClick={() => handleOpenAddFloor}
-            >
-              <Plus className="h-4 w-4" />
-              Add Seats
-            </Button>
-            {draggedSeats.length > 0 && (
-              <Button
-                size="sm"
-                className="flex items-center gap-2"
-                onClick={handleSavePositions}
-              >
-                <Save className="h-4 w-4" />
-                Save Positions
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-
-        <CardContent>
-          {showAddSeatForm && (
-            <div className="border rounded p-4 mb-6">
-              <h3 className="text-lg font-medium mb-3">Add New Seats</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <Label htmlFor="num-seats">Number of Seats</Label>
-                  <Input
-                    id="num-seats"
-                    type="number"
-                    min="1"
-                    value={numSeatsToAdd}
-                    onChange={(e) =>
-                      setNumSeatsToAdd(parseInt(e.target.value) || 0)
-                    }
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="seat-price">Price per Seat (₹/month)</Label>
-                  <Input
-                    id="seat-price"
-                    type="number"
-                    min="0"
-                    value={seatPrice}
-                    onChange={(e) =>
-                      setSeatPrice(parseFloat(e.target.value) || 0)
-                    }
-                  />
+      {/* Selected seat details */}
+      {selectedSeat && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Seat #{selectedSeat.number} Details</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div>
+                <Label className="text-sm font-medium">Status</Label>
+                <div className="flex items-center gap-2 mt-1">
+                  <Label className={selectedSeat.isAvailable ? "text-emerald-600" : "text-destructive"}>
+                    {selectedSeat.isAvailable ? "Available" : "Unavailable"}
+                  </Label>
+                  <Switch checked={selectedSeat.isAvailable} onCheckedChange={handleToggleSeatAvailability} />
                 </div>
               </div>
-              <div className="flex justify-end space-x-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowAddSeatForm(false)}
-                >
-                  Cancel
-                </Button>
-                <Button onClick={handleAddSeats}>Add Seats</Button>
-              </div>
-            </div>
-          )}
-          {showAddFloorForm && (
-            <div className="border rounded p-4 mb-6">
-              <h3 className="text-lg font-medium mb-3">
-                {editingFloorId ? "Update Floor" : "Add New Floor"}
-              </h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <Label htmlFor="floor-number">Floor Number</Label>
-                  <Input
-                    id="floor-number"
-                    type="number"
-                    min="1"
-                    value={floorNumber}
-                    onChange={(e) =>
-                      setFloorNumber(e.target.value)
-                    }
-                    placeholder="Enter floor number"
-                  />
+              <div>
+                <Label className="text-sm font-medium">Price (₹/month)</Label>
+                <div className="flex items-center gap-2 mt-1">
+                  <Input type="number" className="w-28" value={price} onChange={e => setPrice(+e.target.value)} />
+                  <Button size="sm" onClick={handlePriceUpdate}>Update</Button>
                 </div>
               </div>
-
-              <div className="flex justify-end space-x-2">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowAddFloorForm(false);
-                    setFloorNumber("");
-                  }}
-                >
-                  Cancel
-                </Button>
-
-                <Button onClick={handleAddOrUpdateFloor} disabled={!floorNumber}>
-                  {editingFloorId ? "Update Floor" : "Add Floor"}
-                </Button>
+              <div>
+                <Label className="text-sm font-medium">Position</Label>
+                <p className="text-sm text-muted-foreground mt-1">
+                  X: {selectedSeat.position.x}, Y: {selectedSeat.position.y}
+                </p>
               </div>
             </div>
-          )}
-
-          {seats.length > 0 ? (
-            <div>
-              <SeatMapEditor
-                seats={seats}
-                onSeatSelect={handleSeatSelect}
-                selectedSeat={selectedSeat}
-                isAdmin={true}
-                onSavePositions={handleSavePositions}
-                roomElements={roomElements}
-              />
-
-              {selectedSeat && (
-                <div className="mt-6 border rounded p-4">
-                  <h3 className="text-lg font-medium mb-3">Seat Details</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm font-medium">Seat Number</p>
-                      <p>{selectedSeat.number}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">Price</p>
-                      <p>{seatDetails?.formattedPrice}</p>
-                      <input
-                        type="number"
-                        className="border px-2 py-1 rounded text-sm w-24"
-                        placeholder="Price"
-                        onChange={(e) => setPrice(Number(e.target.value))}
-                        value={price}
-                      />
-                      <Button
-                        size="sm"
-                        onClick={() => handlePriceChange(selectedSeat, price)}
-                      >
-                        Update
-                      </Button>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium">Availability</p>
-                      <div className="flex items-center space-x-2">
-                        <Label
-                          htmlFor="seat-status"
-                          className={
-                            selectedSeat.isAvailable
-                              ? "text-green-500"
-                              : "text-red-500"
-                          }
-                        >
-                          {selectedSeat.isAvailable
-                            ? "Available"
-                            : "Unavailable"}
-                        </Label>
-                        <Switch
-                          id="seat-status"
-                          checked={selectedSeat.isAvailable}
-                          onCheckedChange={() =>
-                            handleToggleSeatAvailability(selectedSeat)
-                          }
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="text-center py-12 text-gray-500">
-              No seats found for this room. Add some seats to begin.
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

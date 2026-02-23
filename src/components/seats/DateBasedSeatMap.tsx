@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/popover";
 import { Building, CalendarIcon, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { SeatGridMap } from "./SeatGridMap";
+import { FloorPlanViewer } from "./FloorPlanViewer";
 import { seatsService, SeatAvailabilityResponse } from "@/api/seatsService";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -372,18 +372,14 @@ const DateBasedSeatMapComponent: React.FC<DateBasedSeatMapProps> = ({
               <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
             </div>
           ) : (
-            <SeatGridMap
+            <FloorPlanViewer
               seats={transformedSeats}
+              roomElements={roomElements}
+              roomWidth={800}
+              roomHeight={600}
               onSeatSelect={onSeatSelect}
               selectedSeat={selectedSeat}
-              isAdmin={false}
-              readOnly={false}
-              showDateInfo={true}
-              dateRange={{
-                start: startDate,
-                end: endDate,
-              }}
-              roomElements={roomElements}
+              dateRange={{ start: startDate, end: endDate }}
             />
           )}
         </CardContent>

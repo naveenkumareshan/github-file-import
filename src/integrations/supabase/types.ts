@@ -138,6 +138,7 @@ export type Database = {
           created_at: string | null
           description: string | null
           floors: Json | null
+          grid_size: number
           id: string
           image_url: string | null
           images: string[] | null
@@ -145,6 +146,8 @@ export type Database = {
           name: string
           price: number | null
           room_elements: Json | null
+          room_height: number
+          room_width: number
           state: string | null
         }
         Insert: {
@@ -156,6 +159,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           floors?: Json | null
+          grid_size?: number
           id?: string
           image_url?: string | null
           images?: string[] | null
@@ -163,6 +167,8 @@ export type Database = {
           name: string
           price?: number | null
           room_elements?: Json | null
+          room_height?: number
+          room_width?: number
           state?: string | null
         }
         Update: {
@@ -174,6 +180,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           floors?: Json | null
+          grid_size?: number
           id?: string
           image_url?: string | null
           images?: string[] | null
@@ -181,6 +188,8 @@ export type Database = {
           name?: string
           price?: number | null
           room_elements?: Json | null
+          room_height?: number
+          room_width?: number
           state?: string | null
         }
         Relationships: []
@@ -257,6 +266,7 @@ export type Database = {
       seats: {
         Row: {
           cabin_id: string
+          col_index: number
           created_at: string
           floor: number
           id: string
@@ -266,12 +276,14 @@ export type Database = {
           position_x: number
           position_y: number
           price: number
+          row_index: number
           sharing_capacity: number
           sharing_type: string
           unavailable_until: string | null
         }
         Insert: {
           cabin_id: string
+          col_index?: number
           created_at?: string
           floor?: number
           id?: string
@@ -281,12 +293,14 @@ export type Database = {
           position_x?: number
           position_y?: number
           price?: number
+          row_index?: number
           sharing_capacity?: number
           sharing_type?: string
           unavailable_until?: string | null
         }
         Update: {
           cabin_id?: string
+          col_index?: number
           created_at?: string
           floor?: number
           id?: string
@@ -296,6 +310,7 @@ export type Database = {
           position_x?: number
           position_y?: number
           price?: number
+          row_index?: number
           sharing_capacity?: number
           sharing_type?: string
           unavailable_until?: string | null
