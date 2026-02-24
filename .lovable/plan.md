@@ -1,37 +1,63 @@
 
 
-## Reorder Booking Form: Payment Method After Partial Amount
+## Remove Duplicate Seat Amount and Locker Lines
 
-### Current Order (confusing)
-1. Seat Amount
-2. Locker
-3. Partial Payment toggle + details
-4. Discount
-5. Payment Method + Transaction ID
-6. Summary (Total, Advance, Due)
-7. Confirm Button
+### Problem
+The form currently shows Seat Amount and Locker twice -- once as separate input/checkbox fields, and again inside the summary card below. The user wants only the summary card version, with the discount fields integrated there too.
 
-### New Order (clean flow)
-1. Seat Amount
-2. Locker
-3. Discount
-4. **Booking Summary** (Seat Amount, Discount, Locker, **Total**)
-5. **Partial Payment** toggle + Amount to Collect + Due Date + breakdown
-6. **Payment Method** + Transaction ID
-7. Collected by
-8. **Confirm Button** (shows collecting amount, not total, when partial is ON)
+### Current Layout (lines 1014-1057)
+```text
+SEAT AMOUNT (₹) [2000]          <-- REMOVE (duplicate)
+[x] Include Locker  ₹300        <-- REMOVE (duplicate)
+DISCOUNT [amount] [reason]       <-- MOVE into summary area
+---Summary Card---
+  Seat Amount         ₹2000     <-- KEEP (only display)
+  Locker              ₹300      <-- KEEP
+  Discount           -₹X        <-- KEEP
+  Total              ₹2300      <-- KEEP
+```
+
+### New Layout
+```text
+[x] Include Locker (Mandatory)  ₹300   <-- Keep checkbox (needed for toggling)
+DISCOUNT [amount] [reason]               <-- Keep inputs
+---Summary Card---
+  Seat Amount         ₹2000
+  Locker              ₹300
+  Discount           -₹X
+  Total              ₹2300
+```
+
+Wait -- the user needs the locker checkbox to toggle it. But the Seat Amount input is read-only so it's truly redundant. Let me re-read: "two times seat amount and locker is showing only use down one only - with discount there only - no separate line needed."
+
+The user wants:
+1. **Remove** the standalone Seat Amount input (line 1014-1018) -- it's read-only and just duplicates the summary
+2. **Remove** the standalone Locker checkbox section (lines 1020-1035) -- but we still need the checkbox functionality. Move it into the summary card as a toggleable line.
+3. **Remove** the separate Discount section (lines 1037-1044) -- move the discount inputs into the summary card area.
 
 ### Changes in `src/pages/vendor/VendorSeats.tsx`
 
-**Move sections around (lines 1037-1167):**
+**1. Remove standalone Seat Amount input (lines 1014-1018)**
+Delete the `<div>` with Label "Seat Amount" and readonly Input.
 
-- Move **Discount** (lines 1099-1106) up to right after Locker (after line 1035)
-- Move **Booking Summary** (lines 1148-1167) up to right after Discount, but remove the advance/due lines and "collected by" from it -- keep it as just: Seat Amount, Discount, Locker, Total
-- Keep **Partial Payment toggle** (lines 1037-1055) after the summary
-- Keep **Partial Payment details** (lines 1057-1097) after the toggle
-- Move **Payment Method** (lines 1108-1145) after partial payment details
-- Add a final line showing "Collected by" and the collecting amount before the button
-- **Fix Confirm Button** (line 1174): show advance amount when partial is ON instead of always showing total
+**2. Remove standalone Locker checkbox (lines 1020-1035)**
+Delete the separate locker checkbox section.
 
-### Result
-The partner sees a natural top-down flow: price calculation first, then decide partial or full, then pick how to pay, then confirm with the correct amount displayed.
+**3. Remove standalone Discount section (lines 1037-1044)**
+Delete the separate discount inputs.
+
+**4. Expand the Summary Card (lines 1046-1057) to include everything**
+Replace the summary card with a combined card that shows:
+- Seat Amount line (read-only display): `Seat Amount  ₹2000`
+- Locker line with checkbox: `[x] Include Locker (Mandatory)  ₹300` (clickable to toggle, disabled if mandatory)
+- Discount inputs inline: `₹ Amount` + `Reason` input fields
+- If discount > 0, show discount line: `Discount (reason)  -₹X`
+- Separator
+- **Total** bold: `Total  ₹2300`
+
+### File Changed
+
+| File | Change |
+|------|--------|
+| `src/pages/vendor/VendorSeats.tsx` | Remove duplicate seat amount, locker, discount sections; consolidate into single summary card |
+
