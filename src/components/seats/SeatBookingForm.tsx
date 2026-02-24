@@ -578,9 +578,16 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                 </Alert>
 
                 <div className="space-y-2">
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center">
                     <span>Selected Seat:</span>
-                    <span>#{selectedSeat.number}</span>
+                    <div className="flex items-center gap-2">
+                      <span>#{selectedSeat.number}</span>
+                      {(selectedSeat as any).category && (
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                          {(selectedSeat as any).category}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex justify-between">
                     <span>Seat Price:</span>

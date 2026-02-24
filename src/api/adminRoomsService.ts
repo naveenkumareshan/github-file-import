@@ -1,68 +1,43 @@
-
-import axios from './axiosConfig';
-
-export interface RoomData {
-  name: string;
-  description: string;
-  price: number;
-  capacity?: number;
-  amenities?: string[];
-  imageSrc?: string;
-  category: 'standard' | 'premium' | 'luxury';
-  serialNumber?: string;
-  isActive?: boolean;
-}
+import { supabase } from '@/integrations/supabase/client';
 
 export const adminRoomsService = {
-  getAllRooms: async (filters = {}) => {
-    const response = await axios.get('/admin/rooms', { params: filters });
-    return response.data;
+  toggleRoomActive: async (id: string, isActive: boolean) => {
+    try {
+      const updateData: any = { is_active: isActive };
+      // When deactivating, also disable booking
+      if (!isActive) {
+        updateData.is_booking_active = false;
+      }
+
+      const { data, error } = await supabase
+        .from('cabins')
+        .update(updateData)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error toggling room active:', error);
+      return { success: false, message: error instanceof Error ? error.message : 'Failed to update room status' };
+    }
   },
-  
-  getRoomById: async (id: string) => {
-    const response = await axios.get(`/admin/rooms/${id}`);
-    return response.data;
+
+  toggleBookingActive: async (id: string, isBookingActive: boolean) => {
+    try {
+      const { data, error } = await supabase
+        .from('cabins')
+        .update({ is_booking_active: isBookingActive })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error toggling booking status:', error);
+      return { success: false, message: error instanceof Error ? error.message : 'Failed to update booking status' };
+    }
   },
-  
-  createRoom: async (data: RoomData) => {
-    const response = await axios.post('/admin/rooms', data);
-    return response.data;
-  },
-  
-  updateRoom: async (id: string, data: Partial<RoomData>) => {
-    const response = await axios.put(`/admin/rooms/${id}`, data);
-    return response.data;
-  },
-  
-  deleteRoom: async (id: string) => {
-    const response = await axios.delete(`/admin/rooms/${id}`);
-    return response.data;
-  },
-  
-  restoreRoom: async (id: string, type:string, status:boolean) => {
-    const response = await axios.put(`/admin/rooms/${id}/restore`, { isActive: status, type });
-    return response.data;
-  },
-  
-  uploadRoomImage: async (roomId: string, file: File) => {
-    const formData = new FormData();
-    formData.append('image', file);
-    
-    const response = await axios.post(`/admin/rooms/${roomId}/image`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-    return response.data;
-  },
-  
-  getRoomStats: async () => {
-    const response = await axios.get('/admin/rooms/stats');
-    return response.data;
-  },
-  
-  bulkUpdateRooms: async (rooms: {id: string, updates: Partial<RoomData>}[]) => {
-    const response = await axios.post('/admin/rooms/bulk-update', { rooms });
-    return response.data;
-  }
 };

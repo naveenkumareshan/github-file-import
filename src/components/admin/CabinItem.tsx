@@ -121,10 +121,11 @@ export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBoo
               <Button
                 size="sm"
                 variant="outline"
+                disabled={!cabin.isActive}
                 className={`h-7 px-2 text-xs ${!cabin.isBookingActive ? "text-emerald-600 border-emerald-200 hover:bg-emerald-50" : "text-orange-600 border-orange-200 hover:bg-orange-50"}`}
                 onClick={() => onToggleBooking(cabin._id, !cabin.isBookingActive)}
               >
-                {!cabin.isBookingActive ? "▶ Enable" : "⏸ Disable"}
+                {!cabin.isBookingActive ? "▶ Enable" : "⏸ Pause"}
               </Button>
             )}
           </div>
