@@ -7,7 +7,6 @@ import { useToast } from '@/hooks/use-toast';
 import { transactionService } from '@/api/transactionService';
 import { format, differenceInDays } from 'date-fns';
 import { CreditCard, Calendar, RefreshCw, IndianRupee, Clock, TicketPercent } from 'lucide-react';
-import { CreditCard, Calendar, RefreshCw, IndianRupee, Clock, TicketPercent } from 'lucide-react';
 
 interface Transaction {
   id: string;
@@ -128,11 +127,9 @@ export const BookingTransactionView = ({ bookingId, bookingType, booking }: Book
 
   if (loading) {
     return (
-      <Card>
-        <CardContent className="flex justify-center py-12">
-          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
-        </CardContent>
-      </Card>
+      <div className="flex justify-center py-12">
+        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
+      </div>
     );
   }
 
