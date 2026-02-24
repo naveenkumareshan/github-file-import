@@ -37,6 +37,9 @@ interface DateBasedSeatMapProps {
   endDate?: Date;
   roomElements?: RoomElement[];
   sections?: any[];
+  layoutImage?: string | null;
+  roomWidth?: number;
+  roomHeight?: number;
 }
 
 const DateBasedSeatMapComponent: React.FC<DateBasedSeatMapProps> = ({
@@ -49,6 +52,9 @@ const DateBasedSeatMapComponent: React.FC<DateBasedSeatMapProps> = ({
   endDate: propEndDate,
   roomElements = [],
   sections = [],
+  layoutImage,
+  roomWidth = 800,
+  roomHeight = 600,
 }) => {
   const [startDate, setStartDate] = useState<Date>(propStartDate || new Date());
   const [endDate, setEndDate] = useState<Date>(
@@ -378,11 +384,12 @@ const DateBasedSeatMapComponent: React.FC<DateBasedSeatMapProps> = ({
             <FloorPlanViewer
               seats={transformedSeats}
               sections={sections}
-              roomWidth={800}
-              roomHeight={600}
+              roomWidth={roomWidth}
+              roomHeight={roomHeight}
               onSeatSelect={onSeatSelect}
               selectedSeat={selectedSeat}
               dateRange={{ start: startDate, end: endDate }}
+              layoutImage={layoutImage}
             />
           )}
         </CardContent>

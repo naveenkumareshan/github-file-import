@@ -70,18 +70,10 @@ export function CabinImageSlider({ images, className = '' }: CabinImageSliderPro
               <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-muted">
                 <img 
                   src={getImageUrl(image)} 
-                  alt={`Cabin view ${index + 1}`} 
+                  alt="" 
                   className="w-full h-full object-cover"
                   onClick={openModal}
                 />
-                <Button 
-                  size="icon"
-                  variant="ghost"
-                  className="absolute top-2 right-2 h-8 w-8 rounded-full bg-black/30 text-white hover:bg-black/50"
-                  onClick={openModal}
-                >
-                  <Expand size={16} />
-                </Button>
               </div>
             </CarouselItem>
           ))}
@@ -138,7 +130,7 @@ export function CabinImageSlider({ images, className = '' }: CabinImageSliderPro
           <div className="relative h-[80vh] flex items-center justify-center">
             <img 
               src={getImageUrl(imagesToShow[currentIndex])} 
-              alt={`Gallery image ${currentIndex + 1}`} 
+              alt="" 
               className="max-h-full max-w-full object-contain"
             />
             
