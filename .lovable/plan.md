@@ -31,6 +31,7 @@ Remove the Card wrapper around the Floor Plan Designer and reduce padding so the
 
 Specific changes:
 - **Remove** the `toggleCabinStatus` function and the `<Switch>` + status label JSX (lines 241-246)
+- **Remove** the `import { Switch }` line
 - **Replace** the cabin header Card with a simple `<div>` showing name + metadata in one line
 - **Merge** Categories and Floors into one compact Card with two sections side by side
 - **Reduce** floor tiles from large cards to small inline pills/buttons
