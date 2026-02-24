@@ -81,6 +81,7 @@ export function CabinEditor({
     nearbyLandmarks: existingCabin?.location?.nearbyLandmarks || [],
     lockerAvailable: existingCabin?.lockerAvailable ?? existingCabin?.locker_available ?? false,
     lockerPrice: existingCabin?.lockerPrice ?? existingCabin?.locker_price ?? 0,
+    lockerMandatory: existingCabin?.lockerMandatory ?? existingCabin?.locker_mandatory ?? true,
     created_by: existingCabin?.created_by || "",
   });
 
@@ -470,26 +471,53 @@ export function CabinEditor({
                   </div>
 
                   {cabin.lockerAvailable && (
-                    <div className="flex items-center gap-2 mt-3">
-                      <span className="text-lg">₹</span>
-                      <Input
-                        id="lockerPrice"
-                        name="lockerPrice"
-                        type="number"
-                        value={cabin.lockerPrice}
-                        onChange={handleInputChange}
-                        className="text-lg"
-                        min={1}
-                        required
-                      />
-                      <span className="text-lg">/month</span>
-                    </div>
+                    <>
+                      <div className="flex items-center gap-2 mt-3">
+                        <span className="text-lg">₹</span>
+                        <Input
+                          id="lockerPrice"
+                          name="lockerPrice"
+                          type="number"
+                          value={cabin.lockerPrice}
+                          onChange={handleInputChange}
+                          className="text-lg"
+                          min={1}
+                          required
+                        />
+                        <span className="text-lg">/month</span>
+                      </div>
+                      <div className="mt-3">
+                        <Label className="text-sm font-medium mb-2 block">Locker Requirement</Label>
+                        <div className="flex gap-4">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="lockerMandatory"
+                              checked={cabin.lockerMandatory === true}
+                              onChange={() => setCabin(prev => ({ ...prev, lockerMandatory: true }))}
+                              className="h-4 w-4"
+                            />
+                            <span className="text-sm">Mandatory for Student</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="lockerMandatory"
+                              checked={cabin.lockerMandatory === false}
+                              onChange={() => setCabin(prev => ({ ...prev, lockerMandatory: false }))}
+                              className="h-4 w-4"
+                            />
+                            <span className="text-sm">Optional for Student</span>
+                          </label>
+                        </div>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {cabin.lockerMandatory 
+                          ? "Students must pay locker deposit during booking" 
+                          : "Students can choose whether to add a locker"}
+                      </p>
+                    </>
                   )}
-                {cabin.lockerAvailable && (
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Add optional locker charges per month
-                  </p>
-                )}
                 </div>
                 <div>
                   <Label htmlFor="price" className="text-lg font-medium">

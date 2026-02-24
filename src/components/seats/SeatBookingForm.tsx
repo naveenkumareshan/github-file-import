@@ -92,7 +92,6 @@ interface Seat {
     y: number;
   };
   isAvailable: boolean;
-  isHotSelling?: boolean;
 }
 
 interface SeatBookingFormProps {
@@ -143,7 +142,8 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
   const bookingSuccessRef = useRef<HTMLDivElement | null>(null);
 
 
-  const [hotSellingPrice, setHotSellingPrice] = useState(0);
+  const [lockerOptedIn, setLockerOptedIn] = useState(true);
+  const lockerMandatory = (cabin as any)?.lockerMandatory ?? true;
   const [selectedDuration, setSelectedDuration] = useState<BookingDuration>({
     type: "monthly",
     count: 1,
@@ -233,15 +233,12 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
             break;
         }
 
-        const hotSellingMarkup = selectedSeat.isHotSelling
-          ? basePrice * 0.05
-          : 0;
-
-        const finalSeatPrice = basePrice + hotSellingMarkup;
-        setHotSellingPrice(hotSellingMarkup);
+        const finalSeatPrice = basePrice;
         setSeatPrice(Math.round(finalSeatPrice * 100) / 100);
         
-        const totalWithoutCoupon = Math.round((finalSeatPrice + keyDeposit) * 100) / 100;
+        // Calculate locker deposit based on mandatory/optional
+        const effectiveLockerDeposit = lockerMandatory ? keyDeposit : (lockerOptedIn ? keyDeposit : 0);
+        const totalWithoutCoupon = Math.round((finalSeatPrice + effectiveLockerDeposit) * 100) / 100;
         setOriginalPrice(totalWithoutCoupon);
         
         // Apply coupon discount if exists
@@ -253,7 +250,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
         }
       }
     }
-  }, [selectedSeat, selectedDuration, startDate, keyDeposit, appliedCoupon]);
+  }, [selectedSeat, selectedDuration, startDate, keyDeposit, appliedCoupon, lockerOptedIn, lockerMandatory]);
 
   useEffect(() => {
     if (startDate) {
@@ -345,6 +342,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
 
       const response = await bookingsService.createBooking({
         cabin_id: cabin._id || cabin.id || "",
+        seat_id: selectedSeat._id || selectedSeat.id || "",
         seat_number: selectedSeat.number,
         start_date: format(withFixedTime(startDate, CHECK_IN_HOUR), 'yyyy-MM-dd'),
         end_date: format(withFixedTime(endDate, CHECK_OUT_HOUR), 'yyyy-MM-dd'),
@@ -577,14 +575,29 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
               <>
                 <Separator />
 
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    A key deposit of ₹{keyDeposit} is required for all new
-                    bookings. This deposit will be refunded when you vacate the
-                    seat.
-                  </AlertDescription>
-                </Alert>
+                {lockerMandatory ? (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      A locker deposit of ₹{keyDeposit} is required for all new
+                      bookings. This deposit will be refunded when you vacate the
+                      seat.
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <div className="flex items-center gap-2 p-3 border rounded-md bg-muted/30">
+                    <input
+                      type="checkbox"
+                      id="lockerOptIn"
+                      checked={lockerOptedIn}
+                      onChange={(e) => setLockerOptedIn(e.target.checked)}
+                      className="h-4 w-4"
+                    />
+                    <label htmlFor="lockerOptIn" className="text-sm cursor-pointer">
+                      Add Locker (₹{keyDeposit} deposit - refundable)
+                    </label>
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
@@ -602,14 +615,10 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                     <span>Seat Price:</span>
                     <span>₹{Math.round(selectedSeat?.price || 0)} / month</span>
                   </div>
-                  <div className="flex justify-between text-blue-600">
-                    <span>Key Deposit:</span>
-                    <span>+ ₹{keyDeposit}</span>
-                  </div>
-                  {selectedSeat?.isHotSelling && (
-                    <div className="flex justify-between text-pink-600">
-                      <span>Hot Selling Premium (5%):</span>
-                      <span>+ ₹{hotSellingPrice}</span>
+                  {(lockerMandatory || lockerOptedIn) && (
+                    <div className="flex justify-between text-blue-600">
+                      <span>Locker Deposit:</span>
+                      <span>+ ₹{keyDeposit}</span>
                     </div>
                   )}
                   {appliedCoupon && (

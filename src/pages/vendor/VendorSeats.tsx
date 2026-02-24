@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { MapPin, Users, Calendar as CalendarIcon, DollarSign, Edit, Save, X } from 'lucide-react';
+import { MapPin, Users, Calendar as CalendarIcon, DollarSign, Edit, Save, X, Eye } from 'lucide-react';
 import { DateBasedSeatMap } from '@/components/seats/DateBasedSeatMap';
 import { useToast } from '@/hooks/use-toast';
 import { vendorSeatsService, VendorSeat, VendorCabin, SeatFilters } from '@/api/vendorSeatsService';
@@ -141,22 +141,6 @@ const VendorSeats: React.FC = () => {
     }
   };
 
-  const handleToggleHotSelling = async (seat: VendorSeat) => {
-    setUpdating(true);
-    try {
-      const result = await vendorSeatsService.toggleHotSelling(seat._id, !seat.isHotSelling);
-      if (result.success) {
-        toast({ title: "Success", description: seat.isHotSelling ? "Removed hot selling" : "Marked as hot selling" });
-        fetchSeats();
-      } else {
-        toast({ title: "Error", description: "Failed to update hot selling status", variant: "destructive" });
-      }
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to update hot selling status", variant: "destructive" });
-    } finally {
-      setUpdating(false);
-    }
-  };
 
   function getSeatStatus(seat: VendorSeat) {
     if (seat.currentBooking) return "Occupied";
@@ -322,11 +306,6 @@ const VendorSeats: React.FC = () => {
                             <Button variant="outline" size="sm" onClick={() => handleToggleAvailability(seat)} disabled={updating}>
                               {seat.isAvailable ? 'Mark Unavailable' : 'Mark Available'}
                             </Button>
-                            {seat.isAvailable && (
-                              <Button variant="outline" size="sm" onClick={() => handleToggleHotSelling(seat)} disabled={updating}>
-                                {seat.isHotSelling ? 'Remove Hot' : 'Mark Hot'}
-                              </Button>
-                            )}
                           </div>
                         </>
                       )}
@@ -357,12 +336,14 @@ const VendorSeats: React.FC = () => {
                 <TableRow>
                   <TableHead>Seat</TableHead>
                   <TableHead>Cabin</TableHead>
+                  <TableHead>Category</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Price</TableHead>
                   {(user?.role === 'admin' || user?.role === 'vendor' || hasPermission('seats_available_edit')) && (
                     <TableHead>Actions</TableHead>
                   )}
                   <TableHead>Booking Info</TableHead>
+                  <TableHead>Details</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -370,6 +351,9 @@ const VendorSeats: React.FC = () => {
                   <TableRow key={seat._id}>
                     <TableCell>#{seat.number}</TableCell>
                     <TableCell>{seat.cabinName}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-xs">{seat.category}</Badge>
+                    </TableCell>
                     <TableCell>
                       <Badge
                         variant={seat.isAvailable && !seat.currentBooking ? "default" : "secondary"}
@@ -392,11 +376,6 @@ const VendorSeats: React.FC = () => {
                             {seat.isAvailable ? "Mark Unavailable" : "Mark Available"}
                           </Button>
                         )}
-                        {seat.isAvailable && !seat.currentBooking && (
-                          <Button variant="outline" size="sm" onClick={() => handleToggleHotSelling(seat)} disabled={updating}>
-                            {seat.isHotSelling ? "Remove Hot" : "Mark Hot"}
-                          </Button>
-                        )}
                         <Button variant="outline" size="sm" onClick={() => handleEditPrice(seat)}>
                           <Edit className="h-3 w-3" />
                         </Button>
@@ -407,20 +386,19 @@ const VendorSeats: React.FC = () => {
                         <div className="text-sm">
                           <div className="font-medium">{seat.currentBooking.studentName}</div>
                           <div className="text-xs text-muted-foreground">{seat.currentBooking.studentPhone}</div>
-                          <div className="text-xs text-muted-foreground">{seat.currentBooking.studentEmail}</div>
                           <div className="text-xs text-muted-foreground">
                             {new Date(seat.currentBooking.startDate).toLocaleDateString()} -{' '}
                             {new Date(seat.currentBooking.endDate).toLocaleDateString()}
                           </div>
-                          {seat.currentBooking.profilePicture && (
-                            <a href={getImageUrl(seat.currentBooking.profilePicture)} target="_blank" rel="noopener noreferrer">
-                              <img src={getImageUrl(seat.currentBooking.profilePicture)} alt="Student" className="w-10 h-10 object-contain cursor-pointer" />
-                            </a>
-                          )}
                         </div>
                       ) : (
                         <span className="text-xs text-muted-foreground">No booking</span>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="sm" onClick={() => setSelectedSeat(seat)}>
+                        View Details
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -502,6 +480,105 @@ const VendorSeats: React.FC = () => {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Seat Details Dialog */}
+      <Dialog open={!!selectedSeat && !editingSeat} onOpenChange={() => setSelectedSeat(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Seat #{selectedSeat?.number} Details</DialogTitle>
+          </DialogHeader>
+          {selectedSeat && (
+            <div className="space-y-4">
+              {/* Seat Info */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="border rounded p-2">
+                  <p className="text-xs text-muted-foreground">Number</p>
+                  <p className="font-medium">#{selectedSeat.number}</p>
+                </div>
+                <div className="border rounded p-2">
+                  <p className="text-xs text-muted-foreground">Category</p>
+                  <p className="font-medium">{selectedSeat.category}</p>
+                </div>
+                <div className="border rounded p-2">
+                  <p className="text-xs text-muted-foreground">Price</p>
+                  <p className="font-medium">₹{selectedSeat.price}/mo</p>
+                </div>
+                <div className="border rounded p-2">
+                  <p className="text-xs text-muted-foreground">Status</p>
+                  <Badge className={selectedSeat.currentBooking ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"}>
+                    {getSeatStatus(selectedSeat)}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Current Booking - Student Profile */}
+              {selectedSeat.currentBooking && (
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-medium mb-3">Current Student</h4>
+                  <div className="flex gap-4">
+                    {selectedSeat.currentBooking.profilePicture && (
+                      <a href={getImageUrl(selectedSeat.currentBooking.profilePicture)} target="_blank" rel="noopener noreferrer">
+                        <img src={getImageUrl(selectedSeat.currentBooking.profilePicture)} alt="Student" className="w-16 h-20 object-contain rounded border" />
+                      </a>
+                    )}
+                    <div className="grid grid-cols-2 gap-2 flex-1 text-sm">
+                      <div><span className="text-muted-foreground">Name:</span> {selectedSeat.currentBooking.studentName}</div>
+                      <div><span className="text-muted-foreground">Phone:</span> {selectedSeat.currentBooking.studentPhone}</div>
+                      <div><span className="text-muted-foreground">Email:</span> {selectedSeat.currentBooking.studentEmail}</div>
+                      <div><span className="text-muted-foreground">ID:</span> {selectedSeat.currentBooking.userId}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* All Bookings (Current + Future) */}
+              {selectedSeat.allBookings && selectedSeat.allBookings.length > 0 ? (
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-medium mb-3">All Bookings (Current & Future)</h4>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-xs">Serial #</TableHead>
+                          <TableHead className="text-xs">Student</TableHead>
+                          <TableHead className="text-xs">Phone</TableHead>
+                          <TableHead className="text-xs">From</TableHead>
+                          <TableHead className="text-xs">To</TableHead>
+                          <TableHead className="text-xs">Duration</TableHead>
+                          <TableHead className="text-xs">Amount</TableHead>
+                          <TableHead className="text-xs">Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {selectedSeat.allBookings.map((b, i) => (
+                          <TableRow key={i}>
+                            <TableCell className="text-xs">{b.serialNumber || '-'}</TableCell>
+                            <TableCell className="text-xs">
+                              <div>{b.studentName}</div>
+                              {b.course && <div className="text-muted-foreground">{b.course}</div>}
+                              {b.college && <div className="text-muted-foreground">{b.college}</div>}
+                            </TableCell>
+                            <TableCell className="text-xs">{b.studentPhone}</TableCell>
+                            <TableCell className="text-xs">{b.startDate ? new Date(b.startDate).toLocaleDateString() : '-'}</TableCell>
+                            <TableCell className="text-xs">{b.endDate ? new Date(b.endDate).toLocaleDateString() : '-'}</TableCell>
+                            <TableCell className="text-xs">{b.durationCount} {b.bookingDuration}</TableCell>
+                            <TableCell className="text-xs">₹{b.totalPrice}</TableCell>
+                            <TableCell className="text-xs">
+                              <Badge variant="outline" className="text-[10px]">{b.paymentStatus}</Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No bookings found for this seat.</p>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

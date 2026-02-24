@@ -1,6 +1,29 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
+export interface SeatBookingDetail {
+  bookingId: string;
+  serialNumber: string;
+  startDate: string;
+  endDate: string;
+  totalPrice: number;
+  paymentStatus: string;
+  bookingDuration: string;
+  durationCount: string;
+  studentName: string;
+  studentEmail: string;
+  studentPhone: string;
+  studentSerialNumber: string;
+  profilePicture: string;
+  course: string;
+  college: string;
+  address: string;
+  city: string;
+  state: string;
+  gender: string;
+  dob: string;
+}
+
 export interface VendorSeat {
   _id: string;
   number: number;
@@ -8,7 +31,6 @@ export interface VendorSeat {
   cabinName: string;
   position: { x: number; y: number };
   isAvailable: boolean;
-  isHotSelling: boolean;
   price: number;
   category: string;
   floor: number;
@@ -22,6 +44,7 @@ export interface VendorSeat {
     profilePicture: string;
     userId: string;
   };
+  allBookings: SeatBookingDetail[];
 }
 
 export interface VendorCabin {
@@ -36,7 +59,7 @@ export interface VendorCabin {
 
 export interface SeatFilters {
   cabinId?: string;
-  status?: 'available' | 'occupied' | 'hot-selling';
+  status?: 'available' | 'occupied';
   search?: string;
 }
 
@@ -94,38 +117,67 @@ export const vendorSeatsService = {
         query = query.eq('is_available', true);
       } else if (filters?.status === 'occupied') {
         query = query.eq('is_available', false);
-      } else if (filters?.status === 'hot-selling') {
-        query = query.eq('is_hot_selling', true);
       }
 
       const { data: seatsData, error } = await query;
       if (error) throw error;
 
-      // Get active bookings for these seats
+      // Get all current + future bookings for these seats
       const seatIds = (seatsData || []).map(s => s.id);
       const today = new Date().toISOString().split('T')[0];
       
       let bookingsMap: Record<string, any> = {};
+      let allBookingsMap: Record<string, SeatBookingDetail[]> = {};
+      
       if (seatIds.length > 0) {
         const { data: bookings } = await supabase
           .from('bookings')
-          .select('*, profiles:user_id(name, email, phone, profile_picture, serial_number)')
+          .select('*, profiles:user_id(name, email, phone, profile_picture, serial_number, course_studying, college_studied, address, city, state, date_of_birth, gender)')
           .in('seat_id', seatIds)
           .eq('payment_status', 'completed')
           .gte('end_date', today)
-          .lte('start_date', today);
+          .order('start_date', { ascending: true });
 
         (bookings || []).forEach(b => {
           const profile = b.profiles as any;
-          bookingsMap[b.seat_id!] = {
-            startDate: b.start_date,
-            endDate: b.end_date,
+          const detail: SeatBookingDetail = {
+            bookingId: b.id,
+            serialNumber: b.serial_number || '',
+            startDate: b.start_date || '',
+            endDate: b.end_date || '',
+            totalPrice: Number(b.total_price) || 0,
+            paymentStatus: b.payment_status || '',
+            bookingDuration: b.booking_duration || '',
+            durationCount: b.duration_count || '',
             studentName: profile?.name || 'N/A',
             studentEmail: profile?.email || 'N/A',
             studentPhone: profile?.phone || 'N/A',
+            studentSerialNumber: profile?.serial_number || '',
             profilePicture: profile?.profile_picture || '',
-            userId: profile?.serial_number || '',
+            course: profile?.course_studying || '',
+            college: profile?.college_studied || '',
+            address: profile?.address || '',
+            city: profile?.city || '',
+            state: profile?.state || '',
+            gender: profile?.gender || '',
+            dob: profile?.date_of_birth || '',
           };
+          
+          if (!allBookingsMap[b.seat_id!]) allBookingsMap[b.seat_id!] = [];
+          allBookingsMap[b.seat_id!].push(detail);
+          
+          // Set current booking (active today)
+          if (b.start_date && b.start_date <= today && b.end_date && b.end_date >= today) {
+            bookingsMap[b.seat_id!] = {
+              startDate: b.start_date,
+              endDate: b.end_date,
+              studentName: profile?.name || 'N/A',
+              studentEmail: profile?.email || 'N/A',
+              studentPhone: profile?.phone || 'N/A',
+              profilePicture: profile?.profile_picture || '',
+              userId: profile?.serial_number || '',
+            };
+          }
         });
       }
 
@@ -136,12 +188,12 @@ export const vendorSeatsService = {
         cabinName: (seat.cabins as any)?.name || '',
         position: { x: Number(seat.position_x), y: Number(seat.position_y) },
         isAvailable: seat.is_available,
-        isHotSelling: seat.is_hot_selling,
         price: Number(seat.price),
         category: seat.category,
         floor: seat.floor,
         unavailableUntil: seat.unavailable_until || undefined,
         currentBooking: bookingsMap[seat.id] || undefined,
+        allBookings: allBookingsMap[seat.id] || [],
       }));
 
       return { success: true, data: { data: mappedSeats } };
@@ -176,20 +228,6 @@ export const vendorSeatsService = {
       const { error } = await supabase
         .from('seats')
         .update({ is_available: isAvailable })
-        .eq('id', seatId);
-      if (error) throw error;
-      return { success: true, data: {} };
-    } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : 'Failed' };
-    }
-  },
-
-  // Mark seat as hot selling
-  toggleHotSelling: async (seatId: string, isHotSelling: boolean) => {
-    try {
-      const { error } = await supabase
-        .from('seats')
-        .update({ is_hot_selling: isHotSelling })
         .eq('id', seatId);
       if (error) throw error;
       return { success: true, data: {} };

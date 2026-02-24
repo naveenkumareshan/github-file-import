@@ -150,7 +150,7 @@ const SeatManagement = () => {
     try {
       const seatData: SeatData = {
         number, floor: selectedFloor, cabinId, price, position,
-        isAvailable: true, isHotSelling: false, category,
+        isAvailable: true, category,
       };
       const res = await adminSeatsService.createSeat(seatData);
       if (res.success && res.data) {
