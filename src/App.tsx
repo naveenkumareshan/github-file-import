@@ -47,6 +47,8 @@ const AdminStudents = lazy(() => import("./pages/AdminStudents"));
 const ReviewsManagement = lazy(() => import("./pages/admin/ReviewsManagement"));
 const ErrorLogManagement = lazy(() => import("./components/admin/ErrorLogManagement"));
 const BannerManagementPage = lazy(() => import("./pages/admin/BannerManagement"));
+const ComplaintsManagement = lazy(() => import("./components/admin/ComplaintsManagement"));
+const SupportTicketsManagement = lazy(() => import("./components/admin/SupportTicketsManagement"));
 
 // Student / public pages
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
@@ -70,6 +72,8 @@ const BookingTransactions = lazy(() => import("./pages/students/BookingTransacti
 const Profile = lazy(() => import("./pages/Profile"));
 const Laundry = lazy(() => import("./pages/Laundry"));
 const LaundryRequest = lazy(() => import("./pages/LaundryRequest"));
+const ComplaintsPage = lazy(() => import("./components/profile/ComplaintsPage"));
+const SupportPage = lazy(() => import("./components/profile/SupportPage"));
 
 import ScrollToTop from "./components/ScrollToTop";
 import { LazyWrapper } from './components/LazyWrapper';
@@ -134,6 +138,8 @@ function App() {
               <Route path="/admin/manual-bookings/:type/:bookingId" element={<ManualBookingManagement />} />
               <Route path="profile" element={<VendorProfilePage />} />
               <Route path="banners" element={<BannerManagementPage />} />
+              <Route path="complaints" element={<ComplaintsManagement />} />
+              <Route path="support-tickets" element={<SupportTicketsManagement />} />
             </Route>
 
             {/* ── Partner routes (formerly vendor/host) ── */}
@@ -208,6 +214,14 @@ function App() {
               <Route
                 path="/student/bookings/:bookingId"
                 element={<ProtectedRoute><StudentSuspense><StudentBookingView /></StudentSuspense></ProtectedRoute>}
+              />
+              <Route
+                path="/student/complaints"
+                element={<ProtectedRoute><StudentSuspense><ComplaintsPage /></StudentSuspense></ProtectedRoute>}
+              />
+              <Route
+                path="/student/support"
+                element={<ProtectedRoute><StudentSuspense><SupportPage /></StudentSuspense></ProtectedRoute>}
               />
             </Route>
 

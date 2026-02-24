@@ -5,8 +5,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from '@/hooks/use-toast';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { User, MailIcon, GraduationCap, Shield, AlertTriangle, Pencil, X, Check, LogOut, FileText, Lock, BookMarked, ChevronRight, Info } from 'lucide-react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { User, MailIcon, GraduationCap, Shield, AlertTriangle, Pencil, X, Check, LogOut, FileText, Lock, BookMarked, ChevronRight, Info, MessageSquareWarning, Headphones } from 'lucide-react';
 import { userProfileService } from '@/api/userProfileService';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
@@ -54,27 +54,30 @@ const statusColor: Record<string, string> = {
   cancelled: 'bg-muted text-muted-foreground',
 };
 
-// Section field maps — which fields belong to which section
 const SECTION_FIELDS: Record<string, (keyof ProfileData)[]> = {
   account: ['name', 'email', 'phone', 'alternate_phone', 'gender'],
   personal: ['date_of_birth', 'address', 'city', 'state', 'pincode'],
   academic: ['course_preparing_for', 'course_studying', 'college_studied', 'parent_mobile_number', 'bio'],
 };
 
+const SECTIONS = [
+  { key: 'account', label: 'Account Info', icon: User },
+  { key: 'personal', label: 'Personal Info', icon: MailIcon },
+  { key: 'academic', label: 'Academic Info', icon: GraduationCap },
+  { key: 'security', label: 'Security', icon: Shield },
+];
+
 export const ProfileManagement = () => {
   const { logout } = useAuth();
   const [profile, setProfile] = useState<ProfileData>(defaultProfile);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Per-section editing
-  const [editingSection, setEditingSection] = useState<string | null>(null);
+  const [openSheet, setOpenSheet] = useState<string | null>(null);
   const [sectionDraft, setSectionDraft] = useState<Partial<ProfileData>>({});
 
-  // Bookings
   const [bookings, setBookings] = useState<any[]>([]);
   const [loadingBookings, setLoadingBookings] = useState(true);
 
-  // Password change state
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -90,24 +93,14 @@ export const ProfileManagement = () => {
       if (response.success && response.data) {
         const data = response.data as any;
         const mapped: ProfileData = {
-          id: data.id,
-          name: data.name || '',
-          email: data.email || '',
-          phone: data.phone || '',
-          alternate_phone: data.alternate_phone || '',
-          address: data.address || '',
-          bio: data.bio || '',
-          course_studying: data.course_studying || '',
-          college_studied: data.college_studied || '',
-          parent_mobile_number: data.parent_mobile_number || '',
-          profile_picture: data.profile_picture || '',
-          profile_edit_count: data.profile_edit_count || 0,
-          gender: data.gender || '',
-          city: data.city || '',
-          state: data.state || '',
-          pincode: data.pincode || '',
-          date_of_birth: data.date_of_birth || null,
-          course_preparing_for: data.course_preparing_for || '',
+          id: data.id, name: data.name || '', email: data.email || '',
+          phone: data.phone || '', alternate_phone: data.alternate_phone || '',
+          address: data.address || '', bio: data.bio || '',
+          course_studying: data.course_studying || '', college_studied: data.college_studied || '',
+          parent_mobile_number: data.parent_mobile_number || '', profile_picture: data.profile_picture || '',
+          profile_edit_count: data.profile_edit_count || 0, gender: data.gender || '',
+          city: data.city || '', state: data.state || '', pincode: data.pincode || '',
+          date_of_birth: data.date_of_birth || null, course_preparing_for: data.course_preparing_for || '',
         };
         setProfile(mapped);
       }
@@ -119,25 +112,20 @@ export const ProfileManagement = () => {
   const loadBookings = async () => {
     try {
       const res = await bookingsService.getUserBookings();
-      if (res.success && Array.isArray(res.data)) {
-        setBookings(res.data.slice(0, 2));
-      }
+      if (res.success && Array.isArray(res.data)) setBookings(res.data.slice(0, 2));
     } finally {
       setLoadingBookings(false);
     }
   };
 
-  const startEdit = (section: string) => {
-    const fields = SECTION_FIELDS[section] || [];
-    const draft: Partial<ProfileData> = {};
-    fields.forEach((f) => { (draft as any)[f] = (profile as any)[f]; });
-    setSectionDraft(draft);
-    setEditingSection(section);
-  };
-
-  const cancelEdit = () => {
-    setSectionDraft({});
-    setEditingSection(null);
+  const openSectionSheet = (section: string) => {
+    if (section !== 'security') {
+      const fields = SECTION_FIELDS[section] || [];
+      const draft: Partial<ProfileData> = {};
+      fields.forEach((f) => { (draft as any)[f] = (profile as any)[f]; });
+      setSectionDraft(draft);
+    }
+    setOpenSheet(section);
   };
 
   const saveSection = async (section: string) => {
@@ -148,7 +136,7 @@ export const ProfileManagement = () => {
       if (response.success) {
         toast({ title: 'Saved', description: 'Section updated successfully' });
         setProfile(merged);
-        setEditingSection(null);
+        setOpenSheet(null);
         setSectionDraft({});
       } else {
         toast({ title: 'Error', description: 'Failed to update', variant: 'destructive' });
@@ -176,6 +164,7 @@ export const ProfileManagement = () => {
       toast({ title: 'Success', description: 'Password updated successfully' });
       setNewPassword('');
       setConfirmPassword('');
+      setOpenSheet(null);
     } catch (e: any) {
       toast({ title: 'Error', description: e.message || 'Failed to update password', variant: 'destructive' });
     } finally {
@@ -183,82 +172,163 @@ export const ProfileManagement = () => {
     }
   };
 
-  // Field helper — reads from sectionDraft when that section is being edited
-  const field = (id: keyof ProfileData, label: string, section: string, type = 'text', placeholder = '') => {
-    const isActive = editingSection === section;
-    const value = isActive && id in sectionDraft ? (sectionDraft as any)[id] : (profile[id] as string) || '';
+  const field = (id: keyof ProfileData, label: string, type = 'text', placeholder = '') => {
+    const value = id in sectionDraft ? (sectionDraft as any)[id] : (profile[id] as string) || '';
     return (
       <div key={id}>
         <Label htmlFor={id} className="text-[12px] mb-1 block">{label}</Label>
         <Input
-          id={id}
-          type={type}
-          value={value}
-          onChange={(e) => isActive && setSectionDraft(prev => ({ ...prev, [id]: e.target.value }))}
-          disabled={!isActive}
-          placeholder={placeholder}
-          className="h-9 text-[13px]"
+          id={id} type={type} value={value}
+          onChange={(e) => setSectionDraft(prev => ({ ...prev, [id]: e.target.value }))}
+          placeholder={placeholder} className="h-9 text-[13px]"
         />
-      </div>
-    );
-  };
-
-  // Section header with edit/save/cancel controls
-  const SectionControls = ({ section }: { section: string }) => {
-    const isActive = editingSection === section;
-    return (
-      <div className="flex items-center gap-1 ml-auto" onClick={(e) => e.stopPropagation()}>
-        {!isActive ? (
-          <button
-            type="button"
-            onClick={() => startEdit(section)}
-            className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-muted transition-colors"
-          >
-            <Pencil className="h-3 w-3 text-muted-foreground" />
-          </button>
-        ) : (
-          <>
-            <button
-              type="button"
-              onClick={cancelEdit}
-              className="h-7 w-7 rounded-lg flex items-center justify-center hover:bg-muted transition-colors"
-            >
-              <X className="h-3 w-3 text-muted-foreground" />
-            </button>
-            <button
-              type="button"
-              onClick={() => saveSection(section)}
-              disabled={isLoading}
-              className="h-7 px-2 rounded-lg flex items-center gap-1 bg-primary text-primary-foreground text-[11px] font-medium hover:bg-primary/90 transition-colors"
-            >
-              <Check className="h-3 w-3" /> {isLoading ? '…' : 'Save'}
-            </button>
-          </>
-        )}
       </div>
     );
   };
 
   const initials = profile.name?.charAt(0)?.toUpperCase() || '?';
 
+  const renderSheetContent = (section: string) => {
+    if (section === 'account') {
+      return (
+        <div className="space-y-4">
+          {profile.profile_edit_count >= 1 && (
+            <Alert>
+              <AlertTriangle className="h-3.5 w-3.5" />
+              <AlertDescription className="text-[12px]">
+                {2 - profile.profile_edit_count} edit{2 - profile.profile_edit_count !== 1 ? 's' : ''} remaining.
+              </AlertDescription>
+            </Alert>
+          )}
+          <div className="space-y-1.5">
+            <Label className="text-[12px]">Gender</Label>
+            <div className="flex gap-3">
+              {['male', 'female'].map(g => {
+                const val = 'gender' in sectionDraft ? sectionDraft.gender : profile.gender;
+                return (
+                  <button key={g} type="button"
+                    onClick={() => setSectionDraft(prev => ({ ...prev, gender: g }))}
+                    className={`flex flex-col items-center gap-1 ${val === g ? (g === 'male' ? 'text-blue-600' : 'text-pink-600') : 'text-muted-foreground'}`}>
+                    <div className={`h-10 w-10 rounded-full flex items-center justify-center ${val === g ? g === 'male' ? 'bg-blue-100 border-2 border-blue-500' : 'bg-pink-100 border-2 border-pink-500' : 'bg-muted'}`}>
+                      <User className={`h-5 w-5 ${g === 'male' ? 'text-blue-500' : 'text-pink-500'}`} />
+                    </div>
+                    <span className="text-[11px] font-medium capitalize">{g}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-3">
+            {field('name', 'Full Name')}
+            {field('email', 'Email', 'email')}
+            {field('phone', 'Phone')}
+            {field('alternate_phone', 'Alternate Phone')}
+          </div>
+          <Button onClick={() => saveSection('account')} disabled={isLoading} className="w-full h-10 rounded-xl text-[13px]">
+            {isLoading ? 'Saving…' : 'Save Changes'}
+          </Button>
+        </div>
+      );
+    }
+    if (section === 'personal') {
+      return (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-3">
+            {field('date_of_birth', 'Date of Birth', 'date')}
+            {field('address', 'Address')}
+            {field('city', 'City')}
+            {field('state', 'State')}
+            {field('pincode', 'Pincode')}
+          </div>
+          <Button onClick={() => saveSection('personal')} disabled={isLoading} className="w-full h-10 rounded-xl text-[13px]">
+            {isLoading ? 'Saving…' : 'Save Changes'}
+          </Button>
+        </div>
+      );
+    }
+    if (section === 'academic') {
+      return (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-3">
+            {field('course_preparing_for', 'Preparing For', 'text', 'e.g., NEET, JEE')}
+            {field('course_studying', 'Course Studying', 'text', 'e.g., B.Tech')}
+            {field('college_studied', 'College / University', 'text', 'Name of your college')}
+            {field('parent_mobile_number', 'Parent / Guardian Mobile', 'text', 'Emergency contact')}
+            <div>
+              <Label htmlFor="bio" className="text-[12px] mb-1 block">Bio</Label>
+              <Textarea id="bio"
+                value={'bio' in sectionDraft ? sectionDraft.bio || '' : profile.bio}
+                onChange={(e) => setSectionDraft(prev => ({ ...prev, bio: e.target.value }))}
+                placeholder="Tell us about yourself…" rows={3} className="text-[13px]" />
+            </div>
+          </div>
+          <Button onClick={() => saveSection('academic')} disabled={isLoading} className="w-full h-10 rounded-xl text-[13px]">
+            {isLoading ? 'Saving…' : 'Save Changes'}
+          </Button>
+        </div>
+      );
+    }
+    if (section === 'security') {
+      return (
+        <div className="space-y-4">
+          <p className="text-[12px] text-muted-foreground">Change your account password.</p>
+          <div className="space-y-2">
+            <div>
+              <Label className="text-[12px] mb-1 block">New Password</Label>
+              <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="New password" className="h-9 text-[13px]" />
+            </div>
+            <div>
+              <Label className="text-[12px] mb-1 block">Confirm Password</Label>
+              <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Confirm new password" className="h-9 text-[13px]" />
+            </div>
+            <Button onClick={handleChangePassword} disabled={isChangingPassword || !newPassword} className="h-10 text-[13px] rounded-xl w-full">
+              {isChangingPassword ? 'Updating…' : 'Update Password'}
+            </Button>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className="max-w-lg mx-auto space-y-3 px-3 py-3">
-      {/* Header card with avatar */}
-      <div className="flex items-center gap-4 bg-card rounded-2xl border p-4">
-        <Avatar className="h-16 w-16 flex-shrink-0">
-          <AvatarImage src={profile.profile_picture} alt={profile.name} />
-          <AvatarFallback className="text-xl bg-primary text-primary-foreground">{initials}</AvatarFallback>
-        </Avatar>
-        <div className="min-w-0 flex-1">
-          <p className="text-[14px] font-semibold text-foreground">{profile.name || 'Your Name'}</p>
-          <p className="text-[11px] text-muted-foreground truncate">{profile.email}</p>
-          {profile.profile_edit_count >= 2 && (
-            <p className="text-[10px] text-destructive mt-0.5">Profile edit limit reached</p>
-          )}
+      {/* Header card with avatar + nav rows inside */}
+      <div className="bg-card rounded-2xl border overflow-hidden">
+        {/* Avatar section */}
+        <div className="flex items-center gap-4 p-4 border-b">
+          <Avatar className="h-16 w-16 flex-shrink-0">
+            <AvatarImage src={profile.profile_picture} alt={profile.name} />
+            <AvatarFallback className="text-xl bg-primary text-primary-foreground">{initials}</AvatarFallback>
+          </Avatar>
+          <div className="min-w-0 flex-1">
+            <p className="text-[14px] font-semibold text-foreground">{profile.name || 'Your Name'}</p>
+            <p className="text-[11px] text-muted-foreground truncate">{profile.email}</p>
+            {profile.profile_edit_count >= 2 && (
+              <p className="text-[10px] text-destructive mt-0.5">Profile edit limit reached</p>
+            )}
+          </div>
+        </div>
+
+        {/* Navigation rows */}
+        <div className="divide-y">
+          {SECTIONS.map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              onClick={() => openSectionSheet(key)}
+              className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-muted/50 transition-colors text-left"
+            >
+              <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Icon className="h-4 w-4 text-primary" />
+              </div>
+              <span className="text-[13px] font-medium text-foreground flex-1">{label}</span>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* My Bookings — between avatar and sections */}
+      {/* My Bookings */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <p className="text-[13px] font-semibold text-foreground flex items-center gap-1.5">
@@ -286,167 +356,57 @@ export const ProfileManagement = () => {
         ) : (
           <div className="space-y-2">
             {bookings.map((b) => (
-              <Card key={b.id} className="rounded-2xl border-0 shadow-sm bg-card">
-                <CardContent className="p-3 flex items-center gap-3">
-                  <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <BookMarked className="w-4 h-4 text-primary" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[12px] font-semibold text-foreground truncate">
-                      {(b.cabins as any)?.name || 'Reading Room'} — Seat #{b.seat_number || '—'}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground">
-                      {b.start_date ? format(new Date(b.start_date), 'd MMM') : '—'} → {b.end_date ? format(new Date(b.end_date), 'd MMM yyyy') : '—'}
-                    </p>
-                  </div>
-                  <span className={`flex-shrink-0 text-[10px] font-medium px-2 py-0.5 rounded-full ${statusColor[b.payment_status] || 'bg-muted text-muted-foreground'}`}>
-                    {b.payment_status}
-                  </span>
-                </CardContent>
-              </Card>
+              <Link key={b.id} to={`/student/bookings/${b.id}/transactions/cabin`}>
+                <Card className="rounded-2xl border-0 shadow-sm bg-card hover:shadow-md transition-shadow">
+                  <CardContent className="p-3 flex items-center gap-3">
+                    <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <BookMarked className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[12px] font-semibold text-foreground truncate">
+                        {(b.cabins as any)?.name || 'Reading Room'} — Seat #{b.seat_number || '—'}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {b.start_date ? format(new Date(b.start_date), 'd MMM') : '—'} → {b.end_date ? format(new Date(b.end_date), 'd MMM yyyy') : '—'}
+                      </p>
+                    </div>
+                    <span className={`flex-shrink-0 text-[10px] font-medium px-2 py-0.5 rounded-full ${statusColor[b.payment_status] || 'bg-muted text-muted-foreground'}`}>
+                      {b.payment_status}
+                    </span>
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
           </div>
         )}
       </div>
 
-      {/* Accordion sections */}
-      <Accordion type="multiple" defaultValue={['account']} className="space-y-2">
-        {/* Section 1 — Account */}
-        <AccordionItem value="account" className="bg-card rounded-2xl border px-4 data-[state=open]:shadow-sm">
-          <AccordionTrigger className="text-[13px] font-semibold py-3 hover:no-underline">
-            <span className="flex items-center gap-2 flex-1"><User className="h-3.5 w-3.5 text-primary" /> Account Info</span>
-            <SectionControls section="account" />
-          </AccordionTrigger>
-          <AccordionContent className="space-y-3 pb-4">
-            {editingSection === 'account' && profile.profile_edit_count >= 1 && (
-              <Alert>
-                <AlertTriangle className="h-3.5 w-3.5" />
-                <AlertDescription className="text-[12px]">
-                  {2 - profile.profile_edit_count} edit{2 - profile.profile_edit_count !== 1 ? 's' : ''} remaining.
-                </AlertDescription>
-              </Alert>
-            )}
-            {/* Gender selector */}
-            <div className="space-y-1.5">
-              <Label className="text-[12px]">Gender</Label>
-              <div className="flex gap-3">
-                {['male', 'female'].map(g => {
-                  const isActive = editingSection === 'account';
-                  const val = isActive && 'gender' in sectionDraft ? sectionDraft.gender : profile.gender;
-                  return (
-                    <button
-                      key={g}
-                      type="button"
-                      onClick={() => isActive && setSectionDraft(prev => ({ ...prev, gender: g }))}
-                      disabled={!isActive}
-                      className={`flex flex-col items-center gap-1 ${val === g ? (g === 'male' ? 'text-blue-600' : 'text-pink-600') : 'text-muted-foreground'}`}
-                    >
-                      <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                        val === g
-                          ? g === 'male' ? 'bg-blue-100 border-2 border-blue-500' : 'bg-pink-100 border-2 border-pink-500'
-                          : 'bg-muted'
-                      }`}>
-                        <User className={`h-5 w-5 ${g === 'male' ? 'text-blue-500' : 'text-pink-500'}`} />
-                      </div>
-                      <span className="text-[11px] font-medium capitalize">{g}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-            <div className="grid grid-cols-1 gap-3">
-              {field('name', 'Full Name', 'account')}
-              {field('email', 'Email', 'account', 'email')}
-              {field('phone', 'Phone', 'account')}
-              {field('alternate_phone', 'Alternate Phone', 'account')}
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-
-        {/* Section 2 — Personal Info */}
-        <AccordionItem value="personal" className="bg-card rounded-2xl border px-4 data-[state=open]:shadow-sm">
-          <AccordionTrigger className="text-[13px] font-semibold py-3 hover:no-underline">
-            <span className="flex items-center gap-2 flex-1"><MailIcon className="h-3.5 w-3.5 text-primary" /> Personal Info</span>
-            <SectionControls section="personal" />
-          </AccordionTrigger>
-          <AccordionContent className="space-y-3 pb-4">
-            <div className="grid grid-cols-1 gap-3">
-              {field('date_of_birth', 'Date of Birth', 'personal', 'date')}
-              {field('address', 'Address', 'personal')}
-              {field('city', 'City', 'personal')}
-              {field('state', 'State', 'personal')}
-              {field('pincode', 'Pincode', 'personal')}
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-
-        {/* Section 3 — Academic Info */}
-        <AccordionItem value="academic" className="bg-card rounded-2xl border px-4 data-[state=open]:shadow-sm">
-          <AccordionTrigger className="text-[13px] font-semibold py-3 hover:no-underline">
-            <span className="flex items-center gap-2 flex-1"><GraduationCap className="h-3.5 w-3.5 text-primary" /> Academic Info</span>
-            <SectionControls section="academic" />
-          </AccordionTrigger>
-          <AccordionContent className="space-y-3 pb-4">
-            <div className="grid grid-cols-1 gap-3">
-              {field('course_preparing_for', 'Preparing For', 'academic', 'text', 'e.g., NEET, JEE')}
-              {field('course_studying', 'Course Studying', 'academic', 'text', 'e.g., B.Tech')}
-              {field('college_studied', 'College / University', 'academic', 'text', 'Name of your college')}
-              {field('parent_mobile_number', 'Parent / Guardian Mobile', 'academic', 'text', 'Emergency contact')}
-              <div>
-                <Label htmlFor="bio" className="text-[12px] mb-1 block">Bio</Label>
-                <Textarea
-                  id="bio"
-                  value={editingSection === 'academic' && 'bio' in sectionDraft ? sectionDraft.bio || '' : profile.bio}
-                  onChange={(e) => editingSection === 'academic' && setSectionDraft(prev => ({ ...prev, bio: e.target.value }))}
-                  disabled={editingSection !== 'academic'}
-                  placeholder="Tell us about yourself…"
-                  rows={3}
-                  className="text-[13px]"
-                />
-              </div>
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-
-        {/* Section 4 — Security */}
-        <AccordionItem value="security" className="bg-card rounded-2xl border px-4 data-[state=open]:shadow-sm">
-          <AccordionTrigger className="text-[13px] font-semibold py-3 hover:no-underline">
-            <span className="flex items-center gap-2"><Shield className="h-3.5 w-3.5 text-primary" /> Security</span>
-          </AccordionTrigger>
-          <AccordionContent className="space-y-3 pb-4">
-            <p className="text-[12px] text-muted-foreground">Change your account password.</p>
-            <div className="space-y-2">
-              <div>
-                <Label className="text-[12px] mb-1 block">New Password</Label>
-                <Input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="New password"
-                  className="h-9 text-[13px]"
-                />
-              </div>
-              <div>
-                <Label className="text-[12px] mb-1 block">Confirm Password</Label>
-                <Input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm new password"
-                  className="h-9 text-[13px]"
-                />
-              </div>
-              <Button
-                onClick={handleChangePassword}
-                disabled={isChangingPassword || !newPassword}
-                className="h-9 text-[13px] rounded-xl w-full"
-              >
-                {isChangingPassword ? 'Updating…' : 'Update Password'}
-              </Button>
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+      {/* Quick Links */}
+      <div className="space-y-2">
+        <p className="text-[13px] font-semibold text-foreground">Quick Links</p>
+        <div className="grid grid-cols-2 gap-2">
+          <Link to="/student/complaints">
+            <Card className="rounded-2xl border hover:shadow-sm transition-shadow cursor-pointer">
+              <CardContent className="p-3 flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center flex-shrink-0">
+                  <MessageSquareWarning className="h-4 w-4 text-orange-600" />
+                </div>
+                <span className="text-[12px] font-medium text-foreground">Complaints</span>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link to="/student/support">
+            <Card className="rounded-2xl border hover:shadow-sm transition-shadow cursor-pointer">
+              <CardContent className="p-3 flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
+                  <Headphones className="h-4 w-4 text-blue-600" />
+                </div>
+                <span className="text-[12px] font-medium text-foreground">Support</span>
+              </CardContent>
+            </Card>
+          </Link>
+        </div>
+      </div>
 
       {/* Legal links */}
       <div className="flex items-center justify-center gap-4 pt-1">
@@ -471,6 +431,20 @@ export const ProfileManagement = () => {
       >
         <LogOut className="h-4 w-4" /> Logout
       </Button>
+
+      {/* Section Sheets */}
+      {SECTIONS.map(({ key, label }) => (
+        <Sheet key={key} open={openSheet === key} onOpenChange={(open) => !open && setOpenSheet(null)}>
+          <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle className="text-[15px]">{label}</SheetTitle>
+            </SheetHeader>
+            <div className="mt-4">
+              {openSheet === key && renderSheetContent(key)}
+            </div>
+          </SheetContent>
+        </Sheet>
+      ))}
     </div>
   );
 };
