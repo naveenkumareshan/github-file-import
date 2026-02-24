@@ -1,64 +1,61 @@
 
 
-## Fix Scroll Zoom and Add Minimap to Seat Map Viewer
+## Maximize Seat Map Area and Show Full Layout Image
 
 ### Problems
 
-1. **Scroll-to-zoom hijacks page scrolling**: The `onWheel` handler on the canvas intercepts normal page scrolling and zooms in/out instead. Students scrolling up/down on their phone accidentally zoom the seat map.
+1. **Seat map area too small**: The `DateBasedSeatMap` wraps the `FloorPlanViewer` inside a `Card > CardHeader ("Seat Map") > CardContent` which adds padding, a title bar, and border -- all wasting precious screen space on mobile. The zoom controls also sit in a separate row above the canvas, further shrinking the seat area.
 
-2. **No spatial awareness**: When zoomed in, students have no idea where they are in the overall layout. They need a small minimap (like in Google Maps or design tools) showing the full layout with a highlighted rectangle indicating the current viewport position.
+2. **Layout image not fully visible**: The background image has `opacity: 30%` (layoutImageOpacity defaults to 30), making it nearly invisible. Students need to clearly see the admin-uploaded floor plan at full opacity so they understand the room layout.
+
+3. **Side padding wasting space**: The `CardContent` has default padding (`p-6`), plus the parent `SeatBookingForm` and `BookSeat` pages add their own `px-3` padding. This compounds to ~40px of dead space on each side.
+
+---
 
 ### Changes
 
-**File: `src/components/seats/FloorPlanViewer.tsx`**
+#### 1. `DateBasedSeatMap.tsx` -- Remove Card wrapper for student view
 
-#### 1. Remove scroll-to-zoom
-- Delete the `handleWheel` function and remove `onWheel={handleWheel}` from the canvas div
-- Keep the manual zoom buttons (+/-/fit) for intentional zoom control
+When `exportcsv={false}` (student context), remove the `Card > CardHeader > CardContent` wrapper around the FloorPlanViewer. Render the FloorPlanViewer directly with no card padding or "Seat Map" title. The floor selector buttons also get tighter spacing.
 
-#### 2. Add a Minimap overlay in the bottom-right corner of the canvas
-- A small fixed-size box (e.g. 120x90px) with a semi-transparent background
-- Renders all seats as tiny dots (2-3px) scaled to fit the minimap
-- Draws a blue rectangle showing the currently visible viewport area
-- The viewport rectangle updates as the user pans and zooms
-- Clicking on the minimap jumps the viewport to that area
+Keep the Card wrapper for `exportcsv={true}` (admin context).
 
-**Minimap calculation logic:**
-```text
-minimapScale = min(minimapWidth / roomWidth, minimapHeight / roomHeight)
+#### 2. `FloorPlanViewer.tsx` -- Compact zoom controls, maximize canvas
 
-Viewport rectangle:
-  - x = (-pan.x / zoom) * minimapScale
-  - y = (-pan.y / zoom) * minimapScale
-  - width = (containerWidth / zoom) * minimapScale
-  - height = (containerHeight / zoom) * minimapScale
-```
+- Move zoom controls **inside** the canvas as a floating overlay (absolute positioned, top-right, small transparent buttons) instead of a separate row above
+- Remove `space-y-3` wrapper spacing
+- Increase canvas height from `h-[60vh]` to `h-[70vh]` 
+- Remove border and rounded corners on the canvas for edge-to-edge feel on mobile
+- Set `layoutImageOpacity` to `100` for student view (full visibility of the floor plan image)
 
-**Visual layout:**
-```text
-+----------------------------------+
-|  Canvas (seats + floor plan)     |
-|                                  |
-|                                  |
-|                        +------+  |
-|                        | Mini |  |
-|                        | Map  |  |
-|                        | [##] |  |
-|                        +------+  |
-+----------------------------------+
-```
+#### 3. `DateBasedSeatMap.tsx` -- Pass full opacity for student view
 
-The `[##]` represents the blue viewport indicator rectangle within the minimap, showing where the student is currently looking in the overall layout.
+When `exportcsv={false}`, pass `layoutImageOpacity={100}` to `FloorPlanViewer` so the admin-uploaded background image shows at full opacity.
+
+#### 4. `SeatBookingForm.tsx` -- Remove extra label
+
+The "Select Your Seat" label with `text-lg font-semibold` and `mb-4` margin takes space. Make it smaller or remove it since the seat map is self-explanatory.
+
+---
 
 ### Technical Details
 
-| Change | Detail |
+| File | Change |
 |---|---|
-| Remove `handleWheel` | Delete function (line 78-81) and `onWheel` prop (line 131) |
-| Add minimap container | Absolute positioned div at bottom-right, 120x90px, bg-black/60, rounded, border |
-| Render minimap seats | Map all seats as tiny colored dots (green=available, grey=booked, blue=selected) scaled to minimap dimensions |
-| Render viewport rect | Calculate visible area from `pan`, `zoom`, and container dimensions, draw as a semi-transparent blue rectangle |
-| Minimap click handler | On click, calculate the corresponding pan position and update `pan` state to jump viewport there |
-| Container dimensions | Track with a `ResizeObserver` or read from `containerRef.current.clientWidth/Height` |
+| `src/components/seats/FloorPlanViewer.tsx` | Move zoom buttons inside canvas as floating overlay (absolute top-right, z-30, small semi-transparent buttons). Remove outer `space-y-3`. Canvas: remove border, increase to `h-[70vh]`, remove rounded-lg for student view. Legend: make more compact inline. |
+| `src/components/seats/DateBasedSeatMap.tsx` | When `exportcsv={false}`: remove Card/CardHeader/CardContent wrapper, render FloorPlanViewer directly. Pass `layoutImageOpacity={100}`. Compact floor selector. |
+| `src/components/seats/SeatBookingForm.tsx` | Reduce "Select Your Seat" label size from `text-lg` to `text-sm`, reduce margin. |
 
-Only one file needs to be modified: `src/components/seats/FloorPlanViewer.tsx`
+**Zoom controls (floating overlay inside canvas):**
+```text
++----------------------------------+
+|                      [- 75% + F] |  <-- small floating buttons
+|                                  |
+|  (seats on full layout image)    |
+|                                  |
+|                        +------+  |
+|                        | mini |  |
+|                        +------+  |
++----------------------------------+
+```
+
