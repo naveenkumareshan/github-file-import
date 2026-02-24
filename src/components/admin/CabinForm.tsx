@@ -126,6 +126,13 @@ export function CabinForm({ initialData, onSuccess, cabinId }: CabinFormProps) {
           title: "Cabin created",
           description: "New cabin has been successfully created"
         });
+        if (!cabinData.isActive) {
+          toast({
+            title: "⚠️ Room is inactive",
+            description: "This room was created as inactive. Students won't see it until you activate it.",
+            variant: "destructive",
+          });
+        }
       }
       
       if (onSuccess) {

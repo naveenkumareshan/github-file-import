@@ -6,7 +6,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from '@/hooks/use-toast';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { User, MailIcon, GraduationCap, Shield, AlertTriangle, Pencil, X, Check, LogOut, FileText, Lock, BookMarked, ChevronRight, Info, MessageSquareWarning, Headphones } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { User, MailIcon, GraduationCap, Shield, AlertTriangle, Pencil, X, Check, LogOut, FileText, Lock, BookMarked, ChevronRight, ChevronDown, Info, MessageSquareWarning, Headphones, Phone, Camera } from 'lucide-react';
 import { userProfileService } from '@/api/userProfileService';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
@@ -291,41 +292,66 @@ export const ProfileManagement = () => {
     return null;
   };
 
+  const [infoOpen, setInfoOpen] = useState(false);
+
   return (
     <div className="max-w-lg mx-auto space-y-3 px-3 py-3">
-      {/* Header card with avatar + nav rows inside */}
+      {/* Header card with avatar + collapsible nav rows */}
       <div className="bg-card rounded-2xl border overflow-hidden">
-        {/* Avatar section */}
-        <div className="flex items-center gap-4 p-4 border-b">
-          <Avatar className="h-16 w-16 flex-shrink-0">
-            <AvatarImage src={profile.profile_picture} alt={profile.name} />
-            <AvatarFallback className="text-xl bg-primary text-primary-foreground">{initials}</AvatarFallback>
-          </Avatar>
+        {/* Avatar section with name, email, phone, edit */}
+        <div className="flex items-center gap-4 p-4">
+          <div className="relative flex-shrink-0">
+            <Avatar className="h-16 w-16">
+              <AvatarImage src={profile.profile_picture} alt={profile.name} />
+              <AvatarFallback className="text-xl bg-primary text-primary-foreground">{initials}</AvatarFallback>
+            </Avatar>
+            <button
+              onClick={() => openSectionSheet('account')}
+              className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md"
+            >
+              <Camera className="h-3 w-3" />
+            </button>
+          </div>
           <div className="min-w-0 flex-1">
             <p className="text-[14px] font-semibold text-foreground">{profile.name || 'Your Name'}</p>
             <p className="text-[11px] text-muted-foreground truncate">{profile.email}</p>
+            {profile.phone && (
+              <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                <Phone className="h-3 w-3" /> {profile.phone}
+              </p>
+            )}
             {profile.profile_edit_count >= 2 && (
               <p className="text-[10px] text-destructive mt-0.5">Profile edit limit reached</p>
             )}
           </div>
         </div>
 
-        {/* Navigation rows */}
-        <div className="divide-y">
-          {SECTIONS.map(({ key, label, icon: Icon }) => (
-            <button
-              key={key}
-              onClick={() => openSectionSheet(key)}
-              className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-muted/50 transition-colors text-left"
-            >
-              <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <Icon className="h-4 w-4 text-primary" />
-              </div>
-              <span className="text-[13px] font-medium text-foreground flex-1">{label}</span>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        {/* Collapsible More Info toggle + section rows */}
+        <Collapsible open={infoOpen} onOpenChange={setInfoOpen}>
+          <CollapsibleTrigger asChild>
+            <button className="w-full flex items-center justify-between px-4 py-2.5 border-t hover:bg-muted/50 transition-colors">
+              <span className="text-[12px] font-medium text-muted-foreground">More Info</span>
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${infoOpen ? 'rotate-180' : ''}`} />
             </button>
-          ))}
-        </div>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="divide-y">
+              {SECTIONS.map(({ key, label, icon: Icon }) => (
+                <button
+                  key={key}
+                  onClick={() => openSectionSheet(key)}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors text-left"
+                >
+                  <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Icon className="h-4 w-4 text-primary" />
+                  </div>
+                  <span className="text-[13px] font-medium text-foreground flex-1">{label}</span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </button>
+              ))}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       </div>
 
       {/* My Bookings */}
