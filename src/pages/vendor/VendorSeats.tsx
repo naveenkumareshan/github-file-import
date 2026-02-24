@@ -1,586 +1,694 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { format, addDays, addMonths } from 'date-fns';
 import { getImageUrl } from '@/lib/utils';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { MapPin, Users, Calendar as CalendarIcon, DollarSign, Edit, Save, X, Eye } from 'lucide-react';
-import { DateBasedSeatMap } from '@/components/seats/DateBasedSeatMap';
-import { useToast } from '@/hooks/use-toast';
-import { vendorSeatsService, VendorSeat, VendorCabin, SeatFilters } from '@/api/vendorSeatsService';
+import { Separator } from '@/components/ui/separator';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  LayoutGrid, List, CalendarIcon, Search, Ban, Lock, Unlock,
+  Edit, Save, X, IndianRupee, Users, CheckCircle, Clock, AlertTriangle, RefreshCw, UserPlus,
+} from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import {
+  vendorSeatsService, VendorSeat, VendorCabin, StudentProfile, PartnerBookingData,
+} from '@/api/vendorSeatsService';
 import { useVendorEmployeePermissions } from '@/hooks/useVendorEmployeePermissions';
 import { useAuth } from '@/contexts/AuthContext';
 
+type ViewMode = 'grid' | 'table';
+type StatusFilter = 'all' | 'available' | 'booked' | 'expiring_soon' | 'blocked';
+
 const VendorSeats: React.FC = () => {
-  const [selectedCabinId, setSelectedCabinId] = useState<string>('all');
-  const [selectedCabin, setSelectedCabin] = useState<VendorCabin | null>(null);
-  const [selectedSeat, setSelectedSeat] = useState<VendorSeat | null>(null);
-  const [searchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [editingSeat, setEditingSeat] = useState<VendorSeat | null>(null);
-  const [editPrice, setEditPrice] = useState('');
   const [cabins, setCabins] = useState<VendorCabin[]>([]);
   const [seats, setSeats] = useState<VendorSeat[]>([]);
+  const [selectedCabinId, setSelectedCabinId] = useState<string>('');
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Sheet state
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [selectedSeat, setSelectedSeat] = useState<VendorSeat | null>(null);
+
+  // Price edit
+  const [editingSeatId, setEditingSeatId] = useState<string | null>(null);
+  const [editPrice, setEditPrice] = useState('');
   const [updating, setUpdating] = useState(false);
-  
-  const [viewMode, setViewMode] = useState<"card" | "table">("table");
+
+  // Booking form state
+  const [studentQuery, setStudentQuery] = useState('');
+  const [studentResults, setStudentResults] = useState<StudentProfile[]>([]);
+  const [selectedStudent, setSelectedStudent] = useState<StudentProfile | null>(null);
+  const [bookingPlan, setBookingPlan] = useState<string>('monthly');
+  const [bookingStartDate, setBookingStartDate] = useState<Date>(new Date());
+  const [customDays, setCustomDays] = useState('30');
+  const [bookingPrice, setBookingPrice] = useState('');
+  const [creatingBooking, setCreatingBooking] = useState(false);
 
   const { toast } = useToast();
   const { hasPermission } = useVendorEmployeePermissions();
   const { user } = useAuth();
 
-  const isSeatStatus = (v: string): v is Exclude<SeatFilters['status'], undefined> =>
-  ['available', 'occupied'].includes(v);
+  const canEdit = user?.role === 'admin' || user?.role === 'vendor' || hasPermission('seats_available_edit');
 
-  const filters: SeatFilters = {
-    cabinId: selectedCabinId !== 'all' ? selectedCabinId : undefined,
-    status:
-    statusFilter !== 'all' && isSeatStatus(statusFilter)
-      ? statusFilter
-      : undefined,
-    search: searchTerm || undefined
-  };
-
-  const handleCabinChange = (cabinId: string) => {
-    setSelectedCabinId(cabinId);
-    if (cabinId === "all") {
-      setSelectedCabin(null);
-      return;
-    }
-    const cabin = cabins.find((c) => c._id === cabinId) || null;
-    setSelectedCabin(cabin);
-  };
-
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const cabinsResult = await vendorSeatsService.getVendorCabins();
-      if (cabinsResult.success && cabinsResult.data) {
-        setCabins(cabinsResult.data.data);
-      }
-    } catch (error) {
-      console.error('Error fetching data:', error);
-      toast({ title: "Error", description: "Failed to fetch data", variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchSeats = async () => {
-    try {
-      const result = await vendorSeatsService.getVendorSeats(filters);
-      if (result.success && result.data) {
-        setSeats(result.data.data);
-      }
-    } catch (error) {
-      console.error('Error fetching seats:', error);
-    }
-  };
-
-  useEffect(() => { fetchData(); }, []);
-  useEffect(() => { fetchSeats(); }, [selectedCabinId, statusFilter, searchTerm]);
+  // Fetch cabins on mount
   useEffect(() => {
-    const interval = setInterval(fetchSeats, 100000);
-    return () => clearInterval(interval);
-  }, [selectedCabinId, statusFilter, searchTerm]);
+    (async () => {
+      setLoading(true);
+      const res = await vendorSeatsService.getVendorCabins();
+      if (res.success && res.data) {
+        const c = res.data.data;
+        setCabins(c);
+        if (c.length > 0) setSelectedCabinId(c[0]._id);
+      }
+      setLoading(false);
+    })();
+  }, []);
 
-  const handleSeatSelect = (seat: VendorSeat) => { setSelectedSeat(seat); };
+  // Fetch seats when cabin or date changes
+  const fetchSeats = useCallback(async () => {
+    if (!selectedCabinId) return;
+    setRefreshing(true);
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    const res = await vendorSeatsService.getSeatsForDate(selectedCabinId, dateStr);
+    if (res.success && res.data) {
+      setSeats(res.data);
+    }
+    setRefreshing(false);
+  }, [selectedCabinId, selectedDate]);
 
-  const handleEditPrice = (seat: VendorSeat) => {
-    setEditingSeat(seat);
-    setEditPrice(seat.price.toString());
+  useEffect(() => { fetchSeats(); }, [fetchSeats]);
+
+  // Computed filtered seats
+  const filteredSeats = useMemo(() => {
+    let result = seats;
+    if (statusFilter !== 'all') {
+      result = result.filter(s => s.dateStatus === statusFilter);
+    }
+    if (searchTerm) {
+      const q = searchTerm.toLowerCase();
+      result = result.filter(s => String(s.number).includes(q) || s.category.toLowerCase().includes(q));
+    }
+    return result;
+  }, [seats, statusFilter, searchTerm]);
+
+  // Stats
+  const stats = useMemo(() => {
+    const total = seats.length;
+    const booked = seats.filter(s => s.dateStatus === 'booked').length;
+    const available = seats.filter(s => s.dateStatus === 'available').length;
+    const expiring = seats.filter(s => s.dateStatus === 'expiring_soon').length;
+    const blocked = seats.filter(s => s.dateStatus === 'blocked').length;
+    const revenue = seats.reduce((sum, s) => {
+      if (s.dateStatus === 'booked' || s.dateStatus === 'expiring_soon') {
+        const active = s.allBookings.find(b => b.startDate <= format(selectedDate, 'yyyy-MM-dd') && b.endDate >= format(selectedDate, 'yyyy-MM-dd'));
+        return sum + (active?.totalPrice || 0);
+      }
+      return sum;
+    }, 0);
+    return { total, booked, available, expiring, blocked, revenue };
+  }, [seats, selectedDate]);
+
+  // Seat click -> open sheet
+  const handleSeatClick = (seat: VendorSeat) => {
+    setSelectedSeat(seat);
+    setSheetOpen(true);
+    setSelectedStudent(null);
+    setStudentQuery('');
+    setStudentResults([]);
+    setBookingPlan('monthly');
+    setBookingStartDate(selectedDate);
+    setBookingPrice(String(seat.price));
+    setCustomDays('30');
   };
 
-  const handleSavePrice = async () => {
-    if (!editingSeat || !editPrice) return;
+  // Price edit
+  const handleSavePrice = async (seatId: string) => {
+    if (!editPrice) return;
     setUpdating(true);
-    try {
-      const result = await vendorSeatsService.updateSeatPrice(editingSeat._id, parseFloat(editPrice));
-      if (result.success) {
-        toast({ title: "Success", description: "Seat price updated successfully" });
-        setEditingSeat(null);
-        fetchSeats();
-      } else {
-        toast({ title: "Error", description: "Failed to update seat price", variant: "destructive" });
-      }
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to update seat price", variant: "destructive" });
-    } finally {
-      setUpdating(false);
+    const res = await vendorSeatsService.updateSeatPrice(seatId, parseFloat(editPrice));
+    if (res.success) {
+      toast({ title: 'Price updated' });
+      setEditingSeatId(null);
+      fetchSeats();
+    } else {
+      toast({ title: 'Error', description: 'Failed to update price', variant: 'destructive' });
+    }
+    setUpdating(false);
+  };
+
+  // Toggle availability
+  const handleToggleAvailability = async (seat: VendorSeat, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setUpdating(true);
+    const res = await vendorSeatsService.toggleSeatAvailability(seat._id, !seat.isAvailable);
+    if (res.success) {
+      toast({ title: seat.isAvailable ? 'Seat blocked' : 'Seat unblocked' });
+      fetchSeats();
+    }
+    setUpdating(false);
+  };
+
+  // Student search
+  useEffect(() => {
+    if (studentQuery.length < 2) { setStudentResults([]); return; }
+    const timer = setTimeout(async () => {
+      const res = await vendorSeatsService.searchStudents(studentQuery);
+      if (res.success && res.data) setStudentResults(res.data);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [studentQuery]);
+
+  // Compute end date
+  const computedEndDate = useMemo(() => {
+    if (bookingPlan === 'monthly') return addMonths(bookingStartDate, 1);
+    if (bookingPlan === '15days') return addDays(bookingStartDate, 15);
+    return addDays(bookingStartDate, parseInt(customDays) || 30);
+  }, [bookingPlan, bookingStartDate, customDays]);
+
+  // Create booking
+  const handleCreateBooking = async () => {
+    if (!selectedSeat || !selectedStudent) return;
+    setCreatingBooking(true);
+    const data: PartnerBookingData = {
+      seatId: selectedSeat._id,
+      cabinId: selectedSeat.cabinId,
+      userId: selectedStudent.id,
+      startDate: format(bookingStartDate, 'yyyy-MM-dd'),
+      endDate: format(computedEndDate, 'yyyy-MM-dd'),
+      totalPrice: parseFloat(bookingPrice) || selectedSeat.price,
+      bookingDuration: bookingPlan === 'monthly' ? 'monthly' : bookingPlan === '15days' ? '15_days' : 'custom',
+      durationCount: bookingPlan === 'custom' ? customDays : bookingPlan === '15days' ? '15' : '1',
+      seatNumber: selectedSeat.number,
+    };
+    const res = await vendorSeatsService.createPartnerBooking(data);
+    if (res.success) {
+      toast({ title: 'Booking created successfully' });
+      setSheetOpen(false);
+      fetchSeats();
+    } else {
+      toast({ title: 'Error', description: res.error || 'Failed to create booking', variant: 'destructive' });
+    }
+    setCreatingBooking(false);
+  };
+
+  // Status colors
+  const statusColors = (status?: string) => {
+    switch (status) {
+      case 'available': return 'bg-emerald-50 border-emerald-400 dark:bg-emerald-950 dark:border-emerald-700';
+      case 'booked': return 'bg-red-50 border-red-400 dark:bg-red-950 dark:border-red-700';
+      case 'expiring_soon': return 'bg-amber-50 border-amber-400 dark:bg-amber-950 dark:border-amber-700';
+      case 'blocked': return 'bg-muted border-muted-foreground/30';
+      default: return 'bg-muted border-border';
     }
   };
 
-  const handleToggleAvailability = async (seat: VendorSeat) => {
-    setUpdating(true);
-    try {
-      const result = await vendorSeatsService.toggleSeatAvailability(seat._id, !seat.isAvailable);
-      if (result.success) {
-        toast({ title: "Success", description: "Seat availability updated" });
-        fetchSeats();
-      } else {
-        toast({ title: "Error", description: "Failed to update availability", variant: "destructive" });
-      }
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to update availability", variant: "destructive" });
-    } finally {
-      setUpdating(false);
+  const statusLabel = (status?: string) => {
+    switch (status) {
+      case 'available': return 'Available';
+      case 'booked': return 'Booked';
+      case 'expiring_soon': return 'Expiring';
+      case 'blocked': return 'Blocked';
+      default: return '-';
     }
   };
 
-
-  function getSeatStatus(seat: VendorSeat) {
-    if (seat.currentBooking) return "Occupied";
-    if (!seat.isAvailable) return "Unavailable";
-    return "Available";
-  }
+  const statusIcon = (status?: string) => {
+    switch (status) {
+      case 'available': return <CheckCircle className="h-3 w-3 text-emerald-600" />;
+      case 'booked': return <Users className="h-3 w-3 text-red-600" />;
+      case 'expiring_soon': return <AlertTriangle className="h-3 w-3 text-amber-600" />;
+      case 'blocked': return <Ban className="h-3 w-3 text-muted-foreground" />;
+      default: return null;
+    }
+  };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <p className="text-xs text-muted-foreground mb-1">Dashboard / Seat Map</p>
-          <h1 className="text-lg font-semibold">Seat Availability Map</h1>
+    <div className="space-y-1">
+      {/* ──── Stats Bar ──── */}
+      <div className="flex items-center gap-0 border rounded-md bg-card overflow-hidden h-[52px]">
+        {[
+          { label: 'Total', value: stats.total, icon: <LayoutGrid className="h-3.5 w-3.5 text-primary" /> },
+          { label: 'Booked', value: stats.booked, icon: <Users className="h-3.5 w-3.5 text-red-500" /> },
+          { label: 'Available', value: stats.available, icon: <CheckCircle className="h-3.5 w-3.5 text-emerald-500" /> },
+          { label: 'Expiring', value: stats.expiring, icon: <AlertTriangle className="h-3.5 w-3.5 text-amber-500" /> },
+          { label: 'Blocked', value: stats.blocked, icon: <Ban className="h-3.5 w-3.5 text-muted-foreground" /> },
+          { label: 'Revenue', value: `₹${stats.revenue.toLocaleString()}`, icon: <IndianRupee className="h-3.5 w-3.5 text-primary" /> },
+        ].map((s, i) => (
+          <div key={s.label} className={cn("flex items-center gap-1.5 px-3 py-1 flex-1 justify-center", i > 0 && "border-l")}>
+            {s.icon}
+            <div className="text-center leading-tight">
+              <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{s.label}</div>
+              <div className="text-sm font-semibold">{s.value}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ──── Sticky Filter Row ──── */}
+      <div className="sticky top-0 z-10 bg-background border rounded-md px-2 py-1.5 flex items-center gap-2 flex-wrap">
+        <Select value={selectedCabinId} onValueChange={setSelectedCabinId}>
+          <SelectTrigger className="h-8 w-[180px] text-xs">
+            <SelectValue placeholder="Reading Room" />
+          </SelectTrigger>
+          <SelectContent>
+            {cabins.map(c => (
+              <SelectItem key={c._id} value={c._id} className="text-xs">{c.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="h-8 text-xs gap-1 px-2">
+              <CalendarIcon className="h-3 w-3" />
+              {format(selectedDate, 'dd MMM yyyy')}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={(d) => d && setSelectedDate(d)}
+              className="p-3 pointer-events-auto"
+            />
+          </PopoverContent>
+        </Popover>
+
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
+          <SelectTrigger className="h-8 w-[130px] text-xs">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="text-xs">All Status</SelectItem>
+            <SelectItem value="available" className="text-xs">Available</SelectItem>
+            <SelectItem value="booked" className="text-xs">Booked</SelectItem>
+            <SelectItem value="expiring_soon" className="text-xs">Expiring Soon</SelectItem>
+            <SelectItem value="blocked" className="text-xs">Blocked</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <div className="relative flex-1 min-w-[120px] max-w-[200px]">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+          <Input
+            className="h-8 text-xs pl-7"
+            placeholder="Search seat..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+          />
         </div>
-        <Button size="sm" variant="outline" onClick={fetchData}>
-          Refresh
+
+        <div className="flex items-center border rounded-md overflow-hidden ml-auto">
+          <Button
+            variant={viewMode === 'grid' ? 'default' : 'ghost'}
+            size="sm"
+            className="h-8 w-8 p-0 rounded-none"
+            onClick={() => setViewMode('grid')}
+          >
+            <LayoutGrid className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant={viewMode === 'table' ? 'default' : 'ghost'}
+            size="sm"
+            className="h-8 w-8 p-0 rounded-none"
+            onClick={() => setViewMode('table')}
+          >
+            <List className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+
+        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={fetchSeats} disabled={refreshing}>
+          <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
         </Button>
       </div>
 
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <MapPin className="h-5 w-5 text-blue-600" />
-              <div>
-                <p className="text-sm text-muted-foreground">Total Reading Rooms</p>
-                <p className="text-lg font-semibold">{cabins.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-green-600" />
-              <div>
-                <p className="text-sm text-muted-foreground">Total Seats</p>
-                <p className="text-lg font-semibold">{seats.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <CalendarIcon className="h-5 w-5 text-orange-600" />
-              <div>
-                <p className="text-sm text-muted-foreground">Occupied</p>
-                <p className="text-lg font-semibold">
-                  {seats.filter((s) => s.currentBooking).length}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5 text-purple-600" />
-              <div>
-                <p className="text-sm text-muted-foreground">Available</p>
-                <p className="text-lg font-semibold">
-                  {seats.filter((s) => s.isAvailable && !s.currentBooking).length}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* ──── Legend ──── */}
+      <div className="flex items-center gap-3 px-1 text-[10px] text-muted-foreground">
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-400 inline-block" /> Available</span>
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-red-400 inline-block" /> Booked</span>
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-amber-400 inline-block" /> Expiring</span>
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-muted-foreground/40 inline-block" /> Blocked</span>
+        <span className="ml-auto">{filteredSeats.length} seats</span>
       </div>
 
-      <Tabs defaultValue="list" className="w-full">
-        <TabsList>
-          <TabsTrigger value="list">Seat List</TabsTrigger>
-          <TabsTrigger value="availability">Date-Based Availability</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="list" className="space-y-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex flex-wrap gap-4">
-                <div className="flex-1 min-w-[200px]">
-                  <Label>Reading Room</Label>
-                  <Select value={selectedCabinId} onValueChange={handleCabinChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Reading Room" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Reading Rooms</SelectItem>
-                      {cabins.map((cabin) => (
-                        <SelectItem key={cabin._id} value={cabin._id}>
-                          {cabin.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex-1 min-w-[200px]">
-                  <Label>Status</Label>
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Filter by status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Seats</SelectItem>
-                      <SelectItem value="available">Available</SelectItem>
-                      <SelectItem value="occupied">Occupied</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+      {/* ──── Grid View ──── */}
+      {viewMode === 'grid' && (
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(72px,1fr))] gap-1">
+          {filteredSeats.map(seat => (
+            <div
+              key={seat._id}
+              onClick={() => handleSeatClick(seat)}
+              className={cn(
+                "relative border rounded cursor-pointer p-1 flex flex-col items-center justify-center text-center transition-all hover:shadow-md group min-h-[72px]",
+                statusColors(seat.dateStatus)
+              )}
+            >
+              <span className="text-xs font-bold leading-none">S{seat.number}</span>
+              <span className="text-[9px] text-muted-foreground leading-tight truncate w-full">{seat.category}</span>
+              <span className="text-[9px] font-medium leading-tight">₹{seat.price}</span>
+              <div className="flex items-center gap-0.5 mt-0.5">
+                {statusIcon(seat.dateStatus)}
+                <span className="text-[8px]">{statusLabel(seat.dateStatus)}</span>
               </div>
-            </CardContent>
-          </Card>
+              {/* Hover actions */}
+              {canEdit && (
+                <div className="absolute inset-0 bg-background/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1 rounded">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0"
+                    onClick={(e) => { e.stopPropagation(); handleToggleAvailability(seat, e); }}
+                    title={seat.isAvailable ? 'Block' : 'Unblock'}
+                  >
+                    {seat.isAvailable ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingSeatId(seat._id);
+                      setEditPrice(String(seat.price));
+                    }}
+                    title="Edit price"
+                  >
+                    <Edit className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
-          <div className="flex justify-between items-center mb-4">
-            <CardTitle>Seats ({seats.length})</CardTitle>
-            <Button variant="outline" onClick={() => setViewMode(viewMode === "card" ? "table" : "card")}>
-              {viewMode === "card" ? "Switch to Table View" : "Switch to Card View"}
-            </Button>
-          </div>
-
-          {viewMode === "card" ? (
-            <ScrollArea className="h-[600px]">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {seats.map((seat) => (
-                  <Card key={seat._id} className="cursor-pointer hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <h3 className="font-semibold">Seat #{seat.number}</h3>
-                          <p className="text-sm text-muted-foreground">{seat.cabinName}</p>
-                        </div>
-                        <Badge 
-                          variant={seat.isAvailable && !seat.currentBooking ? "default" : "secondary"}
-                          className={
-                            seat.currentBooking
-                              ? "bg-red-100 text-red-800"
-                              : seat.isAvailable
-                              ? "bg-green-100 text-green-800"
-                              : "bg-yellow-100 text-yellow-800"
-                          }
-                        >
-                          {getSeatStatus(seat)}
-                        </Badge>
+      {/* ──── Table View ──── */}
+      {viewMode === 'table' && (
+        <div className="border rounded-md overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead className="text-[10px] uppercase tracking-wider h-8 px-2">Seat</TableHead>
+                <TableHead className="text-[10px] uppercase tracking-wider h-8 px-2">Room</TableHead>
+                <TableHead className="text-[10px] uppercase tracking-wider h-8 px-2">Category</TableHead>
+                <TableHead className="text-[10px] uppercase tracking-wider h-8 px-2">Status</TableHead>
+                <TableHead className="text-[10px] uppercase tracking-wider h-8 px-2">Price</TableHead>
+                <TableHead className="text-[10px] uppercase tracking-wider h-8 px-2">End Date</TableHead>
+                {canEdit && <TableHead className="text-[10px] uppercase tracking-wider h-8 px-2">Actions</TableHead>}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredSeats.map((seat, i) => {
+                const activeBooking = seat.allBookings.find(b => b.startDate <= format(selectedDate, 'yyyy-MM-dd') && b.endDate >= format(selectedDate, 'yyyy-MM-dd'));
+                return (
+                  <TableRow
+                    key={seat._id}
+                    className={cn("cursor-pointer text-xs", i % 2 === 1 && "bg-muted/30")}
+                    onClick={() => handleSeatClick(seat)}
+                  >
+                    <TableCell className="px-2 py-1 font-medium">S{seat.number}</TableCell>
+                    <TableCell className="px-2 py-1">{seat.cabinName}</TableCell>
+                    <TableCell className="px-2 py-1">
+                      <Badge variant="outline" className="text-[10px] px-1 py-0">{seat.category}</Badge>
+                    </TableCell>
+                    <TableCell className="px-2 py-1">
+                      <div className="flex items-center gap-1">
+                        {statusIcon(seat.dateStatus)}
+                        <span className="text-[10px]">{statusLabel(seat.dateStatus)}</span>
                       </div>
-                      {(user?.role === 'admin' || user?.role === 'vendor' || hasPermission('seats_available_edit')) && (
-                        <>
-                          <div className="flex items-center justify-between mb-2">
-                            <p className="text-lg font-bold text-primary">₹{seat.price}/month</p>
-                            <Button variant="outline" size="sm" onClick={() => handleEditPrice(seat)}>
-                              <Edit className="h-3 w-3" />
-                            </Button>
-                          </div>
-                          <div className="flex gap-2 mb-2">
-                            <Button variant="outline" size="sm" onClick={() => handleToggleAvailability(seat)} disabled={updating}>
-                              {seat.isAvailable ? 'Mark Unavailable' : 'Mark Available'}
-                            </Button>
-                          </div>
-                        </>
-                      )}
-                      {seat.currentBooking && (
-                        <div className="mt-3 p-2 bg-muted rounded">
-                          <p className="text-sm font-medium">{seat.currentBooking.studentName}</p>
-                          <p className="text-sm font-medium">{seat.currentBooking.studentPhone}</p>
-                          <p className="text-xs text-muted-foreground">{seat.currentBooking.studentEmail}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(seat.currentBooking.startDate).toLocaleDateString()} - 
-                            {new Date(seat.currentBooking.endDate).toLocaleDateString()}
-                          </p>
-                          {seat.currentBooking.profilePicture && (
-                            <a href={getImageUrl(seat.currentBooking.profilePicture)} target="_blank" rel="noopener noreferrer">
-                              <img src={getImageUrl(seat.currentBooking.profilePicture)} alt="Student" className="w-15 h-20 object-contain cursor-pointer" />
-                            </a>
-                          )}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </ScrollArea>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Seat</TableHead>
-                  <TableHead>Cabin</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Price</TableHead>
-                  {(user?.role === 'admin' || user?.role === 'vendor' || hasPermission('seats_available_edit')) && (
-                    <TableHead>Actions</TableHead>
-                  )}
-                  <TableHead>Booking Info</TableHead>
-                  <TableHead>Details</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {seats.map((seat) => (
-                  <TableRow key={seat._id}>
-                    <TableCell>#{seat.number}</TableCell>
-                    <TableCell>{seat.cabinName}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="text-xs">{seat.category}</Badge>
                     </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={seat.isAvailable && !seat.currentBooking ? "default" : "secondary"}
-                        className={
-                          seat.currentBooking
-                            ? "bg-red-100 text-red-800"
-                            : seat.isAvailable
-                            ? "bg-green-100 text-green-800"
-                            : "bg-yellow-100 text-yellow-800"
-                        }
-                      >
-                        {getSeatStatus(seat)}
-                      </Badge>
+                    <TableCell className="px-2 py-1">₹{seat.price}</TableCell>
+                    <TableCell className="px-2 py-1 text-[10px]">
+                      {activeBooking ? new Date(activeBooking.endDate).toLocaleDateString() : '-'}
                     </TableCell>
-                    <TableCell>₹{seat.price}/mo</TableCell>
-                    {(user?.role === 'admin' || user?.role === 'vendor' || hasPermission('seats_available_edit')) && (
-                      <TableCell className="space-y-2">
-                        {!seat.currentBooking && (
-                          <Button variant="outline" size="sm" onClick={() => handleToggleAvailability(seat)} disabled={updating}>
-                            {seat.isAvailable ? "Mark Unavailable" : "Mark Available"}
+                    {canEdit && (
+                      <TableCell className="px-2 py-1">
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => { e.stopPropagation(); handleToggleAvailability(seat, e); }}>
+                            {seat.isAvailable ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
                           </Button>
-                        )}
-                        <Button variant="outline" size="sm" onClick={() => handleEditPrice(seat)}>
-                          <Edit className="h-3 w-3" />
-                        </Button>
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => { e.stopPropagation(); setEditingSeatId(seat._id); setEditPrice(String(seat.price)); }}>
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </TableCell>
                     )}
-                    <TableCell>
-                      {seat.currentBooking ? (
-                        <div className="text-sm">
-                          <div className="font-medium">{seat.currentBooking.studentName}</div>
-                          <div className="text-xs text-muted-foreground">{seat.currentBooking.studentPhone}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {new Date(seat.currentBooking.startDate).toLocaleDateString()} -{' '}
-                            {new Date(seat.currentBooking.endDate).toLocaleDateString()}
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">No booking</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="sm" onClick={() => setSelectedSeat(seat)}>
-                        View Details
-                      </Button>
-                    </TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </TabsContent>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
-        <TabsContent value="availability" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Date-Based Seat Availability</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-4 mb-4">
-                <div className="flex-1 min-w-[200px]">
-                  <Label>Reading Rooms</Label>
-                  <Select value={selectedCabinId} onValueChange={handleCabinChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select Reading Room" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {cabins.map((cabin) => (
-                        <SelectItem key={cabin._id} value={cabin._id}>
-                          {cabin.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+      {filteredSeats.length === 0 && !loading && (
+        <div className="text-center py-12 text-muted-foreground text-sm">
+          {selectedCabinId ? 'No seats match your filters.' : 'Select a Reading Room to begin.'}
+        </div>
+      )}
 
-              {selectedCabinId && selectedCabinId !== 'all' && selectedCabin && (
-                <DateBasedSeatMap
-                  cabinId={selectedCabinId}
-                  floorsList={selectedCabin.floors}
-                  onSeatSelect={handleSeatSelect}
-                  selectedSeat={selectedSeat}
-                />
-              )}
-
-              {(!selectedCabinId || selectedCabinId === 'all') && (
-                <div className="text-center py-8 text-muted-foreground">
-                  Please select a reading room to view date-based availability
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      {/* Edit Price Dialog */}
-      <Dialog open={!!editingSeat} onOpenChange={() => setEditingSeat(null)}>
-        <DialogContent>
+      {/* ──── Price Edit Dialog ──── */}
+      <Dialog open={!!editingSeatId} onOpenChange={() => setEditingSeatId(null)}>
+        <DialogContent className="max-w-xs">
           <DialogHeader>
-            <DialogTitle>Edit Seat Price</DialogTitle>
+            <DialogTitle className="text-sm">Edit Seat Price</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-3">
             <div>
-              <Label>Seat #{editingSeat?.number} - {editingSeat?.cabinName}</Label>
-            </div>
-            <div>
-              <Label>New Price (₹/month)</Label>
-              <Input
-                type="number"
-                value={editPrice}
-                onChange={(e) => setEditPrice(e.target.value)}
-                placeholder="Enter new price"
-              />
+              <Label className="text-xs">New Price (₹/month)</Label>
+              <Input type="number" value={editPrice} onChange={e => setEditPrice(e.target.value)} className="h-8 text-sm" />
             </div>
             <div className="flex gap-2">
-              <Button onClick={handleSavePrice} disabled={updating || !editPrice}>
-                <Save className="h-4 w-4 mr-2" />
-                Save Price
+              <Button size="sm" onClick={() => editingSeatId && handleSavePrice(editingSeatId)} disabled={updating}>
+                <Save className="h-3 w-3 mr-1" /> Save
               </Button>
-              <Button variant="outline" onClick={() => setEditingSeat(null)}>
-                <X className="h-4 w-4 mr-2" />
-                Cancel
+              <Button size="sm" variant="outline" onClick={() => setEditingSeatId(null)}>
+                <X className="h-3 w-3 mr-1" /> Cancel
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Seat Details Dialog */}
-      <Dialog open={!!selectedSeat && !editingSeat} onOpenChange={() => setSelectedSeat(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Seat #{selectedSeat?.number} Details</DialogTitle>
-          </DialogHeader>
+      {/* ──── Right-Side Sheet Drawer ──── */}
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent side="right" className="w-[400px] sm:w-[440px] p-4 overflow-y-auto">
           {selectedSeat && (
-            <div className="space-y-4">
-              {/* Seat Info */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="border rounded p-2">
-                  <p className="text-xs text-muted-foreground">Number</p>
-                  <p className="font-medium">#{selectedSeat.number}</p>
-                </div>
-                <div className="border rounded p-2">
-                  <p className="text-xs text-muted-foreground">Category</p>
-                  <p className="font-medium">{selectedSeat.category}</p>
-                </div>
-                <div className="border rounded p-2">
-                  <p className="text-xs text-muted-foreground">Price</p>
-                  <p className="font-medium">₹{selectedSeat.price}/mo</p>
-                </div>
-                <div className="border rounded p-2">
-                  <p className="text-xs text-muted-foreground">Status</p>
-                  <Badge className={selectedSeat.currentBooking ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"}>
-                    {getSeatStatus(selectedSeat)}
-                  </Badge>
+            <>
+              <SheetHeader className="pb-2">
+                <SheetTitle className="text-sm flex items-center gap-2">
+                  Seat #{selectedSeat.number}
+                  <Badge variant="outline" className="text-[10px]">{selectedSeat.category}</Badge>
+                  <span className="text-xs text-muted-foreground ml-auto">₹{selectedSeat.price}/mo</span>
+                </SheetTitle>
+              </SheetHeader>
+              <Separator className="my-2" />
+
+              {/* Seat status info */}
+              <div className={cn("rounded p-2 mb-3 border text-xs", statusColors(selectedSeat.dateStatus))}>
+                <div className="flex items-center gap-1.5">
+                  {statusIcon(selectedSeat.dateStatus)}
+                  <span className="font-medium">{statusLabel(selectedSeat.dateStatus)}</span>
+                  <span className="text-muted-foreground ml-auto">for {format(selectedDate, 'dd MMM yyyy')}</span>
                 </div>
               </div>
 
-              {/* Current Booking - Student Profile */}
-              {selectedSeat.currentBooking && (
-                <div className="border rounded-lg p-4">
-                  <h4 className="font-medium mb-3">Current Student</h4>
-                  <div className="flex gap-4">
-                    {selectedSeat.currentBooking.profilePicture && (
-                      <a href={getImageUrl(selectedSeat.currentBooking.profilePicture)} target="_blank" rel="noopener noreferrer">
-                        <img src={getImageUrl(selectedSeat.currentBooking.profilePicture)} alt="Student" className="w-16 h-20 object-contain rounded border" />
-                      </a>
-                    )}
-                    <div className="grid grid-cols-2 gap-2 flex-1 text-sm">
-                      <div><span className="text-muted-foreground">Name:</span> {selectedSeat.currentBooking.studentName}</div>
-                      <div><span className="text-muted-foreground">Phone:</span> {selectedSeat.currentBooking.studentPhone}</div>
-                      <div><span className="text-muted-foreground">Email:</span> {selectedSeat.currentBooking.studentEmail}</div>
-                      <div><span className="text-muted-foreground">ID:</span> {selectedSeat.currentBooking.userId}</div>
+              {/* ── BOOKED / EXPIRING: Show student info ── */}
+              {(selectedSeat.dateStatus === 'booked' || selectedSeat.dateStatus === 'expiring_soon') && selectedSeat.currentBooking && (
+                <div className="space-y-3">
+                  <div className="border rounded p-3 space-y-2">
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Current Student</h4>
+                    <div className="flex gap-3">
+                      {selectedSeat.currentBooking.profilePicture && (
+                        <a href={getImageUrl(selectedSeat.currentBooking.profilePicture)} target="_blank" rel="noopener noreferrer">
+                          <img src={getImageUrl(selectedSeat.currentBooking.profilePicture)} alt="Student" className="w-12 h-14 object-cover rounded border" />
+                        </a>
+                      )}
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] flex-1">
+                        <div><span className="text-muted-foreground">Name:</span> {selectedSeat.currentBooking.studentName}</div>
+                        <div><span className="text-muted-foreground">Phone:</span> {selectedSeat.currentBooking.studentPhone}</div>
+                        <div className="col-span-2"><span className="text-muted-foreground">Email:</span> {selectedSeat.currentBooking.studentEmail}</div>
+                        <div><span className="text-muted-foreground">From:</span> {new Date(selectedSeat.currentBooking.startDate).toLocaleDateString()}</div>
+                        <div><span className="text-muted-foreground">To:</span> {new Date(selectedSeat.currentBooking.endDate).toLocaleDateString()}</div>
+                      </div>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* All Bookings (Current + Future) */}
-              {selectedSeat.allBookings && selectedSeat.allBookings.length > 0 ? (
-                <div className="border rounded-lg p-4">
-                  <h4 className="font-medium mb-3">All Bookings (Current & Future)</h4>
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="text-xs">Serial #</TableHead>
-                          <TableHead className="text-xs">Student</TableHead>
-                          <TableHead className="text-xs">Phone</TableHead>
-                          <TableHead className="text-xs">From</TableHead>
-                          <TableHead className="text-xs">To</TableHead>
-                          <TableHead className="text-xs">Duration</TableHead>
-                          <TableHead className="text-xs">Amount</TableHead>
-                          <TableHead className="text-xs">Status</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {selectedSeat.allBookings.map((b, i) => (
-                          <TableRow key={i}>
-                            <TableCell className="text-xs">{b.serialNumber || '-'}</TableCell>
-                            <TableCell className="text-xs">
-                              <div>{b.studentName}</div>
-                              {b.course && <div className="text-muted-foreground">{b.course}</div>}
-                              {b.college && <div className="text-muted-foreground">{b.college}</div>}
-                            </TableCell>
-                            <TableCell className="text-xs">{b.studentPhone}</TableCell>
-                            <TableCell className="text-xs">{b.startDate ? new Date(b.startDate).toLocaleDateString() : '-'}</TableCell>
-                            <TableCell className="text-xs">{b.endDate ? new Date(b.endDate).toLocaleDateString() : '-'}</TableCell>
-                            <TableCell className="text-xs">{b.durationCount} {b.bookingDuration}</TableCell>
-                            <TableCell className="text-xs">₹{b.totalPrice}</TableCell>
-                            <TableCell className="text-xs">
-                              <Badge variant="outline" className="text-[10px]">{b.paymentStatus}</Badge>
-                            </TableCell>
-                          </TableRow>
+              {/* ── AVAILABLE: Booking form ── */}
+              {selectedSeat.dateStatus === 'available' && canEdit && (
+                <div className="space-y-3">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                    <UserPlus className="h-3 w-3" /> Book This Seat
+                  </h4>
+
+                  {/* Student search */}
+                  <div>
+                    <Label className="text-[10px] uppercase text-muted-foreground">Search Student</Label>
+                    <Input
+                      className="h-8 text-xs"
+                      placeholder="Name, phone, or email..."
+                      value={studentQuery}
+                      onChange={e => { setStudentQuery(e.target.value); setSelectedStudent(null); }}
+                    />
+                    {studentResults.length > 0 && !selectedStudent && (
+                      <div className="border rounded mt-1 max-h-[150px] overflow-y-auto">
+                        {studentResults.map(s => (
+                          <div
+                            key={s.id}
+                            className="px-2 py-1.5 text-[11px] hover:bg-muted cursor-pointer border-b last:border-0"
+                            onClick={() => { setSelectedStudent(s); setStudentQuery(s.name); setStudentResults([]); }}
+                          >
+                            <div className="font-medium">{s.name}</div>
+                            <div className="text-muted-foreground">{s.phone} · {s.email}</div>
+                          </div>
                         ))}
-                      </TableBody>
-                    </Table>
+                      </div>
+                    )}
+                    {selectedStudent && (
+                      <div className="mt-1 border rounded p-2 bg-muted/50 text-[11px] flex justify-between items-center">
+                        <div>
+                          <span className="font-medium">{selectedStudent.name}</span>
+                          <span className="text-muted-foreground ml-2">{selectedStudent.phone}</span>
+                        </div>
+                        <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => { setSelectedStudent(null); setStudentQuery(''); }}>
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
+
+                  {/* Plan */}
+                  <div>
+                    <Label className="text-[10px] uppercase text-muted-foreground">Plan</Label>
+                    <Select value={bookingPlan} onValueChange={setBookingPlan}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="monthly" className="text-xs">Monthly (30 days)</SelectItem>
+                        <SelectItem value="15days" className="text-xs">15 Days</SelectItem>
+                        <SelectItem value="custom" className="text-xs">Custom</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {bookingPlan === 'custom' && (
+                    <div>
+                      <Label className="text-[10px] uppercase text-muted-foreground">Days</Label>
+                      <Input className="h-8 text-xs" type="number" value={customDays} onChange={e => setCustomDays(e.target.value)} />
+                    </div>
+                  )}
+
+                  {/* Dates */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-[10px] uppercase text-muted-foreground">Start</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" size="sm" className="h-8 text-xs w-full justify-start gap-1">
+                            <CalendarIcon className="h-3 w-3" />
+                            {format(bookingStartDate, 'dd MMM')}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar mode="single" selected={bookingStartDate} onSelect={d => d && setBookingStartDate(d)} className="p-3 pointer-events-auto" />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <div>
+                      <Label className="text-[10px] uppercase text-muted-foreground">End</Label>
+                      <div className="h-8 border rounded-md flex items-center px-2 text-xs bg-muted/50">
+                        {format(computedEndDate, 'dd MMM yyyy')}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Price */}
+                  <div>
+                    <Label className="text-[10px] uppercase text-muted-foreground">Amount (₹)</Label>
+                    <Input className="h-8 text-xs" type="number" value={bookingPrice} onChange={e => setBookingPrice(e.target.value)} />
+                  </div>
+
+                  <Button
+                    className="w-full h-9 text-xs"
+                    disabled={!selectedStudent || creatingBooking}
+                    onClick={handleCreateBooking}
+                  >
+                    {creatingBooking ? 'Creating...' : 'Confirm Booking'}
+                  </Button>
+                </div>
+              )}
+
+              {/* ── BLOCKED: Unblock option ── */}
+              {selectedSeat.dateStatus === 'blocked' && canEdit && (
+                <div className="text-center py-4">
+                  <p className="text-xs text-muted-foreground mb-3">This seat is currently blocked.</p>
+                  <Button size="sm" variant="outline" onClick={() => handleToggleAvailability(selectedSeat)}>
+                    <Unlock className="h-3 w-3 mr-1" /> Unblock Seat
+                  </Button>
+                </div>
+              )}
+
+              {/* ── All Bookings History ── */}
+              <Separator className="my-3" />
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                Booking History ({selectedSeat.allBookings.length})
+              </h4>
+              {selectedSeat.allBookings.length > 0 ? (
+                <div className="space-y-2">
+                  {selectedSeat.allBookings.map((b, i) => (
+                    <div key={i} className="border rounded p-2 text-[11px] space-y-1">
+                      <div className="flex justify-between">
+                        <span className="font-medium">{b.studentName}</span>
+                        <Badge variant="outline" className="text-[9px] px-1">{b.paymentStatus}</Badge>
+                      </div>
+                      <div className="text-muted-foreground">
+                        {new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()}
+                        {b.durationCount && b.bookingDuration && ` · ${b.durationCount} ${b.bookingDuration}`}
+                      </div>
+                      <div className="flex justify-between">
+                        <span>₹{b.totalPrice}</span>
+                        <span className="text-muted-foreground">{b.studentPhone}</span>
+                      </div>
+                      {(b.course || b.college) && (
+                        <div className="text-muted-foreground">{b.course}{b.course && b.college ? ' · ' : ''}{b.college}</div>
+                      )}
+                      {b.serialNumber && <div className="text-muted-foreground">#{b.serialNumber}</div>}
+                    </div>
+                  ))}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">No bookings found for this seat.</p>
+                <p className="text-[11px] text-muted-foreground">No bookings for this seat.</p>
               )}
-            </div>
+            </>
           )}
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 };
