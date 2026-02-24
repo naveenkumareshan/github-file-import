@@ -1,20 +1,16 @@
 import React, { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { cabinsService } from "@/api/cabinsService";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronUp, Users, IndianRupee, Layers, Armchair } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { CabinImageSlider } from "@/components/CabinImageSlider";
+
 const SeatBookingForm = lazy(() =>
   import("@/components/seats/SeatBookingForm").then((m) => ({
     default: m.SeatBookingForm,
-  }))
-);
-
-const CabinDetails = lazy(() =>
-  import("@/components/CabinDetails").then((m) => ({
-    default: m.CabinDetails,
   }))
 );
 
@@ -24,6 +20,7 @@ export interface Seat {
   number: number;
   cabinId: string;
   price: number;
+  category?: string;
   position: {
     x: number;
     y: number;
@@ -67,8 +64,7 @@ const BookSeat = () => {
   const { cabinId } = useParams<{ cabinId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const cabinRef = useRef();
-  const seatSelectionRef = useRef();
+  const bookingFormRef = useRef<HTMLDivElement>(null);
 
   const [cabin, setCabin] = useState<Cabin | null>(null);
   const [selectedSeat, setSelectedSeat] = useState<Seat | null>(null);
@@ -76,23 +72,18 @@ const BookSeat = () => {
   const [error, setError] = useState<string | null>(null);
   const [roomElements, setRoomElements] = useState<RoomElement[]>([]);
   const [hideSeats, setHideSeats] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+
   useEffect(() => {
-    if (cabinId) {
-      fetchCabinDetails();
-    }
+    if (cabinId) fetchCabinDetails();
   }, [cabinId]);
 
   const fetchCabinDetails = async () => {
     try {
       setLoading(true);
-
-      if (!cabinId) {
-        setError("Invalid cabin ID");
-        return;
-      }
+      if (!cabinId) { setError("Invalid cabin ID"); return; }
 
       const response = await cabinsService.getCabinById(cabinId);
-
       if (response.success && response.data) {
         const d = response.data;
         setCabin({
@@ -103,24 +94,20 @@ const BookSeat = () => {
           price: d.price || 0,
           amenities: d.amenities || [],
           capacity: d.capacity || 1,
-          images: d.image_url ? [d.image_url] : [],
+          images: d.images?.length ? d.images : (d.image_url ? [d.image_url] : []),
           imageSrc: d.image_url || '',
           floors: Array.isArray(d.floors) ? (d.floors as any[]) : [],
           lockerPrice: 500,
-          isBookingActive: d.is_active,
+          isBookingActive: (d as any).is_booking_active !== false,
+          isActive: d.is_active !== false,
           category: (d.category as 'standard' | 'premium' | 'luxury') || 'standard',
           imageUrl: d.image_url || 'https://images.unsplash.com/photo-1626948683838-3be9a4e90737?q=80&w=1470&auto=format&fit=crop',
         });
       } else {
-        console.error("Error in cabin response:", response);
-        toast({
-          title: "Error",
-          description: "Failed to load cabin details",
-          variant: "destructive",
-        });
+        toast({ title: "Error", description: "Failed to load cabin details", variant: "destructive" });
       }
-    } catch (error) {
-      console.error("Error fetching cabin details:", error);
+    } catch (err) {
+      console.error("Error fetching cabin details:", err);
       setError("Failed to load cabin details");
     } finally {
       setLoading(false);
@@ -129,94 +116,152 @@ const BookSeat = () => {
 
   const handleSeatSelect = (seat: Seat) => {
     setSelectedSeat(seat);
-    if (cabinRef) {
-      scrollPage(cabinRef);
-    }
   };
 
-  const scrollPage = (sectionRef) => {
-    sectionRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  const handleGoBack = () => {
-    navigate("/cabins");
-  };
+  const handleGoBack = () => navigate("/cabins");
 
   const handleBookingComplete = (bookingId: string) => {
-    toast({
-      title: "Booking Successful",
-      description: "Your seat has been booked successfully!",
-    });
+    toast({ title: "Booking Successful", description: "Your seat has been booked successfully!" });
     navigate("/book-confirmation/" + bookingId);
   };
 
-  const hideSeatSelection = (bookingId: string, status: boolean) => {
-    if (!status) {
-      setSelectedSeat(null);
-      scrollPage(seatSelectionRef);
-    }
+  const hideSeatSelection = (_bookingId: string, status: boolean) => {
+    if (!status) setSelectedSeat(null);
     setHideSeats(status);
   };
 
+  const cabinImages = cabin ? (cabin.images?.length ? cabin.images : (cabin.imageSrc ? [cabin.imageSrc] : [cabin.imageUrl])) : [];
+
+  const getCategoryColor = (cat: string) => {
+    switch (cat) {
+      case 'premium': return 'bg-purple-500/90 text-white';
+      case 'luxury': return 'bg-amber-500/90 text-white';
+      default: return 'bg-primary/90 text-primary-foreground';
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-background">
-      <div className="px-3 py-3 max-w-lg mx-auto">
-        {/* Compact header */}
-        <div className="flex items-center gap-2 mb-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleGoBack}
-            className="h-8 w-8 rounded-xl flex-shrink-0"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div className="min-w-0">
-            <h1 className="text-[16px] font-semibold leading-tight">Book Reading Room</h1>
-            {cabin && (
-              <p className="text-[11px] text-muted-foreground truncate">
-                {cabin.name} · {cabin.category}
-              </p>
-            )}
-          </div>
+    <div className="min-h-screen bg-background pb-24">
+      {loading ? (
+        <div className="flex justify-center py-20">
+          <div className="animate-spin h-7 w-7 border-4 border-primary border-t-transparent rounded-full" />
         </div>
-
-        <Separator className="mb-3" />
-
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="animate-spin h-7 w-7 border-4 border-primary border-t-transparent rounded-full"></div>
+      ) : error ? (
+        <div className="flex flex-col items-center justify-center py-20 px-4">
+          <p className="text-center text-destructive text-sm mb-4">{error}</p>
+          <Button onClick={handleGoBack} size="sm">Go Back</Button>
+        </div>
+      ) : cabin && (
+        <>
+          {/* Hero Image Section */}
+          <div className="relative">
+            <div className="w-full aspect-[16/10] overflow-hidden bg-muted">
+              <CabinImageSlider images={cabinImages} />
+            </div>
+            {/* Gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 pointer-events-none" />
+            {/* Back button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleGoBack}
+              className="absolute top-3 left-3 h-8 w-8 rounded-full bg-black/30 backdrop-blur-sm text-white hover:bg-black/50"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            {/* Category badge */}
+            <Badge className={`absolute top-3 right-3 ${getCategoryColor(cabin.category)} border-0 text-xs`}>
+              {cabin.category.charAt(0).toUpperCase() + cabin.category.slice(1)}
+            </Badge>
+            {/* Name overlay */}
+            <div className="absolute bottom-0 left-0 right-0 p-3">
+              <h1 className="text-white font-semibold text-lg leading-tight drop-shadow-lg">{cabin.name}</h1>
+            </div>
           </div>
-        ) : error ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-10">
-              <p className="text-center text-destructive text-[13px] mb-4">{error}</p>
-              <Button onClick={handleGoBack} size="sm">Go Back</Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="flex flex-col gap-4">
-            {cabin && (
-              <Suspense fallback={<div className="p-3 text-[13px] text-muted-foreground">Loading cabin details...</div>}>
-                <CabinDetails cabin={cabin} />
-              </Suspense>
-            )}
-            {cabin && (
-              <div ref={cabinRef}>
-                <Suspense fallback={<div className="p-3 text-[13px] text-muted-foreground">Loading booking form...</div>}>
-                  <SeatBookingForm
-                    cabin={cabin}
-                    selectedSeat={selectedSeat}
-                    onBookingComplete={handleBookingComplete}
-                    hideSeatSelection={hideSeatSelection}
-                    roomElements={roomElements}
-                  />
-                </Suspense>
+
+          {/* Info Chips */}
+          <div className="px-3 pt-3">
+            <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted text-foreground text-xs font-medium whitespace-nowrap">
+                <IndianRupee className="h-3 w-3" />
+                ₹{cabin.price}/mo
               </div>
-            )}
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted text-foreground text-xs font-medium whitespace-nowrap">
+                <Users className="h-3 w-3" />
+                {cabin.capacity} seats
+              </div>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted text-foreground text-xs font-medium whitespace-nowrap">
+                <Layers className="h-3 w-3" />
+                {cabin.floors?.length || 1} floor{(cabin.floors?.length || 1) > 1 ? 's' : ''}
+              </div>
+            </div>
           </div>
-        )}
-      </div>
+
+          {/* Collapsible Details */}
+          <div className="px-3 pt-2">
+            <Collapsible open={detailsOpen} onOpenChange={setDetailsOpen}>
+              <CollapsibleTrigger className="flex items-center justify-between w-full py-2 text-sm font-medium text-foreground">
+                <span>Details & Amenities</span>
+                {detailsOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pb-3">
+                {cabin.description && (
+                  <p className="text-xs text-muted-foreground mb-3">{cabin.description}</p>
+                )}
+                {cabin.amenities?.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {cabin.amenities.map((amenity) => (
+                      <span key={amenity} className="inline-flex items-center text-xs bg-muted text-muted-foreground px-2 py-1 rounded-md">
+                        ✓ {amenity}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
+
+          {/* Booking Form */}
+          <div className="px-3 pt-2" ref={bookingFormRef}>
+            <Suspense fallback={<div className="p-3 text-sm text-muted-foreground">Loading booking form...</div>}>
+              <SeatBookingForm
+                cabin={cabin}
+                selectedSeat={selectedSeat}
+                onBookingComplete={handleBookingComplete}
+                hideSeatSelection={hideSeatSelection}
+                roomElements={roomElements}
+              />
+            </Suspense>
+          </div>
+
+          {/* Sticky Bottom Seat Info Card */}
+          {selectedSeat && cabin.isBookingActive && (
+            <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border shadow-lg">
+              <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
+                <Armchair className="h-5 w-5 text-primary flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-sm text-foreground">Seat #{selectedSeat.number}</span>
+                    {selectedSeat.category && (
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
+                        {selectedSeat.category}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">₹{selectedSeat.price}/mo</p>
+                </div>
+                <Button
+                  size="sm"
+                  className="text-xs h-8 px-4"
+                  onClick={() => bookingFormRef.current?.scrollIntoView({ behavior: 'smooth' })}
+                >
+                  Book Now
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 };

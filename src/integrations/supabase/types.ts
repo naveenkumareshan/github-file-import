@@ -143,6 +143,7 @@ export type Database = {
           image_url: string | null
           images: string[] | null
           is_active: boolean | null
+          is_booking_active: boolean
           layout_image: string | null
           name: string
           price: number | null
@@ -166,6 +167,7 @@ export type Database = {
           image_url?: string | null
           images?: string[] | null
           is_active?: boolean | null
+          is_booking_active?: boolean
           layout_image?: string | null
           name: string
           price?: number | null
@@ -189,6 +191,7 @@ export type Database = {
           image_url?: string | null
           images?: string[] | null
           is_active?: boolean | null
+          is_booking_active?: boolean
           layout_image?: string | null
           name?: string
           price?: number | null

@@ -122,6 +122,7 @@ export const adminCabinsService = {
       if (data.imageSrc !== undefined || data.image_url !== undefined) updateData.image_url = data.imageSrc || data.image_url;
       if (data.images !== undefined) updateData.images = data.images;
       if (data.isActive !== undefined || data.is_active !== undefined) updateData.is_active = data.isActive ?? data.is_active;
+      if (data.isBookingActive !== undefined || data.is_booking_active !== undefined) (updateData as any).is_booking_active = data.isBookingActive ?? data.is_booking_active;
       if (data.city !== undefined) updateData.city = data.city;
       if (data.state !== undefined) updateData.state = data.state;
       if (data.area !== undefined) updateData.area = data.area;

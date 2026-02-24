@@ -108,6 +108,7 @@ const RoomManagement = () => {
           imageSrc: cabin.image_url || '/placeholder.svg',
           images: cabin.images || [],
           isActive: cabin.is_active !== false,
+          isBookingActive: cabin.is_booking_active !== false,
         }));
         
         setCabins(processedCabins);
@@ -274,18 +275,14 @@ const RoomManagement = () => {
       const roomToUpdate = cabins.find(room => room._id === roomId);
       if (!roomToUpdate || !roomToUpdate._id) return;
       
-      // console.log(isActive)
-      // if (!isActive) {
-        await adminRoomsService.restoreRoom(roomToUpdate._id, 'roomStatus',isActive);
-      // } else {
-      //   await adminRoomsService.deleteRoom('roomStatus',roomToUpdate._id);
-        
-      // }
+      const response = await adminRoomsService.toggleRoomActive(roomToUpdate._id, isActive);
+      if (!response.success) throw new Error(response.message);
       
       toast({
         title: isActive ? "Room Activated" : "Room Deactivated",
-        description: `Room ${roomToUpdate.name} has been ${isActive ?  'deactivated' : 'activated'}`
+        description: `Room ${roomToUpdate.name} has been ${isActive ? 'activated' : 'deactivated'}`
       });
+      fetchCabins();
     } catch (error) {
       console.error('Error toggling room status:', error);
       toast({
@@ -296,26 +293,24 @@ const RoomManagement = () => {
     }
   };
 
-   const onToggleBooking = async (roomId: string, isActive: boolean) => {
+  const onToggleBooking = async (roomId: string, isBookingActive: boolean) => {
     try {
       const roomToUpdate = cabins.find(room => room._id === roomId);
       if (!roomToUpdate || !roomToUpdate._id) return;
       
-      // if (!isActive) {
-        await adminRoomsService.restoreRoom(roomToUpdate._id, 'bookingStatus', isActive);
-      // } else {
-      //   await adminRoomsService.deleteRoom('bookingStatus',roomToUpdate._id);
-      // }
+      const response = await adminRoomsService.toggleBookingActive(roomToUpdate._id, isBookingActive);
+      if (!response.success) throw new Error(response.message);
       
       toast({
-        title: isActive ? "Room Activated" : "Room Deactivated",
-        description: `Room ${roomToUpdate.name} has been ${isActive ?  'deactivated' : 'activated'}`
+        title: isBookingActive ? "Booking Enabled" : "Booking Paused",
+        description: `Booking for ${roomToUpdate.name} has been ${isBookingActive ? 'enabled' : 'paused'}`
       });
+      fetchCabins();
     } catch (error) {
-      console.error('Error toggling room status:', error);
+      console.error('Error toggling booking status:', error);
       toast({
         title: "Error",
-        description: "Failed to update room status",
+        description: "Failed to update booking status",
         variant: "destructive"
       });
     }
