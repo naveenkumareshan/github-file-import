@@ -2,18 +2,15 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import { adminCabinsService } from "@/api/adminCabinsService";
 import { adminSeatsService, SeatData } from "@/api/adminSeatsService";
 import { seatCategoryService, SeatCategory } from "@/api/seatCategoryService";
 import { ArrowLeft, Building, Plus, Trash2, Settings, Pencil } from "lucide-react";
 import { FloorPlanDesigner, FloorPlanSeat } from "@/components/seats/FloorPlanDesigner";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -145,35 +142,15 @@ const SeatManagement = () => {
     }
   };
 
-  const handleToggleSeatAvailability = async () => {
-    if (!selectedSeat) return;
+  const handleSeatUpdate = async (seatId: string, updates: { category?: string; price?: number; isAvailable?: boolean }) => {
     try {
-      const res = await adminSeatsService.updateSeat(selectedSeat._id, {
-        isAvailable: !selectedSeat.isAvailable,
-      });
+      const res = await adminSeatsService.updateSeat(seatId, updates);
       if (res.success) {
-        setSeats(seats.map(s => s._id === selectedSeat._id ? { ...s, isAvailable: !s.isAvailable } : s));
-        setSelectedSeat({ ...selectedSeat, isAvailable: !selectedSeat.isAvailable });
-        toast({ title: `Seat ${selectedSeat.number} updated` });
+        setSeats(seats.map(s => s._id === seatId ? { ...s, ...updates } : s));
+        toast({ title: "Seat updated" });
       }
     } catch (e) {
-      toast({ title: "Error", variant: "destructive" });
-    }
-  };
-
-  const handleCategoryUpdate = async (newCategory: string) => {
-    if (!selectedSeat) return;
-    const cat = categories.find(c => c.name === newCategory);
-    const newPrice = cat?.price ?? selectedSeat.price;
-    try {
-      const res = await adminSeatsService.updateSeat(selectedSeat._id, { category: newCategory, price: newPrice });
-      if (res.success) {
-        setSeats(seats.map(s => s._id === selectedSeat._id ? { ...s, category: newCategory, price: newPrice } : s));
-        setSelectedSeat({ ...selectedSeat, category: newCategory, price: newPrice });
-        toast({ title: `Category updated to ${newCategory}` });
-      }
-    } catch (e) {
-      toast({ title: "Error updating category", variant: "destructive" });
+      toast({ title: "Error updating seat", variant: "destructive" });
     }
   };
 
@@ -363,6 +340,7 @@ const SeatManagement = () => {
             onDeleteSeat={handleDeleteSeat}
             onPlaceSeat={handlePlaceSeat}
             onSeatMove={handleSeatMove}
+            onSeatUpdate={handleSeatUpdate}
             layoutImage={layoutImage}
             layoutImageOpacity={layoutImageOpacity}
             onLayoutImageChange={setLayoutImage}
@@ -373,52 +351,6 @@ const SeatManagement = () => {
         </CardContent>
       </Card>
 
-      {/* Selected seat details */}
-      {selectedSeat && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">Seat #{selectedSeat.number} Details</CardTitle>
-              <Button variant="destructive" size="sm" onClick={() => handleDeleteSeat(selectedSeat._id)}>
-                <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete Seat
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div>
-                <Label className="text-sm font-medium">Category</Label>
-                <Select value={selectedSeat.category || 'Non-AC'} onValueChange={handleCategoryUpdate}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map(cat => (
-                      <SelectItem key={cat.id} value={cat.name}>{cat.name} (₹{cat.price})</SelectItem>
-                    ))}
-                    {categories.length === 0 && (
-                      <SelectItem value="Non-AC">Non-AC</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-sm font-medium">Status</Label>
-                <div className="flex items-center gap-2 mt-1">
-                  <Label className={selectedSeat.isAvailable ? "text-emerald-600" : "text-destructive"}>
-                    {selectedSeat.isAvailable ? "Available" : "Unavailable"}
-                  </Label>
-                  <Switch checked={selectedSeat.isAvailable} onCheckedChange={handleToggleSeatAvailability} />
-                </div>
-              </div>
-              <div>
-                <Label className="text-sm font-medium">Price (₹/month)</Label>
-                <p className="text-sm mt-1">₹{selectedSeat.price}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Category Management Dialog */}
       <Dialog open={showCategoryDialog} onOpenChange={setShowCategoryDialog}>

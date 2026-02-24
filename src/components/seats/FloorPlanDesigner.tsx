@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -10,6 +11,10 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Save, ZoomIn, ZoomOut, Maximize, Image, X, MousePointerClick,
 } from 'lucide-react';
+
+// ── Constants ──────────────────────────────────────────────────────
+const GRID_SNAP = 40;
+const snapToGrid = (v: number) => Math.round(v / GRID_SNAP) * GRID_SNAP;
 
 // ── Types ──────────────────────────────────────────────────────────
 export interface FloorPlanSeat {
@@ -46,6 +51,7 @@ interface FloorPlanDesignerProps {
   onDeleteSeat?: (seatId: string) => void;
   onPlaceSeat?: (position: { x: number; y: number }, number: number, price: number, category: string) => void;
   onSeatMove?: (seatId: string, position: { x: number; y: number }) => void;
+  onSeatUpdate?: (seatId: string, updates: { category?: string; price?: number; isAvailable?: boolean }) => void;
   layoutImage?: string | null;
   layoutImageOpacity?: number;
   onLayoutImageChange?: (image: string | null) => void;
@@ -66,6 +72,7 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
   onDeleteSeat,
   onPlaceSeat,
   onSeatMove,
+  onSeatUpdate,
   layoutImage,
   layoutImageOpacity = 30,
   onLayoutImageChange,
@@ -90,6 +97,10 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
   // Dragging state
   const [draggingSeatId, setDraggingSeatId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [dragStartPos, setDragStartPos] = useState({ x: 0, y: 0 });
+
+  // Edit dialog
+  const [editingSeat, setEditingSeat] = useState<FloorPlanSeat | null>(null);
 
   // Update nextSeatNumber when seats change
   useEffect(() => {
@@ -116,7 +127,7 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
     if (placementMode && onPlaceSeat) {
       const pos = getCanvasPos(e);
       if (pos.x >= 0 && pos.y >= 0 && pos.x <= roomWidth && pos.y <= roomHeight) {
-        setPendingSeat({ x: Math.round(pos.x), y: Math.round(pos.y) });
+        setPendingSeat({ x: snapToGrid(pos.x), y: snapToGrid(pos.y) });
       }
       return;
     }
@@ -130,8 +141,8 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
   const handleCanvasMouseMove = (e: React.MouseEvent) => {
     if (draggingSeatId) {
       const pos = getCanvasPos(e);
-      const newX = Math.max(0, Math.min(roomWidth, Math.round(pos.x - dragOffset.x)));
-      const newY = Math.max(0, Math.min(roomHeight, Math.round(pos.y - dragOffset.y)));
+      const newX = snapToGrid(Math.max(0, Math.min(roomWidth, pos.x - dragOffset.x)));
+      const newY = snapToGrid(Math.max(0, Math.min(roomHeight, pos.y - dragOffset.y)));
       onSeatsChange(seats.map(s =>
         s._id === draggingSeatId ? { ...s, position: { x: newX, y: newY } } : s
       ));
@@ -142,10 +153,14 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
     }
   };
 
-  const handleCanvasMouseUp = () => {
+  const handleCanvasMouseUp = (e: React.MouseEvent) => {
     if (draggingSeatId) {
+      const dist = Math.abs(e.clientX - dragStartPos.x) + Math.abs(e.clientY - dragStartPos.y);
       const seat = seats.find(s => s._id === draggingSeatId);
-      if (seat && onSeatMove) {
+      if (dist < 5 && seat) {
+        // It was a click, not a drag — open edit dialog
+        setEditingSeat(seat);
+      } else if (seat && onSeatMove) {
         onSeatMove(seat._id, seat.position);
       }
       setDraggingSeatId(null);
@@ -173,6 +188,7 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
     e.stopPropagation();
     const pos = getCanvasPos(e);
     setDragOffset({ x: pos.x - seat.position.x, y: pos.y - seat.position.y });
+    setDragStartPos({ x: e.clientX, y: e.clientY });
     setDraggingSeatId(seat._id);
   };
 
@@ -209,6 +225,20 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
       setNextSeatNumber(number + 1);
     }
     setPendingSeat(null);
+  };
+
+  // ── Seat edit confirm ──
+  const handleEditConfirm = (updates: { category?: string; price?: number; isAvailable?: boolean }) => {
+    if (editingSeat && onSeatUpdate) {
+      onSeatUpdate(editingSeat._id, updates);
+      // Update local state
+      setSeatsLocal(editingSeat._id, updates);
+    }
+    setEditingSeat(null);
+  };
+
+  const setSeatsLocal = (seatId: string, updates: { category?: string; price?: number; isAvailable?: boolean }) => {
+    onSeatsChange(seats.map(s => s._id === seatId ? { ...s, ...updates } : s));
   };
 
   const defaultCategory = categories.length > 0 ? categories[0] : null;
@@ -281,7 +311,7 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
         onMouseDown={handleCanvasMouseDown}
         onMouseMove={handleCanvasMouseMove}
         onMouseUp={handleCanvasMouseUp}
-        onWheel={handleWheel}
+        onWheel={placementMode ? handleWheel : undefined}
       >
         <div
           ref={canvasRef}
@@ -322,10 +352,6 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
                   className={`flex items-center justify-center rounded border text-[10px] font-bold select-none transition-all ${seatClass} ${isDragging ? 'shadow-lg scale-110' : ''}`}
                   style={{ width: 36, height: 26 }}
                   onMouseDown={e => handleSeatMouseDown(e, seat)}
-                  onClick={e => {
-                    e.stopPropagation();
-                    if (!draggingSeatId) onSeatSelect(isSelected ? null : seat);
-                  }}
                 >
                   {seat.number}
                 </button>
@@ -372,6 +398,16 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
         onConfirm={handlePlacementConfirm}
         onCancel={() => setPendingSeat(null)}
       />
+
+      {/* Seat Edit Dialog */}
+      <SeatEditDialog
+        open={!!editingSeat}
+        seat={editingSeat}
+        categories={categories}
+        onConfirm={handleEditConfirm}
+        onCancel={() => setEditingSeat(null)}
+        onDelete={onDeleteSeat}
+      />
     </div>
   );
 };
@@ -387,12 +423,7 @@ interface SeatPlacementDialogProps {
 }
 
 const SeatPlacementDialog: React.FC<SeatPlacementDialogProps> = ({
-  open,
-  defaultNumber,
-  defaultPrice,
-  categories,
-  onConfirm,
-  onCancel,
+  open, defaultNumber, defaultPrice, categories, onConfirm, onCancel,
 }) => {
   const [seatNumber, setSeatNumber] = useState(defaultNumber);
   const [category, setCategory] = useState('');
@@ -450,6 +481,88 @@ const SeatPlacementDialog: React.FC<SeatPlacementDialogProps> = ({
         <DialogFooter>
           <Button variant="outline" onClick={onCancel}>Cancel</Button>
           <Button onClick={() => onConfirm(seatNumber, category, price)}>Place Seat</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// ── Seat Edit Dialog ───────────────────────────────────────────────
+interface SeatEditDialogProps {
+  open: boolean;
+  seat: FloorPlanSeat | null;
+  categories: SeatCategoryOption[];
+  onConfirm: (updates: { category?: string; price?: number; isAvailable?: boolean }) => void;
+  onCancel: () => void;
+  onDelete?: (seatId: string) => void;
+}
+
+const SeatEditDialog: React.FC<SeatEditDialogProps> = ({
+  open, seat, categories, onConfirm, onCancel, onDelete,
+}) => {
+  const [category, setCategory] = useState('');
+  const [price, setPrice] = useState(0);
+  const [isAvailable, setIsAvailable] = useState(true);
+
+  useEffect(() => {
+    if (open && seat) {
+      setCategory(seat.category || 'Non-AC');
+      setPrice(seat.price);
+      setIsAvailable(seat.isAvailable);
+    }
+  }, [open, seat]);
+
+  const handleCategoryChange = (catName: string) => {
+    setCategory(catName);
+    const cat = categories.find(c => c.name === catName);
+    if (cat) setPrice(cat.price);
+  };
+
+  const categoryList = categories.length > 0 ? categories : [
+    { id: '1', name: 'Non-AC', price: 2000 },
+  ];
+
+  if (!seat) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={v => { if (!v) onCancel(); }}>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Edit Seat #{seat.number}</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-4 py-2">
+          <div>
+            <Label>Category</Label>
+            <RadioGroup value={category} onValueChange={handleCategoryChange} className="flex flex-wrap gap-3 mt-2">
+              {categoryList.map(cat => (
+                <div key={cat.id || cat.name} className="flex items-center space-x-1.5">
+                  <RadioGroupItem value={cat.name} id={`edit-cat-${cat.name}`} />
+                  <Label htmlFor={`edit-cat-${cat.name}`} className="text-sm cursor-pointer">
+                    {cat.name} (₹{cat.price})
+                  </Label>
+                </div>
+              ))}
+            </RadioGroup>
+          </div>
+          <div>
+            <Label>Price (₹/month)</Label>
+            <Input type="number" min={0} value={price} onChange={e => setPrice(+e.target.value || 0)} />
+          </div>
+          <div className="flex items-center justify-between">
+            <Label>Available</Label>
+            <Switch checked={isAvailable} onCheckedChange={setIsAvailable} />
+          </div>
+        </div>
+        <DialogFooter className="flex justify-between sm:justify-between">
+          {onDelete && (
+            <Button variant="destructive" size="sm" onClick={() => { onDelete(seat._id); onCancel(); }}>
+              Delete
+            </Button>
+          )}
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onCancel}>Cancel</Button>
+            <Button onClick={() => onConfirm({ category, price, isAvailable })}>Save</Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
