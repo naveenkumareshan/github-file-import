@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
-import { Switch } from '@/components/ui/switch';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -57,13 +56,14 @@ interface FloorPlanDesignerProps {
   onDeleteSeat?: (seatId: string) => void;
   onPlaceSeat?: (position: { x: number; y: number }, number: number, price: number, category: string) => void;
   onSeatMove?: (seatId: string, position: { x: number; y: number }) => void;
-  onSeatUpdate?: (seatId: string, updates: { category?: string; price?: number; isAvailable?: boolean }) => void;
+  onSeatUpdate?: (seatId: string, updates: { category?: string; price?: number }) => void;
   layoutImage?: string | null;
   layoutImageOpacity?: number;
   onLayoutImageChange?: (image: string | null) => void;
   onLayoutImageOpacityChange?: (opacity: number) => void;
   isSaving?: boolean;
   categories?: SeatCategoryOption[];
+  minPrice?: number;
 }
 
 export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
@@ -85,6 +85,7 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
   onLayoutImageOpacityChange,
   isSaving,
   categories = [],
+  minPrice = 0,
 }) => {
   const canvasRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -236,7 +237,7 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
   };
 
   // ── Seat edit confirm ──
-  const handleEditConfirm = (updates: { category?: string; price?: number; isAvailable?: boolean }) => {
+  const handleEditConfirm = (updates: { category?: string; price?: number }) => {
     if (editingSeat && onSeatUpdate) {
       onSeatUpdate(editingSeat._id, updates);
       // Update local state
@@ -245,7 +246,7 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
     setEditingSeat(null);
   };
 
-  const setSeatsLocal = (seatId: string, updates: { category?: string; price?: number; isAvailable?: boolean }) => {
+  const setSeatsLocal = (seatId: string, updates: { category?: string; price?: number }) => {
     onSeatsChange(seats.map(s => s._id === seatId ? { ...s, ...updates } : s));
   };
 
@@ -403,6 +404,7 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
         defaultNumber={nextSeatNumber}
         defaultPrice={defaultCategory?.price ?? 2000}
         categories={categories}
+        minPrice={minPrice}
         onConfirm={handlePlacementConfirm}
         onCancel={() => setPendingSeat(null)}
       />
@@ -412,6 +414,7 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
         open={!!editingSeat}
         seat={editingSeat}
         categories={categories}
+        minPrice={minPrice}
         onConfirm={handleEditConfirm}
         onCancel={() => setEditingSeat(null)}
         onDelete={onDeleteSeat}
@@ -426,12 +429,13 @@ interface SeatPlacementDialogProps {
   defaultNumber: number;
   defaultPrice: number;
   categories: SeatCategoryOption[];
+  minPrice?: number;
   onConfirm: (number: number, category: string, price: number) => void;
   onCancel: () => void;
 }
 
 const SeatPlacementDialog: React.FC<SeatPlacementDialogProps> = ({
-  open, defaultNumber, defaultPrice, categories, onConfirm, onCancel,
+  open, defaultNumber, defaultPrice, categories, minPrice = 0, onConfirm, onCancel,
 }) => {
   const [seatNumber, setSeatNumber] = useState(defaultNumber);
   const [category, setCategory] = useState('');
@@ -483,12 +487,12 @@ const SeatPlacementDialog: React.FC<SeatPlacementDialogProps> = ({
           </div>
           <div>
             <Label>Price (₹/month)</Label>
-            <Input type="number" min={0} value={price} onChange={e => setPrice(+e.target.value || 0)} />
+            <Input type="number" min={minPrice} value={price} onChange={e => setPrice(+e.target.value || 0)} />
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onCancel}>Cancel</Button>
-          <Button onClick={() => onConfirm(seatNumber, category, price)}>Place Seat</Button>
+          <Button onClick={() => { if (price < minPrice) return; onConfirm(seatNumber, category, price); }}>Place Seat</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -500,23 +504,22 @@ interface SeatEditDialogProps {
   open: boolean;
   seat: FloorPlanSeat | null;
   categories: SeatCategoryOption[];
-  onConfirm: (updates: { category?: string; price?: number; isAvailable?: boolean }) => void;
+  minPrice?: number;
+  onConfirm: (updates: { category?: string; price?: number }) => void;
   onCancel: () => void;
   onDelete?: (seatId: string) => void;
 }
 
 const SeatEditDialog: React.FC<SeatEditDialogProps> = ({
-  open, seat, categories, onConfirm, onCancel, onDelete,
+  open, seat, categories, minPrice = 0, onConfirm, onCancel, onDelete,
 }) => {
   const [category, setCategory] = useState('');
   const [price, setPrice] = useState(0);
-  const [isAvailable, setIsAvailable] = useState(true);
 
   useEffect(() => {
     if (open && seat) {
       setCategory(seat.category || 'Non-AC');
       setPrice(seat.price);
-      setIsAvailable(seat.isAvailable);
     }
   }, [open, seat]);
 
@@ -554,11 +557,7 @@ const SeatEditDialog: React.FC<SeatEditDialogProps> = ({
           </div>
           <div>
             <Label>Price (₹/month)</Label>
-            <Input type="number" min={0} value={price} onChange={e => setPrice(+e.target.value || 0)} />
-          </div>
-          <div className="flex items-center justify-between">
-            <Label>Available</Label>
-            <Switch checked={isAvailable} onCheckedChange={setIsAvailable} />
+            <Input type="number" min={minPrice} value={price} onChange={e => setPrice(+e.target.value || 0)} />
           </div>
         </div>
         <DialogFooter className="flex justify-between sm:justify-between">
@@ -569,7 +568,7 @@ const SeatEditDialog: React.FC<SeatEditDialogProps> = ({
           )}
           <div className="flex gap-2">
             <Button variant="outline" onClick={onCancel}>Cancel</Button>
-            <Button onClick={() => onConfirm({ category, price, isAvailable })}>Save</Button>
+            <Button onClick={() => { if (price < minPrice) return; onConfirm({ category, price }); }}>Save</Button>
           </div>
         </DialogFooter>
       </DialogContent>
