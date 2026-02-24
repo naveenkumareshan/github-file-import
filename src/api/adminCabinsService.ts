@@ -97,6 +97,7 @@ export const adminCabinsService = {
         area: data.area || null,
         locker_available: data.lockerAvailable ?? false,
         locker_price: data.lockerPrice ?? 0,
+        locker_mandatory: data.lockerMandatory ?? true,
         full_address: data.fullAddress || '',
         created_by: data.created_by || currentUser?.id || null,
       };
@@ -135,6 +136,7 @@ export const adminCabinsService = {
       if (data.area !== undefined) updateData.area = data.area;
       if (data.lockerAvailable !== undefined) (updateData as any).locker_available = data.lockerAvailable;
       if (data.lockerPrice !== undefined) (updateData as any).locker_price = data.lockerPrice;
+      if (data.lockerMandatory !== undefined) (updateData as any).locker_mandatory = data.lockerMandatory;
       if (data.fullAddress !== undefined) (updateData as any).full_address = data.fullAddress;
       if (data.created_by !== undefined) (updateData as any).created_by = data.created_by;
 

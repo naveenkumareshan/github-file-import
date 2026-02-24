@@ -8,6 +8,7 @@ interface BookingFilters {
 
 interface BookingData {
   cabin_id?: string;
+  seat_id?: string;
   seat_number?: number;
   start_date: string;
   end_date: string;

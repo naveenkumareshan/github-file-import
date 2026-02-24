@@ -15,7 +15,6 @@ interface Seat {
   position: { x: number; y: number };
   isAvailable: boolean;
   price: number;
-  isHotSelling?: boolean;
   sharingType?: string;
 }
 
@@ -68,9 +67,7 @@ export const SeatSelectionMap: React.FC<SeatSelectionMapProps> = ({
         ? 'selected'
         : !seat.isAvailable 
           ? 'sold' 
-          : seat.isHotSelling 
-            ? 'hot' 
-            : 'available',
+          : 'available',
       price: seat.price
     }));
   };
@@ -253,7 +250,6 @@ export const SeatSelectionMap: React.FC<SeatSelectionMapProps> = ({
                 <h4 className="font-medium">Selected Seat: #{selectedSeat.number}</h4>
                 <p className="text-sm text-muted-foreground">
                   Price: ₹{selectedSeat.price}
-                  {selectedSeat.isHotSelling && <span className="text-pink-600"> (Hot selling!)</span>}
                 </p>
               </div>
               <Badge variant="outline">Selected</Badge>

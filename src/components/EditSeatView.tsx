@@ -40,11 +40,6 @@ export function EditSeatView({ seat, onGoBack, onConfirm }: EditSeatViewProps) {
                 This seat is located in the {seat.number <= 57 ? "Non AC Room" : "AC Room"} section.
               </p>
               
-              {seat.status === 'hot' && (
-                <p className="text-pink-700 text-sm my-2 font-medium">
-                  This is a hot selling seat - popular choice!
-                </p>
-              )}
               
               <div className="mt-4 p-3 bg-cabin-light/10 rounded-md">
                 <h4 className="font-medium mb-2">Seat Features</h4>
@@ -74,9 +69,7 @@ export function EditSeatView({ seat, onGoBack, onConfirm }: EditSeatViewProps) {
                   <p className="font-medium">
                     {seat.status === 'available' 
                       ? 'Available for immediate booking' 
-                      : seat.status === 'sold' 
-                        ? 'Currently booked' 
-                        : 'Available (high demand)'}
+                      : 'Currently booked'}
                   </p>
                 </div>
               </div>

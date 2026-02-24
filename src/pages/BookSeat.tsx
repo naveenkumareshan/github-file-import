@@ -26,7 +26,6 @@ export interface Seat {
     y: number;
   };
   isAvailable: boolean;
-  isHotSelling: boolean;
   unavailableUntil?: string;
 }
 
@@ -49,6 +48,7 @@ export interface Cabin {
   reviewCount?: number;
   floors?: { id: string; number: number }[];
   lockerPrice?: number;
+  lockerMandatory?: boolean;
 }
 
 export interface RoomElement {
@@ -101,6 +101,7 @@ const BookSeat = () => {
           imageSrc: d.image_url || '',
           floors: Array.isArray(d.floors) ? (d.floors as any[]) : [],
           lockerPrice: (d as any).locker_available ? ((d as any).locker_price || 0) : 0,
+          lockerMandatory: (d as any).locker_mandatory ?? true,
           isBookingActive: (d as any).is_booking_active !== false,
           isActive: d.is_active !== false,
           category: (d.category as 'standard' | 'premium' | 'luxury') || 'standard',

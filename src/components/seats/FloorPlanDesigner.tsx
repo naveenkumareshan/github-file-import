@@ -30,7 +30,6 @@ export interface FloorPlanSeat {
   price: number;
   position: { x: number; y: number };
   isAvailable: boolean;
-  isHotSelling: boolean;
   unavailableUntil?: string;
   rowIndex?: number;
   colIndex?: number;

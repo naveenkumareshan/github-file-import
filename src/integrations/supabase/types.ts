@@ -151,6 +151,7 @@ export type Database = {
           is_booking_active: boolean
           layout_image: string | null
           locker_available: boolean
+          locker_mandatory: boolean
           locker_price: number
           name: string
           price: number | null
@@ -180,6 +181,7 @@ export type Database = {
           is_booking_active?: boolean
           layout_image?: string | null
           locker_available?: boolean
+          locker_mandatory?: boolean
           locker_price?: number
           name: string
           price?: number | null
@@ -209,6 +211,7 @@ export type Database = {
           is_booking_active?: boolean
           layout_image?: string | null
           locker_available?: boolean
+          locker_mandatory?: boolean
           locker_price?: number
           name?: string
           price?: number | null

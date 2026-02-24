@@ -23,7 +23,6 @@ export interface Seat {
   price: number;
   position: Position;
   isAvailable: boolean;
-  isHotSelling: boolean;
   unavailableUntil?: string;
 }
 

@@ -1,0 +1,1 @@
+ALTER TABLE cabins ADD COLUMN locker_mandatory boolean NOT NULL DEFAULT true;
