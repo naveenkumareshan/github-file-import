@@ -1,44 +1,26 @@
 
 
-## Fix "View Details" Page -- BookingTransactionView Crashes
+## Fix View Details & Renew Booking Alignment
 
-The "View Details" page crashes due to multiple bugs in `BookingTransactionView.tsx` when it receives booking data from the student view. There are 3 distinct crash points:
+### Issues Found
 
-### Root Causes
+1. **Renew Booking button styling mismatch**: In `BookingsList.tsx`, the "View Details" button uses `w-full h-8 text-[12px] rounded-xl gap-1`, but the "Renew Booking" button inside `BookingRenewal.tsx` uses its own styling (`flex items-center gap-1` without matching height, text size, or rounded corners). This causes visual misalignment.
 
-**Crash 1 -- Line 174: `booking.seatPrice.toLocaleString()`**
-The `StudentBookingView` passes a mapped `BookingDetail` object that does NOT have a `seatPrice` property. The code tries to call `.toLocaleString()` on `undefined`, causing an immediate crash.
+2. **BookingTransactionView is desktop-heavy inside mobile view**: The `BookingTransactionView` component uses full `Card > CardHeader > CardTitle` patterns with desktop grids (`grid-cols-4`), large headers (`h-5 w-5` icons, `text-lg` text), and `Table` components. When embedded inside the compact `StudentBookingView`, this creates an oversized, misaligned look.
 
-**Crash 2 -- Line 74: `transactionsResponse.data.data.filter(...)`**
-The `getUserTransactions()` service returns `{ success: true, data: [] }` (a flat array), but the code tries to access `.data.data` (expecting a nested `data` property). This means `.data` is an array and `.data.data` is `undefined`, so calling `.filter()` on it throws "Cannot read properties of undefined".
+### Plan
 
-**Crash 3 -- Line 61: `new Date(booking.endDate)`**
-The `endDate` value comes through correctly from the mapping, but other fields like `booking.cabinId?.name`, `booking.seatId?.number` will show as undefined since the mapped object uses flat `cabinName` and `seatNumber` instead.
+#### File 1: `src/components/booking/BookingRenewal.tsx` (line ~443-450)
+- Update the trigger button to match "View Details" style: `w-full h-8 text-[12px] rounded-xl gap-1`
+- This ensures both buttons in the action row look identical in size and shape
 
-### Fix Plan
+#### File 2: `src/components/booking/BookingTransactionView.tsx` (lines 148-400+)
+- Redesign all sections to use compact mobile-friendly styling:
+  - Replace `Card > CardHeader > CardTitle` with simple headings (`text-[13px] font-semibold`)
+  - Change the Booking Summary grid from `grid-cols-4` to a vertical list with small text
+  - Simplify the Validity Information section to a compact inline row
+  - Replace the full `Table` in Transaction History with compact stacked cards
+  - Reduce the Payment Summary to smaller text with tighter spacing
+  - Use `text-[11px]` to `text-[13px]` sizing throughout, matching the app's mobile design language
 
-**File: `src/components/booking/BookingTransactionView.tsx`**
-
-1. **Fix the transaction fetch** (line 74): Change `transactionsResponse.data.data.filter(...)` to `transactionsResponse.data.filter(...)` since `getUserTransactions` returns a flat array, not a nested object.
-
-2. **Fix `seatPrice` crash** (line 174): Add optional chaining -- `booking.seatPrice?.toLocaleString()` with a fallback to `booking.totalPrice?.toLocaleString() || '0'`. This ensures the page renders even when `seatPrice` is not present.
-
-3. **Fix booking field access throughout the component**: The component references `booking.cabinId?.name`, `booking.seatId?.number`, `booking.hostelId?.name`, `booking.bedId?.number` -- these don't exist on the student's mapped object. Add fallbacks:
-   - `booking.cabinId?.name || booking.cabinName || 'N/A'`
-   - `booking.seatId?.number || booking.seatNumber || 'N/A'`
-
-4. **Guard the `endDate` usage** (line 61): Wrap in a try-catch or check validity before creating a Date object.
-
-5. **Guard optional rendering**: Add null checks on `booking.originalPrice`, `booking.appliedCoupon`, `booking.transferredHistory` to prevent rendering errors when these are absent.
-
-### Summary
-
-| Bug | Location | Fix |
-|---|---|---|
-| `seatPrice` undefined crash | Line 174 | Optional chaining + fallback to `totalPrice` |
-| `data.data.filter` undefined | Line 74 | Use `data.filter` directly (flat array) |
-| Missing `cabinId.name` etc. | Lines 163-169 | Add fallbacks to flat field names |
-| Missing guard on optional fields | Lines 179-205 | Add null checks |
-
-Only one file needs editing: `src/components/booking/BookingTransactionView.tsx`
-
+These two file changes will make both buttons properly aligned and the View Details page compact and consistent with the rest of the mobile app.
