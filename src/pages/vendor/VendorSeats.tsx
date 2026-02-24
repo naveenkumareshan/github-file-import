@@ -60,6 +60,11 @@ const VendorSeats: React.FC = () => {
   const [blockDialogOpen, setBlockDialogOpen] = useState(false);
   const [blockSeat, setBlockSeat] = useState<VendorSeat | null>(null);
   const [blockReason, setBlockReason] = useState('');
+  const [blockFromDate, setBlockFromDate] = useState<Date | undefined>(undefined);
+  const [blockToDate, setBlockToDate] = useState<Date | undefined>(undefined);
+
+  // Future booking mode
+  const [showFutureBooking, setShowFutureBooking] = useState(false);
 
   // Booking form state
   const [studentQuery, setStudentQuery] = useState('');
@@ -178,6 +183,7 @@ const VendorSeats: React.FC = () => {
     setTransactionId('');
     setBookingSuccess(false);
     setLastInvoiceData(null);
+    setShowFutureBooking(false);
 
     // Set locker default based on cabin
     const cabin = cabins.find(c => c._id === seat.cabinId);
@@ -210,6 +216,8 @@ const VendorSeats: React.FC = () => {
     e?.stopPropagation();
     setBlockSeat(seat);
     setBlockReason('');
+    setBlockFromDate(undefined);
+    setBlockToDate(undefined);
     setBlockDialogOpen(true);
   };
 
@@ -220,8 +228,20 @@ const VendorSeats: React.FC = () => {
       toast({ title: 'Please enter a reason', variant: 'destructive' });
       return;
     }
+    // For blocking with dates, require both dates
+    const isBlocking = blockSeat.isAvailable || blockSeat.dateStatus !== 'blocked';
+    if (isBlocking && blockFromDate && !blockToDate) {
+      toast({ title: 'Please select both Block From and Block To dates', variant: 'destructive' });
+      return;
+    }
+    if (isBlocking && !blockFromDate && blockToDate) {
+      toast({ title: 'Please select both Block From and Block To dates', variant: 'destructive' });
+      return;
+    }
     setUpdating(true);
-    const res = await vendorSeatsService.toggleSeatAvailability(blockSeat._id, !blockSeat.isAvailable, blockReason);
+    const blockFrom = blockFromDate ? format(blockFromDate, 'yyyy-MM-dd') : undefined;
+    const blockTo = blockToDate ? format(blockToDate, 'yyyy-MM-dd') : undefined;
+    const res = await vendorSeatsService.toggleSeatAvailability(blockSeat._id, !blockSeat.isAvailable, blockReason, blockFrom, blockTo);
     if (res.success) {
       toast({ title: blockSeat.isAvailable ? 'Seat blocked' : 'Seat unblocked' });
       setBlockDialogOpen(false);
@@ -641,6 +661,42 @@ const VendorSeats: React.FC = () => {
                 onChange={e => setBlockReason(e.target.value)}
               />
             </div>
+            {/* Date pickers for blocking only */}
+            {blockSeat?.isAvailable && (
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Block Date Range (optional - leave empty for permanent block)</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-[10px] uppercase text-muted-foreground">From</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-8 text-xs w-full justify-start gap-1">
+                          <CalendarIcon className="h-3 w-3" />
+                          {blockFromDate ? format(blockFromDate, 'dd MMM yyyy') : 'Select'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={blockFromDate} onSelect={setBlockFromDate} className="p-3 pointer-events-auto" />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div>
+                    <Label className="text-[10px] uppercase text-muted-foreground">To</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-8 text-xs w-full justify-start gap-1">
+                          <CalendarIcon className="h-3 w-3" />
+                          {blockToDate ? format(blockToDate, 'dd MMM yyyy') : 'Select'}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={blockToDate} onSelect={setBlockToDate} disabled={(d) => blockFromDate ? d < blockFromDate : false} className="p-3 pointer-events-auto" />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="flex gap-2">
               <Button size="sm" onClick={handleConfirmBlock} disabled={updating || !blockReason.trim()}>
                 {blockSeat?.isAvailable ? <Lock className="h-3 w-3 mr-1" /> : <Unlock className="h-3 w-3 mr-1" />}
@@ -676,7 +732,7 @@ const VendorSeats: React.FC = () => {
               </div>
 
               {/* ── BOOKED / EXPIRING: Show student info ── */}
-              {(selectedSeat.dateStatus === 'booked' || selectedSeat.dateStatus === 'expiring_soon') && selectedSeat.currentBooking && (
+              {(selectedSeat.dateStatus === 'booked' || selectedSeat.dateStatus === 'expiring_soon') && selectedSeat.currentBooking && !showFutureBooking && (
                 <div className="space-y-3">
                   <div className="border rounded p-3 space-y-2">
                     <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Current Student</h4>
@@ -695,11 +751,36 @@ const VendorSeats: React.FC = () => {
                       </div>
                     </div>
                   </div>
+                  {/* Book Future Dates + Block with Dates buttons */}
+                  {canEdit && (
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        className="flex-1 h-8 text-xs gap-1"
+                        onClick={() => {
+                          const nextDay = addDays(new Date(selectedSeat.currentBooking!.endDate), 1);
+                          setBookingStartDate(nextDay);
+                          setBookingPrice(String(selectedSeat.price));
+                          setShowFutureBooking(true);
+                        }}
+                      >
+                        <CalendarIcon className="h-3 w-3" /> Book Future Dates
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-xs gap-1"
+                        onClick={() => openBlockDialog(selectedSeat)}
+                      >
+                        <Lock className="h-3 w-3" /> Block
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* ── BOOKING SUCCESS VIEW ── */}
-              {selectedSeat.dateStatus === 'available' && bookingSuccess && lastInvoiceData && (
+              {(selectedSeat.dateStatus === 'available' || showFutureBooking) && bookingSuccess && lastInvoiceData && (
                 <div className="space-y-3">
                   <div className="flex flex-col items-center py-4">
                     <div className="h-12 w-12 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center mb-2">
@@ -761,18 +842,23 @@ const VendorSeats: React.FC = () => {
                     <Button size="sm" className="flex-1 h-8 text-xs gap-1" onClick={() => downloadInvoice(lastInvoiceData)}>
                       <Download className="h-3 w-3" /> Download Invoice
                     </Button>
-                    <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={() => { setBookingSuccess(false); setSheetOpen(false); }}>
+                    <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={() => { setBookingSuccess(false); setShowFutureBooking(false); setSheetOpen(false); }}>
                       <ArrowLeft className="h-3 w-3" /> Close
                     </Button>
                   </div>
                 </div>
               )}
 
-              {/* ── AVAILABLE: Booking form ── */}
-              {selectedSeat.dateStatus === 'available' && canEdit && !bookingSuccess && (
+              {/* ── AVAILABLE / FUTURE BOOKING: Booking form ── */}
+              {(selectedSeat.dateStatus === 'available' || showFutureBooking) && canEdit && !bookingSuccess && (
                 <div className="space-y-3">
+                  {showFutureBooking && (
+                    <Button variant="ghost" size="sm" className="h-6 text-xs gap-1 px-1" onClick={() => setShowFutureBooking(false)}>
+                      <ArrowLeft className="h-3 w-3" /> Back to seat info
+                    </Button>
+                  )}
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                    <UserPlus className="h-3 w-3" /> Book This Seat
+                    <UserPlus className="h-3 w-3" /> {showFutureBooking ? 'Book Future Dates' : 'Book This Seat'}
                   </h4>
 
                   {/* Student search */}
@@ -990,6 +1076,11 @@ const VendorSeats: React.FC = () => {
                               <Badge variant={h.action === 'blocked' ? 'destructive' : 'default'} className="text-[9px] px-1 py-0">{h.action}</Badge>
                               <span className="text-muted-foreground">{new Date(h.createdAt).toLocaleDateString()}</span>
                             </div>
+                            {h.blockFrom && h.blockTo && (
+                              <p className="text-muted-foreground">
+                                {new Date(h.blockFrom).toLocaleDateString()} → {new Date(h.blockTo).toLocaleDateString()}
+                              </p>
+                            )}
                             {h.reason && <p className="text-muted-foreground">{h.reason}</p>}
                           </div>
                         ))}
