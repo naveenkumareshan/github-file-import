@@ -1034,7 +1034,29 @@ const VendorSeats: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Advance Booking Toggle */}
+                  {/* Discount */}
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] uppercase text-muted-foreground">Discount</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input className="h-8 text-xs" type="number" placeholder="₹ Amount" value={discountAmount} onChange={e => setDiscountAmount(e.target.value)} />
+                      <Input className="h-8 text-xs" placeholder="Reason (optional)" value={discountReason} onChange={e => setDiscountReason(e.target.value)} />
+                    </div>
+                  </div>
+
+                  {/* Booking Summary */}
+                  <div className="border rounded p-2 text-[11px] space-y-1 bg-muted/30">
+                    <div className="flex justify-between"><span>Seat Amount</span><span>₹{parseFloat(bookingPrice) || 0}</span></div>
+                    {parseFloat(discountAmount) > 0 && (
+                      <div className="flex justify-between text-emerald-600"><span>Discount{discountReason ? ` (${discountReason})` : ''}</span><span>-₹{parseFloat(discountAmount)}</span></div>
+                    )}
+                    {lockerIncluded && selectedCabinInfo && (
+                      <div className="flex justify-between"><span>Locker</span><span>₹{selectedCabinInfo.lockerPrice}</span></div>
+                    )}
+                    <Separator />
+                    <div className="flex justify-between font-semibold"><span>Total</span><span>₹{computedTotal}</span></div>
+                  </div>
+
+                  {/* Partial Payment Toggle */}
                   {selectedCabinInfo && (
                     <div className="flex items-center gap-2 border rounded p-2 bg-amber-50/50 dark:bg-amber-950/20">
                       <Checkbox
@@ -1054,10 +1076,9 @@ const VendorSeats: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Advance Booking Breakdown */}
+                  {/* Partial Payment Details */}
                   {isAdvanceBooking && advanceComputed && (
                     <div className="border rounded p-2 text-[11px] space-y-1.5 bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">
-                      <p className="font-semibold text-[11px] text-amber-700 dark:text-amber-400">Partial Payment Details</p>
                       <div className="space-y-1">
                         <Label className="text-[10px] uppercase text-muted-foreground">Amount to Collect</Label>
                         <Input
@@ -1089,21 +1110,11 @@ const VendorSeats: React.FC = () => {
                         </Popover>
                       </div>
                       <Separator />
-                      <div className="flex justify-between"><span>Total Fee</span><span>₹{computedTotal}</span></div>
-                      <div className="flex justify-between text-amber-700 dark:text-amber-400 font-medium"><span>Collecting</span><span>₹{advanceComputed.advanceAmount}</span></div>
-                      <div className="flex justify-between text-red-600"><span>Remaining Due</span><span>₹{advanceComputed.remainingDue}</span></div>
+                      <div className="flex justify-between text-amber-700 dark:text-amber-400 font-medium"><span>Collecting Now</span><span>₹{advanceComputed.advanceAmount}</span></div>
+                      <div className="flex justify-between text-red-600"><span>Due Balance</span><span>₹{advanceComputed.remainingDue}</span></div>
                       <div className="flex justify-between"><span>Seat Valid Until</span><span>{format(advanceComputed.proportionalEndDate, 'dd MMM yyyy')}</span></div>
                     </div>
                   )}
-
-                  {/* Discount */}
-                  <div className="space-y-1.5">
-                    <Label className="text-[10px] uppercase text-muted-foreground">Discount</Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Input className="h-8 text-xs" type="number" placeholder="₹ Amount" value={discountAmount} onChange={e => setDiscountAmount(e.target.value)} />
-                      <Input className="h-8 text-xs" placeholder="Reason (optional)" value={discountReason} onChange={e => setDiscountReason(e.target.value)} />
-                    </div>
-                  </div>
 
                   {/* Payment Method */}
                   <div className="space-y-1.5">
@@ -1144,26 +1155,9 @@ const VendorSeats: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Booking summary */}
-                  <div className="border rounded p-2 text-[11px] space-y-1 bg-muted/30">
-                    <div className="flex justify-between"><span>Seat Amount</span><span>₹{parseFloat(bookingPrice) || 0}</span></div>
-                    {parseFloat(discountAmount) > 0 && (
-                      <div className="flex justify-between text-emerald-600"><span>Discount{discountReason ? ` (${discountReason})` : ''}</span><span>-₹{parseFloat(discountAmount)}</span></div>
-                    )}
-                    {lockerIncluded && selectedCabinInfo && (
-                      <div className="flex justify-between"><span>Locker</span><span>₹{selectedCabinInfo.lockerPrice}</span></div>
-                    )}
-                    <Separator />
-                    <div className="flex justify-between font-semibold"><span>Total</span><span>₹{computedTotal}</span></div>
-                    {isAdvanceBooking && advanceComputed && (
-                      <>
-                        <div className="flex justify-between text-amber-700 dark:text-amber-400 font-medium"><span>Advance (to collect now)</span><span>₹{advanceComputed.advanceAmount}</span></div>
-                        <div className="flex justify-between text-red-600"><span>Due Balance</span><span>₹{advanceComputed.remainingDue}</span></div>
-                      </>
-                    )}
-                    <div className="text-muted-foreground text-[10px]">
-                      Collected by: {paymentMethod === 'send_link' ? 'InhaleStays' : (user?.name || user?.email || 'Partner')}
-                    </div>
+                  {/* Collected by */}
+                  <div className="text-muted-foreground text-[10px] px-1">
+                    Collected by: {paymentMethod === 'send_link' ? 'InhaleStays' : (user?.name || user?.email || 'Partner')}
                   </div>
 
                   <Button
@@ -1171,7 +1165,9 @@ const VendorSeats: React.FC = () => {
                     disabled={!selectedStudent || creatingBooking || ((paymentMethod === 'upi' || paymentMethod === 'bank_transfer') && !transactionId.trim())}
                     onClick={handleCreateBooking}
                   >
-                    {creatingBooking ? 'Creating...' : paymentMethod === 'send_link' ? `Send Payment Link · ₹${computedTotal}` : `Confirm Booking (${paymentMethod === 'cash' ? 'Cash' : paymentMethod === 'upi' ? 'UPI' : 'Bank Transfer'}) · ₹${computedTotal}`}
+                    {creatingBooking ? 'Creating...' : paymentMethod === 'send_link' 
+                      ? `Send Payment Link · ₹${isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : computedTotal}` 
+                      : `Confirm Booking (${paymentMethod === 'cash' ? 'Cash' : paymentMethod === 'upi' ? 'UPI' : 'Bank Transfer'}) · ₹${isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : computedTotal}`}
                   </Button>
                 </div>
               )}
