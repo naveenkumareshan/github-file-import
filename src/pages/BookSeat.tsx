@@ -100,7 +100,7 @@ const BookSeat = () => {
           images: d.images?.length ? d.images : (d.image_url ? [d.image_url] : []),
           imageSrc: d.image_url || '',
           floors: Array.isArray(d.floors) ? (d.floors as any[]) : [],
-          lockerPrice: 500,
+          lockerPrice: (d as any).locker_available ? ((d as any).locker_price || 0) : 0,
           isBookingActive: (d as any).is_booking_active !== false,
           isActive: d.is_active !== false,
           category: (d.category as 'standard' | 'premium' | 'luxury') || 'standard',

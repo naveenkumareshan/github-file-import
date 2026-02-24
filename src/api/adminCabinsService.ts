@@ -79,7 +79,7 @@ export const adminCabinsService = {
   createCabin: async (data: any) => {
     try {
       // Map to Supabase snake_case columns
-      const cabinRecord: CabinData = {
+      const cabinRecord: any = {
         name: data.name,
         description: data.description,
         price: data.price,
@@ -92,6 +92,9 @@ export const adminCabinsService = {
         city: data.city || null,
         state: data.state || null,
         area: data.area || null,
+        locker_available: data.lockerAvailable ?? false,
+        locker_price: data.lockerPrice ?? 0,
+        full_address: data.fullAddress || '',
       };
 
       const { data: result, error } = await supabase
@@ -126,6 +129,9 @@ export const adminCabinsService = {
       if (data.city !== undefined) updateData.city = data.city;
       if (data.state !== undefined) updateData.state = data.state;
       if (data.area !== undefined) updateData.area = data.area;
+      if (data.lockerAvailable !== undefined) (updateData as any).locker_available = data.lockerAvailable;
+      if (data.lockerPrice !== undefined) (updateData as any).locker_price = data.lockerPrice;
+      if (data.fullAddress !== undefined) (updateData as any).full_address = data.fullAddress;
 
       const { data: result, error } = await supabase
         .from('cabins')
