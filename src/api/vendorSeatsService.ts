@@ -110,6 +110,7 @@ export interface PartnerBookingData {
   transactionId?: string;
   isAdvanceBooking?: boolean;
   advancePaid?: number;
+  dueDate?: string;
 }
 
 export interface BlockHistoryEntry {
@@ -428,20 +429,31 @@ export const vendorSeatsService = {
 
       // Create due entry if advance booking
       if (data.isAdvanceBooking && insertedData && data.advancePaid !== undefined) {
-        const totalDays = Math.ceil((new Date(data.endDate).getTime() - new Date(data.startDate).getTime()) / (1000 * 60 * 60 * 24));
-        const proportionalDays = Math.floor((data.advancePaid / data.totalPrice) * totalDays);
-        const proportionalEndDate = new Date(data.startDate);
-        proportionalEndDate.setDate(proportionalEndDate.getDate() + proportionalDays);
+        let proportionalEndDateStr: string;
+        let dueDateStr: string;
 
-        const dueDate = new Date(data.startDate);
-        // Get cabin's validity days - default 3
-        const { data: cabinInfo } = await supabase
-          .from('cabins')
-          .select('advance_validity_days')
-          .eq('id', data.cabinId)
-          .single();
-        const validityDays = (cabinInfo as any)?.advance_validity_days || 3;
-        dueDate.setDate(dueDate.getDate() + validityDays);
+        if (data.dueDate) {
+          // Use manual due date as both proportional_end_date and due_date
+          proportionalEndDateStr = data.dueDate;
+          dueDateStr = data.dueDate;
+        } else {
+          // Fallback: auto-calculate
+          const totalDays = Math.ceil((new Date(data.endDate).getTime() - new Date(data.startDate).getTime()) / (1000 * 60 * 60 * 24));
+          const proportionalDays = Math.floor((data.advancePaid / data.totalPrice) * totalDays);
+          const proportionalEndDate = new Date(data.startDate);
+          proportionalEndDate.setDate(proportionalEndDate.getDate() + proportionalDays);
+          proportionalEndDateStr = proportionalEndDate.toISOString().split('T')[0];
+
+          const dueDate = new Date(data.startDate);
+          const { data: cabinInfo } = await supabase
+            .from('cabins')
+            .select('advance_validity_days')
+            .eq('id', data.cabinId)
+            .single();
+          const validityDays = (cabinInfo as any)?.advance_validity_days || 3;
+          dueDate.setDate(dueDate.getDate() + validityDays);
+          dueDateStr = dueDate.toISOString().split('T')[0];
+        }
 
         await supabase.from('dues').insert({
           booking_id: insertedData.id,
@@ -451,10 +463,10 @@ export const vendorSeatsService = {
           total_fee: data.totalPrice,
           advance_paid: data.advancePaid,
           due_amount: data.totalPrice - data.advancePaid,
-          due_date: dueDate.toISOString().split('T')[0],
+          due_date: dueDateStr,
           paid_amount: 0,
           status: 'pending',
-          proportional_end_date: proportionalEndDate.toISOString().split('T')[0],
+          proportional_end_date: proportionalEndDateStr,
         } as any);
       }
 
