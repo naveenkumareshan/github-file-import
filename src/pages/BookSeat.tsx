@@ -73,6 +73,9 @@ const BookSeat = () => {
   const [roomElements, setRoomElements] = useState<RoomElement[]>([]);
   const [hideSeats, setHideSeats] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [layoutImage, setLayoutImage] = useState<string | null>(null);
+  const [roomWidth, setRoomWidth] = useState(800);
+  const [roomHeight, setRoomHeight] = useState(600);
 
   useEffect(() => {
     if (cabinId) fetchCabinDetails();
@@ -103,6 +106,9 @@ const BookSeat = () => {
           category: (d.category as 'standard' | 'premium' | 'luxury') || 'standard',
           imageUrl: d.image_url || 'https://images.unsplash.com/photo-1626948683838-3be9a4e90737?q=80&w=1470&auto=format&fit=crop',
         });
+        setLayoutImage((d as any).layout_image || null);
+        setRoomWidth((d as any).room_width || 800);
+        setRoomHeight((d as any).room_height || 600);
       } else {
         toast({ title: "Error", description: "Failed to load cabin details", variant: "destructive" });
       }
@@ -230,6 +236,9 @@ const BookSeat = () => {
                 onBookingComplete={handleBookingComplete}
                 hideSeatSelection={hideSeatSelection}
                 roomElements={roomElements}
+                layoutImage={layoutImage}
+                roomWidth={roomWidth}
+                roomHeight={roomHeight}
               />
             </Suspense>
           </div>

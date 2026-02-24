@@ -1,10 +1,11 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   TooltipProvider, Tooltip, TooltipContent, TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { ZoomIn, ZoomOut, Maximize } from 'lucide-react';
 import { format } from 'date-fns';
+import { getImageUrl } from '@/lib/utils';
 
 interface ViewerSeat {
   _id: string;
@@ -28,7 +29,6 @@ interface FloorPlanViewerProps {
   dateRange?: { start: Date; end: Date };
   layoutImage?: string | null;
   layoutImageOpacity?: number;
-  // Keep sections prop for backward compat but ignore it
   sections?: any[];
 }
 
@@ -59,6 +59,13 @@ export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
     setPan({ x: 20, y: 20 });
   }, [roomWidth, roomHeight]);
 
+  // Auto-fit on mount
+  useEffect(() => {
+    const timer = setTimeout(handleFitToScreen, 100);
+    return () => clearTimeout(timer);
+  }, [handleFitToScreen]);
+
+  // Mouse handlers
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsPanning(true);
     setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
@@ -73,6 +80,35 @@ export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
     setZoom(z => Math.max(0.25, Math.min(z + (e.deltaY > 0 ? -0.1 : 0.1), 3)));
   };
 
+  // Touch handlers for mobile panning
+  const touchStartRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      e.stopPropagation();
+      const touch = e.touches[0];
+      touchStartRef.current = { x: touch.clientX, y: touch.clientY, panX: pan.x, panY: pan.y };
+      setIsPanning(true);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartRef.current || e.touches.length !== 1) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const touch = e.touches[0];
+    const dx = touch.clientX - touchStartRef.current.x;
+    const dy = touch.clientY - touchStartRef.current.y;
+    setPan({ x: touchStartRef.current.panX + dx, y: touchStartRef.current.panY + dy });
+  };
+
+  const handleTouchEnd = () => {
+    touchStartRef.current = null;
+    setIsPanning(false);
+  };
+
+  const resolvedLayoutImage = layoutImage ? getImageUrl(layoutImage) : null;
+
   return (
     <div className="space-y-3">
       {/* Zoom controls */}
@@ -86,13 +122,16 @@ export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
       {/* Canvas */}
       <div
         ref={containerRef}
-        className="relative overflow-hidden border rounded-lg bg-muted/30"
-        style={{ height: '450px', cursor: isPanning ? 'grabbing' : 'grab' }}
+        className="relative overflow-hidden border rounded-lg bg-muted/30 min-h-[350px] h-[60vh] touch-none"
+        style={{ cursor: isPanning ? 'grabbing' : 'grab' }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         onWheel={handleWheel}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
         <div
           className="absolute bg-background rounded shadow-sm"
@@ -104,10 +143,10 @@ export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
           }}
         >
           {/* Background layout image */}
-          {layoutImage && (
+          {resolvedLayoutImage && (
             <img
-              src={layoutImage}
-              alt="Layout background"
+              src={resolvedLayoutImage}
+              alt=""
               className="absolute inset-0 w-full h-full object-contain pointer-events-none"
               style={{ opacity: layoutImageOpacity / 100, zIndex: 0 }}
             />

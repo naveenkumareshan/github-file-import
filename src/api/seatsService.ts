@@ -24,6 +24,7 @@ const mapRow = (row: any): any => ({
   unavailableUntil: row.unavailable_until,
   sharingType: row.sharing_type,
   sharingCapacity: row.sharing_capacity,
+  category: row.category,
 });
 
 export const seatsService = {
@@ -233,14 +234,16 @@ export const seatsService = {
 
   getAvailableSeatsForDateRange: async (cabinId: string, floor: string, startDate: string, endDate: string) => {
     try {
+      // Fetch ALL seats for this cabin/floor (not just available ones)
       const { data: seats, error } = await supabase
         .from('seats')
         .select('*')
         .eq('cabin_id', cabinId)
         .eq('floor', parseInt(floor) || 1)
-        .eq('is_available', true);
+        .order('number');
       if (error) throw error;
 
+      // Fetch conflicting bookings
       const { data: bookings } = await supabase
         .from('bookings')
         .select('seat_id')
@@ -250,9 +253,15 @@ export const seatsService = {
         .gte('end_date', startDate);
 
       const bookedSeatIds = new Set((bookings || []).map(b => b.seat_id));
-      const available = (seats || []).filter(s => !bookedSeatIds.has(s.id));
 
-      return { success: true, data: available.map(mapRow) };
+      // Return ALL seats, marking booked ones as unavailable
+      return {
+        success: true,
+        data: (seats || []).map(s => ({
+          ...mapRow(s),
+          isAvailable: s.is_available && !bookedSeatIds.has(s.id),
+        })),
+      };
     } catch (e) {
       return { success: false, data: [] };
     }

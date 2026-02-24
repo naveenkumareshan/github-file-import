@@ -107,6 +107,9 @@ interface SeatBookingFormProps {
     price?: number;
   }[];
   roomElements?: RoomElement[];
+  layoutImage?: string | null;
+  roomWidth?: number;
+  roomHeight?: number;
 }
 
 export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
@@ -116,6 +119,9 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
   hideSeatSelection = () => {},
   availableSeats = [],
   roomElements = [],
+  layoutImage,
+  roomWidth = 800,
+  roomHeight = 600,
 }) => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -540,6 +546,9 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                       startDate={startDate}
                       endDate={endDate}
                       roomElements={roomElements}
+                      layoutImage={layoutImage}
+                      roomWidth={roomWidth}
+                      roomHeight={roomHeight}
                     />
                   </Suspense>
               </div>
