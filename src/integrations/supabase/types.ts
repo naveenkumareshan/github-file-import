@@ -399,6 +399,8 @@ export type Database = {
       seat_block_history: {
         Row: {
           action: string
+          block_from: string | null
+          block_to: string | null
           created_at: string
           id: string
           performed_by: string | null
@@ -407,6 +409,8 @@ export type Database = {
         }
         Insert: {
           action: string
+          block_from?: string | null
+          block_to?: string | null
           created_at?: string
           id?: string
           performed_by?: string | null
@@ -415,6 +419,8 @@ export type Database = {
         }
         Update: {
           action?: string
+          block_from?: string | null
+          block_to?: string | null
           created_at?: string
           id?: string
           performed_by?: string | null

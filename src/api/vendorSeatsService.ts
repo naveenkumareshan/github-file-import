@@ -111,14 +111,25 @@ export interface BlockHistoryEntry {
   reason: string;
   performedBy: string;
   createdAt: string;
+  blockFrom?: string;
+  blockTo?: string;
 }
 
 function computeDateStatus(
   seat: { is_available: boolean; id: string },
   bookingsForDate: any[],
-  selectedDate: string
+  selectedDate: string,
+  dateBlocks?: any[]
 ): 'available' | 'booked' | 'expiring_soon' | 'blocked' {
   if (!seat.is_available) return 'blocked';
+
+  // Check date-range blocks
+  if (dateBlocks && dateBlocks.length > 0) {
+    const hasActiveBlock = dateBlocks.some(
+      (b) => b.seat_id === seat.id && b.action === 'blocked' && b.block_from && b.block_to && b.block_from <= selectedDate && b.block_to >= selectedDate
+    );
+    if (hasActiveBlock) return 'blocked';
+  }
 
   const activeBooking = bookingsForDate.find(
     (b) => b.seat_id === seat.id && b.start_date <= selectedDate && b.end_date >= selectedDate
@@ -223,22 +234,34 @@ export const vendorSeatsService = {
 
       const seatIds = (seatsData || []).map(s => s.id);
       let allBookings: any[] = [];
+      let dateBlocks: any[] = [];
 
       if (seatIds.length > 0) {
-        const { data: bookings } = await supabase
-          .from('bookings')
-          .select('*, profiles!bookings_user_id_fkey(id, name, email, phone, profile_picture, serial_number, course_studying, college_studied, address, city, state, date_of_birth, gender)')
-          .in('seat_id', seatIds)
-          .eq('payment_status', 'completed')
-          .gte('end_date', date)
-          .order('start_date', { ascending: true });
+        const [bookingsRes, blocksRes] = await Promise.all([
+          supabase
+            .from('bookings')
+            .select('*, profiles!bookings_user_id_fkey(id, name, email, phone, profile_picture, serial_number, course_studying, college_studied, address, city, state, date_of_birth, gender)')
+            .in('seat_id', seatIds)
+            .eq('payment_status', 'completed')
+            .gte('end_date', date)
+            .order('start_date', { ascending: true }),
+          supabase
+            .from('seat_block_history')
+            .select('*')
+            .in('seat_id', seatIds)
+            .eq('action', 'blocked')
+            .not('block_from', 'is', null)
+            .not('block_to', 'is', null)
+            .gte('block_to', date),
+        ]);
 
-        allBookings = bookings || [];
+        allBookings = bookingsRes.data || [];
+        dateBlocks = blocksRes.data || [];
       }
 
       const mappedSeats: VendorSeat[] = (seatsData || []).map(seat => {
         const seatBookings = allBookings.filter(b => b.seat_id === seat.id);
-        const dateStatus = computeDateStatus(seat, allBookings, date);
+        const dateStatus = computeDateStatus(seat, allBookings, date, dateBlocks);
 
         const currentBookingRaw = seatBookings.find(
           b => b.start_date <= date && b.end_date >= date
@@ -362,10 +385,15 @@ export const vendorSeatsService = {
   },
 
   // Block/unblock with reason and history
-  toggleSeatAvailability: async (seatId: string, isAvailable: boolean, reason?: string) => {
+  toggleSeatAvailability: async (seatId: string, isAvailable: boolean, reason?: string, blockFrom?: string, blockTo?: string) => {
     try {
-      const { error } = await supabase.from('seats').update({ is_available: isAvailable }).eq('id', seatId);
-      if (error) throw error;
+      // Only set is_available = false for permanent blocks (no date range)
+      if (!isAvailable && blockFrom && blockTo) {
+        // Date-range block: don't change is_available
+      } else {
+        const { error } = await supabase.from('seats').update({ is_available: isAvailable }).eq('id', seatId);
+        if (error) throw error;
+      }
 
       // Log to block history
       const { data: { user } } = await supabase.auth.getUser();
@@ -374,7 +402,9 @@ export const vendorSeatsService = {
         action: isAvailable ? 'unblocked' : 'blocked',
         reason: reason || '',
         performed_by: user?.id || null,
-      });
+        block_from: blockFrom || null,
+        block_to: blockTo || null,
+      } as any);
 
       return { success: true, data: {} };
     } catch (error) {
@@ -399,6 +429,8 @@ export const vendorSeatsService = {
         reason: d.reason,
         performedBy: d.performed_by || '',
         createdAt: d.created_at,
+        blockFrom: d.block_from || undefined,
+        blockTo: d.block_to || undefined,
       }));
 
       return { success: true, data: entries };
