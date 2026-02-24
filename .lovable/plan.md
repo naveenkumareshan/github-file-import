@@ -1,64 +1,74 @@
 
 
-## Fix Booking View Crash + Per-Floor Layout Images + Seat Boundary Constraints
+## Fix Seat Availability, Renewal Amount, View Details & Sorting
 
-### Problem 1: StudentBookingView Crash (Blank Screen on "View Details")
+### Root Cause Analysis
 
-**Root Cause**: The `StudentBookingView.tsx` component expects camelCase field names (`startDate`, `endDate`, `bookingDuration`, etc.) but the database returns snake_case (`start_date`, `end_date`, `booking_duration`). When `format(new Date(booking.startDate), ...)` is called at line 190/193, `booking.startDate` is `undefined`, producing `Invalid Date`, which causes the `RangeError: Invalid time value` crash.
+**1. Seat shows "not available" even though it is available**
 
-**Fix**: Add a data mapping layer in `StudentBookingView.tsx` that transforms the raw Supabase response into the expected `BookingDetail` interface. Map `start_date` to `startDate`, `end_date` to `endDate`, `payment_status` to `paymentStatus`, `booking_duration` to `bookingDuration`, `duration_count` to `durationCount`, `total_price` to `totalPrice`, `cabin_id` to `cabinId`, `seat_number` to `seatNumber`. Also extract joined cabin data from the `cabins` object that Supabase returns via the join query.
+The `BookingRenewal` component calls `seatsService.checkSeatAvailability(seatId, ...)` but the `seatId` passed is `null`. Here's why:
+- In `StudentBookings.tsx`, the `mapBooking` function sets `seatId: null` (line 62)
+- The booking table has a `seat_id` column but it's `NULL` for existing bookings (only `seat_number` is populated)
+- When `BookingRenewal` tries to extract the seat ID (`booking.seatId`), it gets `null`
+- `checkSeatAvailability` then queries `seats.eq('id', null)` which fails, returning "not available"
 
-**File**: `src/pages/students/StudentBookingView.tsx`
+**Fix**: In `StudentBookings.tsx`, look up the seat by `cabin_id` + `seat_number` to populate `seatId` with the actual seat UUID and price. Also update `BookingRenewal` to handle the case where `seatId` might be a string UUID (not an object), and fetch the seat price from the DB if not embedded.
 
----
+**2. Renewal amount calculation is wrong**
 
-### Problem 2: Per-Floor Layout Images and Opacity
+`BookingRenewal.calculateAdditionalAmount()` reads `booking.seatId?.price` but:
+- `seatId` is either `null` or a plain string UUID (not an object with `.price`)
+- Falls back to hardcoded `1000` instead of the actual seat price (`2000` in this case)
 
-**Current State**: The `cabins` table has a single `layout_image` column shared across all floors. There is no per-floor image or opacity setting.
+**Fix**: After fixing the seatId population in `mapBooking` to include the price, or fetch seat price inside `BookingRenewal` when the dialog opens.
 
-**Solution**: Store per-floor layout images and opacity inside the existing `floors` JSONB column. Each floor object will be extended from `{id, number}` to `{id, number, layout_image, layout_image_opacity}`.
+**3. View Details shows large desktop-style page**
 
-**Database**: No schema migration needed -- the `floors` column is already `jsonb` and can hold arbitrary properties per floor entry.
+The `StudentBookingView` component uses `container mx-auto px-4 py-8 max-w-4xl` with large Card headers -- not matching the compact mobile app layout.
 
-**Admin Side Changes** (`src/pages/SeatManagement.tsx`):
-- When admin switches floors, load that floor's `layout_image` and `layout_image_opacity` from the `floors` JSONB array instead of the cabin-level `layout_image`.
-- When admin uploads a layout image via FloorPlanDesigner, save it to the current floor's entry in the JSONB array.
-- Add an opacity slider per floor in the FloorPlanDesigner toolbar.
-- On save, update the cabin's `floors` JSONB with the per-floor image/opacity data.
+**Fix**: Redesign `StudentBookingView` to use compact mobile-friendly layout matching the app style (smaller text, tighter spacing, rounded cards).
 
-**Student Side Changes** (`src/components/seats/DateBasedSeatMap.tsx` and `src/pages/BookSeat.tsx`):
-- When a student switches floors, read the floor-specific `layout_image` and `layout_image_opacity` from the cabin's `floors` JSONB.
-- Pass the floor-specific opacity to `FloorPlanViewer` instead of hardcoding `100`.
+**4. Bookings not sorted newest first**
 
-**Files**:
-- `src/pages/SeatManagement.tsx` -- load/save per-floor images in floors JSONB
-- `src/components/seats/DateBasedSeatMap.tsx` -- accept floors data, extract per-floor image/opacity on floor switch
-- `src/pages/BookSeat.tsx` -- pass full floors data to SeatBookingForm/DateBasedSeatMap
-- `src/components/seats/SeatBookingForm.tsx` -- forward floors data to DateBasedSeatMap
-- `src/api/adminCabinsService.ts` -- update `updateCabinLayout` to save per-floor images in the floors JSONB
+`getCurrentBookings()` sorts by `end_date ascending`. Both active and expired tabs should show newest bookings first.
+
+**Fix**: Change sort order to `created_at descending` in `getCurrentBookings()` and ensure the history list also uses descending order.
 
 ---
 
-### Problem 3: Constrain Seats Within Image Boundaries
+### Implementation Plan
 
-**Current State**: The FloorPlanDesigner allows placing seats anywhere on the canvas, even outside the uploaded image area. The image uses `object-contain` so it may not fill the full canvas dimensions.
+#### File 1: `src/pages/StudentBookings.tsx`
+- Update `mapBooking` to populate `seatId` as an object with `_id`, `number`, and `price` by joining seat data
+- Update `fetchBookings` to also fetch seat info from the `seats` table for each booking's `seat_number` + `cabin_id`
+- Sort both active and expired lists by `created_at` descending (newest first)
 
-**Solution**: When placing or dragging seats in `FloorPlanDesigner.tsx`, clamp seat positions to stay within `(0, 0)` to `(roomWidth, roomHeight)`. Since the background image is set to `object-contain` and fills the full room dimensions canvas, constraining to canvas bounds effectively constrains to the image. The existing `snapToGrid` function will be augmented with boundary clamping.
+#### File 2: `src/api/bookingsService.ts`
+- Update `getCurrentBookings()` to sort by `created_at` descending instead of `end_date` ascending
+- Update `getCurrentBookings()` and `getBookingHistory()` to also join the `seats` table data (seat price) via the `seat_id` column, or return `seat_number` for lookup
 
-Additionally, ensure the `FloorPlanViewer.tsx` (student view) renders the same image with the same positioning so students see the identical layout.
+#### File 3: `src/components/booking/BookingRenewal.tsx`
+- Add a `useEffect` that fetches the actual seat price from the database when the dialog opens, using `cabin_id` + `seat_number` if `seatId` doesn't have a price
+- Update `checkSeatAvailability` to find the seat UUID by `cabin_id` + `seat_number` if `seatId` is null or not a valid UUID
+- This ensures amount calculation uses the real seat price, not the fallback `1000`
 
-**Files**:
-- `src/components/seats/FloorPlanDesigner.tsx` -- add boundary clamping when placing/dragging seats
+#### File 4: `src/pages/students/StudentBookingView.tsx`
+- Redesign the layout to be compact and mobile-friendly:
+  - Remove large `container max-w-4xl` wrapper
+  - Use smaller text sizes (`text-[13px]`, `text-[11px]`)
+  - Compact card with rounded corners matching app style
+  - Inline booking info instead of 2-column grid
+  - Smaller back button and header
+  - Keep the `BookingTransactionView` section but make it fit the mobile layout
 
 ---
 
-### Technical Summary
+### Technical Details
 
-| Change | Files |
-|---|---|
-| Fix StudentBookingView crash (snake_case to camelCase mapping) | `src/pages/students/StudentBookingView.tsx` |
-| Per-floor layout images and opacity in floors JSONB | `src/pages/SeatManagement.tsx`, `src/components/seats/DateBasedSeatMap.tsx`, `src/pages/BookSeat.tsx`, `src/components/seats/SeatBookingForm.tsx`, `src/api/adminCabinsService.ts` |
-| Constrain seats within image boundaries | `src/components/seats/FloorPlanDesigner.tsx` |
-
-No database migration is needed -- the existing `floors` JSONB column accommodates the new per-floor properties.
+| Issue | Root Cause | Fix Location |
+|---|---|---|
+| Seat "not available" | `seatId` is null in booking data, checkSeatAvailability fails | `StudentBookings.tsx` mapBooking + `BookingRenewal.tsx` seat lookup |
+| Wrong renewal amount | Falls back to Rs.1000 instead of actual seat price (Rs.2000) | `BookingRenewal.tsx` fetch seat price on open |
+| View Details blank/ugly | Large desktop layout on mobile | `StudentBookingView.tsx` redesign |
+| Sort order | Active sorted by end_date asc | `bookingsService.ts` change to created_at desc |
 
