@@ -9,6 +9,7 @@ import { bookingsService } from '@/api/bookingsService';
 import { format } from 'date-fns';
 import { Calendar, Building, BookOpen, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Booking {
   id: string;
@@ -48,39 +49,66 @@ const StudentBookings = () => {
   const fetchBookings = async () => {
     try {
       setIsLoading(true);
-      const mapBooking = (booking: any) => ({
-        id: booking.id,
-        startDate: booking.start_date,
-        endDate: booking.end_date,
-        status: booking.payment_status,
-        createdAt: booking.created_at,
-        totalPrice: booking.total_price,
-        originalPrice: booking.total_price,
-        appliedCoupon: undefined,
-        seatPrice: booking.total_price,
-        cabinId: booking.cabin_id,
-        seatId: null,
-        paymentStatus: booking.payment_status,
-        bookingType: 'cabin' as const,
-        itemName: booking.cabins?.name || 'Reading Room',
-        itemNumber: booking.seat_number || 0,
-        itemImage: booking.cabins?.image_url,
-        bookingStatus: booking.payment_status,
-        location: booking.cabins?.city,
-        keyDeposit: undefined,
-        cabinCode: booking.cabin_id || '',
-        transferredHistory: null,
-      });
 
       const [currentRes, historyRes] = await Promise.all([
         bookingsService.getCurrentBookings(),
         bookingsService.getBookingHistory(),
       ]);
 
-      setCurrentBookings(currentRes.success ? currentRes.data.map(mapBooking) : []);
-      // Filter out active bookings from history — only show expired or non-completed
+      const allCurrentRaw = currentRes.success ? currentRes.data : [];
+      const allHistoryRaw = historyRes.success ? historyRes.data : [];
+
+      // Collect all unique cabin_id + seat_number pairs to look up seat UUIDs & prices
+      const seatLookupKeys = new Set<string>();
+      [...allCurrentRaw, ...allHistoryRaw].forEach((b: any) => {
+        if (b.cabin_id && b.seat_number) {
+          seatLookupKeys.add(`${b.cabin_id}|${b.seat_number}`);
+        }
+      });
+
+      // Fetch seat info for all relevant cabin+seat_number combos
+      const seatMap = new Map<string, { id: string; price: number; number: number }>();
+      if (seatLookupKeys.size > 0) {
+        const cabinIds = [...new Set([...seatLookupKeys].map(k => k.split('|')[0]))];
+        const { data: seatsData } = await supabase
+          .from('seats')
+          .select('id, cabin_id, number, price')
+          .in('cabin_id', cabinIds);
+        (seatsData || []).forEach((s: any) => {
+          seatMap.set(`${s.cabin_id}|${s.number}`, { id: s.id, price: s.price, number: s.number });
+        });
+      }
+
+      const mapBooking = (booking: any) => {
+        const seatInfo = seatMap.get(`${booking.cabin_id}|${booking.seat_number}`);
+        return {
+          id: booking.id,
+          startDate: booking.start_date,
+          endDate: booking.end_date,
+          status: booking.payment_status,
+          createdAt: booking.created_at,
+          totalPrice: booking.total_price,
+          originalPrice: booking.total_price,
+          appliedCoupon: undefined,
+          seatPrice: seatInfo?.price || booking.total_price,
+          cabinId: booking.cabin_id,
+          seatId: seatInfo ? { _id: seatInfo.id, number: seatInfo.number, price: seatInfo.price } : null,
+          paymentStatus: booking.payment_status,
+          bookingType: 'cabin' as const,
+          itemName: booking.cabins?.name || 'Reading Room',
+          itemNumber: booking.seat_number || 0,
+          itemImage: booking.cabins?.image_url,
+          bookingStatus: booking.payment_status,
+          location: booking.cabins?.city,
+          keyDeposit: undefined,
+          cabinCode: booking.cabin_id || '',
+          transferredHistory: null,
+        };
+      };
+
+      setCurrentBookings(allCurrentRaw.map(mapBooking));
       const today = new Date().toISOString().split('T')[0];
-      const allHistory = historyRes.success ? historyRes.data.map(mapBooking) : [];
+      const allHistory = allHistoryRaw.map(mapBooking);
       setPastBookings(allHistory.filter((b: Booking) => b.endDate < today || b.paymentStatus !== 'completed'));
     } catch (error) {
       console.error('Error fetching bookings:', error);

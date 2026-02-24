@@ -71,7 +71,7 @@ export const bookingsService = {
         .eq('user_id', user.id)
         .gte('end_date', today)
         .eq('payment_status', 'completed')
-        .order('end_date', { ascending: true });
+        .order('created_at', { ascending: false });
 
       return { success: !error, data: data || [] };
     } catch (error: any) {
