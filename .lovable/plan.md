@@ -1,165 +1,81 @@
 
 
-## Student Profile Redesign + Complaints System + Support Tickets
+## Compact Booking Cards + Profile Header Redesign + Reading Room Visibility Fix
 
-### Overview
+### 1. Compact Booking Card in StudentBookings
 
-Redesign the student profile page layout, add a complaints and customer support system across student/admin/partner sides, make booking transactions clickable, and fix the Active/Expired booking tab logic.
+**Problem**: The booking card is too tall. The "Booking Validity" section uses a full `Card > CardHeader > CardContent` with large text, a separate status message box, and excessive spacing. Combined with the dates grid and action buttons, each card takes up nearly the full screen.
+
+**Solution**: Replace the `BookingExpiryDetails` component usage in `BookingsList.tsx` with a compact inline validity bar. Merge key info into a single dense card.
+
+**New card layout:**
+```text
++----------------------------------------------+
+| [img] Sunrise Study Hub  Seat #46    [Paid]  |
+|       24 Feb - 23 Mar 2026   Rs.2,500         |
+|       [Active - 26 days remaining]            |
+|       [View Details]  [Renew Booking]         |
++----------------------------------------------+
+```
+
+**Changes in `BookingsList.tsx`:**
+- Remove the `BookingExpiryDetails` card component call (lines 252-259)
+- Replace with a single-line inline validity indicator: a small colored bar showing status badge + days remaining text, no card wrapper
+- Collapse the 2-col dates grid into a single line: "24 Feb - 23 Mar 2026"
+- Move amount to the top row next to the title
+- Remove the separate "Booked On" field (less important for students)
+- Keep View Details and Renew buttons but make them full-width side-by-side
+
+**Files**: `src/components/booking/BookingsList.tsx`
 
 ---
 
-### 1. Profile Page Restructure -- Link-Style Navigation
+### 2. Profile Header -- Show Name, Phone, Email, Photo Edit; Collapse Info Sections
 
-**Current**: Profile has accordion sections (Account Info, Personal Info, Academic Info, Security) expanded inline below the header card.
+**Problem**: The profile card shows name and email at the top, then immediately lists Account Info, Personal Info, Academic Info, Security as always-visible navigation rows. The user wants phone number and a photo edit button visible in the header, and the 4 info sections hidden behind a collapsible arrow.
 
-**New**: Replace the accordion with a list of navigation rows inside the profile card. Each row shows an icon, label, and a chevron-right arrow. Tapping a row navigates to a dedicated sub-page (or opens a sheet/dialog) for that section.
+**Solution**: Restructure the profile header card:
 
-**Layout (reference image style):**
+**New layout:**
 ```text
 +----------------------------------+
-| [Avatar]  Name                   |
-|           email@example.com      |
-+----------------------------------+
-| My Bookings              View All>|
-| [Booking card]                    |
-+----------------------------------+
-| > Account Info              >    |
-| > Personal Info             >    |
-| > Academic Info             >    |
-| > Security                  >    |
-+----------------------------------+
-| Quick Links                      |
-| [Complaints]  [Customer Support] |
-+----------------------------------+
-| [Logout]                         |
+| [Avatar] [Edit icon]             |
+|  Name                            |
+|  email@example.com               |
+|  +91 9876543210                  |
+|                                  |
+|  More Info                   v   |  <-- collapsible toggle
+|  +--------------------------+    |
+|  | > Account Info        >  |    |
+|  | > Personal Info       >  |    |
+|  | > Academic Info       >  |    |
+|  | > Security            >  |    |
+|  +--------------------------+    |
 +----------------------------------+
 ```
 
-**Implementation**: Keep ProfileManagement.tsx but replace `<Accordion>` with a list of clickable rows. Each row opens a full-screen sheet (`<Sheet>`) containing the existing form fields for that section. This avoids creating new routes and keeps everything within the profile page.
+**Changes in `ProfileManagement.tsx`:**
+- Add phone number display below email in the avatar section
+- Add a small edit/pencil icon button on the avatar that opens the Account Info sheet (for photo upload)
+- Wrap the SECTIONS navigation rows in a `Collapsible` component (from `@radix-ui/react-collapsible`)
+- Add a "More Info" toggle button with a chevron-down arrow that expands/collapses the 4 section rows
+- Default state: collapsed (sections hidden)
 
 **Files**: `src/components/profile/ProfileManagement.tsx`
 
 ---
 
-### 2. Complaints System (New Feature)
+### 3. Newly Added Reading Room Not Visible
 
-Create a full complaints system where students can report issues related to their active bookings. Partners (cabin owners) and admins can view and act on these complaints.
+**Problem**: The student cannot see a newly added reading room. Investigation shows the room "TRINI STUDY SPACE" exists in the database but has `is_active: false`, so it's correctly filtered out by the `cabinsService.getAllCabins()` query which only returns `is_active: true` rooms.
 
-#### Database
+**Root cause**: The admin/partner who created the room either explicitly set it to inactive or there was a UI issue during creation. The code logic is correct -- `is_active` defaults to `true` in both the database schema and the admin creation form.
 
-New `complaints` table:
-- `id` (uuid, PK)
-- `user_id` (uuid, references auth user)
-- `cabin_id` (uuid, nullable, references cabins)
-- `booking_id` (uuid, nullable, references bookings)
-- `subject` (text)
-- `description` (text)
-- `status` (text: open, in_progress, resolved, closed)
-- `priority` (text: low, medium, high)
-- `category` (text: cleanliness, noise, facilities, staff, other)
-- `response` (text, nullable -- admin/partner reply)
-- `responded_by` (uuid, nullable)
-- `responded_at` (timestamptz, nullable)
-- `created_at`, `updated_at` (timestamptz)
+**Solution**: No code change needed for the filtering logic. However, to prevent confusion, add a visual indicator in the admin cabin creation flow. After saving a new cabin, if the cabin is created with `is_active: false`, show a warning toast: "Room created but set to inactive. Students won't see it until you activate it."
 
-RLS policies:
-- Students can INSERT their own complaints and SELECT their own
-- Admins can do ALL
-- Partners can SELECT complaints for cabins they manage (future -- for now admin-only on partner side)
+Also ensure the admin cabin list clearly shows the active/inactive status so the partner can toggle it.
 
-#### Student Side
-
-New component `src/components/profile/ComplaintsPage.tsx`:
-- Form to submit a complaint (select booking, category, subject, description)
-- List of past complaints with status badges
-- Accessed via Quick Links on profile
-
-New route: `/student/complaints`
-
-#### Admin Side
-
-New component `src/components/admin/ComplaintsManagement.tsx`:
-- Table of all complaints with filters (status, priority, category)
-- Click to view details, respond, change status
-- Message/reply functionality
-
-New route under admin layout: `/admin/complaints`
-
-#### Partner Side
-
-For now, partner complaints will be visible through the admin panel. A dedicated partner view can be added later.
-
-**Files**:
-- `src/components/profile/ComplaintsPage.tsx` (new)
-- `src/components/admin/ComplaintsManagement.tsx` (new)
-- `src/App.tsx` (new routes)
-- Database migration for `complaints` table
-
----
-
-### 3. Customer Support System
-
-Create a support ticket system for general issues (not booking-specific) from InhaleStays platform side.
-
-#### Database
-
-New `support_tickets` table:
-- `id` (uuid, PK)
-- `user_id` (uuid)
-- `subject` (text)
-- `description` (text)
-- `status` (text: open, in_progress, resolved, closed)
-- `category` (text: account, payment, technical, general)
-- `admin_response` (text, nullable)
-- `responded_by` (uuid, nullable)
-- `responded_at` (timestamptz, nullable)
-- `created_at`, `updated_at` (timestamptz)
-
-RLS: Same pattern as complaints (students own, admins all).
-
-#### Student Side
-
-New component `src/components/profile/SupportPage.tsx`:
-- Form to submit a support ticket
-- List of past tickets with status
-- Accessed via Quick Links on profile
-
-New route: `/student/support`
-
-#### Admin Side
-
-New component `src/components/admin/SupportTicketsManagement.tsx`:
-- Table of all tickets, filters, respond, change status
-
-New route: `/admin/support-tickets`
-
-**Files**:
-- `src/components/profile/SupportPage.tsx` (new)
-- `src/components/admin/SupportTicketsManagement.tsx` (new)
-- `src/App.tsx` (new routes)
-- Database migration for `support_tickets` table
-
----
-
-### 4. Booking Transaction Details (Clickable)
-
-**Current**: Booking cards in the profile's "My Bookings" section are not clickable for transaction details.
-
-**Change**: Make each booking card in the profile page clickable. Tapping navigates to `/student/bookings/{bookingId}/transactions/cabin` which already exists and shows the `BookingTransactionView`.
-
-**Files**: `src/components/profile/ProfileManagement.tsx` -- wrap booking cards with `Link`
-
----
-
-### 5. Fix Active vs Expired Booking Tabs
-
-**Current issue**: `getBookingHistory()` returns ALL bookings (no date filter), so active bookings appear in both Active and Expired tabs.
-
-**Fix**: In `getBookingHistory()`, add a filter to only return bookings where `end_date < today` OR `payment_status != 'completed'` (cancelled/failed). This ensures completed active bookings only show under Active.
-
-Alternatively, filter client-side in `StudentBookings.tsx`: the `pastBookings` list should exclude bookings that are still active (end_date >= today AND payment_status = completed).
-
-**Files**: `src/api/bookingsService.ts` or `src/pages/StudentBookings.tsx`
+**Files**: `src/api/adminCabinsService.ts` (add post-creation check), `src/components/admin/CabinForm.tsx` (add warning)
 
 ---
 
@@ -167,13 +83,7 @@ Alternatively, filter client-side in `StudentBookings.tsx`: the `pastBookings` l
 
 | Change | Files |
 |---|---|
-| Profile restructure (nav rows + sheets) | `src/components/profile/ProfileManagement.tsx` |
-| Complaints system -- student | `src/components/profile/ComplaintsPage.tsx` (new) |
-| Complaints system -- admin | `src/components/admin/ComplaintsManagement.tsx` (new) |
-| Support tickets -- student | `src/components/profile/SupportPage.tsx` (new) |
-| Support tickets -- admin | `src/components/admin/SupportTicketsManagement.tsx` (new) |
-| Routes | `src/App.tsx` |
-| Clickable booking transactions | `src/components/profile/ProfileManagement.tsx` |
-| Fix Active/Expired tabs | `src/api/bookingsService.ts` |
-| Database | Migration: `complaints` table, `support_tickets` table with RLS |
+| Compact booking card -- inline validity, dense layout | `src/components/booking/BookingsList.tsx` |
+| Profile header -- phone, edit icon, collapsible sections | `src/components/profile/ProfileManagement.tsx` |
+| Reading room visibility -- warning toast on inactive creation | `src/components/admin/CabinForm.tsx` |
 
