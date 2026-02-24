@@ -14,7 +14,13 @@ import {
 
 // ── Constants ──────────────────────────────────────────────────────
 const GRID_SNAP = 40;
+const SEAT_W = 36;
+const SEAT_H = 26;
 const snapToGrid = (v: number) => Math.round(v / GRID_SNAP) * GRID_SNAP;
+const clampPosition = (x: number, y: number, roomW: number, roomH: number) => ({
+  x: Math.max(SEAT_W / 2, Math.min(roomW - SEAT_W / 2, x)),
+  y: Math.max(SEAT_H / 2, Math.min(roomH - SEAT_H / 2, y)),
+});
 
 // ── Types ──────────────────────────────────────────────────────────
 export interface FloorPlanSeat {
@@ -127,7 +133,8 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
     if (placementMode && onPlaceSeat) {
       const pos = getCanvasPos(e);
       if (pos.x >= 0 && pos.y >= 0 && pos.x <= roomWidth && pos.y <= roomHeight) {
-        setPendingSeat({ x: snapToGrid(pos.x), y: snapToGrid(pos.y) });
+        const clamped = clampPosition(snapToGrid(pos.x), snapToGrid(pos.y), roomWidth, roomHeight);
+        setPendingSeat(clamped);
       }
       return;
     }
@@ -141,8 +148,9 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
   const handleCanvasMouseMove = (e: React.MouseEvent) => {
     if (draggingSeatId) {
       const pos = getCanvasPos(e);
-      const newX = snapToGrid(Math.max(0, Math.min(roomWidth, pos.x - dragOffset.x)));
-      const newY = snapToGrid(Math.max(0, Math.min(roomHeight, pos.y - dragOffset.y)));
+      const rawX = snapToGrid(pos.x - dragOffset.x);
+      const rawY = snapToGrid(pos.y - dragOffset.y);
+      const { x: newX, y: newY } = clampPosition(rawX, rawY, roomWidth, roomHeight);
       onSeatsChange(seats.map(s =>
         s._id === draggingSeatId ? { ...s, position: { x: newX, y: newY } } : s
       ));

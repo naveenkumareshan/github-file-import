@@ -235,7 +235,7 @@ export const adminCabinsService = {
     return { success: true, data: {} };
   },
 
-  updateCabinLayout: async (cabinId: string, roomElements: RoomElement[], roomWidth?: number, roomHeight?: number, gridSize?: number, sections?: any[], layoutImage?: string | null) => {
+  updateCabinLayout: async (cabinId: string, roomElements: RoomElement[], roomWidth?: number, roomHeight?: number, gridSize?: number, sections?: any[], layoutImage?: string | null, floors?: any[]) => {
     try {
       const updateData: any = { room_elements: roomElements };
       if (roomWidth !== undefined) updateData.room_width = roomWidth;
@@ -243,6 +243,7 @@ export const adminCabinsService = {
       if (gridSize !== undefined) updateData.grid_size = gridSize;
       if (sections !== undefined) updateData.sections = sections;
       if (layoutImage !== undefined) updateData.layout_image = layoutImage;
+      if (floors !== undefined) updateData.floors = floors;
 
       const { data, error } = await supabase
         .from('cabins')
