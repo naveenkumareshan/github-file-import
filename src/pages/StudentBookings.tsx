@@ -78,7 +78,10 @@ const StudentBookings = () => {
       ]);
 
       setCurrentBookings(currentRes.success ? currentRes.data.map(mapBooking) : []);
-      setPastBookings(historyRes.success ? historyRes.data.map(mapBooking) : []);
+      // Filter out active bookings from history — only show expired or non-completed
+      const today = new Date().toISOString().split('T')[0];
+      const allHistory = historyRes.success ? historyRes.data.map(mapBooking) : [];
+      setPastBookings(allHistory.filter((b: Booking) => b.endDate < today || b.paymentStatus !== 'completed'));
     } catch (error) {
       console.error('Error fetching bookings:', error);
     } finally {

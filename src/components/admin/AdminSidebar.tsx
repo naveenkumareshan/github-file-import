@@ -260,6 +260,18 @@ export function AdminSidebar() {
         icon: Bell,
         roles: ['admin'],
         url: '/admin/banners'
+      },
+      {
+        title: 'Complaints',
+        icon: MessageSquare,
+        roles: ['admin'],
+        url: '/admin/complaints'
+      },
+      {
+        title: 'Support Tickets',
+        icon: Mail,
+        roles: ['admin'],
+        url: '/admin/support-tickets'
       }
     );
   } else {
