@@ -47,6 +47,7 @@ export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
   const [pan, setPan] = useState({ x: 20, y: 20 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [containerSize, setContainerSize] = useState({ w: 0, h: 0 });
 
   const handleZoomIn = () => setZoom(z => Math.min(z + 0.25, 3));
   const handleZoomOut = () => setZoom(z => Math.max(z - 0.25, 0.25));
@@ -58,6 +59,17 @@ export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
     setZoom(Math.min(scaleX, scaleY, 1.5));
     setPan({ x: 20, y: 20 });
   }, [roomWidth, roomHeight]);
+
+  // Track container size
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const update = () => setContainerSize({ w: el.clientWidth, h: el.clientHeight });
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   // Auto-fit on mount
   useEffect(() => {
@@ -75,12 +87,8 @@ export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
     setPan({ x: e.clientX - panStart.x, y: e.clientY - panStart.y });
   };
   const handleMouseUp = () => setIsPanning(false);
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    setZoom(z => Math.max(0.25, Math.min(z + (e.deltaY > 0 ? -0.1 : 0.1), 3)));
-  };
 
-  // Touch handlers for mobile panning
+  // Touch handlers for mobile panning (no scroll-zoom)
   const touchStartRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -107,6 +115,28 @@ export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
     setIsPanning(false);
   };
 
+  // Minimap
+  const MINI_W = 120;
+  const MINI_H = 90;
+  const miniScale = Math.min(MINI_W / roomWidth, MINI_H / roomHeight);
+  const vpRect = {
+    x: Math.max(0, (-pan.x / zoom) * miniScale),
+    y: Math.max(0, (-pan.y / zoom) * miniScale),
+    w: containerSize.w > 0 ? (containerSize.w / zoom) * miniScale : MINI_W,
+    h: containerSize.h > 0 ? (containerSize.h / zoom) * miniScale : MINI_H,
+  };
+
+  const handleMinimapClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+    const roomX = clickX / miniScale;
+    const roomY = clickY / miniScale;
+    const newPanX = -(roomX * zoom - containerSize.w / 2);
+    const newPanY = -(roomY * zoom - containerSize.h / 2);
+    setPan({ x: newPanX, y: newPanY });
+  };
+
   const resolvedLayoutImage = layoutImage ? getImageUrl(layoutImage) : null;
 
   return (
@@ -128,7 +158,6 @@ export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
-        onWheel={handleWheel}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -197,6 +226,44 @@ export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
               );
             })}
           </TooltipProvider>
+        </div>
+
+        {/* Minimap */}
+        <div
+          className="absolute bottom-2 right-2 rounded border border-border/50 bg-background/80 backdrop-blur-sm cursor-crosshair"
+          style={{ width: MINI_W, height: MINI_H, zIndex: 30 }}
+          onClick={handleMinimapClick}
+          onMouseDown={e => e.stopPropagation()}
+          onTouchStart={e => e.stopPropagation()}
+        >
+          {/* Mini seats */}
+          {seats.map(seat => {
+            const mx = seat.position.x * miniScale;
+            const my = seat.position.y * miniScale;
+            const isSelected = selectedSeat?._id === seat._id;
+            const dotColor = isSelected
+              ? 'bg-primary'
+              : seat.isAvailable
+                ? 'bg-emerald-500'
+                : 'bg-muted-foreground/50';
+            return (
+              <div
+                key={seat._id}
+                className={`absolute rounded-full ${dotColor}`}
+                style={{ left: mx - 1.5, top: my - 1.5, width: 3, height: 3 }}
+              />
+            );
+          })}
+          {/* Viewport rect */}
+          <div
+            className="absolute border-2 border-primary/70 bg-primary/10 rounded-sm"
+            style={{
+              left: Math.max(0, vpRect.x),
+              top: Math.max(0, vpRect.y),
+              width: Math.min(vpRect.w, MINI_W - Math.max(0, vpRect.x)),
+              height: Math.min(vpRect.h, MINI_H - Math.max(0, vpRect.y)),
+            }}
+          />
         </div>
       </div>
 
