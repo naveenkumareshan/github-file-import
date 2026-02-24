@@ -24,7 +24,7 @@ export const adminBookingsService = {
 
       let query = supabase
         .from('bookings')
-        .select('*, profiles:user_id(name, email, phone, profile_picture, serial_number), cabins:cabin_id(name, serial_number), seats:seat_id(number)', { count: 'exact' });
+        .select('*, profiles!bookings_user_id_fkey(name, email, phone, profile_picture, serial_number), cabins:cabin_id(name, serial_number), seats:seat_id(number)', { count: 'exact' });
 
       // Apply filters
       if (filters?.status && filters.status !== 'all') {
@@ -118,7 +118,7 @@ export const adminBookingsService = {
     try {
       const { data, error } = await supabase
         .from('bookings')
-        .select('*, profiles:user_id(name, email, phone, profile_picture, serial_number), cabins:cabin_id(name, serial_number), seats:seat_id(number)')
+        .select('*, profiles!bookings_user_id_fkey(name, email, phone, profile_picture, serial_number), cabins:cabin_id(name, serial_number), seats:seat_id(number)')
         .eq('id', id)
         .single();
 
@@ -280,7 +280,7 @@ export const adminBookingsService = {
 
       const { data, error } = await supabase
         .from('bookings')
-        .select('*, profiles:user_id(name, email, phone), cabins:cabin_id(name), seats:seat_id(number)')
+        .select('*, profiles!bookings_user_id_fkey(name, email, phone), cabins:cabin_id(name), seats:seat_id(number)')
         .eq('payment_status', 'completed')
         .gte('end_date', today.toISOString().split('T')[0])
         .lte('end_date', futureDate.toISOString().split('T')[0])
@@ -310,7 +310,7 @@ export const adminBookingsService = {
       const today = new Date().toISOString().split('T')[0];
       const { data, error } = await supabase
         .from('bookings')
-        .select('*, profiles:user_id(name, email, phone, profile_picture), cabins:cabin_id(name), seats:seat_id(number)')
+        .select('*, profiles!bookings_user_id_fkey(name, email, phone, profile_picture), cabins:cabin_id(name), seats:seat_id(number)')
         .eq('payment_status', 'completed')
         .lte('start_date', today)
         .gte('end_date', today);
