@@ -1,164 +1,152 @@
 
 
-## Redesign: Seat Control Center
+## Seat Control Center Enhancements
 
-Complete redesign of `src/pages/vendor/VendorSeats.tsx` from a card-based layout into a compact, data-dense operational dashboard with grid-first seat visualization, date-aware booking checks, and a right-side booking drawer.
-
----
-
-### Architecture
-
-The page will be restructured into three visual layers:
-
-```text
-+------------------------------------------------------------------+
-| Stats Bar (60px max height, single horizontal row)               |
-| Total | Booked | Available | Expiring | Blocked | Revenue        |
-+------------------------------------------------------------------+
-| Filter Row (sticky, single line)                                 |
-| [Room v] [Date] [Status v] [Search...] [Grid|Table]             |
-+------------------------------------------------------------------+
-| Seat Grid (default) or Table View                                |
-| [S1][S2][S3][S4][S5][S6][S7][S8][S9][S10][S11][S12]...         |
-| [S13][S14][S15]...                                               |
-|                                                                  |
-+------------------------------------------------------------------+
-```
-
-Right-side Sheet drawer opens on seat click for details or booking.
+Six improvements to the Seat Control Center page and its backing service.
 
 ---
 
-### 1. Stats Bar
+### 1. Move Price Edit Button Inline (beside price)
 
-Replace the 4 large cards with a single slim horizontal bar (max-h-[60px]), using inline flex items:
+Currently the price edit button only appears on hover overlay (grid) or in a separate Actions column (table). 
 
-| Metric | Source |
-|--------|--------|
-| Total Seats | `seats.length` |
-| Booked | Seats with active booking for selected date |
-| Available | Available and no booking for selected date |
-| Expiring Soon | Booking end_date within 7 days of selected date |
-| Blocked | `!isAvailable` (manually blocked) |
-| Revenue | Sum of `totalPrice` from active bookings |
+**Change**: In the grid view, show a tiny pencil icon right next to the price text inside each seat box (always visible, no hover needed). In the table view, move the edit icon inline with the price cell instead of a separate Actions column entry.
 
-Each stat is a small pill: icon + label + value, separated by thin dividers. No cards, no padding.
+**File: `src/pages/vendor/VendorSeats.tsx`**
+- Grid: Replace the `<span>` showing price with a flex row: `₹{price}` + tiny edit icon button (h-3 w-3). Clicking it opens the price edit dialog (stopPropagation).
+- Table: In the Price cell, add the edit button inline after the price text.
+- Remove the edit button from the hover overlay (grid) and Actions column (table) since it is now beside the price.
 
 ---
 
-### 2. Sticky Filter Row
+### 2. Remove "End Date" Column from Table View
 
-Single horizontal row with `sticky top-0 z-10 bg-background`:
+The "End Date" column is confusing in a date-aware dashboard because the grid already shows status per selected date.
 
-- **Reading Room dropdown**: Same Select component, compact (h-8)
-- **Date picker**: Single date (default today). When changed, re-fetches bookings for that date and recalculates all statuses
-- **Status filter**: All / Available / Booked / Expiring Soon / Blocked
-- **Search**: Input for seat number search
-- **View toggle**: Grid (default) / Table icon buttons
+**Change**: Remove the "End Date" column header and cell from the table view entirely. Booking end dates are already visible in the right-side Sheet drawer under booking details.
 
-All filters are inline, no labels, placeholder text only. Height ~40px.
+**File: `src/pages/vendor/VendorSeats.tsx`**
+- Remove `<TableHead>End Date</TableHead>` and corresponding `<TableCell>`.
 
 ---
 
-### 3. Grid View (Default)
+### 3. Add "All Rooms" Option to Reading Room Dropdown
 
-Tight CSS grid of seat boxes:
-- `grid-cols-[repeat(auto-fill,minmax(68px,1fr))]` for 10-15 seats per row
-- Each box: 68px square, `p-1`, `text-[10px]`
-- Content per box:
-  - Seat number (bold, top)
-  - Category (tiny text)
-  - Price (tiny text)
-  - Status badge (color-coded dot or bg)
-  - Two micro action buttons on hover: availability toggle + price edit
-- Color coding via background:
-  - `bg-emerald-50 border-emerald-300` -- Available
-  - `bg-red-50 border-red-300` -- Booked
-  - `bg-amber-50 border-amber-300` -- Expiring Soon (end_date within 7 days)
-  - `bg-gray-100 border-gray-300` -- Blocked
+Currently partners must select a single reading room. There is no option to see all seats across all rooms.
 
-Click opens the right-side Sheet.
-
----
-
-### 4. Table View (Secondary)
-
-Compact table with `text-xs`, sticky header, alternating row backgrounds:
-
-| Seat | Room | Category | Status | Price | End Date | Actions |
-|------|------|----------|--------|-------|----------|---------|
-
-Actions column: availability toggle + price edit buttons.
-
----
-
-### 5. Right-Side Booking/Details Sheet
-
-Opens via `Sheet` component (side="right", ~400px wide).
-
-**If seat is Booked:**
-- Student profile: name, phone, email, serial number, course, college, address
-- Current booking dates, duration, amount, payment status
-- All bookings table (current + future)
-
-**If seat is Available:**
-- "Book Seat" section:
-  - Student search (search profiles by name/phone/email)
-  - "Add New Student" link
-  - Plan selection: Monthly / 15 Days / Custom
-  - Start date (default: selected date from filter)
-  - Auto-calculated end date
-  - Previous booking history for this seat
-  - Confirm Booking button
-- Pre-booking validation checks:
-  - No active booking on seat for selected date
-  - Seat is not blocked
-  - Query bookings table to confirm no overlap
-
-**If seat is Blocked:**
-- Show blocked status, option to unblock
-
----
-
-### 6. Date-Aware Logic
-
-When the date picker changes:
-1. Fetch all bookings where `start_date <= selectedDate AND end_date >= selectedDate` for the selected cabin's seats
-2. Recalculate each seat's status:
-   - **Booked**: has active booking covering selected date
-   - **Expiring Soon**: has booking where `end_date` is within 7 days after selected date
-   - **Blocked**: `is_available = false`
-   - **Available**: none of the above
-3. Update stats bar counts
-4. Re-render grid instantly (no page reload)
-
----
-
-### 7. Service Updates
+**Change**: Add an "All Rooms" option at the top of the Select dropdown. When selected, fetch seats for ALL cabins (loop through all cabin IDs and merge results, or pass no cabin filter).
 
 **File: `src/api/vendorSeatsService.ts`**
-- Add `getSeatsForDate(cabinId, date)` method that fetches seats + bookings for a specific date
-- Add `createPartnerBooking(data)` method for partner-initiated bookings (inserts into bookings table with the selected student's user_id)
-- Add `searchStudents(query)` method to search profiles by name/phone/email
-- Update status filter to support 'expiring_soon' and 'blocked'
+- Update `getSeatsForDate` to accept `cabinId = 'all'` -- in that case, query all seats without the `.eq('cabin_id', ...)` filter.
+
+**File: `src/pages/vendor/VendorSeats.tsx`**
+- Add `<SelectItem value="all">All Reading Rooms</SelectItem>` as the first option.
+- Default to `'all'` instead of first cabin.
 
 ---
 
-### Technical Summary
+### 4. Seat Block/Unblock with Remarks and History
 
-| File | Change |
-|------|--------|
-| `src/pages/vendor/VendorSeats.tsx` | Full rewrite: stats bar, sticky filters, grid/table views, Sheet drawer with booking form, date-aware logic |
-| `src/api/vendorSeatsService.ts` | Add `getSeatsForDate`, `createPartnerBooking`, `searchStudents` methods; update `SeatFilters` interface |
+Currently blocking/unblocking a seat has no audit trail. Partners need to record why a seat was blocked.
 
-### Design Principles Applied
-- Maximum data density: 10-15 seats visible per row
-- No card wrappers on grid
-- All text 10-12px
-- Padding reduced to 1-2 units
-- Sticky filter bar
-- Desktop-first responsive grid
-- Airline-style seat selection UX
-- Color-coded status at a glance
-- Right-drawer for details (no dialogs/modals blocking the grid)
+**Database Migration**: Create a `seat_block_history` table:
+
+```text
+CREATE TABLE public.seat_block_history (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  seat_id uuid NOT NULL REFERENCES public.seats(id) ON DELETE CASCADE,
+  action text NOT NULL, -- 'blocked' or 'unblocked'
+  reason text NOT NULL DEFAULT '',
+  performed_by uuid REFERENCES auth.users(id),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.seat_block_history ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Admins can manage block history" ON public.seat_block_history
+FOR ALL TO authenticated USING (has_role(auth.uid(), 'admin'::app_role));
+
+CREATE POLICY "Vendors can manage block history for own seats" ON public.seat_block_history
+FOR ALL TO authenticated
+USING (EXISTS (
+  SELECT 1 FROM seats s JOIN cabins c ON s.cabin_id = c.id
+  WHERE s.id = seat_block_history.seat_id AND c.created_by = auth.uid()
+));
+```
+
+**File: `src/api/vendorSeatsService.ts`**
+- Update `toggleSeatAvailability` to accept a `reason` string parameter.
+- After toggling, insert a row into `seat_block_history` with action, reason, and `auth.uid()`.
+- Add `getSeatBlockHistory(seatId)` method to fetch history for a seat.
+
+**File: `src/pages/vendor/VendorSeats.tsx`**
+- When clicking block/unblock, show a small dialog asking for a reason/remark (required text input).
+- On confirm, call the updated `toggleSeatAvailability` with the reason.
+- In the Sheet drawer (for blocked seats), show block history (reason, date, who blocked).
+
+---
+
+### 5. Add "Details" Button on Each Seat
+
+Currently the only way to see booking details is by clicking the seat to open the Sheet. There is no explicit "Details" button.
+
+**Change**: Add a small "Details" or info icon button on each seat (grid hover overlay and table Actions column). It opens the same Sheet drawer but ensures the full booking info (current + future) is visible.
+
+**File: `src/pages/vendor/VendorSeats.tsx`**
+- Grid: Add an `Info` icon button to the hover overlay alongside the block button.
+- Table: Add an `Info` icon button in the Actions column.
+- Both call `handleSeatClick(seat)` to open the Sheet.
+- In the Sheet, clearly separate "Current Booking" and "Future Bookings" sections. Future bookings are those where `startDate > selectedDate`.
+
+---
+
+### 6. "Create New Student" Option in Booking Form + Locker Toggle
+
+Currently partners can only search existing students. They need the ability to create a new student inline and also choose whether to include a locker.
+
+**File: `src/api/vendorSeatsService.ts`**
+- Add `createStudentAndBook` method:
+  1. Call Supabase Auth `admin.createUser` via an edge function (since client can't create users for others).
+  2. The `handle_new_user` trigger auto-creates the profile and assigns the 'student' role.
+  3. Update the profile with name, phone, email.
+  4. Then call `createPartnerBooking` with the new user's ID.
+- Update `PartnerBookingData` interface to include optional `lockerIncluded: boolean` and `lockerPrice: number`.
+- In `createPartnerBooking`, if locker is included, add locker price to total and store it (we can add a `locker_included` boolean column to bookings).
+
+**Database Migration**: 
+```text
+ALTER TABLE public.bookings ADD COLUMN locker_included boolean NOT NULL DEFAULT false;
+ALTER TABLE public.bookings ADD COLUMN locker_price numeric NOT NULL DEFAULT 0;
+```
+
+**Edge Function: `create-student`**
+- Accepts `{ name, phone, email }`.
+- Uses service role to create a user in auth with a random password and auto-confirm.
+- Returns the new user ID.
+- The existing `handle_new_user` trigger will auto-create the profile entry.
+
+**File: `src/pages/vendor/VendorSeats.tsx`**
+- Below the student search, add a "Create New Student" expandable section with fields: Name, Phone, Email.
+- On "Create & Select", call the edge function, then auto-select the new student.
+- Add a "Include Locker" checkbox below the plan selection (only if the cabin has `locker_available = true`). Show the locker price. If checked, add it to the booking amount.
+- Fetch cabin's locker settings when a cabin is selected (already have cabin data).
+- Show locker price in the booking summary before confirm.
+
+**File: `src/api/vendorSeatsService.ts`**
+- Update `getVendorCabins` to also return `lockerAvailable`, `lockerPrice`, `lockerMandatory` from the cabins table.
+- Update `VendorCabin` interface accordingly.
+
+---
+
+### Summary of All Changes
+
+| Area | File(s) | Change |
+|------|---------|--------|
+| Price edit inline | `VendorSeats.tsx` | Move edit icon beside price in grid and table |
+| Remove End Date | `VendorSeats.tsx` | Remove confusing End Date column from table |
+| All Rooms filter | `VendorSeats.tsx`, `vendorSeatsService.ts` | Add "All Rooms" option to dropdown |
+| Block history | DB migration, `vendorSeatsService.ts`, `VendorSeats.tsx` | New `seat_block_history` table, reason dialog, history display |
+| Details button | `VendorSeats.tsx` | Add Info icon to grid/table, split current/future bookings in Sheet |
+| Create student | Edge function `create-student`, `vendorSeatsService.ts`, `VendorSeats.tsx` | Inline student creation form, locker toggle, booking columns |
+| Locker in booking | DB migration, `VendorSeats.tsx` | Add `locker_included` and `locker_price` to bookings table |
 
