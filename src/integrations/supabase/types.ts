@@ -64,6 +64,8 @@ export type Database = {
           duration_count: string | null
           end_date: string | null
           id: string
+          locker_included: boolean
+          locker_price: number
           payment_status: string | null
           razorpay_order_id: string | null
           razorpay_payment_id: string | null
@@ -83,6 +85,8 @@ export type Database = {
           duration_count?: string | null
           end_date?: string | null
           id?: string
+          locker_included?: boolean
+          locker_price?: number
           payment_status?: string | null
           razorpay_order_id?: string | null
           razorpay_payment_id?: string | null
@@ -102,6 +106,8 @@ export type Database = {
           duration_count?: string | null
           end_date?: string | null
           id?: string
+          locker_included?: boolean
+          locker_price?: number
           payment_status?: string | null
           razorpay_order_id?: string | null
           razorpay_payment_id?: string | null
@@ -364,6 +370,41 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      seat_block_history: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          performed_by: string | null
+          reason: string
+          seat_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          performed_by?: string | null
+          reason?: string
+          seat_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          performed_by?: string | null
+          reason?: string
+          seat_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seat_block_history_seat_id_fkey"
+            columns: ["seat_id"]
+            isOneToOne: false
+            referencedRelation: "seats"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       seat_categories: {
         Row: {
