@@ -6,12 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -20,11 +21,11 @@ import {
 } from '@/components/ui/dialog';
 import {
   LayoutGrid, List, CalendarIcon, Search, Ban, Lock, Unlock,
-  Edit, Save, X, IndianRupee, Users, CheckCircle, Clock, AlertTriangle, RefreshCw, UserPlus,
+  Edit, Save, X, IndianRupee, Users, CheckCircle, Clock, AlertTriangle, RefreshCw, UserPlus, Info, ChevronDown,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
-  vendorSeatsService, VendorSeat, VendorCabin, StudentProfile, PartnerBookingData,
+  vendorSeatsService, VendorSeat, VendorCabin, StudentProfile, PartnerBookingData, BlockHistoryEntry,
 } from '@/api/vendorSeatsService';
 import { useVendorEmployeePermissions } from '@/hooks/useVendorEmployeePermissions';
 import { useAuth } from '@/contexts/AuthContext';
@@ -35,7 +36,7 @@ type StatusFilter = 'all' | 'available' | 'booked' | 'expiring_soon' | 'blocked'
 const VendorSeats: React.FC = () => {
   const [cabins, setCabins] = useState<VendorCabin[]>([]);
   const [seats, setSeats] = useState<VendorSeat[]>([]);
-  const [selectedCabinId, setSelectedCabinId] = useState<string>('');
+  const [selectedCabinId, setSelectedCabinId] = useState<string>('all');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -46,11 +47,17 @@ const VendorSeats: React.FC = () => {
   // Sheet state
   const [sheetOpen, setSheetOpen] = useState(false);
   const [selectedSeat, setSelectedSeat] = useState<VendorSeat | null>(null);
+  const [blockHistory, setBlockHistory] = useState<BlockHistoryEntry[]>([]);
 
   // Price edit
   const [editingSeatId, setEditingSeatId] = useState<string | null>(null);
   const [editPrice, setEditPrice] = useState('');
   const [updating, setUpdating] = useState(false);
+
+  // Block dialog
+  const [blockDialogOpen, setBlockDialogOpen] = useState(false);
+  const [blockSeat, setBlockSeat] = useState<VendorSeat | null>(null);
+  const [blockReason, setBlockReason] = useState('');
 
   // Booking form state
   const [studentQuery, setStudentQuery] = useState('');
@@ -61,6 +68,14 @@ const VendorSeats: React.FC = () => {
   const [customDays, setCustomDays] = useState('30');
   const [bookingPrice, setBookingPrice] = useState('');
   const [creatingBooking, setCreatingBooking] = useState(false);
+  const [lockerIncluded, setLockerIncluded] = useState(false);
+
+  // New student form
+  const [showNewStudent, setShowNewStudent] = useState(false);
+  const [newStudentName, setNewStudentName] = useState('');
+  const [newStudentEmail, setNewStudentEmail] = useState('');
+  const [newStudentPhone, setNewStudentPhone] = useState('');
+  const [creatingStudent, setCreatingStudent] = useState(false);
 
   const { toast } = useToast();
   const { hasPermission } = useVendorEmployeePermissions();
@@ -68,15 +83,19 @@ const VendorSeats: React.FC = () => {
 
   const canEdit = user?.role === 'admin' || user?.role === 'vendor' || hasPermission('seats_available_edit');
 
+  // Get cabin locker info for the selected seat
+  const selectedCabinInfo = useMemo(() => {
+    if (!selectedSeat) return null;
+    return cabins.find(c => c._id === selectedSeat.cabinId) || null;
+  }, [selectedSeat, cabins]);
+
   // Fetch cabins on mount
   useEffect(() => {
     (async () => {
       setLoading(true);
       const res = await vendorSeatsService.getVendorCabins();
       if (res.success && res.data) {
-        const c = res.data.data;
-        setCabins(c);
-        if (c.length > 0) setSelectedCabinId(c[0]._id);
+        setCabins(res.data.data);
       }
       setLoading(false);
     })();
@@ -84,7 +103,7 @@ const VendorSeats: React.FC = () => {
 
   // Fetch seats when cabin or date changes
   const fetchSeats = useCallback(async () => {
-    if (!selectedCabinId) return;
+    if (cabins.length === 0 && selectedCabinId !== 'all') return;
     setRefreshing(true);
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
     const res = await vendorSeatsService.getSeatsForDate(selectedCabinId, dateStr);
@@ -92,11 +111,11 @@ const VendorSeats: React.FC = () => {
       setSeats(res.data);
     }
     setRefreshing(false);
-  }, [selectedCabinId, selectedDate]);
+  }, [selectedCabinId, selectedDate, cabins.length]);
 
   useEffect(() => { fetchSeats(); }, [fetchSeats]);
 
-  // Computed filtered seats
+  // Filtered seats
   const filteredSeats = useMemo(() => {
     let result = seats;
     if (statusFilter !== 'all') {
@@ -116,9 +135,10 @@ const VendorSeats: React.FC = () => {
     const available = seats.filter(s => s.dateStatus === 'available').length;
     const expiring = seats.filter(s => s.dateStatus === 'expiring_soon').length;
     const blocked = seats.filter(s => s.dateStatus === 'blocked').length;
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
     const revenue = seats.reduce((sum, s) => {
       if (s.dateStatus === 'booked' || s.dateStatus === 'expiring_soon') {
-        const active = s.allBookings.find(b => b.startDate <= format(selectedDate, 'yyyy-MM-dd') && b.endDate >= format(selectedDate, 'yyyy-MM-dd'));
+        const active = s.allBookings.find(b => b.startDate <= dateStr && b.endDate >= dateStr);
         return sum + (active?.totalPrice || 0);
       }
       return sum;
@@ -127,7 +147,7 @@ const VendorSeats: React.FC = () => {
   }, [seats, selectedDate]);
 
   // Seat click -> open sheet
-  const handleSeatClick = (seat: VendorSeat) => {
+  const handleSeatClick = async (seat: VendorSeat) => {
     setSelectedSeat(seat);
     setSheetOpen(true);
     setSelectedStudent(null);
@@ -137,6 +157,21 @@ const VendorSeats: React.FC = () => {
     setBookingStartDate(selectedDate);
     setBookingPrice(String(seat.price));
     setCustomDays('30');
+    setShowNewStudent(false);
+    setNewStudentName('');
+    setNewStudentEmail('');
+    setNewStudentPhone('');
+    setBlockHistory([]);
+
+    // Set locker default based on cabin
+    const cabin = cabins.find(c => c._id === seat.cabinId);
+    setLockerIncluded(cabin?.lockerMandatory || false);
+
+    // Fetch block history if blocked
+    if (seat.dateStatus === 'blocked') {
+      const res = await vendorSeatsService.getSeatBlockHistory(seat._id);
+      if (res.success && res.data) setBlockHistory(res.data);
+    }
   };
 
   // Price edit
@@ -154,13 +189,26 @@ const VendorSeats: React.FC = () => {
     setUpdating(false);
   };
 
-  // Toggle availability
-  const handleToggleAvailability = async (seat: VendorSeat, e?: React.MouseEvent) => {
+  // Open block dialog
+  const openBlockDialog = (seat: VendorSeat, e?: React.MouseEvent) => {
     e?.stopPropagation();
+    setBlockSeat(seat);
+    setBlockReason('');
+    setBlockDialogOpen(true);
+  };
+
+  // Confirm block/unblock
+  const handleConfirmBlock = async () => {
+    if (!blockSeat) return;
+    if (!blockReason.trim()) {
+      toast({ title: 'Please enter a reason', variant: 'destructive' });
+      return;
+    }
     setUpdating(true);
-    const res = await vendorSeatsService.toggleSeatAvailability(seat._id, !seat.isAvailable);
+    const res = await vendorSeatsService.toggleSeatAvailability(blockSeat._id, !blockSeat.isAvailable, blockReason);
     if (res.success) {
-      toast({ title: seat.isAvailable ? 'Seat blocked' : 'Seat unblocked' });
+      toast({ title: blockSeat.isAvailable ? 'Seat blocked' : 'Seat unblocked' });
+      setBlockDialogOpen(false);
       fetchSeats();
     }
     setUpdating(false);
@@ -183,6 +231,40 @@ const VendorSeats: React.FC = () => {
     return addDays(bookingStartDate, parseInt(customDays) || 30);
   }, [bookingPlan, bookingStartDate, customDays]);
 
+  // Computed total with locker
+  const computedTotal = useMemo(() => {
+    const base = parseFloat(bookingPrice) || 0;
+    const locker = lockerIncluded && selectedCabinInfo ? selectedCabinInfo.lockerPrice : 0;
+    return base + locker;
+  }, [bookingPrice, lockerIncluded, selectedCabinInfo]);
+
+  // Create new student
+  const handleCreateStudent = async () => {
+    if (!newStudentName || !newStudentEmail) {
+      toast({ title: 'Name and email are required', variant: 'destructive' });
+      return;
+    }
+    setCreatingStudent(true);
+    const res = await vendorSeatsService.createStudent(newStudentName, newStudentEmail, newStudentPhone);
+    if (res.success && res.userId) {
+      const student: StudentProfile = {
+        id: res.userId,
+        name: newStudentName,
+        email: newStudentEmail,
+        phone: newStudentPhone,
+        serialNumber: '',
+        profilePicture: '',
+      };
+      setSelectedStudent(student);
+      setStudentQuery(newStudentName);
+      setShowNewStudent(false);
+      toast({ title: res.existing ? 'Existing student selected' : 'Student created & selected' });
+    } else {
+      toast({ title: 'Error', description: res.error || 'Failed to create student', variant: 'destructive' });
+    }
+    setCreatingStudent(false);
+  };
+
   // Create booking
   const handleCreateBooking = async () => {
     if (!selectedSeat || !selectedStudent) return;
@@ -193,10 +275,12 @@ const VendorSeats: React.FC = () => {
       userId: selectedStudent.id,
       startDate: format(bookingStartDate, 'yyyy-MM-dd'),
       endDate: format(computedEndDate, 'yyyy-MM-dd'),
-      totalPrice: parseFloat(bookingPrice) || selectedSeat.price,
+      totalPrice: computedTotal,
       bookingDuration: bookingPlan === 'monthly' ? 'monthly' : bookingPlan === '15days' ? '15_days' : 'custom',
       durationCount: bookingPlan === 'custom' ? customDays : bookingPlan === '15days' ? '15' : '1',
       seatNumber: selectedSeat.number,
+      lockerIncluded,
+      lockerPrice: lockerIncluded && selectedCabinInfo ? selectedCabinInfo.lockerPrice : 0,
     };
     const res = await vendorSeatsService.createPartnerBooking(data);
     if (res.success) {
@@ -209,7 +293,7 @@ const VendorSeats: React.FC = () => {
     setCreatingBooking(false);
   };
 
-  // Status colors
+  // Status helpers
   const statusColors = (status?: string) => {
     switch (status) {
       case 'available': return 'bg-emerald-50 border-emerald-400 dark:bg-emerald-950 dark:border-emerald-700';
@@ -239,6 +323,19 @@ const VendorSeats: React.FC = () => {
       default: return null;
     }
   };
+
+  // Split bookings for sheet
+  const currentBookings = useMemo(() => {
+    if (!selectedSeat) return [];
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    return selectedSeat.allBookings.filter(b => b.startDate <= dateStr && b.endDate >= dateStr);
+  }, [selectedSeat, selectedDate]);
+
+  const futureBookings = useMemo(() => {
+    if (!selectedSeat) return [];
+    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    return selectedSeat.allBookings.filter(b => b.startDate > dateStr);
+  }, [selectedSeat, selectedDate]);
 
   if (loading) {
     return (
@@ -277,6 +374,7 @@ const VendorSeats: React.FC = () => {
             <SelectValue placeholder="Reading Room" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="all" className="text-xs font-medium">All Reading Rooms</SelectItem>
             {cabins.map(c => (
               <SelectItem key={c._id} value={c._id} className="text-xs">{c.name}</SelectItem>
             ))}
@@ -291,12 +389,7 @@ const VendorSeats: React.FC = () => {
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={(d) => d && setSelectedDate(d)}
-              className="p-3 pointer-events-auto"
-            />
+            <Calendar mode="single" selected={selectedDate} onSelect={(d) => d && setSelectedDate(d)} className="p-3 pointer-events-auto" />
           </PopoverContent>
         </Popover>
 
@@ -315,29 +408,14 @@ const VendorSeats: React.FC = () => {
 
         <div className="relative flex-1 min-w-[120px] max-w-[200px]">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
-          <Input
-            className="h-8 text-xs pl-7"
-            placeholder="Search seat..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-          />
+          <Input className="h-8 text-xs pl-7" placeholder="Search seat..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
         </div>
 
         <div className="flex items-center border rounded-md overflow-hidden ml-auto">
-          <Button
-            variant={viewMode === 'grid' ? 'default' : 'ghost'}
-            size="sm"
-            className="h-8 w-8 p-0 rounded-none"
-            onClick={() => setViewMode('grid')}
-          >
+          <Button variant={viewMode === 'grid' ? 'default' : 'ghost'} size="sm" className="h-8 w-8 p-0 rounded-none" onClick={() => setViewMode('grid')}>
             <LayoutGrid className="h-3.5 w-3.5" />
           </Button>
-          <Button
-            variant={viewMode === 'table' ? 'default' : 'ghost'}
-            size="sm"
-            className="h-8 w-8 p-0 rounded-none"
-            onClick={() => setViewMode('table')}
-          >
+          <Button variant={viewMode === 'table' ? 'default' : 'ghost'} size="sm" className="h-8 w-8 p-0 rounded-none" onClick={() => setViewMode('table')}>
             <List className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -370,35 +448,31 @@ const VendorSeats: React.FC = () => {
             >
               <span className="text-xs font-bold leading-none">S{seat.number}</span>
               <span className="text-[9px] text-muted-foreground leading-tight truncate w-full">{seat.category}</span>
-              <span className="text-[9px] font-medium leading-tight">₹{seat.price}</span>
+              {/* Price with inline edit button */}
+              <div className="flex items-center gap-0.5">
+                <span className="text-[9px] font-medium leading-tight">₹{seat.price}</span>
+                {canEdit && (
+                  <button
+                    className="h-3 w-3 inline-flex items-center justify-center text-muted-foreground hover:text-foreground"
+                    onClick={(e) => { e.stopPropagation(); setEditingSeatId(seat._id); setEditPrice(String(seat.price)); }}
+                    title="Edit price"
+                  >
+                    <Edit className="h-2.5 w-2.5" />
+                  </button>
+                )}
+              </div>
               <div className="flex items-center gap-0.5 mt-0.5">
                 {statusIcon(seat.dateStatus)}
                 <span className="text-[8px]">{statusLabel(seat.dateStatus)}</span>
               </div>
-              {/* Hover actions */}
+              {/* Hover actions: block + details */}
               {canEdit && (
                 <div className="absolute inset-0 bg-background/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1 rounded">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0"
-                    onClick={(e) => { e.stopPropagation(); handleToggleAvailability(seat, e); }}
-                    title={seat.isAvailable ? 'Block' : 'Unblock'}
-                  >
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => openBlockDialog(seat, e)} title={seat.isAvailable ? 'Block' : 'Unblock'}>
                     {seat.isAvailable ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditingSeatId(seat._id);
-                      setEditPrice(String(seat.price));
-                    }}
-                    title="Edit price"
-                  >
-                    <Edit className="h-3 w-3" />
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => { e.stopPropagation(); handleSeatClick(seat); }} title="Details">
+                    <Info className="h-3 w-3" />
                   </Button>
                 </div>
               )}
@@ -418,49 +492,50 @@ const VendorSeats: React.FC = () => {
                 <TableHead className="text-[10px] uppercase tracking-wider h-8 px-2">Category</TableHead>
                 <TableHead className="text-[10px] uppercase tracking-wider h-8 px-2">Status</TableHead>
                 <TableHead className="text-[10px] uppercase tracking-wider h-8 px-2">Price</TableHead>
-                <TableHead className="text-[10px] uppercase tracking-wider h-8 px-2">End Date</TableHead>
                 {canEdit && <TableHead className="text-[10px] uppercase tracking-wider h-8 px-2">Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredSeats.map((seat, i) => {
-                const activeBooking = seat.allBookings.find(b => b.startDate <= format(selectedDate, 'yyyy-MM-dd') && b.endDate >= format(selectedDate, 'yyyy-MM-dd'));
-                return (
-                  <TableRow
-                    key={seat._id}
-                    className={cn("cursor-pointer text-xs", i % 2 === 1 && "bg-muted/30")}
-                    onClick={() => handleSeatClick(seat)}
-                  >
-                    <TableCell className="px-2 py-1 font-medium">S{seat.number}</TableCell>
-                    <TableCell className="px-2 py-1">{seat.cabinName}</TableCell>
+              {filteredSeats.map((seat, i) => (
+                <TableRow key={seat._id} className={cn("cursor-pointer text-xs", i % 2 === 1 && "bg-muted/30")} onClick={() => handleSeatClick(seat)}>
+                  <TableCell className="px-2 py-1 font-medium">S{seat.number}</TableCell>
+                  <TableCell className="px-2 py-1">{seat.cabinName}</TableCell>
+                  <TableCell className="px-2 py-1">
+                    <Badge variant="outline" className="text-[10px] px-1 py-0">{seat.category}</Badge>
+                  </TableCell>
+                  <TableCell className="px-2 py-1">
+                    <div className="flex items-center gap-1">
+                      {statusIcon(seat.dateStatus)}
+                      <span className="text-[10px]">{statusLabel(seat.dateStatus)}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="px-2 py-1">
+                    <div className="flex items-center gap-1">
+                      <span>₹{seat.price}</span>
+                      {canEdit && (
+                        <button
+                          className="h-4 w-4 inline-flex items-center justify-center text-muted-foreground hover:text-foreground"
+                          onClick={(e) => { e.stopPropagation(); setEditingSeatId(seat._id); setEditPrice(String(seat.price)); }}
+                        >
+                          <Edit className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  </TableCell>
+                  {canEdit && (
                     <TableCell className="px-2 py-1">
-                      <Badge variant="outline" className="text-[10px] px-1 py-0">{seat.category}</Badge>
-                    </TableCell>
-                    <TableCell className="px-2 py-1">
-                      <div className="flex items-center gap-1">
-                        {statusIcon(seat.dateStatus)}
-                        <span className="text-[10px]">{statusLabel(seat.dateStatus)}</span>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => openBlockDialog(seat, e)}>
+                          {seat.isAvailable ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => { e.stopPropagation(); handleSeatClick(seat); }}>
+                          <Info className="h-3 w-3" />
+                        </Button>
                       </div>
                     </TableCell>
-                    <TableCell className="px-2 py-1">₹{seat.price}</TableCell>
-                    <TableCell className="px-2 py-1 text-[10px]">
-                      {activeBooking ? new Date(activeBooking.endDate).toLocaleDateString() : '-'}
-                    </TableCell>
-                    {canEdit && (
-                      <TableCell className="px-2 py-1">
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => { e.stopPropagation(); handleToggleAvailability(seat, e); }}>
-                            {seat.isAvailable ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
-                          </Button>
-                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => { e.stopPropagation(); setEditingSeatId(seat._id); setEditPrice(String(seat.price)); }}>
-                            <Edit className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    )}
-                  </TableRow>
-                );
-              })}
+                  )}
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         </div>
@@ -468,7 +543,7 @@ const VendorSeats: React.FC = () => {
 
       {filteredSeats.length === 0 && !loading && (
         <div className="text-center py-12 text-muted-foreground text-sm">
-          {selectedCabinId ? 'No seats match your filters.' : 'Select a Reading Room to begin.'}
+          {cabins.length === 0 ? 'No reading rooms found.' : 'No seats match your filters.'}
         </div>
       )}
 
@@ -495,6 +570,35 @@ const VendorSeats: React.FC = () => {
         </DialogContent>
       </Dialog>
 
+      {/* ──── Block/Unblock Dialog with Reason ──── */}
+      <Dialog open={blockDialogOpen} onOpenChange={setBlockDialogOpen}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle className="text-sm">
+              {blockSeat?.isAvailable ? 'Block Seat' : 'Unblock Seat'} #{blockSeat?.number}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs">Reason / Remark *</Label>
+              <Input
+                className="h-8 text-sm"
+                placeholder="Enter reason..."
+                value={blockReason}
+                onChange={e => setBlockReason(e.target.value)}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={handleConfirmBlock} disabled={updating || !blockReason.trim()}>
+                {blockSeat?.isAvailable ? <Lock className="h-3 w-3 mr-1" /> : <Unlock className="h-3 w-3 mr-1" />}
+                {blockSeat?.isAvailable ? 'Block' : 'Unblock'}
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setBlockDialogOpen(false)}>Cancel</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* ──── Right-Side Sheet Drawer ──── */}
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent side="right" className="w-[400px] sm:w-[440px] p-4 overflow-y-auto">
@@ -509,7 +613,7 @@ const VendorSeats: React.FC = () => {
               </SheetHeader>
               <Separator className="my-2" />
 
-              {/* Seat status info */}
+              {/* Status info */}
               <div className={cn("rounded p-2 mb-3 border text-xs", statusColors(selectedSeat.dateStatus))}>
                 <div className="flex items-center gap-1.5">
                   {statusIcon(selectedSeat.dateStatus)}
@@ -584,6 +688,26 @@ const VendorSeats: React.FC = () => {
                     )}
                   </div>
 
+                  {/* Create New Student */}
+                  {!selectedStudent && (
+                    <Collapsible open={showNewStudent} onOpenChange={setShowNewStudent}>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="outline" size="sm" className="w-full h-7 text-[11px] gap-1">
+                          <UserPlus className="h-3 w-3" /> Create New Student
+                          <ChevronDown className={cn("h-3 w-3 ml-auto transition-transform", showNewStudent && "rotate-180")} />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="space-y-2 mt-2">
+                        <Input className="h-7 text-xs" placeholder="Name *" value={newStudentName} onChange={e => setNewStudentName(e.target.value)} />
+                        <Input className="h-7 text-xs" placeholder="Email *" type="email" value={newStudentEmail} onChange={e => setNewStudentEmail(e.target.value)} />
+                        <Input className="h-7 text-xs" placeholder="Phone" value={newStudentPhone} onChange={e => setNewStudentPhone(e.target.value)} />
+                        <Button size="sm" className="w-full h-7 text-[11px]" onClick={handleCreateStudent} disabled={creatingStudent || !newStudentName || !newStudentEmail}>
+                          {creatingStudent ? 'Creating...' : 'Create & Select'}
+                        </Button>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
+
                   {/* Plan */}
                   <div>
                     <Label className="text-[10px] uppercase text-muted-foreground">Plan</Label>
@@ -630,60 +754,159 @@ const VendorSeats: React.FC = () => {
 
                   {/* Price */}
                   <div>
-                    <Label className="text-[10px] uppercase text-muted-foreground">Amount (₹)</Label>
+                    <Label className="text-[10px] uppercase text-muted-foreground">Seat Amount (₹)</Label>
                     <Input className="h-8 text-xs" type="number" value={bookingPrice} onChange={e => setBookingPrice(e.target.value)} />
                   </div>
+
+                  {/* Locker option */}
+                  {selectedCabinInfo?.lockerAvailable && (
+                    <div className="flex items-center gap-2 border rounded p-2">
+                      <Checkbox
+                        id="locker"
+                        checked={lockerIncluded}
+                        onCheckedChange={(v) => setLockerIncluded(v === true)}
+                        disabled={selectedCabinInfo.lockerMandatory}
+                      />
+                      <Label htmlFor="locker" className="text-xs cursor-pointer flex-1">
+                        Include Locker
+                        {selectedCabinInfo.lockerMandatory && <span className="text-muted-foreground ml-1">(Mandatory)</span>}
+                      </Label>
+                      <span className="text-xs font-medium">₹{selectedCabinInfo.lockerPrice}</span>
+                    </div>
+                  )}
+
+                  {/* Booking summary */}
+                  {(lockerIncluded && selectedCabinInfo) && (
+                    <div className="border rounded p-2 text-[11px] space-y-1 bg-muted/30">
+                      <div className="flex justify-between"><span>Seat</span><span>₹{parseFloat(bookingPrice) || 0}</span></div>
+                      <div className="flex justify-between"><span>Locker</span><span>₹{selectedCabinInfo.lockerPrice}</span></div>
+                      <Separator />
+                      <div className="flex justify-between font-semibold"><span>Total</span><span>₹{computedTotal}</span></div>
+                    </div>
+                  )}
 
                   <Button
                     className="w-full h-9 text-xs"
                     disabled={!selectedStudent || creatingBooking}
                     onClick={handleCreateBooking}
                   >
-                    {creatingBooking ? 'Creating...' : 'Confirm Booking'}
+                    {creatingBooking ? 'Creating...' : `Confirm Booking · ₹${computedTotal}`}
                   </Button>
                 </div>
               )}
 
-              {/* ── BLOCKED: Unblock option ── */}
+              {/* ── BLOCKED: Show history + unblock ── */}
               {selectedSeat.dateStatus === 'blocked' && canEdit && (
-                <div className="text-center py-4">
-                  <p className="text-xs text-muted-foreground mb-3">This seat is currently blocked.</p>
-                  <Button size="sm" variant="outline" onClick={() => handleToggleAvailability(selectedSeat)}>
+                <div className="space-y-3">
+                  <p className="text-xs text-muted-foreground">This seat is currently blocked.</p>
+                  <Button size="sm" variant="outline" onClick={() => openBlockDialog(selectedSeat)}>
                     <Unlock className="h-3 w-3 mr-1" /> Unblock Seat
                   </Button>
+
+                  {blockHistory.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Block History</h4>
+                      <div className="space-y-1.5">
+                        {blockHistory.map(h => (
+                          <div key={h.id} className="border rounded p-2 text-[11px] space-y-0.5">
+                            <div className="flex justify-between">
+                              <Badge variant={h.action === 'blocked' ? 'destructive' : 'default'} className="text-[9px] px-1 py-0">{h.action}</Badge>
+                              <span className="text-muted-foreground">{new Date(h.createdAt).toLocaleDateString()}</span>
+                            </div>
+                            {h.reason && <p className="text-muted-foreground">{h.reason}</p>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* ── All Bookings History ── */}
-              <Separator className="my-3" />
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                Booking History ({selectedSeat.allBookings.length})
-              </h4>
-              {selectedSeat.allBookings.length > 0 ? (
-                <div className="space-y-2">
-                  {selectedSeat.allBookings.map((b, i) => (
-                    <div key={i} className="border rounded p-2 text-[11px] space-y-1">
-                      <div className="flex justify-between">
-                        <span className="font-medium">{b.studentName}</span>
-                        <Badge variant="outline" className="text-[9px] px-1">{b.paymentStatus}</Badge>
+              {/* ── Current Bookings ── */}
+              {currentBookings.length > 0 && (
+                <>
+                  <Separator className="my-3" />
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                    Current Booking ({currentBookings.length})
+                  </h4>
+                  <div className="space-y-2">
+                    {currentBookings.map((b, i) => (
+                      <div key={i} className="border rounded p-2 text-[11px] space-y-1">
+                        <div className="flex justify-between">
+                          <span className="font-medium">{b.studentName}</span>
+                          <Badge variant="outline" className="text-[9px] px-1">{b.paymentStatus}</Badge>
+                        </div>
+                        <div className="text-muted-foreground">
+                          {new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()}
+                          {b.durationCount && b.bookingDuration && ` · ${b.durationCount} ${b.bookingDuration}`}
+                        </div>
+                        <div className="flex justify-between">
+                          <span>₹{b.totalPrice}{b.lockerIncluded ? ` (incl. locker ₹${b.lockerPrice})` : ''}</span>
+                          <span className="text-muted-foreground">{b.studentPhone}</span>
+                        </div>
+                        {b.serialNumber && <div className="text-muted-foreground">#{b.serialNumber}</div>}
                       </div>
-                      <div className="text-muted-foreground">
-                        {new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()}
-                        {b.durationCount && b.bookingDuration && ` · ${b.durationCount} ${b.bookingDuration}`}
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* ── Future Bookings ── */}
+              {futureBookings.length > 0 && (
+                <>
+                  <Separator className="my-3" />
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                    Future Bookings ({futureBookings.length})
+                  </h4>
+                  <div className="space-y-2">
+                    {futureBookings.map((b, i) => (
+                      <div key={i} className="border rounded p-2 text-[11px] space-y-1">
+                        <div className="flex justify-between">
+                          <span className="font-medium">{b.studentName}</span>
+                          <Badge variant="outline" className="text-[9px] px-1">{b.paymentStatus}</Badge>
+                        </div>
+                        <div className="text-muted-foreground">
+                          {new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()}
+                        </div>
+                        <div className="flex justify-between">
+                          <span>₹{b.totalPrice}{b.lockerIncluded ? ` (incl. locker ₹${b.lockerPrice})` : ''}</span>
+                          <span className="text-muted-foreground">{b.studentPhone}</span>
+                        </div>
                       </div>
-                      <div className="flex justify-between">
-                        <span>₹{b.totalPrice}</span>
-                        <span className="text-muted-foreground">{b.studentPhone}</span>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* ── Full History (if no current/future shown) ── */}
+              {currentBookings.length === 0 && futureBookings.length === 0 && selectedSeat.allBookings.length > 0 && (
+                <>
+                  <Separator className="my-3" />
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                    Past Bookings ({selectedSeat.allBookings.length})
+                  </h4>
+                  <div className="space-y-2">
+                    {selectedSeat.allBookings.map((b, i) => (
+                      <div key={i} className="border rounded p-2 text-[11px] space-y-1">
+                        <div className="flex justify-between">
+                          <span className="font-medium">{b.studentName}</span>
+                          <Badge variant="outline" className="text-[9px] px-1">{b.paymentStatus}</Badge>
+                        </div>
+                        <div className="text-muted-foreground">
+                          {new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()}
+                        </div>
+                        <div>₹{b.totalPrice}</div>
                       </div>
-                      {(b.course || b.college) && (
-                        <div className="text-muted-foreground">{b.course}{b.course && b.college ? ' · ' : ''}{b.college}</div>
-                      )}
-                      {b.serialNumber && <div className="text-muted-foreground">#{b.serialNumber}</div>}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-[11px] text-muted-foreground">No bookings for this seat.</p>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {currentBookings.length === 0 && futureBookings.length === 0 && selectedSeat.allBookings.length === 0 && (
+                <>
+                  <Separator className="my-3" />
+                  <p className="text-[11px] text-muted-foreground">No bookings for this seat.</p>
+                </>
               )}
             </>
           )}

@@ -23,6 +23,8 @@ export interface SeatBookingDetail {
   gender: string;
   dob: string;
   userId: string;
+  lockerIncluded?: boolean;
+  lockerPrice?: number;
 }
 
 export interface VendorSeat {
@@ -36,7 +38,6 @@ export interface VendorSeat {
   category: string;
   floor: number;
   unavailableUntil?: string;
-  // Date-aware status computed on the fly
   dateStatus?: 'available' | 'booked' | 'expiring_soon' | 'blocked';
   currentBooking?: {
     startDate: string;
@@ -58,13 +59,16 @@ export interface VendorCabin {
   availableSeats: number;
   occupiedSeats: number;
   floors?: any[];
+  lockerAvailable: boolean;
+  lockerPrice: number;
+  lockerMandatory: boolean;
 }
 
 export interface SeatFilters {
   cabinId?: string;
   status?: 'available' | 'occupied' | 'expiring_soon' | 'blocked';
   search?: string;
-  date?: string; // YYYY-MM-DD
+  date?: string;
 }
 
 export interface StudentProfile {
@@ -86,6 +90,16 @@ export interface PartnerBookingData {
   bookingDuration: string;
   durationCount: string;
   seatNumber: number;
+  lockerIncluded?: boolean;
+  lockerPrice?: number;
+}
+
+export interface BlockHistoryEntry {
+  id: string;
+  action: string;
+  reason: string;
+  performedBy: string;
+  createdAt: string;
 }
 
 function computeDateStatus(
@@ -110,6 +124,35 @@ function computeDateStatus(
   return 'available';
 }
 
+function mapBookingToDetail(b: any): SeatBookingDetail {
+  const profile = b.profiles as any;
+  return {
+    bookingId: b.id,
+    serialNumber: b.serial_number || '',
+    startDate: b.start_date || '',
+    endDate: b.end_date || '',
+    totalPrice: Number(b.total_price) || 0,
+    paymentStatus: b.payment_status || '',
+    bookingDuration: b.booking_duration || '',
+    durationCount: b.duration_count || '',
+    studentName: profile?.name || 'N/A',
+    studentEmail: profile?.email || 'N/A',
+    studentPhone: profile?.phone || 'N/A',
+    studentSerialNumber: profile?.serial_number || '',
+    profilePicture: profile?.profile_picture || '',
+    course: profile?.course_studying || '',
+    college: profile?.college_studied || '',
+    address: profile?.address || '',
+    city: profile?.city || '',
+    state: profile?.state || '',
+    gender: profile?.gender || '',
+    dob: profile?.date_of_birth || '',
+    userId: profile?.id || '',
+    lockerIncluded: b.locker_included || false,
+    lockerPrice: Number(b.locker_price) || 0,
+  };
+}
+
 export const vendorSeatsService = {
   getVendorCabins: async () => {
     try {
@@ -124,7 +167,7 @@ export const vendorSeatsService = {
         .select('cabin_id, is_available');
       if (seatsError) throw seatsError;
 
-      const cabinData = (cabins || []).map(cabin => {
+      const cabinData: VendorCabin[] = (cabins || []).map(cabin => {
         const cabinSeats = (seats || []).filter(s => s.cabin_id === cabin.id);
         return {
           _id: cabin.id,
@@ -134,6 +177,9 @@ export const vendorSeatsService = {
           availableSeats: cabinSeats.filter(s => s.is_available).length,
           occupiedSeats: cabinSeats.filter(s => !s.is_available).length,
           floors: cabin.floors || [],
+          lockerAvailable: cabin.locker_available,
+          lockerPrice: Number(cabin.locker_price),
+          lockerMandatory: cabin.locker_mandatory,
         };
       });
 
@@ -144,22 +190,25 @@ export const vendorSeatsService = {
     }
   },
 
-  // Date-aware seat fetcher - the core method for the control center
+  // Date-aware seat fetcher - supports 'all' for all cabins
   getSeatsForDate: async (cabinId: string, date: string) => {
     try {
-      // Fetch seats for cabin
-      const { data: seatsData, error } = await supabase
+      let query = supabase
         .from('seats')
         .select('*, cabins!inner(id, name)')
-        .eq('cabin_id', cabinId)
         .order('number');
+
+      if (cabinId !== 'all') {
+        query = query.eq('cabin_id', cabinId);
+      }
+
+      const { data: seatsData, error } = await query;
       if (error) throw error;
 
       const seatIds = (seatsData || []).map(s => s.id);
       let allBookings: any[] = [];
 
       if (seatIds.length > 0) {
-        // Fetch ALL bookings that overlap or are future from selected date
         const { data: bookings } = await supabase
           .from('bookings')
           .select('*, profiles:user_id(id, name, email, phone, profile_picture, serial_number, course_studying, college_studied, address, city, state, date_of_birth, gender)')
@@ -175,7 +224,6 @@ export const vendorSeatsService = {
         const seatBookings = allBookings.filter(b => b.seat_id === seat.id);
         const dateStatus = computeDateStatus(seat, allBookings, date);
 
-        // Find current booking covering the selected date
         const currentBookingRaw = seatBookings.find(
           b => b.start_date <= date && b.end_date >= date
         );
@@ -190,32 +238,7 @@ export const vendorSeatsService = {
           userId: (currentBookingRaw.profiles as any)?.id || '',
         } : undefined;
 
-        const mappedBookings: SeatBookingDetail[] = seatBookings.map(b => {
-          const profile = b.profiles as any;
-          return {
-            bookingId: b.id,
-            serialNumber: b.serial_number || '',
-            startDate: b.start_date || '',
-            endDate: b.end_date || '',
-            totalPrice: Number(b.total_price) || 0,
-            paymentStatus: b.payment_status || '',
-            bookingDuration: b.booking_duration || '',
-            durationCount: b.duration_count || '',
-            studentName: profile?.name || 'N/A',
-            studentEmail: profile?.email || 'N/A',
-            studentPhone: profile?.phone || 'N/A',
-            studentSerialNumber: profile?.serial_number || '',
-            profilePicture: profile?.profile_picture || '',
-            course: profile?.course_studying || '',
-            college: profile?.college_studied || '',
-            address: profile?.address || '',
-            city: profile?.city || '',
-            state: profile?.state || '',
-            gender: profile?.gender || '',
-            dob: profile?.date_of_birth || '',
-            userId: profile?.id || '',
-          };
-        });
+        const mappedBookings: SeatBookingDetail[] = seatBookings.map(mapBookingToDetail);
 
         return {
           _id: seat.id,
@@ -241,7 +264,6 @@ export const vendorSeatsService = {
     }
   },
 
-  // Search students by name, phone, or email
   searchStudents: async (query: string): Promise<{ success: boolean; data?: StudentProfile[]; error?: string }> => {
     try {
       const searchTerm = `%${query}%`;
@@ -269,10 +291,8 @@ export const vendorSeatsService = {
     }
   },
 
-  // Create a partner-initiated booking
   createPartnerBooking: async (data: PartnerBookingData) => {
     try {
-      // Pre-booking validation: check no overlap
       const { data: existing, error: checkError } = await supabase
         .from('bookings')
         .select('id')
@@ -287,7 +307,6 @@ export const vendorSeatsService = {
         return { success: false, error: 'Seat already has a booking for the selected dates' };
       }
 
-      // Generate serial number
       const { data: serialData } = await supabase.rpc('generate_serial_number', { p_entity_type: 'booking' });
 
       const { error } = await supabase
@@ -304,12 +323,87 @@ export const vendorSeatsService = {
           seat_number: data.seatNumber,
           payment_status: 'completed',
           serial_number: serialData || undefined,
+          locker_included: data.lockerIncluded || false,
+          locker_price: data.lockerPrice || 0,
         });
 
       if (error) throw error;
       return { success: true };
     } catch (error) {
       console.error('Error creating partner booking:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Failed' };
+    }
+  },
+
+  // Block/unblock with reason and history
+  toggleSeatAvailability: async (seatId: string, isAvailable: boolean, reason?: string) => {
+    try {
+      const { error } = await supabase.from('seats').update({ is_available: isAvailable }).eq('id', seatId);
+      if (error) throw error;
+
+      // Log to block history
+      const { data: { user } } = await supabase.auth.getUser();
+      await supabase.from('seat_block_history').insert({
+        seat_id: seatId,
+        action: isAvailable ? 'unblocked' : 'blocked',
+        reason: reason || '',
+        performed_by: user?.id || null,
+      });
+
+      return { success: true, data: {} };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed' };
+    }
+  },
+
+  getSeatBlockHistory: async (seatId: string): Promise<{ success: boolean; data?: BlockHistoryEntry[]; error?: string }> => {
+    try {
+      const { data, error } = await supabase
+        .from('seat_block_history')
+        .select('*')
+        .eq('seat_id', seatId)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (error) throw error;
+
+      const entries: BlockHistoryEntry[] = (data || []).map((d: any) => ({
+        id: d.id,
+        action: d.action,
+        reason: d.reason,
+        performedBy: d.performed_by || '',
+        createdAt: d.created_at,
+      }));
+
+      return { success: true, data: entries };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Failed' };
+    }
+  },
+
+  // Create student via edge function
+  createStudent: async (name: string, email: string, phone: string): Promise<{ success: boolean; userId?: string; existing?: boolean; error?: string }> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('create-student', {
+        body: { name, email, phone },
+      });
+
+      if (error) throw error;
+      if (data?.error) return { success: false, error: data.error };
+
+      return { success: true, userId: data.userId, existing: data.existing };
+    } catch (error) {
+      console.error('Error creating student:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Failed' };
+    }
+  },
+
+  updateSeatPrice: async (seatId: string, price: number) => {
+    try {
+      const { error } = await supabase.from('seats').update({ price }).eq('id', seatId);
+      if (error) throw error;
+      return { success: true, data: {} };
+    } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : 'Failed' };
     }
   },
@@ -344,23 +438,11 @@ export const vendorSeatsService = {
           .order('start_date', { ascending: true });
 
         (bookings || []).forEach(b => {
-          const profile = b.profiles as any;
-          const detail: SeatBookingDetail = {
-            bookingId: b.id, serialNumber: b.serial_number || '',
-            startDate: b.start_date || '', endDate: b.end_date || '',
-            totalPrice: Number(b.total_price) || 0, paymentStatus: b.payment_status || '',
-            bookingDuration: b.booking_duration || '', durationCount: b.duration_count || '',
-            studentName: profile?.name || 'N/A', studentEmail: profile?.email || 'N/A',
-            studentPhone: profile?.phone || 'N/A', studentSerialNumber: profile?.serial_number || '',
-            profilePicture: profile?.profile_picture || '', course: profile?.course_studying || '',
-            college: profile?.college_studied || '', address: profile?.address || '',
-            city: profile?.city || '', state: profile?.state || '',
-            gender: profile?.gender || '', dob: profile?.date_of_birth || '',
-            userId: profile?.id || '',
-          };
+          const detail = mapBookingToDetail(b);
           if (!allBookingsMap[b.seat_id!]) allBookingsMap[b.seat_id!] = [];
           allBookingsMap[b.seat_id!].push(detail);
           if (b.start_date && b.start_date <= today && b.end_date && b.end_date >= today) {
+            const profile = b.profiles as any;
             bookingsMap[b.seat_id!] = {
               startDate: b.start_date, endDate: b.end_date,
               studentName: profile?.name || 'N/A', studentEmail: profile?.email || 'N/A',
@@ -391,26 +473,6 @@ export const vendorSeatsService = {
 
   getCabinSeats: async (cabinId: string) => {
     return vendorSeatsService.getVendorSeats({ cabinId });
-  },
-
-  updateSeatPrice: async (seatId: string, price: number) => {
-    try {
-      const { error } = await supabase.from('seats').update({ price }).eq('id', seatId);
-      if (error) throw error;
-      return { success: true, data: {} };
-    } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : 'Failed' };
-    }
-  },
-
-  toggleSeatAvailability: async (seatId: string, isAvailable: boolean) => {
-    try {
-      const { error } = await supabase.from('seats').update({ is_available: isAvailable }).eq('id', seatId);
-      if (error) throw error;
-      return { success: true, data: {} };
-    } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : 'Failed' };
-    }
   },
 
   getSeatBookingDetails: async (seatId: string) => {
