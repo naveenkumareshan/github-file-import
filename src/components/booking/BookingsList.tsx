@@ -9,7 +9,7 @@ import { format } from 'date-fns';
 import { Calendar, X, Eye, TicketPercent } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { BookingRenewal } from './BookingRenewal';
-import { BookingExpiryDetails } from '@/pages/students/BookingExpiryDetails';
+
 const PaymentTimer = lazy(() =>
   import("@/components/booking/PaymentTimer").then((m) => ({
     default: m.PaymentTimer,
@@ -209,102 +209,98 @@ export const BookingsList = ({
               </div>
             )}
 
-            {/* Dates & amounts — compact 2-col grid */}
-            <div className="grid grid-cols-2 gap-x-3 gap-y-1 mb-2 bg-muted/40 p-2 rounded-xl">
-              <div>
-                <p className="text-[10px] font-medium text-muted-foreground">Booked On</p>
-                <p className="text-[11px] text-foreground">{format(new Date(booking.createdAt), 'dd MMM yy')}</p>
-              </div>
-              <div>
-                <p className="text-[10px] font-medium text-muted-foreground">Check-in</p>
-                <p className="text-[11px] text-foreground">{formatBookingPeriod(booking.startDate, null)}</p>
-              </div>
-              <div>
-                <p className="text-[10px] font-medium text-muted-foreground">Check-out</p>
-                <p className="text-[11px] text-foreground">{formatBookingPeriod(null, booking?.endDate)}</p>
-              </div>
-              <div>
-                <p className="text-[10px] font-medium text-muted-foreground">Amount</p>
+            {/* Date range + amount — single line */}
+            <div className="flex items-center justify-between mb-1.5 px-1">
+              <p className="text-[11px] text-muted-foreground">
+                {formatBookingPeriod(booking.startDate, null)} — {formatBookingPeriod(null, booking?.endDate)}
+              </p>
+              <div className="text-right">
                 {booking.originalPrice && booking.appliedCoupon ? (
-                  <div>
-                    <p className="text-[10px] text-muted-foreground line-through">₹{booking.originalPrice.toLocaleString()}</p>
-                    <p className="text-[12px] font-bold text-primary">₹{booking.totalPrice.toLocaleString()}</p>
-                  </div>
-                ) : (
-                  <p className="text-[12px] font-bold text-primary">₹{booking.totalPrice.toLocaleString()}</p>
-                )}
+                  <span className="text-[10px] text-muted-foreground line-through mr-1">₹{booking.originalPrice.toLocaleString()}</span>
+                ) : null}
+                <span className="text-[12px] font-bold text-primary">₹{booking.totalPrice.toLocaleString()}</span>
               </div>
-              {booking.seatPrice > 0 && (
-                <div>
-                  <p className="text-[10px] font-medium text-muted-foreground">Seat Price</p>
-                  <p className="text-[11px] text-foreground">₹{booking.seatPrice?.toLocaleString()}</p>
-                </div>
-              )}
-              {booking.keyDeposit > 0 && (
-                <div>
-                  <p className="text-[10px] font-medium text-muted-foreground">Key Deposit</p>
-                  <p className="text-[11px] text-foreground">₹{booking.keyDeposit?.toLocaleString()}</p>
-                </div>
-              )}
             </div>
 
-            {/* Booking expiry */}
-            {booking.paymentStatus === 'completed' && (
-              <BookingExpiryDetails
-                startDate={booking.startDate}
-                endDate={booking.endDate}
-                status={booking.paymentStatus}
-                paymentStatus={booking.paymentStatus}
-              />
+            {/* Compact validity indicator */}
+            {booking.paymentStatus === 'completed' && (() => {
+              const now = new Date();
+              const end = new Date(booking.endDate);
+              const start = new Date(booking.startDate);
+              const daysLeft = Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+              const isActive = daysLeft > 0 && now >= start;
+              const isUpcoming = now < start;
+              const label = isUpcoming ? 'Upcoming' : isActive ? 'Active' : 'Expired';
+              const color = isUpcoming ? 'bg-blue-100 text-blue-700' : isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700';
+              return (
+                <div className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-[11px] font-medium mb-1.5 ${color}`}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0" />
+                  <span>{label}</span>
+                  {isActive && <span className="ml-auto text-[10px] opacity-80">{daysLeft} day{daysLeft !== 1 ? 's' : ''} left</span>}
+                  {isUpcoming && <span className="ml-auto text-[10px] opacity-80">Starts {format(start, 'dd MMM')}</span>}
+                </div>
+              );
+            })()}
+
+            {/* Extra info chips */}
+            {(booking.seatPrice > 0 || booking.keyDeposit > 0) && (
+              <div className="flex gap-2 mb-1.5 px-1">
+                {booking.seatPrice > 0 && (
+                  <span className="text-[10px] text-muted-foreground">Seat: ₹{booking.seatPrice?.toLocaleString()}</span>
+                )}
+                {booking.keyDeposit > 0 && (
+                  <span className="text-[10px] text-muted-foreground">Deposit: ₹{booking.keyDeposit?.toLocaleString()}</span>
+                )}
+              </div>
             )}
 
             {/* Actions */}
-            <div className="flex flex-wrap gap-2 mt-2">
+            <div className="flex gap-2 mt-1.5">
               {booking.paymentStatus === 'pending' && (
                 <div className="w-full p-2 bg-amber-50 border border-amber-200 rounded-xl">
                   <p className="text-[11px] text-amber-700 mb-2">Complete payment to confirm booking</p>
-                  <RazorpayCheckout
-                    amount={booking.totalPrice}
-                    bookingId={booking.id}
-                    bookingType={booking.bookingType}
-                    endDate={new Date(booking.endDate)}
-                    bookingDuration={booking.bookingDuration || 'monthly'}
-                    durationCount={booking.durationCount || 1}
-                    onSuccess={() => handlePaymentSuccess(booking.id)}
-                    onError={handlePaymentError}
-                    buttonText="Complete Payment"
-                    buttonVariant="default"
-                    className="w-full"
-                  />
+                  <div className="flex gap-2">
+                    <RazorpayCheckout
+                      amount={booking.totalPrice}
+                      bookingId={booking.id}
+                      bookingType={booking.bookingType}
+                      endDate={new Date(booking.endDate)}
+                      bookingDuration={booking.bookingDuration || 'monthly'}
+                      durationCount={booking.durationCount || 1}
+                      onSuccess={() => handlePaymentSuccess(booking.id)}
+                      onError={handlePaymentError}
+                      buttonText="Pay Now"
+                      buttonVariant="default"
+                      className="flex-1"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-[12px] rounded-xl text-destructive border-destructive/30 hover:bg-destructive/5 gap-1"
+                      onClick={() => handleCancelBooking(booking.id)}
+                    >
+                      <X className="h-3.5 w-3.5" /> Cancel
+                    </Button>
+                  </div>
                 </div>
               )}
 
-              {booking.paymentStatus === 'completed' && canRenew(booking) && (
-                <Link to={`/student/bookings/${booking.id}`}>
-                  <Button variant="outline" size="sm" className="h-8 text-[12px] rounded-xl gap-1">
-                    <Eye className="h-3.5 w-3.5" />
-                    View Details
-                  </Button>
-                </Link>
-              )}
-
-              {booking.paymentStatus === 'pending' && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 text-[12px] rounded-xl text-destructive border-destructive/30 hover:bg-destructive/5 gap-1"
-                  onClick={() => handleCancelBooking(booking.id)}
-                >
-                  <X className="h-3.5 w-3.5" />
-                  Cancel
-                </Button>
-              )}
-
-              {booking.paymentStatus === 'completed' && showRenewalOption && (
-                <BookingRenewal
-                  booking={booking as any}
-                  onRenewalComplete={onBookingRenewed || (() => {})}
-                />
+              {booking.paymentStatus === 'completed' && (
+                <>
+                  <Link to={`/student/bookings/${booking.id}`} className="flex-1">
+                    <Button variant="outline" size="sm" className="w-full h-8 text-[12px] rounded-xl gap-1">
+                      <Eye className="h-3.5 w-3.5" /> View Details
+                    </Button>
+                  </Link>
+                  {showRenewalOption && canRenew(booking) && (
+                    <div className="flex-1">
+                      <BookingRenewal
+                        booking={booking as any}
+                        onRenewalComplete={onBookingRenewed || (() => {})}
+                      />
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </CardContent>
