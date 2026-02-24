@@ -126,7 +126,8 @@ function computeDateStatus(
   seat: { is_available: boolean; id: string },
   bookingsForDate: any[],
   selectedDate: string,
-  dateBlocks?: any[]
+  dateBlocks?: any[],
+  duesMap?: Record<string, string>
 ): 'available' | 'booked' | 'expiring_soon' | 'blocked' {
   if (!seat.is_available) return 'blocked';
 
@@ -143,6 +144,14 @@ function computeDateStatus(
   );
 
   if (activeBooking) {
+    // For advance_paid bookings, check proportional_end_date
+    if (activeBooking.payment_status === 'advance_paid' && duesMap) {
+      const proportionalEnd = duesMap[activeBooking.id];
+      if (proportionalEnd && selectedDate > proportionalEnd) {
+        return 'available'; // Auto-released after proportional end date
+      }
+    }
+
     const endDate = new Date(activeBooking.end_date);
     const selected = new Date(selectedDate);
     const diffDays = Math.ceil((endDate.getTime() - selected.getTime()) / (1000 * 60 * 60 * 24));
@@ -254,7 +263,7 @@ export const vendorSeatsService = {
             .from('bookings')
             .select('*, profiles!bookings_user_id_fkey(id, name, email, phone, profile_picture, serial_number, course_studying, college_studied, address, city, state, date_of_birth, gender)')
             .in('seat_id', seatIds)
-            .eq('payment_status', 'completed')
+            .in('payment_status', ['completed', 'advance_paid'])
             .gte('end_date', date)
             .order('start_date', { ascending: true }),
           supabase
@@ -271,13 +280,37 @@ export const vendorSeatsService = {
         dateBlocks = blocksRes.data || [];
       }
 
+      // Build dues map for advance_paid bookings (booking_id -> proportional_end_date)
+      let duesMap: Record<string, string> = {};
+      const advancePaidIds = allBookings
+        .filter(b => b.payment_status === 'advance_paid')
+        .map(b => b.id);
+
+      if (advancePaidIds.length > 0) {
+        const { data: duesData } = await supabase
+          .from('dues')
+          .select('booking_id, proportional_end_date')
+          .in('booking_id', advancePaidIds);
+        (duesData || []).forEach((d: any) => {
+          if (d.booking_id && d.proportional_end_date) {
+            duesMap[d.booking_id] = d.proportional_end_date;
+          }
+        });
+      }
+
       const mappedSeats: VendorSeat[] = (seatsData || []).map(seat => {
         const seatBookings = allBookings.filter(b => b.seat_id === seat.id);
-        const dateStatus = computeDateStatus(seat, allBookings, date, dateBlocks);
+        const dateStatus = computeDateStatus(seat, allBookings, date, dateBlocks, duesMap);
 
-        const currentBookingRaw = seatBookings.find(
-          b => b.start_date <= date && b.end_date >= date
-        );
+        // For advance_paid bookings past proportional_end_date, don't show as currentBooking
+        const currentBookingRaw = seatBookings.find(b => {
+          if (b.start_date > date || b.end_date < date) return false;
+          if (b.payment_status === 'advance_paid') {
+            const proportionalEnd = duesMap[b.id];
+            if (proportionalEnd && date > proportionalEnd) return false; // released
+          }
+          return true;
+        });
 
         const currentBooking = currentBookingRaw ? {
           startDate: currentBookingRaw.start_date,
