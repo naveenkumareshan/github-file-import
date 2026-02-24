@@ -443,9 +443,9 @@ export const BookingRenewal = ({ booking, onRenewalComplete }: BookingRenewalPro
         <Button 
           variant={isNearExpiry() ? "destructive" : "outline"} 
           size="sm" 
-          className="flex items-center gap-1"
+          className="w-full h-8 text-[12px] rounded-xl gap-1"
         >
-          <Clock className="h-4 w-4" />
+          <Clock className="h-3.5 w-3.5" />
           {isNearExpiry() ? 'Renew Now' : 'Renew Booking'}
         </Button>
       </DialogTrigger>
