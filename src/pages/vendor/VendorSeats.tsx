@@ -949,7 +949,12 @@ const VendorSeats: React.FC = () => {
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar mode="single" selected={bookingStartDate} onSelect={d => d && setBookingStartDate(d)} className="p-3 pointer-events-auto" />
+                          <Calendar mode="single" selected={bookingStartDate} onSelect={d => d && setBookingStartDate(d)} className="p-3 pointer-events-auto" disabled={(date) => {
+                            if (showFutureBooking && selectedSeat?.currentBooking?.endDate) {
+                              return date <= new Date(selectedSeat.currentBooking.endDate);
+                            }
+                            return date < new Date(new Date().toDateString());
+                          }} />
                         </PopoverContent>
                       </Popover>
                     </div>
