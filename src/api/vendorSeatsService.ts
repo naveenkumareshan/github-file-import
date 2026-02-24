@@ -25,6 +25,11 @@ export interface SeatBookingDetail {
   userId: string;
   lockerIncluded?: boolean;
   lockerPrice?: number;
+  discountAmount?: number;
+  discountReason?: string;
+  paymentMethod?: string;
+  collectedByName?: string;
+  transactionId?: string;
 }
 
 export interface VendorSeat {
@@ -92,6 +97,12 @@ export interface PartnerBookingData {
   seatNumber: number;
   lockerIncluded?: boolean;
   lockerPrice?: number;
+  discountAmount?: number;
+  discountReason?: string;
+  paymentMethod?: string;
+  collectedBy?: string;
+  collectedByName?: string;
+  transactionId?: string;
 }
 
 export interface BlockHistoryEntry {
@@ -150,6 +161,11 @@ function mapBookingToDetail(b: any): SeatBookingDetail {
     userId: profile?.id || '',
     lockerIncluded: b.locker_included || false,
     lockerPrice: Number(b.locker_price) || 0,
+    discountAmount: Number(b.discount_amount) || 0,
+    discountReason: b.discount_reason || '',
+    paymentMethod: b.payment_method || 'online',
+    collectedByName: b.collected_by_name || '',
+    transactionId: b.transaction_id || '',
   };
 }
 
@@ -309,6 +325,8 @@ export const vendorSeatsService = {
 
       const { data: serialData } = await supabase.rpc('generate_serial_number', { p_entity_type: 'booking' });
 
+      const paymentStatus = data.paymentMethod === 'send_link' ? 'pending' : 'completed';
+
       const { error } = await supabase
         .from('bookings')
         .insert({
@@ -321,10 +339,16 @@ export const vendorSeatsService = {
           booking_duration: data.bookingDuration,
           duration_count: data.durationCount,
           seat_number: data.seatNumber,
-          payment_status: 'completed',
+          payment_status: paymentStatus,
           serial_number: serialData || undefined,
           locker_included: data.lockerIncluded || false,
           locker_price: data.lockerPrice || 0,
+          discount_amount: data.discountAmount || 0,
+          discount_reason: data.discountReason || '',
+          payment_method: data.paymentMethod || 'online',
+          collected_by: data.collectedBy || null,
+          collected_by_name: data.collectedByName || '',
+          transaction_id: data.transactionId || '',
         });
 
       if (error) throw error;
