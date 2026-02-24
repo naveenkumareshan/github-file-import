@@ -1,27 +1,20 @@
 
 
-## Fix Console Warning in BookingRenewal
+## Fix Blank Pages and Reduce Loading Time
 
-### Issues Found
+### Root Cause
 
-**1. React ref warning on BookingRenewal component**
-The console shows: "Function components cannot be given refs. Check the render method of BookingRenewal."
+The blank pages are caused by a build-breaking bug in `BookingTransactionView.tsx`:
 
-This happens because `BookingRenewal` is rendered inside a parent that may attempt to pass a ref to it (via Radix UI's internal composition). The fix is to wrap the component with `React.forwardRef` so it can properly accept and forward refs.
+1. **Duplicate import on line 10**: The same lucide-react icons are imported twice (lines 9 and 10), causing a JavaScript error
+2. **Missing Card/CardContent import**: The loading spinner (lines 131-136) still uses `Card` and `CardContent` components, but these imports were removed in the previous edit -- this causes "Component is not a function" crash
 
-**2. gl-matrix TypeScript errors**
-These are pre-existing errors from the `gl-matrix` dependency in `node_modules`. They are NOT caused by any recent changes and don't affect the app's functionality since `skipLibCheck: true` is already configured. These can be safely ignored.
+### Fix Plan
 
-### Plan
+**File: `src/components/booking/BookingTransactionView.tsx`**
 
-**File: `src/components/booking/BookingRenewal.tsx`**
-- Convert the component from a plain function to use `React.forwardRef`
-- Change the export from:
-  `export const BookingRenewal = ({ booking, onRenewalComplete }: BookingRenewalProps) => {`
-  to:
-  `export const BookingRenewal = React.forwardRef<HTMLDivElement, BookingRenewalProps>(({ booking, onRenewalComplete }, ref) => {`
-- Add `ref` to the outermost `<Dialog>` wrapper element
-- Close with `});` and add a display name: `BookingRenewal.displayName = "BookingRenewal";`
+1. Remove the duplicate import on line 10
+2. Replace `Card`/`CardContent` usage in the loading spinner (lines 131-136) with a plain `div`, matching the rest of the mobile-friendly layout
 
-This is a one-file, minimal change that eliminates the console warning.
+These are the only changes needed. Once the duplicate import and missing component references are fixed, the app will render correctly again.
 
