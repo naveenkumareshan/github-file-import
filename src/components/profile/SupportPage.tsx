@@ -125,7 +125,10 @@ const SupportPage = () => {
               <Card key={t.id} className="rounded-2xl">
                 <CardContent className="p-3 space-y-1.5">
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-[13px] font-semibold text-foreground flex-1">{t.subject}</p>
+                    <div className="flex-1 min-w-0">
+                      {t.serial_number && <p className="text-[10px] font-mono text-muted-foreground">{t.serial_number}</p>}
+                      <p className="text-[13px] font-semibold text-foreground">{t.subject}</p>
+                    </div>
                     <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${statusBadge[t.status] || ''}`}>
                       {t.status?.replace('_', ' ')}
                     </span>

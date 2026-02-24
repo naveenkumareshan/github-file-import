@@ -39,7 +39,7 @@ export function CustomerComplaints() {
             content: 'The lighting in reading room A302 is not working properly.',
             timestamp: '2025-04-28T14:30:00Z',
             status: 'Pending',
-            source: 'Jiya Chatbot'
+            source: 'App'
           },
           {
             id: 'complaint-2',

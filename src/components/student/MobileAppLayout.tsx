@@ -1,11 +1,9 @@
-import React, { lazy, Suspense } from 'react';
+import React from 'react';
 import { Outlet, Link } from 'react-router-dom';
 import { MobileBottomNav } from './MobileBottomNav';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import inhalestaysLogo from '@/assets/inhalestays-logo.png';
-
-const ChatbotButton = lazy(() => import('@/components/JiyaChatbot/ChatbotButton'));
 
 const MobileAppLayout: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
@@ -57,11 +55,6 @@ const MobileAppLayout: React.FC = () => {
       <main className="flex-1 pt-14 pb-16">
         <Outlet />
       </main>
-
-      {/* Chatbot floats above the bottom nav */}
-      <Suspense fallback={null}>
-        <ChatbotButton />
-      </Suspense>
 
       <MobileBottomNav />
     </div>

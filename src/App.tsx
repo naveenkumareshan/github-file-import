@@ -16,7 +16,7 @@ import HostelRoomView from "./pages/HostelRoomView";
 import BookSharedRoom from "./pages/BookSharedRoom";
 import HostelBooking from "./pages/HostelBooking";
 import LaundryAgentPage from "./pages/LaundryAgentPage";
-const ChatbotButton = lazy(() => import("./components/JiyaChatbot/ChatbotButton"));
+
 const AdminBookingView = lazy(() => import("./pages/AdminBookingView"));
 const BookingReportsPage = lazy(() => import("./components/admin/reports/BookingReportsPage"));
 const ManualBookingManagement = lazy(() => import("./pages/admin/ManualBookingManagement"));

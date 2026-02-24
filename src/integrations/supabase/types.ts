@@ -70,6 +70,7 @@ export type Database = {
           razorpay_signature: string | null
           seat_id: string | null
           seat_number: number | null
+          serial_number: string | null
           start_date: string | null
           total_price: number | null
           updated_at: string | null
@@ -88,6 +89,7 @@ export type Database = {
           razorpay_signature?: string | null
           seat_id?: string | null
           seat_number?: number | null
+          serial_number?: string | null
           start_date?: string | null
           total_price?: number | null
           updated_at?: string | null
@@ -106,6 +108,7 @@ export type Database = {
           razorpay_signature?: string | null
           seat_id?: string | null
           seat_number?: number | null
+          serial_number?: string | null
           start_date?: string | null
           total_price?: number | null
           updated_at?: string | null
@@ -151,6 +154,7 @@ export type Database = {
           room_height: number
           room_width: number
           sections: Json
+          serial_number: string | null
           state: string | null
         }
         Insert: {
@@ -175,6 +179,7 @@ export type Database = {
           room_height?: number
           room_width?: number
           sections?: Json
+          serial_number?: string | null
           state?: string | null
         }
         Update: {
@@ -199,6 +204,7 @@ export type Database = {
           room_height?: number
           room_width?: number
           sections?: Json
+          serial_number?: string | null
           state?: string | null
         }
         Relationships: []
@@ -215,6 +221,7 @@ export type Database = {
           responded_at: string | null
           responded_by: string | null
           response: string | null
+          serial_number: string | null
           status: string
           subject: string
           updated_at: string
@@ -231,6 +238,7 @@ export type Database = {
           responded_at?: string | null
           responded_by?: string | null
           response?: string | null
+          serial_number?: string | null
           status?: string
           subject: string
           updated_at?: string
@@ -247,6 +255,7 @@ export type Database = {
           responded_at?: string | null
           responded_by?: string | null
           response?: string | null
+          serial_number?: string | null
           status?: string
           subject?: string
           updated_at?: string
@@ -289,6 +298,7 @@ export type Database = {
           pincode: string | null
           profile_edit_count: number | null
           profile_picture: string | null
+          serial_number: string | null
           state: string | null
           updated_at: string | null
         }
@@ -311,6 +321,7 @@ export type Database = {
           pincode?: string | null
           profile_edit_count?: number | null
           profile_picture?: string | null
+          serial_number?: string | null
           state?: string | null
           updated_at?: string | null
         }
@@ -333,6 +344,7 @@ export type Database = {
           pincode?: string | null
           profile_edit_count?: number | null
           profile_picture?: string | null
+          serial_number?: string | null
           state?: string | null
           updated_at?: string | null
         }
@@ -435,6 +447,24 @@ export type Database = {
           },
         ]
       }
+      serial_counters: {
+        Row: {
+          current_seq: number
+          entity_type: string
+          year: number
+        }
+        Insert: {
+          current_seq?: number
+          entity_type: string
+          year: number
+        }
+        Update: {
+          current_seq?: number
+          entity_type?: string
+          year?: number
+        }
+        Relationships: []
+      }
       support_tickets: {
         Row: {
           admin_response: string | null
@@ -444,6 +474,7 @@ export type Database = {
           id: string
           responded_at: string | null
           responded_by: string | null
+          serial_number: string | null
           status: string
           subject: string
           updated_at: string
@@ -457,6 +488,7 @@ export type Database = {
           id?: string
           responded_at?: string | null
           responded_by?: string | null
+          serial_number?: string | null
           status?: string
           subject: string
           updated_at?: string
@@ -470,6 +502,7 @@ export type Database = {
           id?: string
           responded_at?: string | null
           responded_by?: string | null
+          serial_number?: string | null
           status?: string
           subject?: string
           updated_at?: string
@@ -500,6 +533,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_serial_number: {
+        Args: { p_entity_type: string }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
