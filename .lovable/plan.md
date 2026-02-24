@@ -1,48 +1,37 @@
 
 
-## Enable Partial Payment Collection for All Bookings
+## Reorder Booking Form: Payment Method After Partial Amount
 
-### Problem
-The "Partial Payment" toggle in the booking form is currently gated behind `selectedCabinInfo?.advanceBookingEnabled` (line 1019 in VendorSeats.tsx). The computed values also check this flag (line 284). This means partners/admins can only use partial payments if the specific Reading Room has "Advance Booking" explicitly enabled in its settings.
+### Current Order (confusing)
+1. Seat Amount
+2. Locker
+3. Partial Payment toggle + details
+4. Discount
+5. Payment Method + Transaction ID
+6. Summary (Total, Advance, Due)
+7. Confirm Button
 
-### Changes
+### New Order (clean flow)
+1. Seat Amount
+2. Locker
+3. Discount
+4. **Booking Summary** (Seat Amount, Discount, Locker, **Total**)
+5. **Partial Payment** toggle + Amount to Collect + Due Date + breakdown
+6. **Payment Method** + Transaction ID
+7. Collected by
+8. **Confirm Button** (shows collecting amount, not total, when partial is ON)
 
-**File: `src/pages/vendor/VendorSeats.tsx`**
+### Changes in `src/pages/vendor/VendorSeats.tsx`
 
-1. **Remove the `advanceBookingEnabled` gate on the toggle** (line 1019): Change `{selectedCabinInfo?.advanceBookingEnabled && (` to always show the partial payment checkbox when a cabin is selected.
+**Move sections around (lines 1037-1167):**
 
-2. **Remove the `advanceBookingEnabled` gate on computed values** (line 284): Change `if (!isAdvanceBooking || !selectedCabinInfo?.advanceBookingEnabled) return null;` to `if (!isAdvanceBooking) return null;` so the advance breakdown computes for any booking.
+- Move **Discount** (lines 1099-1106) up to right after Locker (after line 1035)
+- Move **Booking Summary** (lines 1148-1167) up to right after Discount, but remove the advance/due lines and "collected by" from it -- keep it as just: Seat Amount, Discount, Locker, Total
+- Keep **Partial Payment toggle** (lines 1037-1055) after the summary
+- Keep **Partial Payment details** (lines 1057-1097) after the toggle
+- Move **Payment Method** (lines 1108-1145) after partial payment details
+- Add a final line showing "Collected by" and the collecting amount before the button
+- **Fix Confirm Button** (line 1174): show advance amount when partial is ON instead of always showing total
 
-3. **Add manual amount input**: When partial payment is toggled ON, show an editable "Amount to Collect" field (defaulting to cabin's advance % if configured, otherwise 50% of total). The partner can type any custom amount.
-
-4. **Add manual due date input**: Show a date input for "Due Date" (seat valid until this date). Default to start date + cabin's validity days if configured, otherwise start date + 3 days. The partner can pick any custom due date.
-
-5. **Update `advanceComputed` memo**: Use the manual amount and manual due date instead of only auto-calculating. The proportional end date becomes the manual due date directly.
-
-6. **Pass `dueDate` in booking data**: Add `dueDate` to the `handleCreateBooking` call so the service uses the partner-entered due date.
-
-7. **Rename label**: Change "Advance Booking (Partial Payment)" to "Partial Payment (Collect Less)"
-
-**File: `src/api/vendorSeatsService.ts`**
-
-1. **Add `dueDate` to `PartnerBookingData`** (line 93): Add `dueDate?: string` field.
-
-2. **Use manual `dueDate` in `createPartnerBooking`** (line 436): When `data.dueDate` is provided, use it directly as both the `due_date` and `proportional_end_date` in the dues entry, instead of auto-calculating from cabin's validity days and proportional ratio.
-
-### New State Variables in VendorSeats.tsx
-- `manualAdvanceAmount` (string) -- editable amount to collect
-- `manualDueDate` (Date) -- editable due date / seat validity date
-
-### Flow After Changes
-1. Partner clicks any available seat
-2. Fills student details and plan (e.g., 30 days, Rs 3000)
-3. Sees "Partial Payment" checkbox (always visible)
-4. Toggles it ON
-5. Enters custom amount to collect: Rs 1000
-6. Sets due date: 10 Mar 2026 (seat valid until this date)
-7. Summary shows: Total Rs 3000, Collecting Rs 1000, Due Rs 2000, Seat valid until 10 Mar
-8. Confirms booking -- due entry created with proportional_end_date = 10 Mar
-9. After 10 Mar, seat auto-releases (already implemented in previous change)
-
-No database changes needed.
-
+### Result
+The partner sees a natural top-down flow: price calculation first, then decide partial or full, then pick how to pay, then confirm with the correct amount displayed.
