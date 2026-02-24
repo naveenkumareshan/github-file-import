@@ -60,10 +60,18 @@ const SeatManagement = () => {
       if (res.success) {
         const d = res.data;
         setCabin(d);
-        setFloors(Array.isArray(d.floors) ? d.floors : []);
+        const floorsList = Array.isArray(d.floors) ? d.floors : [];
+        setFloors(floorsList);
         setRoomWidth(d.room_width || 800);
         setRoomHeight(d.room_height || 600);
-        setLayoutImage(d.layout_image || null);
+        // Load per-floor layout image for the selected floor
+        const currentFloor = floorsList.find((f: any) => f.id === selectedFloor);
+        if (currentFloor?.layout_image) {
+          setLayoutImage(currentFloor.layout_image);
+          setLayoutImageOpacity(currentFloor.layout_image_opacity ?? 30);
+        } else {
+          setLayoutImage(d.layout_image || null);
+        }
       }
     } catch (e) {
       console.error(e);
@@ -89,11 +97,33 @@ const SeatManagement = () => {
     if (res.success) setCategories(res.data);
   };
 
+  // When floor changes, load that floor's layout image
+  useEffect(() => {
+    if (floors.length > 0) {
+      const currentFloor = floors.find((f: any) => f.id === selectedFloor);
+      if (currentFloor?.layout_image) {
+        setLayoutImage(currentFloor.layout_image);
+        setLayoutImageOpacity(currentFloor.layout_image_opacity ?? 30);
+      } else if (cabin) {
+        setLayoutImage(cabin.layout_image || null);
+        setLayoutImageOpacity(30);
+      }
+    }
+  }, [selectedFloor, floors]);
+
   const handleSave = async () => {
     if (!cabinId) return;
     setIsSaving(true);
     try {
-      await adminCabinsService.updateCabinLayout(cabinId, [], roomWidth, roomHeight, 20, [], layoutImage);
+      // Save per-floor layout image into floors JSONB
+      const updatedFloors = floors.map((f: any) =>
+        f.id === selectedFloor
+          ? { ...f, layout_image: layoutImage, layout_image_opacity: layoutImageOpacity }
+          : f
+      );
+      setFloors(updatedFloors);
+
+      await adminCabinsService.updateCabinLayout(cabinId, [], roomWidth, roomHeight, 20, [], layoutImage, updatedFloors);
       const seatsToUpdate = seats.map(s => ({ _id: s._id, position: s.position }));
       await adminSeatsService.updateSeatPositions(seatsToUpdate);
       toast({ title: "Layout saved successfully" });

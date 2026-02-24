@@ -29,7 +29,7 @@ export interface RoomElement {
 
 interface DateBasedSeatMapProps {
   cabinId: string;
-  floorsList?: { id: string; number: number }[];
+  floorsList?: { id: string; number: number; layout_image?: string; layout_image_opacity?: number }[];
   exportcsv?: boolean;
   onSeatSelect?: (seat: any) => void;
   selectedSeat?: any;
@@ -362,7 +362,14 @@ const DateBasedSeatMapComponent: React.FC<DateBasedSeatMapProps> = ({
                 onSeatSelect={onSeatSelect}
                 selectedSeat={selectedSeat}
                 dateRange={{ start: startDate, end: endDate }}
-                layoutImage={layoutImage}
+                layoutImage={(() => {
+                  const floor = floorsList?.find(f => f.number.toString() === selectedfloor);
+                  return floor?.layout_image || layoutImage;
+                })()}
+                layoutImageOpacity={(() => {
+                  const floor = floorsList?.find(f => f.number.toString() === selectedfloor);
+                  return floor?.layout_image_opacity ?? 30;
+                })()}
               />
             )}
           </CardContent>
@@ -399,8 +406,14 @@ const DateBasedSeatMapComponent: React.FC<DateBasedSeatMapProps> = ({
               onSeatSelect={onSeatSelect}
               selectedSeat={selectedSeat}
               dateRange={{ start: startDate, end: endDate }}
-              layoutImage={layoutImage}
-              layoutImageOpacity={100}
+              layoutImage={(() => {
+                const floor = floorsList?.find(f => f.number.toString() === selectedfloor);
+                return floor?.layout_image || layoutImage;
+              })()}
+              layoutImageOpacity={(() => {
+                const floor = floorsList?.find(f => f.number.toString() === selectedfloor);
+                return floor?.layout_image_opacity ?? 30;
+              })()}
             />
           )}
         </div>
