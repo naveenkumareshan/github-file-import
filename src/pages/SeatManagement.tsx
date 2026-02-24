@@ -170,7 +170,7 @@ const SeatManagement = () => {
     }
   };
 
-  const handleSeatUpdate = async (seatId: string, updates: { category?: string; price?: number; isAvailable?: boolean }) => {
+  const handleSeatUpdate = async (seatId: string, updates: { category?: string; price?: number }) => {
     try {
       const res = await adminSeatsService.updateSeat(seatId, updates);
       if (res.success) {
@@ -207,6 +207,11 @@ const SeatManagement = () => {
   };
   const handleSaveCategory = async () => {
     if (!catName.trim() || !cabinId) return;
+    const minPrice = cabin?.price || 0;
+    if (catPrice < minPrice) {
+      toast({ title: `Price cannot be below starting price ₹${minPrice}`, variant: "destructive" });
+      return;
+    }
     if (editingCategory) {
       const res = await seatCategoryService.updateCategory(editingCategory.id, { name: catName, price: catPrice });
       if (res.success) {
@@ -340,6 +345,7 @@ const SeatManagement = () => {
         onLayoutImageOpacityChange={setLayoutImageOpacity}
         isSaving={isSaving}
         categories={categories.map(c => ({ id: c.id, name: c.name, price: c.price }))}
+        minPrice={cabin?.price || 0}
       />
 
       {/* Category Management Dialog */}
@@ -355,7 +361,7 @@ const SeatManagement = () => {
             </div>
             <div>
               <Label>Default Price (₹/month)</Label>
-              <Input type="number" min={0} value={catPrice} onChange={e => setCatPrice(+e.target.value || 0)} />
+              <Input type="number" min={cabin?.price || 0} value={catPrice} onChange={e => setCatPrice(+e.target.value || 0)} />
             </div>
           </div>
           <DialogFooter>
