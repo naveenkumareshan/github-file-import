@@ -1,21 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { useToast } from '@/hooks/use-toast';
 import { transactionService } from '@/api/transactionService';
-import { bookingsService } from '@/api/bookingsService';
-import { format, addMonths, differenceInDays } from 'date-fns';
+import { format, differenceInDays } from 'date-fns';
+import { CreditCard, Calendar, RefreshCw, IndianRupee, Clock, TicketPercent } from 'lucide-react';
 import { CreditCard, Calendar, RefreshCw, IndianRupee, Clock, TicketPercent } from 'lucide-react';
 
 interface Transaction {
@@ -146,259 +137,180 @@ export const BookingTransactionView = ({ bookingId, bookingType, booking }: Book
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Booking Summary */}
       {booking && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Booking Summary
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground">Booking ID</h3>
-                <p className="font-medium">#{booking.bookingId || booking._id}</p>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground">
-                  {bookingType === 'cabin' ? 'Cabin & Seat' : 'Hostel & Bed'}
-                </h3>
-                <p className="font-medium">
-                  {booking.cabinId?.name || booking.cabinName || booking.hostelId?.name || 'N/A'}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {bookingType === 'cabin' ? 
-                    `Seat #${booking.seatId?.number || booking.seatNumber || 'N/A'}` : 
-                    `Bed #${booking.bedId?.number || 'N/A'}`
-                  }
-                </p>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground">Seat Price</h3>
-                <p className="font-medium text-green-600">₹{(booking.seatPrice || booking.totalPrice || 0).toLocaleString()}</p>
-              </div>
-               <div>
-                <h3 className="text-sm font-medium text-muted-foreground">Total Paid</h3>
-                {/* <p className="font-medium text-green-600">₹{totalPaid.toLocaleString()}</p> */}
-                                   {booking?.originalPrice && booking?.appliedCoupon ? (
-                      <div>
-                        <p className="text-sm text-muted-foreground line-through">₹{booking.originalPrice.toLocaleString()}</p>
-                        <p className="font-medium text-green-600">₹{totalPaid.toLocaleString()}</p>
-                        <p className="text-xs text-green-600">You saved ₹{booking.appliedCoupon.discountAmount}</p>
-                      </div>
-                    ) : (
-                      <p className="font-medium">₹{totalPaid.toLocaleString()}</p>
-                    )}
-                    {booking?.appliedCoupon && (
-                  <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <TicketPercent className="h-4 w-4 text-green-600" />
-                      <span className="text-sm font-medium text-green-700">Coupon Applied</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Code: </span>
-                        <span className="font-medium text-green-600">{booking.appliedCoupon.couponCode}</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Discount: </span>
-                        <span className="font-medium text-green-600">₹{booking.appliedCoupon.discountAmount}</span>
-                      </div>
-                    </div>
-                  </div>
+        <div className="bg-card rounded-lg border p-3">
+          <h3 className="text-[13px] font-semibold flex items-center gap-1.5 mb-2">
+            <Calendar className="h-3.5 w-3.5" />
+            Booking Summary
+          </h3>
+          <div className="space-y-1.5">
+            <div className="flex justify-between items-center">
+              <span className="text-[11px] text-muted-foreground">Booking ID</span>
+              <span className="text-[12px] font-medium">#{booking.bookingId || booking._id}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-[11px] text-muted-foreground">
+                {bookingType === 'cabin' ? 'Cabin & Seat' : 'Hostel & Bed'}
+              </span>
+              <span className="text-[12px] font-medium text-right">
+                {booking.cabinId?.name || booking.cabinName || booking.hostelId?.name || 'N/A'}
+                {' · '}
+                {bookingType === 'cabin'
+                  ? `Seat #${booking.seatId?.number || booking.seatNumber || 'N/A'}`
+                  : `Bed #${booking.bedId?.number || 'N/A'}`}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-[11px] text-muted-foreground">Seat Price</span>
+              <span className="text-[12px] font-medium">₹{(booking.seatPrice || booking.totalPrice || 0).toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-[11px] text-muted-foreground">Total Paid</span>
+              <div className="text-right">
+                {booking?.originalPrice && booking?.appliedCoupon ? (
+                  <>
+                    <span className="text-[11px] text-muted-foreground line-through mr-1">₹{booking.originalPrice.toLocaleString()}</span>
+                    <span className="text-[12px] font-medium">₹{totalPaid.toLocaleString()}</span>
+                  </>
+                ) : (
+                  <span className="text-[12px] font-medium">₹{totalPaid.toLocaleString()}</span>
                 )}
               </div>
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground">Payment Status</h3>
-                {getStatusBadge(booking.paymentStatus)}
-              </div>
-
-               {booking?.transferredHistory?.map((data: any, index: number) => (
-                <div key={index}>
-                  <h3 className="text-sm font-medium text-muted-foreground">
-                    Transferred From
-                  </h3>
-                  <p className="font-medium">
-                    {data.cabinId?.name || data.hostelId?.name}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                      Canin Code : {data.cabinId?.cabinCode}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {bookingType === 'cabin'
-                      ? `Seat #${data.seatId?.number}`
-                      : `Bed #${data.bedId?.number}`}
-                  </p>
-                   <p className="text-sm text-muted-foreground">
-                      Transferred By : {data.transferredBy?.name}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Transferred At : {format(new Date(data.transferredAt), 'dd MMM yyyy')}
-                    </p>
-                </div>
-              ))} 
             </div>
-          </CardContent>
-        </Card>
+            <div className="flex justify-between items-center">
+              <span className="text-[11px] text-muted-foreground">Payment Status</span>
+              {getStatusBadge(booking.paymentStatus)}
+            </div>
+          </div>
+
+          {booking?.appliedCoupon && (
+            <div className="mt-2 p-2 bg-accent/50 border rounded-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1">
+                  <TicketPercent className="h-3 w-3 text-primary" />
+                  <span className="text-[11px] font-medium">{booking.appliedCoupon.couponCode}</span>
+                </div>
+                <span className="text-[11px] font-medium text-primary">-₹{booking.appliedCoupon.discountAmount}</span>
+              </div>
+            </div>
+          )}
+
+          {booking?.transferredHistory?.map((data: any, index: number) => (
+            <div key={index} className="mt-2 p-2 bg-muted/50 border rounded-lg space-y-0.5">
+              <p className="text-[11px] font-medium">Transferred From: {data.cabinId?.name || data.hostelId?.name}</p>
+              <p className="text-[10px] text-muted-foreground">
+                {bookingType === 'cabin' ? `Seat #${data.seatId?.number}` : `Bed #${data.bedId?.number}`}
+                {' · '}{data.transferredBy?.name}
+                {' · '}{format(new Date(data.transferredAt), 'dd MMM yyyy')}
+              </p>
+            </div>
+          ))}
+        </div>
       )}
 
       {/* Validity Information */}
       {validityInfo && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
-              Validity Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground">Current End Date</h3>
-                <p className="font-medium">
-                  {format(new Date(validityInfo.currentEndDate), 'dd MMM yyyy h:mm:ss a')}
-                </p>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground">Days Remaining</h3>
-                <p className={`font-medium ${
-                  validityInfo.daysRemaining > 30 ? 'text-green-600' :
-                  validityInfo.daysRemaining > 7 ? 'text-amber-600' : 'text-red-600'
-                }`}>
-                  {validityInfo.daysRemaining} days
-                </p>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground">Total Duration</h3>
-                <p className="font-medium">
-                  {validityInfo.totalMonths} {validityInfo.totalMonths === 1 ? 'month' : 'months'}
-                </p>
-              </div>
+        <div className="bg-card rounded-lg border p-3">
+          <h3 className="text-[13px] font-semibold flex items-center gap-1.5 mb-2">
+            <Clock className="h-3.5 w-3.5" />
+            Validity
+          </h3>
+          <div className="flex justify-between text-[12px]">
+            <div>
+              <p className="text-[11px] text-muted-foreground">End Date</p>
+              <p className="font-medium">{format(new Date(validityInfo.currentEndDate), 'dd MMM yyyy')}</p>
             </div>
-          </CardContent>
-        </Card>
+            <div className="text-center">
+              <p className="text-[11px] text-muted-foreground">Days Left</p>
+              <p className={`font-medium ${
+                validityInfo.daysRemaining > 30 ? 'text-green-600' :
+                validityInfo.daysRemaining > 7 ? 'text-amber-600' : 'text-destructive'
+              }`}>
+                {validityInfo.daysRemaining}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-[11px] text-muted-foreground">Duration</p>
+              <p className="font-medium">{validityInfo.totalMonths} {validityInfo.totalMonths === 1 ? 'mo' : 'mos'}</p>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Transaction History */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <CreditCard className="h-5 w-5" />
-            Transaction History
-          </CardTitle>
-          <Button variant="outline" size="sm" onClick={fetchBookingTransactions}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
+      <div className="bg-card rounded-lg border p-3">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-[13px] font-semibold flex items-center gap-1.5">
+            <CreditCard className="h-3.5 w-3.5" />
+            Transactions
+          </h3>
+          <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px]" onClick={fetchBookingTransactions}>
+            <RefreshCw className="h-3 w-3" />
           </Button>
-        </CardHeader>
-        <CardContent>
-          {transactions.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <CreditCard className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <h3 className="text-lg font-medium mb-2">No transactions found</h3>
-              <p>Transaction history for this booking will appear here.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Transaction ID</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Period Extension</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Payment Method</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {transactions.map((transaction) => (
-                    <TableRow key={transaction.id}>
-                      <TableCell className="font-medium">
-                        {transaction.transactionId}
-                      </TableCell>
-                      <TableCell>
-                        {getTransactionTypeBadge(transaction.transactionType)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center">
-                          <IndianRupee className="h-4 w-4 mr-1" />
-                          <span className="font-medium">
-                            {transaction.amount.toLocaleString()}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {transaction.transactionType === 'renewal' && transaction.additionalMonths ? (
-                          <div className="text-sm">
-                            <div>+{transaction.additionalMonths} months</div>
-                            {transaction.previousEndDate && transaction.newEndDate && (
-                              <div className="text-muted-foreground">
-                                {format(new Date(transaction.previousEndDate), 'dd MMM')} → {format(new Date(transaction.newEndDate), 'dd MMM yyyy')}
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          {format(new Date(transaction.createdAt), 'dd MMM yyyy')}
-                          <div className="text-muted-foreground">
-                            {format(new Date(transaction.createdAt), 'HH:mm')}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {transaction.paymentMethod || 'Online'}
-                      </TableCell>
-                      <TableCell>
-                        {getStatusBadge(transaction.status)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        </div>
+        {transactions.length === 0 ? (
+          <div className="text-center py-4 text-muted-foreground">
+            <CreditCard className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <p className="text-[12px]">No transactions found</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {transactions.map((transaction) => (
+              <div key={transaction.id} className="border rounded-lg p-2 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-muted-foreground">{transaction.transactionId}</span>
+                  {getStatusBadge(transaction.status)}
+                </div>
+                <div className="flex items-center justify-between">
+                  {getTransactionTypeBadge(transaction.transactionType)}
+                  <span className="text-[12px] font-medium">₹{transaction.amount.toLocaleString()}</span>
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                  <span>{format(new Date(transaction.createdAt), 'dd MMM yyyy, HH:mm')}</span>
+                  <span>{transaction.paymentMethod || 'Online'}</span>
+                </div>
+                {transaction.transactionType === 'renewal' && transaction.additionalMonths && (
+                  <p className="text-[10px] text-muted-foreground">
+                    +{transaction.additionalMonths} months
+                    {transaction.previousEndDate && transaction.newEndDate && (
+                      <> · {format(new Date(transaction.previousEndDate), 'dd MMM')} → {format(new Date(transaction.newEndDate), 'dd MMM yyyy')}</>
+                    )}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Payment Summary */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <IndianRupee className="h-5 w-5" />
-            Payment Summary
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {transactions
-              .filter(t => t.status === 'completed')
-              .map((transaction, index) => (
-                <div key={transaction.id} className="flex justify-between items-center">
-                  <span className="text-sm">
-                    {transaction.transactionType === 'booking' ? 'Initial Payment' : 
-                     transaction.transactionType === 'renewal' ? `Renewal ${index}` : 
-                     transaction.transactionType}
-                  </span>
-                  <span className="font-medium">₹{transaction.amount.toLocaleString()}</span>
-                </div>
-              ))}
-            <Separator />
-            <div className="flex justify-between items-center font-medium text-lg">
-              <span>Total Paid</span>
-              <span className="text-green-600">₹{totalPaid.toLocaleString()}</span>
-            </div>
+      <div className="bg-card rounded-lg border p-3">
+        <h3 className="text-[13px] font-semibold flex items-center gap-1.5 mb-2">
+          <IndianRupee className="h-3.5 w-3.5" />
+          Payment Summary
+        </h3>
+        <div className="space-y-1">
+          {transactions
+            .filter(t => t.status === 'completed')
+            .map((transaction, index) => (
+              <div key={transaction.id} className="flex justify-between items-center text-[12px]">
+                <span className="text-muted-foreground">
+                  {transaction.transactionType === 'booking' ? 'Initial Payment' :
+                   transaction.transactionType === 'renewal' ? `Renewal ${index}` :
+                   transaction.transactionType}
+                </span>
+                <span className="font-medium">₹{transaction.amount.toLocaleString()}</span>
+              </div>
+            ))}
+          <Separator className="my-1" />
+          <div className="flex justify-between items-center text-[13px] font-semibold">
+            <span>Total Paid</span>
+            <span>₹{totalPaid.toLocaleString()}</span>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 };
