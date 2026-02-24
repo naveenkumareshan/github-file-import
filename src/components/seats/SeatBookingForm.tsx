@@ -533,7 +533,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
             {showSeatSelection && cabin && (
               <div className="space-y-4">
                 <Separator />
-                  <Label className="block mb-4 text-lg font-semibold">
+                  <Label className="block mb-1 text-sm font-medium text-muted-foreground">
                     Select Your Seat
                   </Label>
                   <Suspense fallback={<div className="p-3 text-sm text-muted-foreground">Loading seat map...</div>}>

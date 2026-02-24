@@ -327,55 +327,65 @@ const DateBasedSeatMapComponent: React.FC<DateBasedSeatMapProps> = ({
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Seat Map</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {/* Floors as simple selectable cards */}
-          <div className="grid grid-cols-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4 mb-4">
+      {exportcsv ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Seat Map</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4 mb-4">
+              {floorsList?.map((floor) => {
+                const isActive = selectedfloor === floor.number.toString();
+                return (
+                  <button
+                    key={floor.number}
+                    type="button"
+                    onClick={() => setSelectedFloor(floor.number.toString())}
+                    className={`group rounded-xl border p-3 sm:p-4 flex flex-col items-center justify-center gap-1 sm:gap-2 transition-all duration-200 ease-in-out hover:shadow-md hover:-translate-y-[1px] active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-400 ${isActive ? "bg-blue-50 border-blue-400 shadow-md ring-1 ring-blue-300/50" : "hover:border-blue-300"}`}
+                  >
+                    <Building className={`h-4 w-4 sm:h-6 sm:w-6 transition-colors ${isActive ? "text-blue-600" : "text-gray-600 group-hover:text-blue-500"}`} />
+                    <span className={`text-xs sm:text-base font-medium ${isActive ? "text-blue-700" : "text-gray-800"}`}>Floor {floor.number}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {loading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
+              </div>
+            ) : (
+              <FloorPlanViewer
+                seats={transformedSeats}
+                sections={sections}
+                roomWidth={roomWidth}
+                roomHeight={roomHeight}
+                onSeatSelect={onSeatSelect}
+                selectedSeat={selectedSeat}
+                dateRange={{ start: startDate, end: endDate }}
+                layoutImage={layoutImage}
+              />
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <div>
+          {/* Compact floor selector for student view */}
+          <div className="flex gap-1.5 mb-2 overflow-x-auto pb-1">
             {floorsList?.map((floor) => {
               const isActive = selectedfloor === floor.number.toString();
-
               return (
                 <button
                   key={floor.number}
                   type="button"
                   onClick={() => setSelectedFloor(floor.number.toString())}
-                  className={`
-                     group rounded-xl border p-3 sm:p-4
-                    flex flex-col items-center justify-center gap-1 sm:gap-2
-                    transition-all duration-200 ease-in-out
-                    hover:shadow-md hover:-translate-y-[1px]
-                    active:scale-95
-                    focus:outline-none focus:ring-2 focus:ring-blue-400
-
-                    ${
-                      isActive
-                        ? "bg-blue-50  border-blue-400 shadow-md ring-1 ring-blue-300/50"
-                        : "hover:border-blue-300"
-                    }
-                  `}
+                  className={`flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-all whitespace-nowrap ${isActive ? "bg-blue-50 border-blue-400 text-blue-700" : "hover:border-blue-300 text-muted-foreground"}`}
                 >
-                  <Building
-                    className={`
-                      h-4 w-4 sm:h-6 sm:w-6 transition-colors
-                      ${isActive ? "text-blue-600" : "text-gray-600 group-hover:text-blue-500"}
-                    `}
-                  />
-                  <span
-                    className={`
-                      text-xs sm:text-base font-medium
-                      ${isActive ? "text-blue-700" : "text-gray-800"}
-                    `}
-                  >
-                    Floor {floor.number}
-                  </span>
+                  <Building className={`h-3 w-3 ${isActive ? "text-blue-600" : ""}`} />
+                  Floor {floor.number}
                 </button>
               );
             })}
           </div>
-
           {loading ? (
             <div className="flex justify-center py-8">
               <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
@@ -390,10 +400,11 @@ const DateBasedSeatMapComponent: React.FC<DateBasedSeatMapProps> = ({
               selectedSeat={selectedSeat}
               dateRange={{ start: startDate, end: endDate }}
               layoutImage={layoutImage}
+              layoutImageOpacity={100}
             />
           )}
-        </CardContent>
-      </Card>
+        </div>
+      )}
 
       {selectedSeat && selectedSeat.conflictingBookings?.length > 0 && (
         <Card>

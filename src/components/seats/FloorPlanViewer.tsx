@@ -5,7 +5,7 @@ import {
 } from '@/components/ui/tooltip';
 import { ZoomIn, ZoomOut, Maximize } from 'lucide-react';
 import { format } from 'date-fns';
-import { getImageUrl } from '@/lib/utils';
+import { getImageUrl, cn } from '@/lib/utils';
 
 interface ViewerSeat {
   _id: string;
@@ -139,20 +139,17 @@ export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
 
   const resolvedLayoutImage = layoutImage ? getImageUrl(layoutImage) : null;
 
-  return (
-    <div className="space-y-3">
-      {/* Zoom controls */}
-      <div className="flex items-center justify-end gap-1">
-        <Button variant="outline" size="icon" className="h-7 w-7" onClick={handleZoomOut}><ZoomOut className="h-3.5 w-3.5" /></Button>
-        <span className="text-xs w-10 text-center">{Math.round(zoom * 100)}%</span>
-        <Button variant="outline" size="icon" className="h-7 w-7" onClick={handleZoomIn}><ZoomIn className="h-3.5 w-3.5" /></Button>
-        <Button variant="outline" size="icon" className="h-7 w-7" onClick={handleFitToScreen}><Maximize className="h-3.5 w-3.5" /></Button>
-      </div>
+  const isStudentView = layoutImageOpacity >= 100;
 
+  return (
+    <div>
       {/* Canvas */}
       <div
         ref={containerRef}
-        className="relative overflow-hidden border rounded-lg bg-muted/30 min-h-[350px] h-[60vh] touch-none"
+        className={cn(
+          "relative overflow-hidden bg-muted/30 min-h-[350px] touch-none",
+          isStudentView ? "h-[70vh]" : "h-[60vh] border rounded-lg"
+        )}
         style={{ cursor: isPanning ? 'grabbing' : 'grab' }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -162,6 +159,14 @@ export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
+        {/* Floating zoom controls */}
+        <div className="absolute top-2 right-2 z-30 flex items-center gap-0.5 bg-background/70 backdrop-blur-sm rounded-md border border-border/50 px-1 py-0.5">
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleZoomOut}><ZoomOut className="h-3 w-3" /></Button>
+          <span className="text-[10px] w-8 text-center font-medium">{Math.round(zoom * 100)}%</span>
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleZoomIn}><ZoomIn className="h-3 w-3" /></Button>
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleFitToScreen}><Maximize className="h-3 w-3" /></Button>
+        </div>
+
         <div
           className="absolute bg-background rounded shadow-sm"
           style={{
@@ -236,7 +241,6 @@ export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
           onMouseDown={e => e.stopPropagation()}
           onTouchStart={e => e.stopPropagation()}
         >
-          {/* Mini seats */}
           {seats.map(seat => {
             const mx = seat.position.x * miniScale;
             const my = seat.position.y * miniScale;
@@ -254,7 +258,6 @@ export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
               />
             );
           })}
-          {/* Viewport rect */}
           <div
             className="absolute border-2 border-primary/70 bg-primary/10 rounded-sm"
             style={{
@@ -268,17 +271,17 @@ export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
       </div>
 
       {/* Legend */}
-      <div className="flex items-center justify-center gap-4 text-xs">
-        <div className="flex items-center gap-1.5">
-          <div className="w-4 h-3 rounded border border-emerald-400 bg-emerald-50" />
+      <div className="flex items-center justify-center gap-3 text-[11px] mt-2">
+        <div className="flex items-center gap-1">
+          <div className="w-3 h-2.5 rounded border border-emerald-400 bg-emerald-50" />
           <span>Available</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-4 h-3 rounded border border-primary bg-primary" />
+        <div className="flex items-center gap-1">
+          <div className="w-3 h-2.5 rounded border border-primary bg-primary" />
           <span>Selected</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-4 h-3 rounded border border-muted-foreground/30 bg-muted" />
+        <div className="flex items-center gap-1">
+          <div className="w-3 h-2.5 rounded border border-muted-foreground/30 bg-muted" />
           <span>Booked</span>
         </div>
       </div>
