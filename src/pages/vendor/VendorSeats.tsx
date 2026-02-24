@@ -26,7 +26,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const VendorSeats: React.FC = () => {
   const [selectedCabinId, setSelectedCabinId] = useState<string>('all');
-  const [selectedCabin, setSelectedCabin] = useState(null);
+  const [selectedCabin, setSelectedCabin] = useState<VendorCabin | null>(null);
   const [selectedSeat, setSelectedSeat] = useState<VendorSeat | null>(null);
   const [searchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -37,17 +37,15 @@ const VendorSeats: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   
-  // Date range states
   const [viewMode, setViewMode] = useState<"card" | "table">("table");
 
   const { toast } = useToast();
   const { hasPermission } = useVendorEmployeePermissions();
   const { user } = useAuth();
 
-  const isSeatStatus = (v: string): v is Exclude<SeatFilters['status'], 'all'> =>
+  const isSeatStatus = (v: string): v is Exclude<SeatFilters['status'], undefined> =>
   ['available', 'occupied'].includes(v);
 
-  // Build filters object
   const filters: SeatFilters = {
     cabinId: selectedCabinId !== 'all' ? selectedCabinId : undefined,
     status:
@@ -57,37 +55,26 @@ const VendorSeats: React.FC = () => {
     search: searchTerm || undefined
   };
 
-
   const handleCabinChange = (cabinId: string) => {
     setSelectedCabinId(cabinId);
-
     if (cabinId === "all") {
       setSelectedCabin(null);
       return;
     }
-
     const cabin = cabins.find((c) => c._id === cabinId) || null;
     setSelectedCabin(cabin);
   };
 
-
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [cabinsResult] = await Promise.all([
-        vendorSeatsService.getVendorCabins(),
-      ]);
-
+      const cabinsResult = await vendorSeatsService.getVendorCabins();
       if (cabinsResult.success && cabinsResult.data) {
         setCabins(cabinsResult.data.data);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch data",
-        variant: "destructive"
-      });
+      toast({ title: "Error", description: "Failed to fetch data", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -97,30 +84,21 @@ const VendorSeats: React.FC = () => {
     try {
       const result = await vendorSeatsService.getVendorSeats(filters);
       if (result.success && result.data) {
-        setSeats(result.data?.data);
+        setSeats(result.data.data);
       }
     } catch (error) {
       console.error('Error fetching seats:', error);
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  useEffect(() => {
-    fetchSeats();
-  }, [selectedCabinId, statusFilter, searchTerm]);
-
+  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchSeats(); }, [selectedCabinId, statusFilter, searchTerm]);
   useEffect(() => {
     const interval = setInterval(fetchSeats, 100000);
     return () => clearInterval(interval);
-  }, [filters]);
+  }, [selectedCabinId, statusFilter, searchTerm]);
 
-
-  const handleSeatSelect = (seat: VendorSeat) => {
-    setSelectedSeat(seat);
-  };
+  const handleSeatSelect = (seat: VendorSeat) => { setSelectedSeat(seat); };
 
   const handleEditPrice = (seat: VendorSeat) => {
     setEditingSeat(seat);
@@ -129,7 +107,6 @@ const VendorSeats: React.FC = () => {
 
   const handleSavePrice = async () => {
     if (!editingSeat || !editPrice) return;
-
     setUpdating(true);
     try {
       const result = await vendorSeatsService.updateSeatPrice(editingSeat._id, parseFloat(editPrice));
@@ -164,12 +141,28 @@ const VendorSeats: React.FC = () => {
     }
   };
 
-  function getSeatStatus(seat) {
+  const handleToggleHotSelling = async (seat: VendorSeat) => {
+    setUpdating(true);
+    try {
+      const result = await vendorSeatsService.toggleHotSelling(seat._id, !seat.isHotSelling);
+      if (result.success) {
+        toast({ title: "Success", description: seat.isHotSelling ? "Removed hot selling" : "Marked as hot selling" });
+        fetchSeats();
+      } else {
+        toast({ title: "Error", description: "Failed to update hot selling status", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to update hot selling status", variant: "destructive" });
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  function getSeatStatus(seat: VendorSeat) {
     if (seat.currentBooking) return "Occupied";
-    if (!seat.isAvailable) return "Un Available";
+    if (!seat.isAvailable) return "Unavailable";
     return "Available";
   }
-
 
   if (loading) {
     return (
@@ -222,7 +215,7 @@ const VendorSeats: React.FC = () => {
               <div>
                 <p className="text-sm text-muted-foreground">Occupied</p>
                 <p className="text-lg font-semibold">
-                  {seats.filter((s: VendorSeat) => !s.isAvailable).length}
+                  {seats.filter((s) => s.currentBooking).length}
                 </p>
               </div>
             </div>
@@ -235,7 +228,7 @@ const VendorSeats: React.FC = () => {
               <div>
                 <p className="text-sm text-muted-foreground">Available</p>
                 <p className="text-lg font-semibold">
-                  {seats.filter((s: VendorSeat) => s.isAvailable).length}
+                  {seats.filter((s) => s.isAvailable && !s.currentBooking).length}
                 </p>
               </div>
             </div>
@@ -250,38 +243,18 @@ const VendorSeats: React.FC = () => {
         </TabsList>
 
         <TabsContent value="list" className="space-y-4">
-          {/* Search and Filters */}
           <Card>
             <CardContent className="p-4">
               <div className="flex flex-wrap gap-4">
                 <div className="flex-1 min-w-[200px]">
-                  <Label>
-                    Reading Rooms Availability from{" "}
-                    {new Date().toLocaleString('en-IN', {
-                      day: '2-digit',
-                      month: 'long',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      hour12: true
-                    })}{" "}
-                    to{" "}
-                    {new Date(new Date().setDate(new Date().getDate() + 30)).toLocaleString('en-IN', {
-                      day: '2-digit',
-                      month: 'long',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      hour12: true
-                    })}
-                  </Label>
+                  <Label>Reading Room</Label>
                   <Select value={selectedCabinId} onValueChange={handleCabinChange}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select Reading Rooms" />
+                      <SelectValue placeholder="Select Reading Room" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Reading Rooms</SelectItem>
-                      {cabins.map((cabin: VendorCabin) => (
+                      {cabins.map((cabin) => (
                         <SelectItem key={cabin._id} value={cabin._id}>
                           {cabin.name}
                         </SelectItem>
@@ -305,6 +278,7 @@ const VendorSeats: React.FC = () => {
               </div>
             </CardContent>
           </Card>
+
           <div className="flex justify-between items-center mb-4">
             <CardTitle>Seats ({seats.length})</CardTitle>
             <Button variant="outline" onClick={() => setViewMode(viewMode === "card" ? "table" : "card")}>
@@ -314,88 +288,69 @@ const VendorSeats: React.FC = () => {
 
           {viewMode === "card" ? (
             <ScrollArea className="h-[600px]">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {seats.map((seat: VendorSeat) => (
-                    <Card key={seat._id} className="cursor-pointer hover:shadow-md transition-shadow">
-                      <CardContent className="p-4">
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <h3 className="font-semibold">Seat #{seat.number}</h3>
-                            <p className="text-sm text-muted-foreground">{seat.cabinName}</p>
-                          </div>
-                          <div className="flex gap-1">
-                          <Badge 
-                              variant={seat.isAvailable ? "default" : "secondary"}
-                              className={
-                                seat.isAvailable 
-                                  ? "bg-green-100 text-green-800"
-                                  : "bg-red-100 text-red-800"
-                              }
-                            >
-                              {getSeatStatus(seat)}
-                            </Badge>
-                          </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {seats.map((seat) => (
+                  <Card key={seat._id} className="cursor-pointer hover:shadow-md transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <h3 className="font-semibold">Seat #{seat.number}</h3>
+                          <p className="text-sm text-muted-foreground">{seat.cabinName}</p>
                         </div>
-                         { user.role =='admin' ||  hasPermission('seats_available_edit') &&
-                        <><div className="flex items-center justify-between mb-2">
+                        <Badge 
+                          variant={seat.isAvailable && !seat.currentBooking ? "default" : "secondary"}
+                          className={
+                            seat.currentBooking
+                              ? "bg-red-100 text-red-800"
+                              : seat.isAvailable
+                              ? "bg-green-100 text-green-800"
+                              : "bg-yellow-100 text-yellow-800"
+                          }
+                        >
+                          {getSeatStatus(seat)}
+                        </Badge>
+                      </div>
+                      {(user?.role === 'admin' || user?.role === 'vendor' || hasPermission('seats_available_edit')) && (
+                        <>
+                          <div className="flex items-center justify-between mb-2">
                             <p className="text-lg font-bold text-primary">₹{seat.price}/month</p>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleEditPrice(seat)}
-                            >
+                            <Button variant="outline" size="sm" onClick={() => handleEditPrice(seat)}>
                               <Edit className="h-3 w-3" />
                             </Button>
-                          </div><div className="flex gap-2 mb-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleToggleAvailability(seat)}
-                                disabled={updating}
-                              >
-                                {seat.isAvailable ? 'Mark Unavailable' : 'Mark Available'}
-                              </Button>
-                              {seat.isAvailable && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleToggleHotSelling(seat)}
-                                  disabled={updating}
-                                >
-                                  {seat.isHotSelling ? 'Remove Hot' : 'Mark Hot'}
-                                </Button>
-                              )}
-                            </div></>
-}
-                        {seat.currentBooking && (
-                          <div className="mt-3 p-2 bg-muted rounded">
-                            <p className="text-sm font-medium">{seat.currentBooking.studentName}</p>
-                            <p className="text-sm font-medium">{seat.currentBooking.studentPhone}</p>
-                            <p className="text-xs text-muted-foreground">{seat.currentBooking.studentEmail}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(seat.currentBooking.startDate).toLocaleDateString()} - 
-                              {new Date(seat.currentBooking.endDate).toLocaleDateString()}
-                            </p>
-                            { seat.currentBooking.profilePicture &&
-                              <a
-                                href={getImageUrl(seat.currentBooking.profilePicture)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <img
-                                  src={getImageUrl(seat.currentBooking.profilePicture)}
-                                  alt={seat.currentBooking?.userId}
-                                  className="w-15 h-20 object-contain cursor-pointer"
-                                />
-                              </a>
-                            }
                           </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </ScrollArea>
+                          <div className="flex gap-2 mb-2">
+                            <Button variant="outline" size="sm" onClick={() => handleToggleAvailability(seat)} disabled={updating}>
+                              {seat.isAvailable ? 'Mark Unavailable' : 'Mark Available'}
+                            </Button>
+                            {seat.isAvailable && (
+                              <Button variant="outline" size="sm" onClick={() => handleToggleHotSelling(seat)} disabled={updating}>
+                                {seat.isHotSelling ? 'Remove Hot' : 'Mark Hot'}
+                              </Button>
+                            )}
+                          </div>
+                        </>
+                      )}
+                      {seat.currentBooking && (
+                        <div className="mt-3 p-2 bg-muted rounded">
+                          <p className="text-sm font-medium">{seat.currentBooking.studentName}</p>
+                          <p className="text-sm font-medium">{seat.currentBooking.studentPhone}</p>
+                          <p className="text-xs text-muted-foreground">{seat.currentBooking.studentEmail}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(seat.currentBooking.startDate).toLocaleDateString()} - 
+                            {new Date(seat.currentBooking.endDate).toLocaleDateString()}
+                          </p>
+                          {seat.currentBooking.profilePicture && (
+                            <a href={getImageUrl(seat.currentBooking.profilePicture)} target="_blank" rel="noopener noreferrer">
+                              <img src={getImageUrl(seat.currentBooking.profilePicture)} alt="Student" className="w-15 h-20 object-contain cursor-pointer" />
+                            </a>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </ScrollArea>
           ) : (
             <Table>
               <TableHeader>
@@ -404,52 +359,49 @@ const VendorSeats: React.FC = () => {
                   <TableHead>Cabin</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Price</TableHead>
-                  { hasPermission('seats_available_edit') &&
-                  <TableHead>Actions</TableHead> }
+                  {(user?.role === 'admin' || user?.role === 'vendor' || hasPermission('seats_available_edit')) && (
+                    <TableHead>Actions</TableHead>
+                  )}
                   <TableHead>Booking Info</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {seats.map((seat: VendorSeat) => (
+                {seats.map((seat) => (
                   <TableRow key={seat._id}>
                     <TableCell>#{seat.number}</TableCell>
                     <TableCell>{seat.cabinName}</TableCell>
                     <TableCell>
                       <Badge
-                        variant={seat.isAvailable ? "default" : "secondary"}
+                        variant={seat.isAvailable && !seat.currentBooking ? "default" : "secondary"}
                         className={
-                          seat.isAvailable
+                          seat.currentBooking
+                            ? "bg-red-100 text-red-800"
+                            : seat.isAvailable
                             ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
+                            : "bg-yellow-100 text-yellow-800"
                         }
                       >
                         {getSeatStatus(seat)}
                       </Badge>
                     </TableCell>
                     <TableCell>₹{seat.price}/mo</TableCell>
-                    {(user.role =='admin' || user.role =='vendor' ||  hasPermission('seats_available_edit')) &&
-                    <TableCell className="space-y-2">
-                      
-                      {seat.currentBooking ? null
-                        : (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleToggleAvailability(seat)}
-                            disabled={updating}
-                          >
+                    {(user?.role === 'admin' || user?.role === 'vendor' || hasPermission('seats_available_edit')) && (
+                      <TableCell className="space-y-2">
+                        {!seat.currentBooking && (
+                          <Button variant="outline" size="sm" onClick={() => handleToggleAvailability(seat)} disabled={updating}>
                             {seat.isAvailable ? "Mark Unavailable" : "Mark Available"}
                           </Button>
-                        )
-                      }
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEditPrice(seat)}
-                      >
-                        <Edit className="h-3 w-3" />
-                      </Button>
-                    </TableCell> }
+                        )}
+                        {seat.isAvailable && !seat.currentBooking && (
+                          <Button variant="outline" size="sm" onClick={() => handleToggleHotSelling(seat)} disabled={updating}>
+                            {seat.isHotSelling ? "Remove Hot" : "Mark Hot"}
+                          </Button>
+                        )}
+                        <Button variant="outline" size="sm" onClick={() => handleEditPrice(seat)}>
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                      </TableCell>
+                    )}
                     <TableCell>
                       {seat.currentBooking ? (
                         <div className="text-sm">
@@ -460,19 +412,11 @@ const VendorSeats: React.FC = () => {
                             {new Date(seat.currentBooking.startDate).toLocaleDateString()} -{' '}
                             {new Date(seat.currentBooking.endDate).toLocaleDateString()}
                           </div>
-                            { seat.currentBooking.profilePicture &&
-                              <a
-                                href={getImageUrl(seat.currentBooking.profilePicture)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <img
-                                  src={getImageUrl(seat.currentBooking.profilePicture)}
-                                  alt={seat.currentBooking?.userId}
-                                  className="w-10 h-10 object-contain cursor-pointer"
-                                />
-                              </a>
-                            }
+                          {seat.currentBooking.profilePicture && (
+                            <a href={getImageUrl(seat.currentBooking.profilePicture)} target="_blank" rel="noopener noreferrer">
+                              <img src={getImageUrl(seat.currentBooking.profilePicture)} alt="Student" className="w-10 h-10 object-contain cursor-pointer" />
+                            </a>
+                          )}
                         </div>
                       ) : (
                         <span className="text-xs text-muted-foreground">No booking</span>
@@ -483,7 +427,6 @@ const VendorSeats: React.FC = () => {
               </TableBody>
             </Table>
           )}
-
         </TabsContent>
 
         <TabsContent value="availability" className="space-y-4">
@@ -497,10 +440,10 @@ const VendorSeats: React.FC = () => {
                   <Label>Reading Rooms</Label>
                   <Select value={selectedCabinId} onValueChange={handleCabinChange}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select Reading Rooms" />
+                      <SelectValue placeholder="Select Reading Room" />
                     </SelectTrigger>
                     <SelectContent>
-                      {cabins.map((cabin: VendorCabin) => (
+                      {cabins.map((cabin) => (
                         <SelectItem key={cabin._id} value={cabin._id}>
                           {cabin.name}
                         </SelectItem>
@@ -510,7 +453,7 @@ const VendorSeats: React.FC = () => {
                 </div>
               </div>
 
-              {selectedCabinId && selectedCabinId !== 'all' && (
+              {selectedCabinId && selectedCabinId !== 'all' && selectedCabin && (
                 <DateBasedSeatMap
                   cabinId={selectedCabinId}
                   floorsList={selectedCabin.floors}
@@ -549,10 +492,7 @@ const VendorSeats: React.FC = () => {
               />
             </div>
             <div className="flex gap-2">
-              <Button 
-                onClick={handleSavePrice}
-                disabled={updating || !editPrice}
-              >
+              <Button onClick={handleSavePrice} disabled={updating || !editPrice}>
                 <Save className="h-4 w-4 mr-2" />
                 Save Price
               </Button>

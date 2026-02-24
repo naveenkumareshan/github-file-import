@@ -79,6 +79,9 @@ export const adminCabinsService = {
   createCabin: async (data: any) => {
     try {
       // Map to Supabase snake_case columns
+      // Get current user for created_by
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+
       const cabinRecord: any = {
         name: data.name,
         description: data.description,
@@ -95,6 +98,7 @@ export const adminCabinsService = {
         locker_available: data.lockerAvailable ?? false,
         locker_price: data.lockerPrice ?? 0,
         full_address: data.fullAddress || '',
+        created_by: data.created_by || currentUser?.id || null,
       };
 
       const { data: result, error } = await supabase
@@ -132,6 +136,7 @@ export const adminCabinsService = {
       if (data.lockerAvailable !== undefined) (updateData as any).locker_available = data.lockerAvailable;
       if (data.lockerPrice !== undefined) (updateData as any).locker_price = data.lockerPrice;
       if (data.fullAddress !== undefined) (updateData as any).full_address = data.fullAddress;
+      if (data.created_by !== undefined) (updateData as any).created_by = data.created_by;
 
       const { data: result, error } = await supabase
         .from('cabins')
