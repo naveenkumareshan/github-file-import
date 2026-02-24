@@ -227,7 +227,7 @@ export const vendorSeatsService = {
       if (seatIds.length > 0) {
         const { data: bookings } = await supabase
           .from('bookings')
-          .select('*, profiles:user_id(id, name, email, phone, profile_picture, serial_number, course_studying, college_studied, address, city, state, date_of_birth, gender)')
+          .select('*, profiles!bookings_user_id_fkey(id, name, email, phone, profile_picture, serial_number, course_studying, college_studied, address, city, state, date_of_birth, gender)')
           .in('seat_id', seatIds)
           .eq('payment_status', 'completed')
           .gte('end_date', date)
@@ -327,7 +327,7 @@ export const vendorSeatsService = {
 
       const paymentStatus = data.paymentMethod === 'send_link' ? 'pending' : 'completed';
 
-      const { error } = await supabase
+      const { error, data: insertedData } = await supabase
         .from('bookings')
         .insert({
           seat_id: data.seatId,
@@ -349,10 +349,12 @@ export const vendorSeatsService = {
           collected_by: data.collectedBy || null,
           collected_by_name: data.collectedByName || '',
           transaction_id: data.transactionId || '',
-        });
+        })
+        .select('serial_number')
+        .single();
 
       if (error) throw error;
-      return { success: true };
+      return { success: true, serialNumber: insertedData?.serial_number || serialData || '' };
     } catch (error) {
       console.error('Error creating partner booking:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Failed' };
@@ -455,7 +457,7 @@ export const vendorSeatsService = {
       if (seatIds.length > 0) {
         const { data: bookings } = await supabase
           .from('bookings')
-          .select('*, profiles:user_id(id, name, email, phone, profile_picture, serial_number, course_studying, college_studied, address, city, state, date_of_birth, gender)')
+          .select('*, profiles!bookings_user_id_fkey(id, name, email, phone, profile_picture, serial_number, course_studying, college_studied, address, city, state, date_of_birth, gender)')
           .in('seat_id', seatIds)
           .eq('payment_status', 'completed')
           .gte('end_date', today)
@@ -504,7 +506,7 @@ export const vendorSeatsService = {
       const today = new Date().toISOString().split('T')[0];
       const { data, error } = await supabase
         .from('bookings')
-        .select('*, profiles:user_id(name, email, phone, profile_picture)')
+        .select('*, profiles!bookings_user_id_fkey(name, email, phone, profile_picture)')
         .eq('seat_id', seatId)
         .eq('payment_status', 'completed')
         .gte('end_date', today)

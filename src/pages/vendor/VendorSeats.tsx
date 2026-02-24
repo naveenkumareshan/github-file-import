@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { format, addDays, addMonths } from 'date-fns';
 import { getImageUrl } from '@/lib/utils';
+import { downloadInvoice, InvoiceData } from '@/utils/invoiceGenerator';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,7 +23,7 @@ import {
 } from '@/components/ui/dialog';
 import {
   LayoutGrid, List, CalendarIcon, Search, Ban, Lock, Unlock,
-  Edit, Save, X, IndianRupee, Users, CheckCircle, Clock, AlertTriangle, RefreshCw, UserPlus, Info, ChevronDown, CreditCard, Banknote, Smartphone, Building2, Send,
+  Edit, Save, X, IndianRupee, Users, CheckCircle, Clock, AlertTriangle, RefreshCw, UserPlus, Info, ChevronDown, CreditCard, Banknote, Smartphone, Building2, Send, Download, ArrowLeft,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -74,6 +75,10 @@ const VendorSeats: React.FC = () => {
   const [discountReason, setDiscountReason] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<string>('cash');
   const [transactionId, setTransactionId] = useState('');
+
+  // Booking success state
+  const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [lastInvoiceData, setLastInvoiceData] = useState<InvoiceData | null>(null);
 
   // New student form
   const [showNewStudent, setShowNewStudent] = useState(false);
@@ -171,6 +176,8 @@ const VendorSeats: React.FC = () => {
     setDiscountReason('');
     setPaymentMethod('cash');
     setTransactionId('');
+    setBookingSuccess(false);
+    setLastInvoiceData(null);
 
     // Set locker default based on cabin
     const cabin = cabins.find(c => c._id === seat.cabinId);
@@ -305,8 +312,33 @@ const VendorSeats: React.FC = () => {
     };
     const res = await vendorSeatsService.createPartnerBooking(data);
     if (res.success) {
+      // Build invoice data
+      const cabinName = cabins.find(c => c._id === selectedSeat.cabinId)?.name || '';
+      const invoiceData: InvoiceData = {
+        serialNumber: res.serialNumber || 'N/A',
+        bookingDate: new Date().toISOString(),
+        studentName: selectedStudent.name,
+        studentEmail: selectedStudent.email,
+        studentPhone: selectedStudent.phone,
+        studentSerialNumber: selectedStudent.serialNumber,
+        cabinName,
+        seatNumber: selectedSeat.number,
+        startDate: format(bookingStartDate, 'yyyy-MM-dd'),
+        endDate: format(computedEndDate, 'yyyy-MM-dd'),
+        duration: bookingPlan === 'monthly' ? '1 Month' : bookingPlan === '15days' ? '15 Days' : `${customDays} Days`,
+        seatAmount: parseFloat(bookingPrice) || 0,
+        discountAmount: parseFloat(discountAmount) || 0,
+        discountReason,
+        lockerIncluded,
+        lockerPrice: lockerIncluded && selectedCabinInfo ? selectedCabinInfo.lockerPrice : 0,
+        totalAmount: computedTotal,
+        paymentMethod,
+        transactionId,
+        collectedByName,
+      };
+      setLastInvoiceData(invoiceData);
+      setBookingSuccess(true);
       toast({ title: paymentMethod === 'send_link' ? 'Payment link sent' : 'Booking created successfully' });
-      setSheetOpen(false);
       fetchSeats();
     } else {
       toast({ title: 'Error', description: res.error || 'Failed to create booking', variant: 'destructive' });
@@ -666,8 +698,78 @@ const VendorSeats: React.FC = () => {
                 </div>
               )}
 
+              {/* ── BOOKING SUCCESS VIEW ── */}
+              {selectedSeat.dateStatus === 'available' && bookingSuccess && lastInvoiceData && (
+                <div className="space-y-3">
+                  <div className="flex flex-col items-center py-4">
+                    <div className="h-12 w-12 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center mb-2">
+                      <CheckCircle className="h-6 w-6 text-emerald-600" />
+                    </div>
+                    <h4 className="text-sm font-semibold">Booking Confirmed!</h4>
+                    <p className="text-[11px] text-muted-foreground">{lastInvoiceData.serialNumber}</p>
+                  </div>
+
+                  <div className="border rounded p-3 text-[11px] space-y-2 bg-muted/30">
+                    <div className="grid grid-cols-2 gap-y-1.5">
+                      <div><span className="text-muted-foreground">Student:</span></div>
+                      <div className="font-medium">{lastInvoiceData.studentName}</div>
+                      <div><span className="text-muted-foreground">Phone:</span></div>
+                      <div>{lastInvoiceData.studentPhone}</div>
+                      <div><span className="text-muted-foreground">Room:</span></div>
+                      <div className="font-medium">{lastInvoiceData.cabinName}</div>
+                      <div><span className="text-muted-foreground">Seat:</span></div>
+                      <div>#{lastInvoiceData.seatNumber}</div>
+                      <div><span className="text-muted-foreground">Period:</span></div>
+                      <div>{lastInvoiceData.duration}</div>
+                      <div><span className="text-muted-foreground">Start:</span></div>
+                      <div>{new Date(lastInvoiceData.startDate).toLocaleDateString('en-IN')}</div>
+                      <div><span className="text-muted-foreground">End:</span></div>
+                      <div>{new Date(lastInvoiceData.endDate).toLocaleDateString('en-IN')}</div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="space-y-1">
+                      <div className="flex justify-between"><span>Seat Amount</span><span>₹{lastInvoiceData.seatAmount}</span></div>
+                      {lastInvoiceData.discountAmount > 0 && (
+                        <div className="flex justify-between text-emerald-600"><span>Discount{lastInvoiceData.discountReason ? ` (${lastInvoiceData.discountReason})` : ''}</span><span>-₹{lastInvoiceData.discountAmount}</span></div>
+                      )}
+                      {lastInvoiceData.lockerIncluded && (
+                        <div className="flex justify-between"><span>Locker</span><span>₹{lastInvoiceData.lockerPrice}</span></div>
+                      )}
+                      <Separator />
+                      <div className="flex justify-between font-semibold text-xs"><span>Total</span><span>₹{lastInvoiceData.totalAmount}</span></div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="grid grid-cols-2 gap-y-1">
+                      <div><span className="text-muted-foreground">Payment:</span></div>
+                      <div>{lastInvoiceData.paymentMethod === 'cash' ? 'Cash' : lastInvoiceData.paymentMethod === 'upi' ? 'UPI' : lastInvoiceData.paymentMethod === 'bank_transfer' ? 'Bank Transfer' : 'Payment Link'}</div>
+                      {lastInvoiceData.transactionId && (
+                        <>
+                          <div><span className="text-muted-foreground">Txn ID:</span></div>
+                          <div className="break-all">{lastInvoiceData.transactionId}</div>
+                        </>
+                      )}
+                      <div><span className="text-muted-foreground">Collected By:</span></div>
+                      <div>{lastInvoiceData.collectedByName}</div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button size="sm" className="flex-1 h-8 text-xs gap-1" onClick={() => downloadInvoice(lastInvoiceData)}>
+                      <Download className="h-3 w-3" /> Download Invoice
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={() => { setBookingSuccess(false); setSheetOpen(false); }}>
+                      <ArrowLeft className="h-3 w-3" /> Close
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               {/* ── AVAILABLE: Booking form ── */}
-              {selectedSeat.dateStatus === 'available' && canEdit && (
+              {selectedSeat.dateStatus === 'available' && canEdit && !bookingSuccess && (
                 <div className="space-y-3">
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
                     <UserPlus className="h-3 w-3" /> Book This Seat
