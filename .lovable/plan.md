@@ -1,74 +1,44 @@
 
 
-## Fix Seat Availability, Renewal Amount, View Details & Sorting
+## Fix "View Details" Page -- BookingTransactionView Crashes
 
-### Root Cause Analysis
+The "View Details" page crashes due to multiple bugs in `BookingTransactionView.tsx` when it receives booking data from the student view. There are 3 distinct crash points:
 
-**1. Seat shows "not available" even though it is available**
+### Root Causes
 
-The `BookingRenewal` component calls `seatsService.checkSeatAvailability(seatId, ...)` but the `seatId` passed is `null`. Here's why:
-- In `StudentBookings.tsx`, the `mapBooking` function sets `seatId: null` (line 62)
-- The booking table has a `seat_id` column but it's `NULL` for existing bookings (only `seat_number` is populated)
-- When `BookingRenewal` tries to extract the seat ID (`booking.seatId`), it gets `null`
-- `checkSeatAvailability` then queries `seats.eq('id', null)` which fails, returning "not available"
+**Crash 1 -- Line 174: `booking.seatPrice.toLocaleString()`**
+The `StudentBookingView` passes a mapped `BookingDetail` object that does NOT have a `seatPrice` property. The code tries to call `.toLocaleString()` on `undefined`, causing an immediate crash.
 
-**Fix**: In `StudentBookings.tsx`, look up the seat by `cabin_id` + `seat_number` to populate `seatId` with the actual seat UUID and price. Also update `BookingRenewal` to handle the case where `seatId` might be a string UUID (not an object), and fetch the seat price from the DB if not embedded.
+**Crash 2 -- Line 74: `transactionsResponse.data.data.filter(...)`**
+The `getUserTransactions()` service returns `{ success: true, data: [] }` (a flat array), but the code tries to access `.data.data` (expecting a nested `data` property). This means `.data` is an array and `.data.data` is `undefined`, so calling `.filter()` on it throws "Cannot read properties of undefined".
 
-**2. Renewal amount calculation is wrong**
+**Crash 3 -- Line 61: `new Date(booking.endDate)`**
+The `endDate` value comes through correctly from the mapping, but other fields like `booking.cabinId?.name`, `booking.seatId?.number` will show as undefined since the mapped object uses flat `cabinName` and `seatNumber` instead.
 
-`BookingRenewal.calculateAdditionalAmount()` reads `booking.seatId?.price` but:
-- `seatId` is either `null` or a plain string UUID (not an object with `.price`)
-- Falls back to hardcoded `1000` instead of the actual seat price (`2000` in this case)
+### Fix Plan
 
-**Fix**: After fixing the seatId population in `mapBooking` to include the price, or fetch seat price inside `BookingRenewal` when the dialog opens.
+**File: `src/components/booking/BookingTransactionView.tsx`**
 
-**3. View Details shows large desktop-style page**
+1. **Fix the transaction fetch** (line 74): Change `transactionsResponse.data.data.filter(...)` to `transactionsResponse.data.filter(...)` since `getUserTransactions` returns a flat array, not a nested object.
 
-The `StudentBookingView` component uses `container mx-auto px-4 py-8 max-w-4xl` with large Card headers -- not matching the compact mobile app layout.
+2. **Fix `seatPrice` crash** (line 174): Add optional chaining -- `booking.seatPrice?.toLocaleString()` with a fallback to `booking.totalPrice?.toLocaleString() || '0'`. This ensures the page renders even when `seatPrice` is not present.
 
-**Fix**: Redesign `StudentBookingView` to use compact mobile-friendly layout matching the app style (smaller text, tighter spacing, rounded cards).
+3. **Fix booking field access throughout the component**: The component references `booking.cabinId?.name`, `booking.seatId?.number`, `booking.hostelId?.name`, `booking.bedId?.number` -- these don't exist on the student's mapped object. Add fallbacks:
+   - `booking.cabinId?.name || booking.cabinName || 'N/A'`
+   - `booking.seatId?.number || booking.seatNumber || 'N/A'`
 
-**4. Bookings not sorted newest first**
+4. **Guard the `endDate` usage** (line 61): Wrap in a try-catch or check validity before creating a Date object.
 
-`getCurrentBookings()` sorts by `end_date ascending`. Both active and expired tabs should show newest bookings first.
+5. **Guard optional rendering**: Add null checks on `booking.originalPrice`, `booking.appliedCoupon`, `booking.transferredHistory` to prevent rendering errors when these are absent.
 
-**Fix**: Change sort order to `created_at descending` in `getCurrentBookings()` and ensure the history list also uses descending order.
+### Summary
 
----
-
-### Implementation Plan
-
-#### File 1: `src/pages/StudentBookings.tsx`
-- Update `mapBooking` to populate `seatId` as an object with `_id`, `number`, and `price` by joining seat data
-- Update `fetchBookings` to also fetch seat info from the `seats` table for each booking's `seat_number` + `cabin_id`
-- Sort both active and expired lists by `created_at` descending (newest first)
-
-#### File 2: `src/api/bookingsService.ts`
-- Update `getCurrentBookings()` to sort by `created_at` descending instead of `end_date` ascending
-- Update `getCurrentBookings()` and `getBookingHistory()` to also join the `seats` table data (seat price) via the `seat_id` column, or return `seat_number` for lookup
-
-#### File 3: `src/components/booking/BookingRenewal.tsx`
-- Add a `useEffect` that fetches the actual seat price from the database when the dialog opens, using `cabin_id` + `seat_number` if `seatId` doesn't have a price
-- Update `checkSeatAvailability` to find the seat UUID by `cabin_id` + `seat_number` if `seatId` is null or not a valid UUID
-- This ensures amount calculation uses the real seat price, not the fallback `1000`
-
-#### File 4: `src/pages/students/StudentBookingView.tsx`
-- Redesign the layout to be compact and mobile-friendly:
-  - Remove large `container max-w-4xl` wrapper
-  - Use smaller text sizes (`text-[13px]`, `text-[11px]`)
-  - Compact card with rounded corners matching app style
-  - Inline booking info instead of 2-column grid
-  - Smaller back button and header
-  - Keep the `BookingTransactionView` section but make it fit the mobile layout
-
----
-
-### Technical Details
-
-| Issue | Root Cause | Fix Location |
+| Bug | Location | Fix |
 |---|---|---|
-| Seat "not available" | `seatId` is null in booking data, checkSeatAvailability fails | `StudentBookings.tsx` mapBooking + `BookingRenewal.tsx` seat lookup |
-| Wrong renewal amount | Falls back to Rs.1000 instead of actual seat price (Rs.2000) | `BookingRenewal.tsx` fetch seat price on open |
-| View Details blank/ugly | Large desktop layout on mobile | `StudentBookingView.tsx` redesign |
-| Sort order | Active sorted by end_date asc | `bookingsService.ts` change to created_at desc |
+| `seatPrice` undefined crash | Line 174 | Optional chaining + fallback to `totalPrice` |
+| `data.data.filter` undefined | Line 74 | Use `data.filter` directly (flat array) |
+| Missing `cabinId.name` etc. | Lines 163-169 | Add fallbacks to flat field names |
+| Missing guard on optional fields | Lines 179-205 | Add null checks |
+
+Only one file needs editing: `src/components/booking/BookingTransactionView.tsx`
 
