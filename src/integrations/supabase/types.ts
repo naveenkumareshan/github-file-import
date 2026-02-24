@@ -60,12 +60,17 @@ export type Database = {
         Row: {
           booking_duration: string | null
           cabin_id: string | null
+          collected_by: string | null
+          collected_by_name: string
           created_at: string | null
+          discount_amount: number
+          discount_reason: string
           duration_count: string | null
           end_date: string | null
           id: string
           locker_included: boolean
           locker_price: number
+          payment_method: string
           payment_status: string | null
           razorpay_order_id: string | null
           razorpay_payment_id: string | null
@@ -75,18 +80,24 @@ export type Database = {
           serial_number: string | null
           start_date: string | null
           total_price: number | null
+          transaction_id: string
           updated_at: string | null
           user_id: string
         }
         Insert: {
           booking_duration?: string | null
           cabin_id?: string | null
+          collected_by?: string | null
+          collected_by_name?: string
           created_at?: string | null
+          discount_amount?: number
+          discount_reason?: string
           duration_count?: string | null
           end_date?: string | null
           id?: string
           locker_included?: boolean
           locker_price?: number
+          payment_method?: string
           payment_status?: string | null
           razorpay_order_id?: string | null
           razorpay_payment_id?: string | null
@@ -96,18 +107,24 @@ export type Database = {
           serial_number?: string | null
           start_date?: string | null
           total_price?: number | null
+          transaction_id?: string
           updated_at?: string | null
           user_id: string
         }
         Update: {
           booking_duration?: string | null
           cabin_id?: string | null
+          collected_by?: string | null
+          collected_by_name?: string
           created_at?: string | null
+          discount_amount?: number
+          discount_reason?: string
           duration_count?: string | null
           end_date?: string | null
           id?: string
           locker_included?: boolean
           locker_price?: number
+          payment_method?: string
           payment_status?: string | null
           razorpay_order_id?: string | null
           razorpay_payment_id?: string | null
@@ -117,6 +134,7 @@ export type Database = {
           serial_number?: string | null
           start_date?: string | null
           total_price?: number | null
+          transaction_id?: string
           updated_at?: string | null
           user_id?: string
         }

@@ -12,6 +12,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -21,7 +23,7 @@ import {
 } from '@/components/ui/dialog';
 import {
   LayoutGrid, List, CalendarIcon, Search, Ban, Lock, Unlock,
-  Edit, Save, X, IndianRupee, Users, CheckCircle, Clock, AlertTriangle, RefreshCw, UserPlus, Info, ChevronDown,
+  Edit, Save, X, IndianRupee, Users, CheckCircle, Clock, AlertTriangle, RefreshCw, UserPlus, Info, ChevronDown, CreditCard, Banknote, Smartphone, Building2, Send,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -69,6 +71,10 @@ const VendorSeats: React.FC = () => {
   const [bookingPrice, setBookingPrice] = useState('');
   const [creatingBooking, setCreatingBooking] = useState(false);
   const [lockerIncluded, setLockerIncluded] = useState(false);
+  const [discountAmount, setDiscountAmount] = useState('');
+  const [discountReason, setDiscountReason] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<string>('cash');
+  const [transactionId, setTransactionId] = useState('');
 
   // New student form
   const [showNewStudent, setShowNewStudent] = useState(false);
@@ -162,6 +168,10 @@ const VendorSeats: React.FC = () => {
     setNewStudentEmail('');
     setNewStudentPhone('');
     setBlockHistory([]);
+    setDiscountAmount('');
+    setDiscountReason('');
+    setPaymentMethod('cash');
+    setTransactionId('');
 
     // Set locker default based on cabin
     const cabin = cabins.find(c => c._id === seat.cabinId);
@@ -235,8 +245,9 @@ const VendorSeats: React.FC = () => {
   const computedTotal = useMemo(() => {
     const base = parseFloat(bookingPrice) || 0;
     const locker = lockerIncluded && selectedCabinInfo ? selectedCabinInfo.lockerPrice : 0;
-    return base + locker;
-  }, [bookingPrice, lockerIncluded, selectedCabinInfo]);
+    const discount = parseFloat(discountAmount) || 0;
+    return Math.max(0, base - discount + locker);
+  }, [bookingPrice, lockerIncluded, selectedCabinInfo, discountAmount]);
 
   // Create new student
   const handleCreateStudent = async () => {
@@ -268,7 +279,12 @@ const VendorSeats: React.FC = () => {
   // Create booking
   const handleCreateBooking = async () => {
     if (!selectedSeat || !selectedStudent) return;
+    if ((paymentMethod === 'upi' || paymentMethod === 'bank_transfer') && !transactionId.trim()) {
+      toast({ title: 'Transaction ID is required for UPI/Bank Transfer', variant: 'destructive' });
+      return;
+    }
     setCreatingBooking(true);
+    const collectedByName = paymentMethod === 'send_link' ? 'InhaleStays' : (user?.name || user?.email || 'Partner');
     const data: PartnerBookingData = {
       seatId: selectedSeat._id,
       cabinId: selectedSeat.cabinId,
@@ -281,10 +297,16 @@ const VendorSeats: React.FC = () => {
       seatNumber: selectedSeat.number,
       lockerIncluded,
       lockerPrice: lockerIncluded && selectedCabinInfo ? selectedCabinInfo.lockerPrice : 0,
+      discountAmount: parseFloat(discountAmount) || 0,
+      discountReason: discountReason,
+      paymentMethod: paymentMethod,
+      collectedBy: paymentMethod !== 'send_link' ? user?.id : undefined,
+      collectedByName: collectedByName,
+      transactionId: transactionId,
     };
     const res = await vendorSeatsService.createPartnerBooking(data);
     if (res.success) {
-      toast({ title: 'Booking created successfully' });
+      toast({ title: paymentMethod === 'send_link' ? 'Payment link sent' : 'Booking created successfully' });
       setSheetOpen(false);
       fetchSeats();
     } else {
@@ -775,22 +797,76 @@ const VendorSeats: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Booking summary */}
-                  {(lockerIncluded && selectedCabinInfo) && (
-                    <div className="border rounded p-2 text-[11px] space-y-1 bg-muted/30">
-                      <div className="flex justify-between"><span>Seat</span><span>₹{parseFloat(bookingPrice) || 0}</span></div>
-                      <div className="flex justify-between"><span>Locker</span><span>₹{selectedCabinInfo.lockerPrice}</span></div>
-                      <Separator />
-                      <div className="flex justify-between font-semibold"><span>Total</span><span>₹{computedTotal}</span></div>
+                  {/* Discount */}
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] uppercase text-muted-foreground">Discount</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input className="h-8 text-xs" type="number" placeholder="₹ Amount" value={discountAmount} onChange={e => setDiscountAmount(e.target.value)} />
+                      <Input className="h-8 text-xs" placeholder="Reason (optional)" value={discountReason} onChange={e => setDiscountReason(e.target.value)} />
+                    </div>
+                  </div>
+
+                  {/* Payment Method */}
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] uppercase text-muted-foreground">Payment Method</Label>
+                    <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="grid grid-cols-2 gap-1.5">
+                      <div className="flex items-center gap-1.5 border rounded p-1.5 cursor-pointer hover:bg-muted/50">
+                        <RadioGroupItem value="send_link" id="pm_link" className="h-3 w-3" />
+                        <Label htmlFor="pm_link" className="text-[10px] cursor-pointer flex items-center gap-1">
+                          <Send className="h-3 w-3" /> Send Link
+                        </Label>
+                      </div>
+                      <div className="flex items-center gap-1.5 border rounded p-1.5 cursor-pointer hover:bg-muted/50">
+                        <RadioGroupItem value="cash" id="pm_cash" className="h-3 w-3" />
+                        <Label htmlFor="pm_cash" className="text-[10px] cursor-pointer flex items-center gap-1">
+                          <Banknote className="h-3 w-3" /> Cash
+                        </Label>
+                      </div>
+                      <div className="flex items-center gap-1.5 border rounded p-1.5 cursor-pointer hover:bg-muted/50">
+                        <RadioGroupItem value="upi" id="pm_upi" className="h-3 w-3" />
+                        <Label htmlFor="pm_upi" className="text-[10px] cursor-pointer flex items-center gap-1">
+                          <Smartphone className="h-3 w-3" /> PhonePe / UPI
+                        </Label>
+                      </div>
+                      <div className="flex items-center gap-1.5 border rounded p-1.5 cursor-pointer hover:bg-muted/50">
+                        <RadioGroupItem value="bank_transfer" id="pm_bank" className="h-3 w-3" />
+                        <Label htmlFor="pm_bank" className="text-[10px] cursor-pointer flex items-center gap-1">
+                          <Building2 className="h-3 w-3" /> Bank Transfer
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  {/* Transaction ID (required for UPI/Bank) */}
+                  {(paymentMethod === 'upi' || paymentMethod === 'bank_transfer') && (
+                    <div>
+                      <Label className="text-[10px] uppercase text-muted-foreground">Transaction ID *</Label>
+                      <Input className="h-8 text-xs" placeholder="Enter transaction reference ID" value={transactionId} onChange={e => setTransactionId(e.target.value)} />
                     </div>
                   )}
 
+                  {/* Booking summary */}
+                  <div className="border rounded p-2 text-[11px] space-y-1 bg-muted/30">
+                    <div className="flex justify-between"><span>Seat Amount</span><span>₹{parseFloat(bookingPrice) || 0}</span></div>
+                    {parseFloat(discountAmount) > 0 && (
+                      <div className="flex justify-between text-emerald-600"><span>Discount{discountReason ? ` (${discountReason})` : ''}</span><span>-₹{parseFloat(discountAmount)}</span></div>
+                    )}
+                    {lockerIncluded && selectedCabinInfo && (
+                      <div className="flex justify-between"><span>Locker</span><span>₹{selectedCabinInfo.lockerPrice}</span></div>
+                    )}
+                    <Separator />
+                    <div className="flex justify-between font-semibold"><span>Total</span><span>₹{computedTotal}</span></div>
+                    <div className="text-muted-foreground text-[10px]">
+                      Collected by: {paymentMethod === 'send_link' ? 'InhaleStays' : (user?.name || user?.email || 'Partner')}
+                    </div>
+                  </div>
+
                   <Button
                     className="w-full h-9 text-xs"
-                    disabled={!selectedStudent || creatingBooking}
+                    disabled={!selectedStudent || creatingBooking || ((paymentMethod === 'upi' || paymentMethod === 'bank_transfer') && !transactionId.trim())}
                     onClick={handleCreateBooking}
                   >
-                    {creatingBooking ? 'Creating...' : `Confirm Booking · ₹${computedTotal}`}
+                    {creatingBooking ? 'Creating...' : paymentMethod === 'send_link' ? `Send Payment Link · ₹${computedTotal}` : `Confirm Booking (${paymentMethod === 'cash' ? 'Cash' : paymentMethod === 'upi' ? 'UPI' : 'Bank Transfer'}) · ₹${computedTotal}`}
                   </Button>
                 </div>
               )}
@@ -844,6 +920,14 @@ const VendorSeats: React.FC = () => {
                           <span>₹{b.totalPrice}{b.lockerIncluded ? ` (incl. locker ₹${b.lockerPrice})` : ''}</span>
                           <span className="text-muted-foreground">{b.studentPhone}</span>
                         </div>
+                        {(b.discountAmount ?? 0) > 0 && (
+                          <div className="text-emerald-600">Discount: ₹{b.discountAmount}{b.discountReason ? ` (${b.discountReason})` : ''}</div>
+                        )}
+                        {b.paymentMethod && b.paymentMethod !== 'online' && (
+                          <div className="text-muted-foreground">Payment: {b.paymentMethod === 'send_link' ? 'Payment Link' : b.paymentMethod === 'upi' ? 'UPI' : b.paymentMethod === 'bank_transfer' ? 'Bank Transfer' : 'Cash'}</div>
+                        )}
+                        {b.collectedByName && <div className="text-muted-foreground">Collected by: {b.collectedByName}</div>}
+                        {b.transactionId && <div className="text-muted-foreground">Txn ID: {b.transactionId}</div>}
                         {b.serialNumber && <div className="text-muted-foreground">#{b.serialNumber}</div>}
                       </div>
                     ))}
@@ -872,6 +956,11 @@ const VendorSeats: React.FC = () => {
                           <span>₹{b.totalPrice}{b.lockerIncluded ? ` (incl. locker ₹${b.lockerPrice})` : ''}</span>
                           <span className="text-muted-foreground">{b.studentPhone}</span>
                         </div>
+                        {(b.discountAmount ?? 0) > 0 && (
+                          <div className="text-emerald-600">Discount: ₹{b.discountAmount}{b.discountReason ? ` (${b.discountReason})` : ''}</div>
+                        )}
+                        {b.collectedByName && <div className="text-muted-foreground">Collected by: {b.collectedByName}</div>}
+                        {b.transactionId && <div className="text-muted-foreground">Txn ID: {b.transactionId}</div>}
                       </div>
                     ))}
                   </div>
