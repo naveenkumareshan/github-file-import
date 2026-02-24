@@ -1,57 +1,48 @@
 
 
-## Seat Management Enhancements
+## Fix Seat Alignment, Edit Popup, and Scroll Behavior
 
-### 1. Draggable Seats on Canvas
-Make placed seats draggable so admins can reposition them by clicking and dragging. When not in placement mode, clicking and dragging a seat will move it to a new position and save the updated coordinates.
+### 1. Grid-Snap for Seat Placement and Dragging
 
-**In `FloorPlanDesigner.tsx`:**
-- Add `draggingSeatId` state and drag offset tracking
-- On seat mousedown (when not in placement mode): start dragging, track offset
-- On mousemove: update the dragged seat's position in real-time
-- On mouseup: finalize position, call a new `onSeatMove` callback to persist
-- Prevent panning while dragging a seat
-
-### 2. Edit Category on Existing Seat Click
-Replace the static "Category: Non-AC" text in the seat details panel with a dropdown/radio selector so admins can change the category of an already-placed seat.
-
-**In `SeatManagement.tsx`:**
-- Replace the plain text category display with a Select dropdown populated from the categories list
-- Add a `handleCategoryUpdate` function that calls `adminSeatsService.updateSeat` with the new category
-- When category changes, also update the seat's price to match the category's default price
-
-### 3. Category Management (Add/Rename Categories with Pricing)
-Create a new `seat_categories` database table so admins can define custom categories (e.g., "AC", "Non-AC", "Premium") with a default price per category. This replaces the hardcoded `SEAT_CATEGORIES` array.
-
-**Database migration:**
-- Create `seat_categories` table with columns: `id`, `cabin_id`, `name`, `price`, `created_at`
-- Seed default categories (AC, Non-AC, Premium, Economy) per cabin or globally
-
-**New service: `src/api/seatCategoryService.ts`**
-- CRUD operations for seat categories scoped by cabin
-
-**In `SeatManagement.tsx`:**
-- Add a "Manage Categories" section/dialog where admins can:
-  - Add a new category with a name and default price
-  - Edit existing category name or price
-  - Delete a category
-- Fetch categories on load and pass to FloorPlanDesigner
-- When a category's price is updated, optionally bulk-update all seats of that category
+Currently seats are placed at arbitrary pixel coordinates, causing misalignment. We will snap all seat positions to a grid (e.g., 40px intervals) so seats always align vertically and horizontally.
 
 **In `FloorPlanDesigner.tsx`:**
-- Accept `categories` as a prop instead of using hardcoded `SEAT_CATEGORIES`
-- The placement dialog uses dynamic categories from the prop
-- Price auto-fills from the selected category's default price
+- Add a `GRID_SNAP` constant (e.g., 40px)
+- Create a `snapToGrid(value)` helper: `Math.round(value / GRID_SNAP) * GRID_SNAP`
+- Apply snapping in the placement click handler (where `setPendingSeat` is called)
+- Apply snapping in the drag move handler (where seat position updates during drag)
+- This ensures every seat lands on a clean grid intersection
 
-### 4. Price Controlled by Category
-When placing or editing a seat, the price auto-fills based on the selected category's configured price. Admins can still override per-seat, but the category price is the default.
+### 2. Edit Popup on Existing Seat Click
 
-### 5. Remove Image Details Display
-Remove the "Position: X: ..., Y: ..." column from the seat details panel (the screenshot shows it -- it's unnecessary clutter).
+Currently clicking a seat selects it and shows details in a separate Card below the canvas. Instead, clicking a seat will open an inline dialog/popup with editable category and price fields.
+
+**In `FloorPlanDesigner.tsx`:**
+- Add a new `editingSeat` state to track which seat is being edited
+- When a seat is clicked (not dragged), set `editingSeat` to that seat
+- Create a new `SeatEditDialog` component (similar to `SeatPlacementDialog`) with:
+  - Seat number (read-only display)
+  - Category selector (radio group from dynamic categories)
+  - Price (auto-filled from category, editable)
+  - Availability toggle
+  - Save and Cancel buttons
+- Add a new prop `onSeatUpdate` to handle saving category/price/availability changes
+- Distinguish click vs drag: only open edit dialog if the mouse didn't move during mousedown-mouseup
 
 **In `SeatManagement.tsx`:**
-- Remove the Position column from the selected seat details grid
-- Change grid from `grid-cols-4` to `grid-cols-3`
+- Add a `handleSeatUpdate` function that calls `adminSeatsService.updateSeat`
+- Pass it as `onSeatUpdate` prop to `FloorPlanDesigner`
+- Remove the separate "Seat Details" Card at the bottom (since editing now happens in the popup)
+
+### 3. Disable Scroll-to-Zoom by Default
+
+Currently the canvas always captures mouse wheel events for zoom, making it impossible to scroll the page. We will only enable wheel-zoom when the user is actively editing (placement mode active or a dedicated "Edit Mode" toggle is on).
+
+**In `FloorPlanDesigner.tsx`:**
+- Remove the `onWheel={handleWheel}` from the canvas container by default
+- Only attach `onWheel` when `placementMode` is true (user is actively placing/editing seats)
+- This allows normal page scrolling when the user is just viewing the layout
+- When "Place Seats" is active, scroll-to-zoom works as before for precise placement
 
 ---
 
@@ -59,19 +50,24 @@ Remove the "Position: X: ..., Y: ..." column from the seat details panel (the sc
 
 | File | Changes |
 |---|---|
-| Database migration | Create `seat_categories` table (id, cabin_id, name, price, created_at) with default rows |
-| `src/api/seatCategoryService.ts` | New file -- CRUD for seat categories |
-| `src/components/seats/FloorPlanDesigner.tsx` | Add drag-to-move seats, accept dynamic categories prop, remove hardcoded SEAT_CATEGORIES |
-| `src/pages/SeatManagement.tsx` | Add category management UI, editable category on seat details, drag handler, remove position display |
-| `src/api/adminSeatsService.ts` | No changes needed (already supports category) |
+| `src/components/seats/FloorPlanDesigner.tsx` | Add grid snapping (40px), add SeatEditDialog for click-to-edit, conditionally attach onWheel only in placement mode |
+| `src/pages/SeatManagement.tsx` | Add onSeatUpdate handler, remove bottom Seat Details card |
 
-### Database Schema
-
+### Grid Snapping Logic
 ```text
-seat_categories
-  id          uuid  PK  default gen_random_uuid()
-  cabin_id    uuid  FK -> cabins(id)
-  name        text  NOT NULL
-  price       numeric NOT NULL default 0
-  created_at  timestamptz default now()
+GRID_SNAP = 40
+
+snapToGrid(value):
+  return Math.round(value / GRID_SNAP) * GRID_SNAP
+
+Placement: snap x,y before opening dialog
+Dragging:  snap x,y on every mousemove update
 ```
+
+### Click vs Drag Detection
+```text
+On mousedown: record startX, startY
+On mouseup:   if distance moved < 5px -> it's a click -> open edit dialog
+              if distance moved >= 5px -> it's a drag -> save position
+```
+
