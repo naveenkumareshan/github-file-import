@@ -1,101 +1,164 @@
 
 
-## Locker Control, Remove Hot Selling, and Fix Seat Map Booking Details
+## Redesign: Seat Control Center
 
-### 1. Locker Mandatory/Optional Control
-
-**Current State**: The `cabins` table has `locker_available` and `locker_price` but no field to indicate whether the locker is mandatory or optional. Students always pay locker deposit as "Key Deposit."
-
-**Changes**:
-
-**Database Migration**: Add `locker_mandatory` boolean column to `cabins` table (default `true` -- backward compatible).
-
-```text
-ALTER TABLE cabins ADD COLUMN locker_mandatory boolean NOT NULL DEFAULT true;
-```
-
-**File: `src/components/admin/CabinEditor.tsx`**
-- Add a radio group or select inside the Locker section: "Locker is Mandatory" / "Locker is Optional for Student"
-- Only visible when `lockerAvailable` is toggled on
-- Save/load the `locker_mandatory` field from the database
-
-**File: `src/api/adminCabinsService.ts`**
-- Include `locker_mandatory` in create/update payloads
-
-**File: `src/components/seats/SeatBookingForm.tsx`**
-- Read `cabin.lockerMandatory` (passed from BookSeat)
-- If locker is mandatory: show locker deposit as before (no toggle for student)
-- If locker is optional: show a checkbox "Add Locker (Rs X)" that the student can check/uncheck
-- When unchecked, set `keyDeposit` to 0 and recalculate total
-- Update the summary text: "Locker Deposit" instead of "Key Deposit"
-
-**File: `src/pages/BookSeat.tsx`**
-- Pass `lockerMandatory` from cabin data to `SeatBookingForm`
-
-### 2. Completely Remove Hot Selling from Everywhere
-
-Hot Selling references exist in 11 files. All must be cleaned:
-
-| File | What to remove |
-|------|----------------|
-| `src/pages/vendor/VendorSeats.tsx` | Remove `handleToggleHotSelling` function, "Mark Hot" / "Remove Hot" buttons in both card and table views (lines 144-159, 325-329, 395-399) |
-| `src/api/vendorSeatsService.ts` | Remove `toggleHotSelling` method, remove `isHotSelling` from interface and mapping |
-| `src/components/seats/SeatBookingForm.tsx` | Remove `hotSellingPrice` state, remove 5% markup calculation (lines 236-241), remove "Hot Selling Premium" display (lines 609-614) |
-| `src/components/SeatMap.tsx` | Remove hot selling color, legend item, tooltip text |
-| `src/components/seats/SeatGridMap.tsx` | Remove `isHotSelling` from Seat interface |
-| `src/components/booking/SeatSelectionMap.tsx` | Remove hot selling status mapping and display |
-| `src/components/EditSeatView.tsx` | Remove hot selling text (lines 43-47) |
-| `src/pages/BookSeat.tsx` | Remove `isHotSelling` from Seat interface |
-| `src/components/seats/FloorPlanDesigner.tsx` | Remove `isHotSelling` from interface |
-| `src/components/seats/SeatMapEditor.tsx` | Remove `isHotSelling` from interface |
-| `src/pages/admin/ManualBookingManagement.tsx` | Remove `isHotSelling` from Seat interface |
-| `src/pages/SeatManagement.tsx` | Remove `isHotSelling: false` from seat creation |
-
-### 3. Fix Seat Map Booking Details Capture and Display
-
-**Problem A: `seat_id` not saved in bookings**
-
-Currently `bookingsService.createBooking` only stores `seat_number` but not `seat_id`. The vendor seat map queries bookings by `seat_id` so it finds nothing.
-
-**File: `src/api/bookingsService.ts`**
-- Add `seat_id` to `BookingData` interface
-- Pass it through in `createBooking`
-
-**File: `src/components/seats/SeatBookingForm.tsx`**
-- Pass `seat_id: selectedSeat._id || selectedSeat.id` in the booking creation payload
-
-**Problem B: Seat map not showing full booking details**
-
-**File: `src/api/vendorSeatsService.ts`**
-- Expand booking query to fetch ALL bookings for each seat (current + future), not just today's
-- Include `booking_duration`, `duration_count`, `total_price`, `payment_status`, `serial_number` from bookings
-- Include `serial_number`, `course_studying`, `college_studied`, `address`, `city`, `state`, `date_of_birth`, `gender` from profiles
-- Return both `currentBooking` and `allBookings` arrays per seat
-
-**File: `src/api/vendorSeatsService.ts` - Update VendorSeat interface**
-- Add `allBookings` array field with full booking + student details
-- Each booking entry includes: bookingId, serialNumber, startDate, endDate, totalPrice, paymentStatus, bookingDuration, durationCount, studentName, studentEmail, studentPhone, studentSerialNumber, profilePicture, course, college, address, city, state, gender, dob
-
-**File: `src/pages/vendor/VendorSeats.tsx`**
-- Add category column to both card and table views
-- Add a "View Details" button on each seat that opens a dialog with:
-  - Seat info: number, category, price, floor, availability status
-  - Current booking section: full student profile (name, phone, email, serial number, course, college, address, photo)
-  - All bookings table: listing current and future bookings with from/to dates, duration, amount, payment status, serial number
-- In the table view, add a "Category" column header showing `seat.category`
+Complete redesign of `src/pages/vendor/VendorSeats.tsx` from a card-based layout into a compact, data-dense operational dashboard with grid-first seat visualization, date-aware booking checks, and a right-side booking drawer.
 
 ---
 
-### Summary of All Changes
+### Architecture
 
-| Area | Files | Action |
-|------|-------|--------|
-| Locker Control | DB migration | Add `locker_mandatory` column |
-| Locker Control | `CabinEditor.tsx` | Add mandatory/optional radio |
-| Locker Control | `SeatBookingForm.tsx` | Conditional locker checkbox for students |
-| Locker Control | `BookSeat.tsx`, `adminCabinsService.ts` | Pass through new field |
-| Remove Hot Selling | 12 files | Strip all hot selling UI, logic, interfaces |
-| Fix Bookings | `bookingsService.ts`, `SeatBookingForm.tsx` | Save `seat_id` in bookings |
-| Seat Map Details | `vendorSeatsService.ts` | Fetch all bookings with full student details |
-| Seat Map Details | `VendorSeats.tsx` | Add category column, "View Details" dialog with complete booking history |
+The page will be restructured into three visual layers:
+
+```text
++------------------------------------------------------------------+
+| Stats Bar (60px max height, single horizontal row)               |
+| Total | Booked | Available | Expiring | Blocked | Revenue        |
++------------------------------------------------------------------+
+| Filter Row (sticky, single line)                                 |
+| [Room v] [Date] [Status v] [Search...] [Grid|Table]             |
++------------------------------------------------------------------+
+| Seat Grid (default) or Table View                                |
+| [S1][S2][S3][S4][S5][S6][S7][S8][S9][S10][S11][S12]...         |
+| [S13][S14][S15]...                                               |
+|                                                                  |
++------------------------------------------------------------------+
+```
+
+Right-side Sheet drawer opens on seat click for details or booking.
+
+---
+
+### 1. Stats Bar
+
+Replace the 4 large cards with a single slim horizontal bar (max-h-[60px]), using inline flex items:
+
+| Metric | Source |
+|--------|--------|
+| Total Seats | `seats.length` |
+| Booked | Seats with active booking for selected date |
+| Available | Available and no booking for selected date |
+| Expiring Soon | Booking end_date within 7 days of selected date |
+| Blocked | `!isAvailable` (manually blocked) |
+| Revenue | Sum of `totalPrice` from active bookings |
+
+Each stat is a small pill: icon + label + value, separated by thin dividers. No cards, no padding.
+
+---
+
+### 2. Sticky Filter Row
+
+Single horizontal row with `sticky top-0 z-10 bg-background`:
+
+- **Reading Room dropdown**: Same Select component, compact (h-8)
+- **Date picker**: Single date (default today). When changed, re-fetches bookings for that date and recalculates all statuses
+- **Status filter**: All / Available / Booked / Expiring Soon / Blocked
+- **Search**: Input for seat number search
+- **View toggle**: Grid (default) / Table icon buttons
+
+All filters are inline, no labels, placeholder text only. Height ~40px.
+
+---
+
+### 3. Grid View (Default)
+
+Tight CSS grid of seat boxes:
+- `grid-cols-[repeat(auto-fill,minmax(68px,1fr))]` for 10-15 seats per row
+- Each box: 68px square, `p-1`, `text-[10px]`
+- Content per box:
+  - Seat number (bold, top)
+  - Category (tiny text)
+  - Price (tiny text)
+  - Status badge (color-coded dot or bg)
+  - Two micro action buttons on hover: availability toggle + price edit
+- Color coding via background:
+  - `bg-emerald-50 border-emerald-300` -- Available
+  - `bg-red-50 border-red-300` -- Booked
+  - `bg-amber-50 border-amber-300` -- Expiring Soon (end_date within 7 days)
+  - `bg-gray-100 border-gray-300` -- Blocked
+
+Click opens the right-side Sheet.
+
+---
+
+### 4. Table View (Secondary)
+
+Compact table with `text-xs`, sticky header, alternating row backgrounds:
+
+| Seat | Room | Category | Status | Price | End Date | Actions |
+|------|------|----------|--------|-------|----------|---------|
+
+Actions column: availability toggle + price edit buttons.
+
+---
+
+### 5. Right-Side Booking/Details Sheet
+
+Opens via `Sheet` component (side="right", ~400px wide).
+
+**If seat is Booked:**
+- Student profile: name, phone, email, serial number, course, college, address
+- Current booking dates, duration, amount, payment status
+- All bookings table (current + future)
+
+**If seat is Available:**
+- "Book Seat" section:
+  - Student search (search profiles by name/phone/email)
+  - "Add New Student" link
+  - Plan selection: Monthly / 15 Days / Custom
+  - Start date (default: selected date from filter)
+  - Auto-calculated end date
+  - Previous booking history for this seat
+  - Confirm Booking button
+- Pre-booking validation checks:
+  - No active booking on seat for selected date
+  - Seat is not blocked
+  - Query bookings table to confirm no overlap
+
+**If seat is Blocked:**
+- Show blocked status, option to unblock
+
+---
+
+### 6. Date-Aware Logic
+
+When the date picker changes:
+1. Fetch all bookings where `start_date <= selectedDate AND end_date >= selectedDate` for the selected cabin's seats
+2. Recalculate each seat's status:
+   - **Booked**: has active booking covering selected date
+   - **Expiring Soon**: has booking where `end_date` is within 7 days after selected date
+   - **Blocked**: `is_available = false`
+   - **Available**: none of the above
+3. Update stats bar counts
+4. Re-render grid instantly (no page reload)
+
+---
+
+### 7. Service Updates
+
+**File: `src/api/vendorSeatsService.ts`**
+- Add `getSeatsForDate(cabinId, date)` method that fetches seats + bookings for a specific date
+- Add `createPartnerBooking(data)` method for partner-initiated bookings (inserts into bookings table with the selected student's user_id)
+- Add `searchStudents(query)` method to search profiles by name/phone/email
+- Update status filter to support 'expiring_soon' and 'blocked'
+
+---
+
+### Technical Summary
+
+| File | Change |
+|------|--------|
+| `src/pages/vendor/VendorSeats.tsx` | Full rewrite: stats bar, sticky filters, grid/table views, Sheet drawer with booking form, date-aware logic |
+| `src/api/vendorSeatsService.ts` | Add `getSeatsForDate`, `createPartnerBooking`, `searchStudents` methods; update `SeatFilters` interface |
+
+### Design Principles Applied
+- Maximum data density: 10-15 seats visible per row
+- No card wrappers on grid
+- All text 10-12px
+- Padding reduced to 1-2 units
+- Sticky filter bar
+- Desktop-first responsive grid
+- Airline-style seat selection UX
+- Color-coded status at a glance
+- Right-drawer for details (no dialogs/modals blocking the grid)
 
