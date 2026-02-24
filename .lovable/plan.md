@@ -1,73 +1,39 @@
 
 
-## Fix Seat Alignment, Edit Popup, and Scroll Behavior
+## Compact Seat Management Layout
 
-### 1. Grid-Snap for Seat Placement and Dragging
+### Changes
 
-Currently seats are placed at arbitrary pixel coordinates, causing misalignment. We will snap all seat positions to a grid (e.g., 40px intervals) so seats always align vertically and horizontally.
+**1. Remove Active/Inactive toggle from this page**
+The room's active/inactive status belongs on the main reading room listing page, not inside seat management. We will remove the Switch and status label from the cabin header card.
 
-**In `FloorPlanDesigner.tsx`:**
-- Add a `GRID_SNAP` constant (e.g., 40px)
-- Create a `snapToGrid(value)` helper: `Math.round(value / GRID_SNAP) * GRID_SNAP`
-- Apply snapping in the placement click handler (where `setPendingSeat` is called)
-- Apply snapping in the drag move handler (where seat position updates during drag)
-- This ensures every seat lands on a clean grid intersection
+**2. Compact the header into a slim inline bar**
+Replace the full Card for the cabin name with a simple inline row showing just the name and metadata (category, capacity, price) -- no card wrapper needed, just a heading line below the "Back to Rooms" button.
 
-### 2. Edit Popup on Existing Seat Click
+**3. Collapse Categories and Floors into a single compact row**
+Instead of two separate full-width Cards, combine Categories and Floors into a single Card with two side-by-side sections (or a compact horizontal bar), drastically reducing vertical space.
 
-Currently clicking a seat selects it and shows details in a separate Card below the canvas. Instead, clicking a seat will open an inline dialog/popup with editable category and price fields.
-
-**In `FloorPlanDesigner.tsx`:**
-- Add a new `editingSeat` state to track which seat is being edited
-- When a seat is clicked (not dragged), set `editingSeat` to that seat
-- Create a new `SeatEditDialog` component (similar to `SeatPlacementDialog`) with:
-  - Seat number (read-only display)
-  - Category selector (radio group from dynamic categories)
-  - Price (auto-filled from category, editable)
-  - Availability toggle
-  - Save and Cancel buttons
-- Add a new prop `onSeatUpdate` to handle saving category/price/availability changes
-- Distinguish click vs drag: only open edit dialog if the mouse didn't move during mousedown-mouseup
-
-**In `SeatManagement.tsx`:**
-- Add a `handleSeatUpdate` function that calls `adminSeatsService.updateSeat`
-- Pass it as `onSeatUpdate` prop to `FloorPlanDesigner`
-- Remove the separate "Seat Details" Card at the bottom (since editing now happens in the popup)
-
-### 3. Disable Scroll-to-Zoom by Default
-
-Currently the canvas always captures mouse wheel events for zoom, making it impossible to scroll the page. We will only enable wheel-zoom when the user is actively editing (placement mode active or a dedicated "Edit Mode" toggle is on).
-
-**In `FloorPlanDesigner.tsx`:**
-- Remove the `onWheel={handleWheel}` from the canvas container by default
-- Only attach `onWheel` when `placementMode` is true (user is actively placing/editing seats)
-- This allows normal page scrolling when the user is just viewing the layout
-- When "Place Seats" is active, scroll-to-zoom works as before for precise placement
+**4. Maximize the Floor Plan Designer area**
+Remove the Card wrapper around the Floor Plan Designer and reduce padding so the designer canvas takes up as much screen space as possible.
 
 ---
 
-### Technical Summary
+### Technical Details
 
-| File | Changes |
-|---|---|
-| `src/components/seats/FloorPlanDesigner.tsx` | Add grid snapping (40px), add SeatEditDialog for click-to-edit, conditionally attach onWheel only in placement mode |
-| `src/pages/SeatManagement.tsx` | Add onSeatUpdate handler, remove bottom Seat Details card |
+**File: `src/pages/SeatManagement.tsx`**
 
-### Grid Snapping Logic
-```text
-GRID_SNAP = 40
+| Section | Current | After |
+|---|---|---|
+| Cabin header | Full Card with Active/Inactive Switch | Slim inline text row -- no card, no toggle |
+| Categories card | Separate full Card | Merged into a compact bar with collapsible content |
+| Floors card | Separate full Card with large tiles | Inline horizontal pill/tab selector beside categories |
+| Floor Plan Designer | Wrapped in Card with header | Minimal wrapper, full-width, reduced padding |
 
-snapToGrid(value):
-  return Math.round(value / GRID_SNAP) * GRID_SNAP
-
-Placement: snap x,y before opening dialog
-Dragging:  snap x,y on every mousemove update
-```
-
-### Click vs Drag Detection
-```text
-On mousedown: record startX, startY
-On mouseup:   if distance moved < 5px -> it's a click -> open edit dialog
-              if distance moved >= 5px -> it's a drag -> save position
-```
+Specific changes:
+- **Remove** the `toggleCabinStatus` function and the `<Switch>` + status label JSX (lines 241-246)
+- **Replace** the cabin header Card with a simple `<div>` showing name + metadata in one line
+- **Merge** Categories and Floors into one compact Card with two sections side by side
+- **Reduce** floor tiles from large cards to small inline pills/buttons
+- **Remove** the Card wrapper around Floor Plan Designer, keep just a minimal container
+- **Reduce** container padding from `p-6 space-y-6` to `p-4 space-y-3`
 
