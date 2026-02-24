@@ -58,20 +58,27 @@ export const BookingTransactionView = ({ bookingId, bookingType, booking }: Book
       setLoading(true);
             
         // Calculate validity information
-        const endDate = new Date(booking.endDate);
-        const today = new Date();
-        const daysRemaining = differenceInDays(endDate, today);
-        
-        setValidityInfo({
-          currentEndDate: booking.endDate,
-          daysRemaining: Math.max(0, daysRemaining),
-          totalMonths: booking.months || booking.durationCount || 1
-        });
+        if (booking?.endDate) {
+          try {
+            const endDate = new Date(booking.endDate);
+            const today = new Date();
+            const daysRemaining = differenceInDays(endDate, today);
+            
+            setValidityInfo({
+              currentEndDate: booking.endDate,
+              daysRemaining: Math.max(0, daysRemaining),
+              totalMonths: booking.months || booking.durationCount || 1
+            });
+          } catch (e) {
+            console.error('Error parsing endDate:', e);
+          }
+        }
       
       // Fetch user transactions and filter for this booking
       const transactionsResponse = await transactionService.getUserTransactions();
       if (transactionsResponse.success && transactionsResponse.data) {
-        const bookingTransactions = transactionsResponse.data.data.filter(
+        const txList = Array.isArray(transactionsResponse.data) ? transactionsResponse.data : (transactionsResponse.data?.data || []);
+        const bookingTransactions = txList.filter(
           (transaction: any) => transaction.bookingId === bookingId
         );
         
@@ -160,23 +167,23 @@ export const BookingTransactionView = ({ bookingId, bookingType, booking }: Book
                   {bookingType === 'cabin' ? 'Cabin & Seat' : 'Hostel & Bed'}
                 </h3>
                 <p className="font-medium">
-                  {booking.cabinId?.name || booking.hostelId?.name}
+                  {booking.cabinId?.name || booking.cabinName || booking.hostelId?.name || 'N/A'}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {bookingType === 'cabin' ? 
-                    `Seat #${booking.seatId?.number}` : 
-                    `Bed #${booking.bedId?.number}`
+                    `Seat #${booking.seatId?.number || booking.seatNumber || 'N/A'}` : 
+                    `Bed #${booking.bedId?.number || 'N/A'}`
                   }
                 </p>
               </div>
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground">Seat Price</h3>
-                <p className="font-medium text-green-600">₹{booking.seatPrice.toLocaleString()}</p>
+                <p className="font-medium text-green-600">₹{(booking.seatPrice || booking.totalPrice || 0).toLocaleString()}</p>
               </div>
                <div>
                 <h3 className="text-sm font-medium text-muted-foreground">Total Paid</h3>
                 {/* <p className="font-medium text-green-600">₹{totalPaid.toLocaleString()}</p> */}
-                                   {booking.originalPrice && booking.appliedCoupon ? (
+                                   {booking?.originalPrice && booking?.appliedCoupon ? (
                       <div>
                         <p className="text-sm text-muted-foreground line-through">₹{booking.originalPrice.toLocaleString()}</p>
                         <p className="font-medium text-green-600">₹{totalPaid.toLocaleString()}</p>
@@ -185,7 +192,7 @@ export const BookingTransactionView = ({ bookingId, bookingType, booking }: Book
                     ) : (
                       <p className="font-medium">₹{totalPaid.toLocaleString()}</p>
                     )}
-                    {booking.appliedCoupon && (
+                    {booking?.appliedCoupon && (
                   <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
                     <div className="flex items-center gap-2 mb-2">
                       <TicketPercent className="h-4 w-4 text-green-600" />
@@ -209,7 +216,7 @@ export const BookingTransactionView = ({ bookingId, bookingType, booking }: Book
                 {getStatusBadge(booking.paymentStatus)}
               </div>
 
-               {booking?.transferredHistory?.map((data, index) => (
+               {booking?.transferredHistory?.map((data: any, index: number) => (
                 <div key={index}>
                   <h3 className="text-sm font-medium text-muted-foreground">
                     Transferred From
