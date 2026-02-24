@@ -1,106 +1,75 @@
 
 
-## Fix Reading Room Status Management, Student Display, and Mobile BookSeat UI
+## Fix Seat Map Matching, Image Slider, and Student Visibility
 
-### Problem Summary
+### Issues Found
 
-1. **Status toggles broken**: The `handleToggleActive` and `onToggleBooking` in `RoomManagement.tsx` call `adminRoomsService.restoreRoom()` which uses **axios to a dead MongoDB backend** (localhost:5000). This causes "Failed to activate room status" errors.
-2. **Missing `is_booking_active` column**: The `cabins` database table has no `is_booking_active` column, so even if the service worked, there's nowhere to store the booking-enabled/paused state.
-3. **Student-facing rooms not filtering correctly**: `cabinsService.getAllCabins()` filters by `is_active = true` but doesn't account for the booking status. Students can see rooms but the booking form reads `isBookingActive` from a field that doesn't exist in the DB.
-4. **BookSeat page is desktop-styled**: The `/book-seat/:cabinId` page uses large Cards, desktop layouts, and doesn't show seat category details (AC/Non-AC) when a seat is selected. It needs a proper mobile-first redesign.
+1. **Seats not matching admin layout on student side**: The `seatsService.getAvailableSeatsForDateRange()` filters `.eq('is_available', true)`, so booked seats are hidden entirely instead of shown as disabled. Students see a different layout than what admins created. Also, `mapRow()` doesn't map the `category` column, so seat categories (AC/Non-AC) are lost.
 
----
+2. **"Cabin view 1" broken image alt text**: In `CabinImageSlider.tsx`, the `<img>` alt text says `Cabin view ${index + 1}` which shows as text when images fail to load. The `images` array in the database is empty `[]` for most cabins, so it falls back to a placeholder but the alt text still shows. The images should be swipable (touch-enabled) -- currently the Carousel component supports this but the parent div in `BookSeat.tsx` wraps it with a fixed aspect ratio and gradient overlay that may interfere with touch events.
 
-### Status Logic Design
+3. **Layout image not passed to student seat map**: The `DateBasedSeatMap` component doesn't receive or pass the cabin's `layout_image` to `FloorPlanViewer`. Students see seats on a blank canvas instead of the floor plan image the admin uploaded.
 
-Three states for each reading room:
+4. **Seat map canvas too small and unstable on mobile**: The `FloorPlanViewer` canvas is fixed at `450px` height. On mobile, panning interferes with back-navigation (touching left edge triggers browser back). The canvas needs touch event handling and should prevent default browser gestures inside the canvas area.
 
-| Status | `is_active` | `is_booking_active` | Visible to Students? | Can Book? |
-|--------|-------------|--------------------|-----------------------|-----------|
-| Deactivated | false | false | No | No |
-| Activated (Paused) | true | false | Yes (shown) | No ("Bookings paused" message) |
-| Activated (Enabled) | true | true | Yes (shown) | Yes |
-
-- **Activate/Deactivate** toggles `is_active`. Deactivating also sets `is_booking_active = false`.
-- **Enable/Pause Booking** toggles `is_booking_active` (only available when `is_active = true`).
+5. **Newly activated rooms not showing to students**: The `Cabins.tsx` page filters `cabin.is_active !== false` client-side, AND the `cabinsService.getAllCabins()` query already filters `.eq('is_active', true)`. Both should work, but `is_booking_active` defaults to `true` which is correct. The issue may be caching or that `images` is empty causing rooms to appear broken.
 
 ---
 
-### Changes
+### Plan
 
-#### 1. Database Migration -- Add `is_booking_active` column
+#### 1. Fix `seatsService.ts` -- Show ALL seats, mark booked ones
 
-```sql
-ALTER TABLE public.cabins
-  ADD COLUMN IF NOT EXISTS is_booking_active boolean NOT NULL DEFAULT true;
+**`getAvailableSeatsForDateRange`**: Remove the `.eq('is_available', true)` filter so ALL seats load. Then mark booked ones as unavailable based on booking conflicts.
+
+**`mapRow`**: Add `category` mapping so seat categories display on student side.
+
+```text
+mapRow changes:
+  + category: row.category,
+
+getAvailableSeatsForDateRange changes:
+  - .eq('is_available', true)  // Remove this filter
+  + After fetching bookings, mark seats as available/unavailable
+  + Return ALL seats, with isAvailable = false for booked ones
 ```
 
-#### 2. Rewrite `adminRoomsService.ts` to use Supabase
+#### 2. Fix `CabinImageSlider.tsx` -- Remove broken alt text, ensure swipability
 
-Replace the axios-based service with direct Supabase calls:
+- Change alt text from `Cabin view ${index + 1}` to empty string or just "Room image"
+- Remove the `Expand` button overlay that blocks swipe gestures
+- Ensure the carousel is touch-swipable by not interfering with pointer events
 
-- `toggleRoomActive(id, isActive)` -- updates `is_active` (and sets `is_booking_active = false` when deactivating)
-- `toggleBookingActive(id, isBookingActive)` -- updates `is_booking_active`
+#### 3. Pass layout image to student seat map
 
-Remove all old axios-based methods.
+**`BookSeat.tsx`**: Fetch and store `layout_image`, `room_width`, `room_height` from cabin data. Pass to `SeatBookingForm`.
 
-#### 3. Fix `RoomManagement.tsx` status handlers
+**`SeatBookingForm.tsx`**: Accept `layoutImage`, `roomWidth`, `roomHeight` props and pass them to `DateBasedSeatMap`.
 
-- `handleToggleActive`: Call the new `toggleRoomActive`, then refresh cabins list
-- `onToggleBooking`: Call the new `toggleBookingActive`, then refresh cabins list
-- Fix toast messages (currently says "deactivated" when activating and vice versa)
+**`DateBasedSeatMap.tsx`**: Accept `layoutImage` prop and pass it to `FloorPlanViewer`.
 
-#### 4. Fix `adminCabinsService.ts` to handle `is_booking_active`
+#### 4. Fix `FloorPlanViewer.tsx` -- Better mobile canvas
 
-- In `updateCabin`, map `isBookingActive` to `is_booking_active`
-- In `getAllCabins`, return `is_booking_active` alongside `is_active`
+- Add touch event handlers (`onTouchStart`, `onTouchMove`, `onTouchEnd`) for mobile panning
+- Use `e.stopPropagation()` and `e.preventDefault()` to prevent accidental back-navigation
+- Make canvas height responsive: `min-h-[350px] h-[60vh]` instead of fixed 450px
+- Auto-fit seats to visible area on initial load
 
-#### 5. Fix student-facing cabin queries
+#### 5. Fix newly created rooms showing to students
 
-- `cabinsService.getAllCabins()` already filters `is_active = true` -- this is correct
-- In `BookSeat.tsx`, map `is_booking_active` from DB to `isBookingActive` on the cabin object (currently hardcodes from `is_active`)
-- In `SeatBookingForm.tsx`, the booking-disabled alert already checks `cabin.isBookingActive` -- this will now work correctly
-
-#### 6. Redesign `BookSeat.tsx` for mobile-first layout
-
-Current issues: Desktop card layout, no seat category info shown, CabinDetails uses side-by-side layout on mobile.
-
-New mobile design:
-- **Hero image** at top (full-width, edge-to-edge, with gradient overlay and cabin name/category badge)
-- **Compact info chips** below image: price, capacity, category -- as horizontal scrollable pills
-- **Collapsible details section** (amenities, description) -- collapsed by default on mobile
-- **When seat selected**: Show a **bottom sheet / sticky bottom card** with seat details (number, category like "AC" or "Non-AC", price) and "Proceed to Book" button
-- Remove the separate `CabinDetails` component from this page and inline a compact mobile version
-
-#### 7. Show seat category in FloorPlanViewer tooltip and selection
-
-- The tooltip already shows `seat.category` -- this works
-- Add category display in the selected-seat summary area within `SeatBookingForm.tsx` (show "Seat #5 - AC - Rs 3000/mo" instead of just "Seat #5")
+- Ensure `Cabins.tsx` properly renders rooms with empty images array (use placeholder)
+- The `CabinsGrid` component should handle missing images gracefully
 
 ---
 
 ### Technical Details
 
-**Files to modify:**
-
 | File | Changes |
 |---|---|
-| Database migration | Add `is_booking_active` boolean column |
-| `src/api/adminRoomsService.ts` | Rewrite entirely: replace axios with Supabase SDK calls for `toggleRoomActive()` and `toggleBookingActive()` |
-| `src/pages/RoomManagement.tsx` | Fix `handleToggleActive` and `onToggleBooking` to use new Supabase service, fix inverted toast messages, refresh list after toggle |
-| `src/api/adminCabinsService.ts` | Add `is_booking_active` mapping in `updateCabin` and `createCabin` |
-| `src/pages/BookSeat.tsx` | Map `is_booking_active` to `isBookingActive`, redesign with mobile-first hero image layout, collapsible details, sticky bottom seat info card |
-| `src/components/CabinDetails.tsx` | Minor: ensure mobile layout uses vertical stacking |
-| `src/components/seats/SeatBookingForm.tsx` | Show seat category (AC/Non-AC) in booking summary, show category in selected seat display |
-| `src/components/admin/CabinItem.tsx` | Disable "Enable/Pause" button when room is inactive |
-
-**Seat selection bottom card (mobile) example layout:**
-```text
-+------------------------------------------+
-| Seat #5  |  AC  |  Rs 3,000/mo           |
-|          [ Proceed to Book ]             |
-+------------------------------------------+
-```
-
-This card appears as a sticky element at the bottom of the viewport when a seat is tapped in the FloorPlanViewer.
+| `src/api/seatsService.ts` | Add `category` to `mapRow`; fix `getAvailableSeatsForDateRange` to return ALL seats with availability status |
+| `src/components/CabinImageSlider.tsx` | Fix alt text, ensure touch-swipe works |
+| `src/pages/BookSeat.tsx` | Pass `layoutImage`, `roomWidth`, `roomHeight` from cabin data to `SeatBookingForm` |
+| `src/components/seats/SeatBookingForm.tsx` | Accept and forward `layoutImage`, `roomWidth`, `roomHeight` to `DateBasedSeatMap` |
+| `src/components/seats/DateBasedSeatMap.tsx` | Accept `layoutImage` prop, pass to `FloorPlanViewer` |
+| `src/components/seats/FloorPlanViewer.tsx` | Add touch handlers, responsive height, auto-fit, prevent back-nav gesture |
 
