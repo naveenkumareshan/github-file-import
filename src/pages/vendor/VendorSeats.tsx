@@ -776,7 +776,7 @@ const VendorSeats: React.FC = () => {
                   {/* Price */}
                   <div>
                     <Label className="text-[10px] uppercase text-muted-foreground">Seat Amount (₹)</Label>
-                    <Input className="h-8 text-xs" type="number" value={bookingPrice} onChange={e => setBookingPrice(e.target.value)} />
+                    <Input className="h-8 text-xs bg-muted cursor-not-allowed" type="number" value={bookingPrice} readOnly />
                   </div>
 
                   {/* Locker option */}
