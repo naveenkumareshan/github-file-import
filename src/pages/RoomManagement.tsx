@@ -201,6 +201,7 @@ const RoomManagement = () => {
           imageSrc: cabinData.images.length > 0 ? cabinData.images[0] : cabinData.imageUrl,
           images: cabinData.images,
           isActive: cabinData.isActive,
+          created_by: cabinData.created_by || undefined,
           ownerDetails: {
             ownerName: cabinData.ownerName,
             ownerPhone: cabinData.ownerPhone,

@@ -18,11 +18,20 @@ import { RoomSeat } from "../RoomSeatButton";
 import {
   ArrowLeft,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import { LocationSelector } from "../forms/LocationSelector";
 import MapPicker from "./MapPicker";
 
 import { getImageUrl } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface CabinEditorProps {
   onSave: (cabin: any) => void;
@@ -37,6 +46,7 @@ export function CabinEditor({
   existingCabin,
   isAdmin = true,
 }: CabinEditorProps) {
+  const { user } = useAuth();
   const [cabin, setCabin] = useState({
     id: existingCabin?.id || Math.floor(Math.random() * 1000),
     name: existingCabin?.name || "",
@@ -46,7 +56,7 @@ export function CabinEditor({
     category: existingCabin?.category || "standard",
     amenities: existingCabin?.amenities || ["Wi-Fi", "Desk", "Bookshelf"],
     imageUrl: existingCabin?.imageUrl || "",
-    imageSrc: existingCabin?.images.length > 0  ? existingCabin?.images[0] :existingCabin?.imageSrc,
+    imageSrc: existingCabin?.images?.length > 0  ? existingCabin?.images[0] :existingCabin?.imageSrc,
     images: existingCabin?.images || [],
     ownerName: existingCabin?.ownerDetails?.ownerName || "",
     ownerPhone: existingCabin?.ownerDetails?.ownerPhone || "",
@@ -70,8 +80,90 @@ export function CabinEditor({
     locality: existingCabin?.location?.locality || "",
     nearbyLandmarks: existingCabin?.location?.nearbyLandmarks || [],
     lockerAvailable: existingCabin?.lockerAvailable ?? existingCabin?.locker_available ?? false,
-    lockerPrice: existingCabin?.lockerPrice ?? existingCabin?.locker_price ?? 0
+    lockerPrice: existingCabin?.lockerPrice ?? existingCabin?.locker_price ?? 0,
+    created_by: existingCabin?.created_by || "",
   });
+
+  // Partner details state
+  const [partners, setPartners] = useState<Array<{ id: string; name: string; email: string; phone: string; serial_number: string }>>([]);
+  const [selectedPartner, setSelectedPartner] = useState<string>(existingCabin?.created_by || "");
+  const [partnerDetails, setPartnerDetails] = useState<{ name: string; email: string; phone: string; serial_number: string } | null>(null);
+
+  // Fetch partners (vendors) for admin
+  useEffect(() => {
+    const fetchPartners = async () => {
+      try {
+        // Get all users with vendor role
+        const { data: vendorRoles } = await supabase
+          .from('user_roles')
+          .select('user_id')
+          .eq('role', 'vendor');
+
+        if (!vendorRoles || vendorRoles.length === 0) return;
+
+        const vendorIds = vendorRoles.map(r => r.user_id);
+
+        // Also include admin users
+        const { data: adminRoles } = await supabase
+          .from('user_roles')
+          .select('user_id')
+          .eq('role', 'admin');
+
+        const allIds = [...vendorIds, ...(adminRoles || []).map(r => r.user_id)];
+        const uniqueIds = [...new Set(allIds)];
+
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, name, email, phone, serial_number')
+          .in('id', uniqueIds);
+
+        setPartners((profiles || []).map(p => ({
+          id: p.id,
+          name: p.name || 'Unknown',
+          email: p.email || '',
+          phone: p.phone || '',
+          serial_number: p.serial_number || '',
+        })));
+      } catch (err) {
+        console.error('Error fetching partners:', err);
+      }
+    };
+
+    if (isAdmin) {
+      fetchPartners();
+    }
+  }, [isAdmin]);
+
+  // Load partner details when selected
+  useEffect(() => {
+    if (selectedPartner) {
+      const partner = partners.find(p => p.id === selectedPartner);
+      if (partner) {
+        setPartnerDetails(partner);
+        setCabin(prev => ({ ...prev, created_by: selectedPartner }));
+      }
+    } else if (!isAdmin && user?.id) {
+      // For partners, auto-fill their own details
+      const loadOwnProfile = async () => {
+        const { data } = await supabase
+          .from('profiles')
+          .select('id, name, email, phone, serial_number')
+          .eq('id', user.id)
+          .single();
+        if (data) {
+          setPartnerDetails({
+            name: data.name || '',
+            email: data.email || '',
+            phone: data.phone || '',
+            serial_number: data.serial_number || '',
+          });
+          setCabin(prev => ({ ...prev, created_by: user.id }));
+          setSelectedPartner(user.id);
+        }
+      };
+      loadOwnProfile();
+    }
+  }, [selectedPartner, partners, isAdmin, user?.id]);
 
   const [seats, setSeats] = useState<RoomSeat[]>([]);
   const [activeTab, setActiveTab] = useState("details");
@@ -252,10 +344,8 @@ export function CabinEditor({
         >
           <TabsList className="mb-4">
             <TabsTrigger value="details">Reading Room Details</TabsTrigger>
-            {/* <TabsTrigger value="layout">Pricing & Amenities</TabsTrigger> */}
-            {/* <TabsTrigger value="owner">Owner Details</TabsTrigger>
-            <TabsTrigger value="bank">Bank Details</TabsTrigger> */}
             <TabsTrigger value="owner">Contact Person Details</TabsTrigger>
+            <TabsTrigger value="partner">Partner Details</TabsTrigger>
             <TabsTrigger value="location">Location</TabsTrigger>
           </TabsList>
 
@@ -495,6 +585,67 @@ export function CabinEditor({
                     />
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="partner" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Partner Details</CardTitle>
+                <CardDescription>
+                  {isAdmin 
+                    ? "Select or assign a partner for this reading room." 
+                    : "Your partner details linked to this reading room."}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {isAdmin && (
+                  <div>
+                    <Label>Select Partner *</Label>
+                    <Select value={selectedPartner} onValueChange={setSelectedPartner}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a partner" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {partners.map((partner) => (
+                          <SelectItem key={partner.id} value={partner.id}>
+                            {partner.name} ({partner.email})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {partnerDetails && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Partner Name</Label>
+                      <Input value={partnerDetails.name} readOnly className="bg-muted" />
+                    </div>
+                    <div>
+                      <Label>Partner Email</Label>
+                      <Input value={partnerDetails.email} readOnly className="bg-muted" />
+                    </div>
+                    <div>
+                      <Label>Partner Phone</Label>
+                      <Input value={partnerDetails.phone} readOnly className="bg-muted" />
+                    </div>
+                    <div>
+                      <Label>Partner ID</Label>
+                      <Input value={partnerDetails.serial_number} readOnly className="bg-muted" />
+                    </div>
+                  </div>
+                )}
+
+                {!partnerDetails && !isAdmin && (
+                  <p className="text-muted-foreground">Loading your partner details...</p>
+                )}
+
+                {!partnerDetails && isAdmin && !selectedPartner && (
+                  <p className="text-muted-foreground">Please select a partner to see their details.</p>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
