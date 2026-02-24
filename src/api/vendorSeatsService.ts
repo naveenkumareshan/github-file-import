@@ -67,6 +67,11 @@ export interface VendorCabin {
   lockerAvailable: boolean;
   lockerPrice: number;
   lockerMandatory: boolean;
+  advanceBookingEnabled: boolean;
+  advancePercentage: number;
+  advanceFlatAmount: number | null;
+  advanceUseFlat: boolean;
+  advanceValidityDays: number;
 }
 
 export interface SeatFilters {
@@ -103,6 +108,8 @@ export interface PartnerBookingData {
   collectedBy?: string;
   collectedByName?: string;
   transactionId?: string;
+  isAdvanceBooking?: boolean;
+  advancePaid?: number;
 }
 
 export interface BlockHistoryEntry {
@@ -207,6 +214,11 @@ export const vendorSeatsService = {
           lockerAvailable: cabin.locker_available,
           lockerPrice: Number(cabin.locker_price),
           lockerMandatory: cabin.locker_mandatory,
+          advanceBookingEnabled: (cabin as any).advance_booking_enabled ?? false,
+          advancePercentage: Number((cabin as any).advance_percentage) || 50,
+          advanceFlatAmount: (cabin as any).advance_flat_amount ? Number((cabin as any).advance_flat_amount) : null,
+          advanceUseFlat: (cabin as any).advance_use_flat ?? false,
+          advanceValidityDays: Number((cabin as any).advance_validity_days) || 3,
         };
       });
 
@@ -348,7 +360,10 @@ export const vendorSeatsService = {
 
       const { data: serialData } = await supabase.rpc('generate_serial_number', { p_entity_type: 'booking' });
 
-      const paymentStatus = data.paymentMethod === 'send_link' ? 'pending' : 'completed';
+      let paymentStatus = data.paymentMethod === 'send_link' ? 'pending' : 'completed';
+      if (data.isAdvanceBooking) {
+        paymentStatus = 'advance_paid';
+      }
 
       const { error, data: insertedData } = await supabase
         .from('bookings')
@@ -373,10 +388,43 @@ export const vendorSeatsService = {
           collected_by_name: data.collectedByName || '',
           transaction_id: data.transactionId || '',
         })
-        .select('serial_number')
+        .select('id, serial_number')
         .single();
 
       if (error) throw error;
+
+      // Create due entry if advance booking
+      if (data.isAdvanceBooking && insertedData && data.advancePaid !== undefined) {
+        const totalDays = Math.ceil((new Date(data.endDate).getTime() - new Date(data.startDate).getTime()) / (1000 * 60 * 60 * 24));
+        const proportionalDays = Math.floor((data.advancePaid / data.totalPrice) * totalDays);
+        const proportionalEndDate = new Date(data.startDate);
+        proportionalEndDate.setDate(proportionalEndDate.getDate() + proportionalDays);
+
+        const dueDate = new Date(data.startDate);
+        // Get cabin's validity days - default 3
+        const { data: cabinInfo } = await supabase
+          .from('cabins')
+          .select('advance_validity_days')
+          .eq('id', data.cabinId)
+          .single();
+        const validityDays = (cabinInfo as any)?.advance_validity_days || 3;
+        dueDate.setDate(dueDate.getDate() + validityDays);
+
+        await supabase.from('dues').insert({
+          booking_id: insertedData.id,
+          user_id: data.userId,
+          cabin_id: data.cabinId,
+          seat_id: data.seatId,
+          total_fee: data.totalPrice,
+          advance_paid: data.advancePaid,
+          due_amount: data.totalPrice - data.advancePaid,
+          due_date: dueDate.toISOString().split('T')[0],
+          paid_amount: 0,
+          status: 'pending',
+          proportional_end_date: proportionalEndDate.toISOString().split('T')[0],
+        } as any);
+      }
+
       return { success: true, serialNumber: insertedData?.serial_number || serialData || '' };
     } catch (error) {
       console.error('Error creating partner booking:', error);
@@ -549,7 +597,159 @@ export const vendorSeatsService = {
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : 'Failed' };
     }
-  }
+  },
+
+  // ── Due Management Methods ──
+
+  getAllDues: async (filters?: { cabinId?: string; status?: string; search?: string }) => {
+    try {
+      let query = supabase
+        .from('dues')
+        .select('*, profiles:user_id(name, email, phone), cabins:cabin_id(name), seats:seat_id(number)')
+        .order('created_at', { ascending: false });
+
+      if (filters?.cabinId && filters.cabinId !== 'all') {
+        query = query.eq('cabin_id', filters.cabinId);
+      }
+      if (filters?.status && filters.status !== 'all') {
+        query = query.eq('status', filters.status);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      let results = data || [];
+      if (filters?.search) {
+        const q = filters.search.toLowerCase();
+        results = results.filter((d: any) => {
+          const name = (d.profiles as any)?.name?.toLowerCase() || '';
+          const phone = (d.profiles as any)?.phone?.toLowerCase() || '';
+          return name.includes(q) || phone.includes(q);
+        });
+      }
+
+      return { success: true, data: results };
+    } catch (error) {
+      console.error('Error fetching dues:', error);
+      return { success: false, data: [], error: error instanceof Error ? error.message : 'Failed' };
+    }
+  },
+
+  getDueSummary: async () => {
+    try {
+      const { data: dues, error } = await supabase
+        .from('dues')
+        .select('due_amount, paid_amount, status, due_date');
+      if (error) throw error;
+
+      const today = new Date().toISOString().split('T')[0];
+      const totalDue = (dues || []).filter(d => d.status !== 'paid' && d.status !== 'cancelled').reduce((s, d) => s + Number(d.due_amount) - Number(d.paid_amount), 0);
+      const overdue = (dues || []).filter(d => d.due_date < today && d.status !== 'paid' && d.status !== 'cancelled').reduce((s, d) => s + Number(d.due_amount) - Number(d.paid_amount), 0);
+      const dueToday = (dues || []).filter(d => d.due_date === today && d.status !== 'paid' && d.status !== 'cancelled').reduce((s, d) => s + Number(d.due_amount) - Number(d.paid_amount), 0);
+
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      const { data: payments } = await supabase
+        .from('due_payments')
+        .select('amount')
+        .gte('created_at', monthStart.toISOString());
+      const collectedThisMonth = (payments || []).reduce((s, p) => s + Number(p.amount), 0);
+
+      return { success: true, data: { totalDue, overdue, dueToday, collectedThisMonth } };
+    } catch (error) {
+      return { success: false, data: { totalDue: 0, overdue: 0, dueToday: 0, collectedThisMonth: 0 } };
+    }
+  },
+
+  collectDuePayment: async (dueId: string, amount: number, paymentMethod: string, txnId: string, notes: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: profile } = await supabase.from('profiles').select('name').eq('id', user?.id || '').single();
+
+      await supabase.from('due_payments').insert({
+        due_id: dueId,
+        amount,
+        payment_method: paymentMethod,
+        transaction_id: txnId || '',
+        collected_by: user?.id || null,
+        collected_by_name: profile?.name || '',
+        notes: notes || '',
+      } as any);
+
+      const { data: due, error: dueError } = await supabase
+        .from('dues')
+        .select('*, bookings:booking_id(start_date, end_date)')
+        .eq('id', dueId)
+        .single();
+      if (dueError) throw dueError;
+
+      const newPaidAmount = Number(due.paid_amount) + amount;
+      const remaining = Number(due.due_amount) - newPaidAmount;
+      let newStatus = remaining <= 0 ? 'paid' : 'partially_paid';
+
+      const totalPaid = Number(due.advance_paid) + newPaidAmount;
+      const booking = due.bookings as any;
+      let proportionalEndDate = due.proportional_end_date;
+
+      if (booking?.start_date && booking?.end_date) {
+        const totalDays = Math.ceil((new Date(booking.end_date).getTime() - new Date(booking.start_date).getTime()) / (1000 * 60 * 60 * 24));
+        if (remaining <= 0) {
+          proportionalEndDate = booking.end_date;
+        } else {
+          const newDays = Math.floor((totalPaid / Number(due.total_fee)) * totalDays);
+          const newEnd = new Date(booking.start_date);
+          newEnd.setDate(newEnd.getDate() + newDays);
+          proportionalEndDate = newEnd.toISOString().split('T')[0];
+        }
+      }
+
+      await supabase.from('dues').update({
+        paid_amount: newPaidAmount,
+        status: newStatus,
+        proportional_end_date: proportionalEndDate,
+      } as any).eq('id', dueId);
+
+      if (remaining <= 0 && due.booking_id) {
+        await supabase.from('bookings').update({ payment_status: 'completed' }).eq('id', due.booking_id);
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error collecting payment:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Failed' };
+    }
+  },
+
+  getDuePayments: async (dueId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('due_payments')
+        .select('*')
+        .eq('due_id', dueId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (error) {
+      return { success: false, data: [] };
+    }
+  },
+
+  getStudentDues: async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const { data, error } = await supabase
+        .from('dues')
+        .select('*, cabins:cabin_id(name), seats:seat_id(number)')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (error) {
+      return { success: false, data: [] };
+    }
+  },
 };
 
 export const partnerSeatsService = vendorSeatsService;

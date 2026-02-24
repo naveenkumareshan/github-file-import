@@ -83,6 +83,12 @@ export function CabinEditor({
     lockerPrice: existingCabin?.lockerPrice ?? existingCabin?.locker_price ?? 0,
     lockerMandatory: existingCabin?.lockerMandatory ?? existingCabin?.locker_mandatory ?? true,
     created_by: existingCabin?.created_by || "",
+    advanceBookingEnabled: existingCabin?.advanceBookingEnabled ?? existingCabin?.advance_booking_enabled ?? false,
+    advancePercentage: existingCabin?.advancePercentage ?? existingCabin?.advance_percentage ?? 50,
+    advanceFlatAmount: existingCabin?.advanceFlatAmount ?? existingCabin?.advance_flat_amount ?? 0,
+    advanceUseFlat: existingCabin?.advanceUseFlat ?? existingCabin?.advance_use_flat ?? false,
+    advanceValidityDays: existingCabin?.advanceValidityDays ?? existingCabin?.advance_validity_days ?? 3,
+    advanceAutoCancel: existingCabin?.advanceAutoCancel ?? existingCabin?.advance_auto_cancel ?? true,
   });
 
   // Partner details state
@@ -519,6 +525,107 @@ export function CabinEditor({
                     </>
                   )}
                 </div>
+
+                {/* Advance Booking Settings */}
+                <div className="border rounded-lg p-4 space-y-3">
+                  <Label className="text-lg font-medium">Advance Booking</Label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="advanceBookingEnabled"
+                      checked={cabin.advanceBookingEnabled}
+                      onChange={(e) => setCabin(prev => ({ ...prev, advanceBookingEnabled: e.target.checked }))}
+                      className="h-4 w-4"
+                    />
+                    <Label htmlFor="advanceBookingEnabled" className="text-sm cursor-pointer">
+                      Allow Advance Booking
+                    </Label>
+                  </div>
+
+                  {cabin.advanceBookingEnabled && (
+                    <div className="space-y-3 pl-2 border-l-2 border-primary/20 ml-2">
+                      <div>
+                        <Label className="text-sm font-medium mb-2 block">Advance Type</Label>
+                        <div className="flex gap-4">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="advanceType"
+                              checked={!cabin.advanceUseFlat}
+                              onChange={() => setCabin(prev => ({ ...prev, advanceUseFlat: false }))}
+                              className="h-4 w-4"
+                            />
+                            <span className="text-sm">Percentage (%)</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="advanceType"
+                              checked={cabin.advanceUseFlat}
+                              onChange={() => setCabin(prev => ({ ...prev, advanceUseFlat: true }))}
+                              className="h-4 w-4"
+                            />
+                            <span className="text-sm">Flat Amount (₹)</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      {!cabin.advanceUseFlat ? (
+                        <div>
+                          <Label htmlFor="advancePercentage" className="text-sm">Advance Percentage (%)</Label>
+                          <Input
+                            id="advancePercentage"
+                            type="number"
+                            min={1}
+                            max={99}
+                            value={cabin.advancePercentage}
+                            onChange={e => setCabin(prev => ({ ...prev, advancePercentage: Number(e.target.value) }))}
+                          />
+                        </div>
+                      ) : (
+                        <div>
+                          <Label htmlFor="advanceFlatAmount" className="text-sm">Flat Advance Amount (₹)</Label>
+                          <Input
+                            id="advanceFlatAmount"
+                            type="number"
+                            min={1}
+                            value={cabin.advanceFlatAmount}
+                            onChange={e => setCabin(prev => ({ ...prev, advanceFlatAmount: Number(e.target.value) }))}
+                          />
+                        </div>
+                      )}
+
+                      <div>
+                        <Label htmlFor="advanceValidityDays" className="text-sm">Advance Validity (days)</Label>
+                        <Input
+                          id="advanceValidityDays"
+                          type="number"
+                          min={1}
+                          value={cabin.advanceValidityDays}
+                          onChange={e => setCabin(prev => ({ ...prev, advanceValidityDays: Number(e.target.value) }))}
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Due must be paid within this many days of booking start date
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 opacity-60">
+                        <input
+                          type="checkbox"
+                          id="advanceAutoCancel"
+                          checked={cabin.advanceAutoCancel}
+                          onChange={(e) => setCabin(prev => ({ ...prev, advanceAutoCancel: e.target.checked }))}
+                          className="h-4 w-4"
+                          disabled
+                        />
+                        <Label htmlFor="advanceAutoCancel" className="text-sm cursor-pointer">
+                          Auto-cancel if unpaid <span className="text-xs text-muted-foreground">(Coming Soon)</span>
+                        </Label>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <div>
                   <Label htmlFor="price" className="text-lg font-medium">
                     Starting Price (₹) *
