@@ -46,7 +46,7 @@ const loadRazorpayScript = (): Promise<boolean> => {
   });
 };
 
-export const BookingRenewal = ({ booking, onRenewalComplete }: BookingRenewalProps) => {
+export const BookingRenewal = React.forwardRef<HTMLDivElement, BookingRenewalProps>(({ booking, onRenewalComplete }, ref) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedDuration, setSelectedDuration] = useState(1);
@@ -661,4 +661,6 @@ export const BookingRenewal = ({ booking, onRenewalComplete }: BookingRenewalPro
       </DialogContent>
     </Dialog>
   );
-};
+});
+
+BookingRenewal.displayName = "BookingRenewal";
