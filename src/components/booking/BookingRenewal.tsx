@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,7 @@ import { transactionService } from '@/api/transactionService';
 import { razorpayService } from '@/api/razorpayService';
 import { couponService } from '@/api/couponService';
 import { seatsService } from '@/api/seatsService';
+import { supabase } from '@/integrations/supabase/client';
 import { Booking } from '@/types/BookingTypes';
 
 interface BookingRenewalProps {
@@ -57,8 +58,50 @@ export const BookingRenewal = ({ booking, onRenewalComplete }: BookingRenewalPro
   const [couponValidating, setCouponValidating] = useState(false);
   const [seatAvailable, setSeatAvailable] = useState<boolean | null>(null);
   const [checkingAvailability, setCheckingAvailability] = useState(false);
+  const [resolvedSeatId, setResolvedSeatId] = useState<string | null>(null);
+  const [resolvedSeatPrice, setResolvedSeatPrice] = useState<number>(0);
 
   const { toast } = useToast();
+
+  // On dialog open, resolve the actual seat UUID and price from DB
+  useEffect(() => {
+    if (!isDialogOpen) return;
+    const resolve = async () => {
+      const seatObj = booking.seatId as any;
+      // If seatId is already an object with _id and price, use it directly
+      if (typeof seatObj === 'object' && seatObj?._id && seatObj?.price) {
+        setResolvedSeatId(seatObj._id);
+        setResolvedSeatPrice(Number(seatObj.price));
+        return;
+      }
+      // If seatId is a string UUID, fetch its price
+      if (typeof seatObj === 'string' && seatObj) {
+        const res = await seatsService.getSeatById(seatObj);
+        if (res.success && res.data) {
+          setResolvedSeatId(res.data._id);
+          setResolvedSeatPrice(Number(res.data.price) || 0);
+          return;
+        }
+      }
+      // Fallback: look up by cabin_id + seat_number
+      const cabinId = typeof booking.cabinId === 'object' ? (booking.cabinId as any)?._id : booking.cabinId;
+      const seatNumber = (booking as any).itemNumber || (typeof seatObj === 'object' ? seatObj?.number : undefined);
+      if (cabinId && seatNumber) {
+        const { data } = await supabase
+          .from('seats')
+          .select('id, price')
+          .eq('cabin_id', cabinId)
+          .eq('number', seatNumber)
+          .single();
+        if (data) {
+          setResolvedSeatId(data.id);
+          setResolvedSeatPrice(Number(data.price) || 0);
+          return;
+        }
+      }
+    };
+    resolve();
+  }, [isDialogOpen, booking]);
 
   const calculateNewEndDate = () => {
     const currentEndDate = new Date(booking.endDate);
@@ -66,8 +109,7 @@ export const BookingRenewal = ({ booking, onRenewalComplete }: BookingRenewalPro
   };
 
   const calculateAdditionalAmount = () => {
-    const seatObj = booking.seatId as any;
-    const monthlyRate = (typeof seatObj === 'object' ? seatObj?.price : undefined) || 1000;
+    const monthlyRate = resolvedSeatPrice || 1000;
     const originalAmount = monthlyRate * selectedDuration;
     
     if (appliedCoupon) {
@@ -81,8 +123,7 @@ export const BookingRenewal = ({ booking, onRenewalComplete }: BookingRenewalPro
   };
 
   const getOriginalAmount = () => {
-    const seatObj = booking.seatId as any;
-    const monthlyRate = (typeof seatObj === 'object' ? seatObj?.price : undefined) || 1000;
+    const monthlyRate = resolvedSeatPrice || 1000;
     return monthlyRate * selectedDuration;
   };
 
@@ -103,9 +144,14 @@ export const BookingRenewal = ({ booking, onRenewalComplete }: BookingRenewalPro
       const currentEndDate = new Date(booking.endDate);
       const nextStartDate = addDays(currentEndDate, 1);
 
-      const seatObj = booking.seatId as any;
+      if (!resolvedSeatId) {
+        toast({ title: "Error", description: "Could not identify seat for availability check", variant: "destructive" });
+        setSeatAvailable(false);
+        setCheckingAvailability(false);
+        return;
+      }
       const response = await seatsService.checkSeatAvailability(
-        (typeof seatObj === 'object' ? seatObj?._id : seatObj) || seatObj,
+        resolvedSeatId,
         format(nextStartDate, 'yyyy-MM-dd'),
         format(newEndDate, 'yyyy-MM-dd')
       );
