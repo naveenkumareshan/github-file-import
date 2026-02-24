@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import { adminCabinsService } from "@/api/adminCabinsService";
 import { adminSeatsService, SeatData } from "@/api/adminSeatsService";
 import { seatCategoryService, SeatCategory } from "@/api/seatCategoryService";
-import { ArrowLeft, Building, Plus, Trash2, Settings, Pencil } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Pencil } from "lucide-react";
 import { FloorPlanDesigner, FloorPlanSeat } from "@/components/seats/FloorPlanDesigner";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -154,19 +152,6 @@ const SeatManagement = () => {
     }
   };
 
-  const toggleCabinStatus = async () => {
-    if (!cabin) return;
-    try {
-      const res = await adminCabinsService.updateCabin(cabin.id, { is_active: !cabin.is_active });
-      if (res.success) {
-        setCabin(res.data);
-        toast({ title: `Room ${res.data.is_active ? "activated" : "deactivated"}` });
-      }
-    } catch (e) {
-      toast({ title: "Error", variant: "destructive" });
-    }
-  };
-
   const handleAddOrUpdateFloor = async () => {
     if (!floorNumber || !cabin) return;
     try {
@@ -225,132 +210,107 @@ const SeatManagement = () => {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <Button variant="outline" size="sm" onClick={() => navigate(-1)} className="flex items-center gap-2">
-        <ArrowLeft className="h-4 w-4" /> Back to Rooms
-      </Button>
+    <div className="container mx-auto p-4 space-y-3">
+      {/* Slim header */}
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+          <ArrowLeft className="h-4 w-4 mr-1" /> Back
+        </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <h1 className="text-lg font-semibold">{cabin?.name}</h1>
+          <span className="text-xs text-muted-foreground">
+            {cabin?.category} • {cabin?.capacity} cap • ₹{cabin?.price}/mo
+          </span>
+        </div>
+      </div>
 
-      <Card>
-        <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-2">
-          <div>
-            <CardTitle className="text-2xl font-bold">{cabin?.name}</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              {cabin?.category} • {cabin?.capacity} capacity • ₹{cabin?.price}/month
-            </p>
+      {/* Combined Categories + Floors row */}
+      <div className="border rounded-lg p-3 flex flex-col lg:flex-row gap-3">
+        {/* Categories section */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium">Categories</span>
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={openAddCategory}>
+              <Plus className="h-3 w-3 mr-1" /> Add
+            </Button>
           </div>
-          <div className="flex items-center space-x-2 mt-4 sm:mt-0">
-            <Label className={cabin?.is_active ? "text-emerald-600" : "text-destructive"}>
-              {cabin?.is_active ? "Active" : "Inactive"}
-            </Label>
-            <Switch checked={cabin?.is_active || false} onCheckedChange={toggleCabinStatus} />
-          </div>
-        </CardHeader>
-      </Card>
-
-      {/* Category Management */}
-      <Card>
-        <CardHeader className="flex flex-row justify-between items-center pb-2">
-          <CardTitle className="text-lg flex items-center gap-2"><Settings className="h-4 w-4" /> Seat Categories & Pricing</CardTitle>
-          <Button size="sm" variant="outline" onClick={openAddCategory}><Plus className="h-3.5 w-3.5 mr-1" /> Add Category</Button>
-        </CardHeader>
-        <CardContent>
-          {categories.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No categories yet. Add one to get started.</p>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-              {categories.map(cat => (
-                <div key={cat.id} className="border rounded-lg p-3 flex flex-col gap-1">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-sm">{cat.name}</span>
-                    <div className="flex gap-1">
-                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => openEditCategory(cat)}>
-                        <Pencil className="h-3 w-3" />
-                      </Button>
-                      <Button size="icon" variant="ghost" className="h-6 w-6 text-destructive" onClick={() => handleDeleteCategory(cat.id)}>
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </div>
-                  <span className="text-xs text-muted-foreground">₹{cat.price}/month</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Floor selector */}
-      <Card>
-        <CardHeader><CardTitle className="text-lg">Floors</CardTitle></CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3 mb-4">
-            {floors.map((floor: any) => (
-              <div key={floor.id}
-                className={`border rounded-lg p-3 flex flex-col items-center gap-1 cursor-pointer transition-all ${
-                  selectedFloor === floor.id ? "bg-primary/10 border-primary shadow-sm" : "hover:border-primary/50"
-                }`}
-                onClick={() => setSelectedFloor(floor.id)}
-              >
-                <Building className="h-5 w-5" />
-                <span className="text-sm font-medium">Floor {floor.number}</span>
-                <Button size="sm" variant="ghost" className="text-xs h-6 px-2"
-                  onClick={e => { e.stopPropagation(); setFloorNumber(floor.number.toString()); setEditingFloorId(floor.id); setShowAddFloorForm(true); }}
-                >Edit</Button>
+          <div className="flex flex-wrap gap-2">
+            {categories.map(cat => (
+              <div key={cat.id} className="flex items-center gap-1 border rounded px-2 py-1 text-xs">
+                <span className="font-medium">{cat.name}</span>
+                <span className="text-muted-foreground">₹{cat.price}</span>
+                <Button size="icon" variant="ghost" className="h-5 w-5" onClick={() => openEditCategory(cat)}>
+                  <Pencil className="h-2.5 w-2.5" />
+                </Button>
+                <Button size="icon" variant="ghost" className="h-5 w-5 text-destructive" onClick={() => handleDeleteCategory(cat.id)}>
+                  <Trash2 className="h-2.5 w-2.5" />
+                </Button>
               </div>
             ))}
-            <div className="border border-dashed rounded-lg p-3 flex flex-col items-center gap-1 cursor-pointer text-muted-foreground hover:border-primary/50"
-              onClick={() => { setFloorNumber(""); setEditingFloorId(null); setShowAddFloorForm(true); }}
-            >
-              <Plus className="h-5 w-5" />
-              <span className="text-sm font-medium">Add Floor</span>
-            </div>
+            {categories.length === 0 && <span className="text-xs text-muted-foreground">No categories yet</span>}
           </div>
+        </div>
 
+        {/* Divider */}
+        <div className="hidden lg:block w-px bg-border" />
+
+        {/* Floors section */}
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-sm font-medium">Floors</span>
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setFloorNumber(""); setEditingFloorId(null); setShowAddFloorForm(true); }}>
+              <Plus className="h-3 w-3 mr-1" /> Add
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {floors.map((floor: any) => (
+              <button
+                key={floor.id}
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                  selectedFloor === floor.id
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-background hover:bg-accent border-border"
+                }`}
+                onClick={() => setSelectedFloor(floor.id)}
+                onDoubleClick={() => { setFloorNumber(floor.number.toString()); setEditingFloorId(floor.id); setShowAddFloorForm(true); }}
+              >
+                Floor {floor.number}
+              </button>
+            ))}
+          </div>
           {showAddFloorForm && (
-            <div className="border rounded-lg p-4">
-              <h3 className="font-medium mb-3">{editingFloorId ? "Update Floor" : "Add Floor"}</h3>
-              <div className="flex items-end gap-3">
-                <div>
-                  <Label>Floor Number</Label>
-                  <Input type="number" min={1} value={floorNumber} onChange={e => setFloorNumber(e.target.value)} className="w-32" />
-                </div>
-                <Button onClick={handleAddOrUpdateFloor} disabled={!floorNumber}>
-                  {editingFloorId ? "Update" : "Add"}
-                </Button>
-                <Button variant="outline" onClick={() => { setShowAddFloorForm(false); setFloorNumber(""); }}>Cancel</Button>
-              </div>
+            <div className="flex items-center gap-2 mt-2">
+              <Input type="number" min={1} value={floorNumber} onChange={e => setFloorNumber(e.target.value)} className="w-20 h-7 text-xs" placeholder="#" />
+              <Button size="sm" className="h-7 text-xs" onClick={handleAddOrUpdateFloor} disabled={!floorNumber}>
+                {editingFloorId ? "Update" : "Add"}
+              </Button>
+              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setShowAddFloorForm(false); setFloorNumber(""); }}>Cancel</Button>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      {/* Floor Plan Designer */}
-      <Card>
-        <CardHeader><CardTitle className="text-lg">Floor Plan Designer</CardTitle></CardHeader>
-        <CardContent>
-          <FloorPlanDesigner
-            cabinId={cabinId || ""}
-            roomWidth={roomWidth}
-            roomHeight={roomHeight}
-            seats={seats}
-            onSeatsChange={setSeats}
-            onSeatSelect={seat => { setSelectedSeat(seat); }}
-            selectedSeat={selectedSeat}
-            onSave={handleSave}
-            onDeleteSeat={handleDeleteSeat}
-            onPlaceSeat={handlePlaceSeat}
-            onSeatMove={handleSeatMove}
-            onSeatUpdate={handleSeatUpdate}
-            layoutImage={layoutImage}
-            layoutImageOpacity={layoutImageOpacity}
-            onLayoutImageChange={setLayoutImage}
-            onLayoutImageOpacityChange={setLayoutImageOpacity}
-            isSaving={isSaving}
-            categories={categories.map(c => ({ id: c.id, name: c.name, price: c.price }))}
-          />
-        </CardContent>
-      </Card>
-
+      {/* Floor Plan Designer - no card wrapper */}
+      <FloorPlanDesigner
+        cabinId={cabinId || ""}
+        roomWidth={roomWidth}
+        roomHeight={roomHeight}
+        seats={seats}
+        onSeatsChange={setSeats}
+        onSeatSelect={seat => { setSelectedSeat(seat); }}
+        selectedSeat={selectedSeat}
+        onSave={handleSave}
+        onDeleteSeat={handleDeleteSeat}
+        onPlaceSeat={handlePlaceSeat}
+        onSeatMove={handleSeatMove}
+        onSeatUpdate={handleSeatUpdate}
+        layoutImage={layoutImage}
+        layoutImageOpacity={layoutImageOpacity}
+        onLayoutImageChange={setLayoutImage}
+        onLayoutImageOpacityChange={setLayoutImageOpacity}
+        isSaving={isSaving}
+        categories={categories.map(c => ({ id: c.id, name: c.name, price: c.price }))}
+      />
 
       {/* Category Management Dialog */}
       <Dialog open={showCategoryDialog} onOpenChange={setShowCategoryDialog}>
