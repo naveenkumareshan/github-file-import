@@ -1011,49 +1011,35 @@ const VendorSeats: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Price */}
-                  <div>
-                    <Label className="text-[10px] uppercase text-muted-foreground">Seat Amount (₹)</Label>
-                    <Input className="h-8 text-xs bg-muted cursor-not-allowed" type="number" value={bookingPrice} readOnly />
-                  </div>
-
-                  {/* Locker option */}
-                  {selectedCabinInfo?.lockerAvailable && (
-                    <div className="flex items-center gap-2 border rounded p-2">
-                      <Checkbox
-                        id="locker"
-                        checked={lockerIncluded}
-                        onCheckedChange={(v) => setLockerIncluded(v === true)}
-                        disabled={selectedCabinInfo.lockerMandatory}
-                      />
-                      <Label htmlFor="locker" className="text-xs cursor-pointer flex-1">
-                        Include Locker
-                        {selectedCabinInfo.lockerMandatory && <span className="text-muted-foreground ml-1">(Mandatory)</span>}
-                      </Label>
-                      <span className="text-xs font-medium">₹{selectedCabinInfo.lockerPrice}</span>
-                    </div>
-                  )}
-
-                  {/* Discount */}
-                  <div className="space-y-1.5">
-                    <Label className="text-[10px] uppercase text-muted-foreground">Discount</Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Input className="h-8 text-xs" type="number" placeholder="₹ Amount" value={discountAmount} onChange={e => setDiscountAmount(e.target.value)} />
-                      <Input className="h-8 text-xs" placeholder="Reason (optional)" value={discountReason} onChange={e => setDiscountReason(e.target.value)} />
-                    </div>
-                  </div>
-
-                  {/* Booking Summary */}
-                  <div className="border rounded p-2 text-[11px] space-y-1 bg-muted/30">
+                  {/* Booking Summary with Locker & Discount */}
+                  <div className="border rounded p-3 text-[11px] space-y-2 bg-muted/30">
                     <div className="flex justify-between"><span>Seat Amount</span><span>₹{parseFloat(bookingPrice) || 0}</span></div>
+                    {selectedCabinInfo?.lockerAvailable && (
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-1.5">
+                          <Checkbox
+                            id="locker"
+                            checked={lockerIncluded}
+                            onCheckedChange={(v) => setLockerIncluded(v === true)}
+                            disabled={selectedCabinInfo.lockerMandatory}
+                            className="h-3.5 w-3.5"
+                          />
+                          <Label htmlFor="locker" className="text-[11px] cursor-pointer">
+                            Locker{selectedCabinInfo.lockerMandatory ? ' (Mandatory)' : ''}
+                          </Label>
+                        </div>
+                        {lockerIncluded && <span>₹{selectedCabinInfo.lockerPrice}</span>}
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <Input className="h-7 text-[11px]" type="number" placeholder="₹ Discount" value={discountAmount} onChange={e => setDiscountAmount(e.target.value)} />
+                      <Input className="h-7 text-[11px]" placeholder="Reason" value={discountReason} onChange={e => setDiscountReason(e.target.value)} />
+                    </div>
                     {parseFloat(discountAmount) > 0 && (
                       <div className="flex justify-between text-emerald-600"><span>Discount{discountReason ? ` (${discountReason})` : ''}</span><span>-₹{parseFloat(discountAmount)}</span></div>
                     )}
-                    {lockerIncluded && selectedCabinInfo && (
-                      <div className="flex justify-between"><span>Locker</span><span>₹{selectedCabinInfo.lockerPrice}</span></div>
-                    )}
                     <Separator />
-                    <div className="flex justify-between font-semibold"><span>Total</span><span>₹{computedTotal}</span></div>
+                    <div className="flex justify-between font-semibold text-xs"><span>Total</span><span>₹{computedTotal}</span></div>
                   </div>
 
                   {/* Partial Payment Toggle */}
