@@ -103,6 +103,7 @@ const SupportTicketsManagement = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="text-xs">Ticket #</TableHead>
                     <TableHead className="text-xs">Date</TableHead>
                     <TableHead className="text-xs">User</TableHead>
                     <TableHead className="text-xs">Subject</TableHead>
@@ -114,6 +115,7 @@ const SupportTicketsManagement = () => {
                 <TableBody>
                   {filtered.map((t: any) => (
                     <TableRow key={t.id}>
+                      <TableCell className="text-xs font-mono">{t.serial_number || '—'}</TableCell>
                       <TableCell className="text-xs">{format(new Date(t.created_at), 'd MMM yy')}</TableCell>
                       <TableCell className="text-xs">{(t.profiles as any)?.name || '—'}</TableCell>
                       <TableCell className="text-xs max-w-[200px] truncate">{t.subject}</TableCell>

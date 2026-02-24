@@ -3,30 +3,10 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Navigation } from '../components/Navigation';
 import { StatisticsCards } from '../components/admin/StatisticsCards';
-import { ChatManagement } from '../components/admin/ChatManagement';
+
 import { CustomerComplaints } from '../components/admin/CustomerComplaints';
 import { OccupancyChart } from '../components/admin/OccupancyChart';
 import { RevenueChart } from '../components/admin/RevenueChart';
-
-// Mock data
-const mockChatThreads = [
-  {
-    id: 201,
-    studentName: "Jenny Wilson",
-    hostName: "Partner",
-    lastMessage: "I need to report an issue with the water heater in my room.",
-    timestamp: "Today, 10:30 AM",
-    unread: true
-  },
-  {
-    id: 202,
-    studentName: "Cameron Williamson",
-    hostName: "Partner",
-    lastMessage: "Thanks for fixing the ceiling fan. It works perfectly now.",
-    timestamp: "Yesterday, 3:15 PM",
-    unread: false
-  }
-];
 
 const mockFinancialSummary = {
   totalRevenue: 85300,
@@ -73,7 +53,6 @@ const HostDashboard = () => {
         </div>
         
         <CustomerComplaints />
-        <ChatManagement chatThreads={mockChatThreads} />
       </div>
       
       <footer className="bg-cabin-dark text-white py-8 mt-12">

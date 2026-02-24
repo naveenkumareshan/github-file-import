@@ -157,7 +157,10 @@ const ComplaintsPage = () => {
               <Card key={c.id} className="rounded-2xl">
                 <CardContent className="p-3 space-y-1.5">
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-[13px] font-semibold text-foreground flex-1">{c.subject}</p>
+                    <div className="flex-1 min-w-0">
+                      {c.serial_number && <p className="text-[10px] font-mono text-muted-foreground">{c.serial_number}</p>}
+                      <p className="text-[13px] font-semibold text-foreground">{c.subject}</p>
+                    </div>
                     <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${statusBadge[c.status] || ''}`}>
                       {c.status?.replace('_', ' ')}
                     </span>

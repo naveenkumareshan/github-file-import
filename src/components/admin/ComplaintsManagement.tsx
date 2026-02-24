@@ -119,6 +119,7 @@ const ComplaintsManagement = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="text-xs">Serial #</TableHead>
                     <TableHead className="text-xs">Date</TableHead>
                     <TableHead className="text-xs">Student</TableHead>
                     <TableHead className="text-xs">Subject</TableHead>
@@ -131,6 +132,7 @@ const ComplaintsManagement = () => {
                 <TableBody>
                   {filtered.map((c: any) => (
                     <TableRow key={c.id}>
+                      <TableCell className="text-xs font-mono">{c.serial_number || '—'}</TableCell>
                       <TableCell className="text-xs">{format(new Date(c.created_at), 'd MMM yy')}</TableCell>
                       <TableCell className="text-xs">{(c.profiles as any)?.name || '—'}</TableCell>
                       <TableCell className="text-xs max-w-[200px] truncate">{c.subject}</TableCell>
