@@ -100,6 +100,8 @@ const StudentBookings = () => {
           itemImage: booking.cabins?.image_url,
           bookingStatus: booking.payment_status,
           location: booking.cabins?.city,
+          cabinAddress: booking.cabins?.full_address || '',
+          lockerPrice: booking.cabins?.locker_available ? (booking.cabins?.locker_price || 0) : 0,
           keyDeposit: undefined,
           cabinCode: booking.cabin_id || '',
           transferredHistory: null,

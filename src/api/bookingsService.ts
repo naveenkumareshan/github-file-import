@@ -43,7 +43,7 @@ export const bookingsService = {
 
       let query = supabase
         .from('bookings')
-        .select('*, cabins(name, category, image_url, city, area)')
+        .select('*, cabins(name, category, image_url, city, area, full_address, locker_available, locker_price)')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
@@ -67,7 +67,7 @@ export const bookingsService = {
       const today = new Date().toISOString().split('T')[0];
       const { data, error } = await supabase
         .from('bookings')
-        .select('*, cabins(name, category, image_url, city, area)')
+        .select('*, cabins(name, category, image_url, city, area, full_address, locker_available, locker_price)')
         .eq('user_id', user.id)
         .gte('end_date', today)
         .eq('payment_status', 'completed')
@@ -84,7 +84,7 @@ export const bookingsService = {
     try {
       const { data, error } = await supabase
         .from('bookings')
-        .select('*, cabins(name, category, image_url, city, area, description)')
+        .select('*, cabins(name, category, image_url, city, area, description, full_address, locker_available, locker_price)')
         .eq('id', id)
         .single();
       return { success: !error, data };
@@ -146,7 +146,7 @@ export const bookingsService = {
 
       const { data, error } = await supabase
         .from('bookings')
-        .select('*, cabins(name, category, image_url)')
+        .select('*, cabins(name, category, image_url, full_address, locker_available, locker_price)')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 

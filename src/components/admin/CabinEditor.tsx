@@ -60,17 +60,17 @@ export function CabinEditor({
     branchName: existingCabin?.ownerDetails?.bankDetails?.branchName || "",
     accountType: existingCabin?.ownerDetails?.bankDetails?.accountType || "",
     upiId: existingCabin?.ownerDetails?.bankDetails?.upiId || "",
-    fullAddress: existingCabin?.location?.fullAddress || "",
-    city: existingCabin?.location?.city || existingCabin?.location?.city?._id,
-    state: existingCabin?.location?.state || existingCabin?.location?.state?._id,
+    fullAddress: existingCabin?.location?.fullAddress || existingCabin?.full_address || existingCabin?.fullAddress || "",
+    city: existingCabin?.location?.city || existingCabin?.location?.city?._id || existingCabin?.city,
+    state: existingCabin?.location?.state || existingCabin?.location?.state?._id || existingCabin?.state,
     pincode: existingCabin?.location?.pincode || "",
     latitude: existingCabin?.location?.coordinates?.latitude || 0,
     longitude: existingCabin?.location?.coordinates?.longitude || 0,
-    area: existingCabin?.location?.area || existingCabin?.location?.area?._id,
+    area: existingCabin?.location?.area || existingCabin?.location?.area?._id || existingCabin?.area,
     locality: existingCabin?.location?.locality || "",
     nearbyLandmarks: existingCabin?.location?.nearbyLandmarks || [],
-    lockerAvailable: existingCabin?.lockerAvailable || false,
-    lockerPrice: existingCabin?.lockerPrice || 0
+    lockerAvailable: existingCabin?.lockerAvailable ?? existingCabin?.locker_available ?? false,
+    lockerPrice: existingCabin?.lockerPrice ?? existingCabin?.locker_price ?? 0
   });
 
   const [seats, setSeats] = useState<RoomSeat[]>([]);
@@ -403,7 +403,7 @@ export function CabinEditor({
                 </div>
                 <div>
                   <Label htmlFor="price" className="text-lg font-medium">
-                    Monthly Price (₹) *
+                    Starting Price (₹) *
                   </Label>
                   <div className="flex items-center gap-2 mt-2">
                     <span className="text-lg">₹</span>
@@ -420,7 +420,7 @@ export function CabinEditor({
                     <span className="text-lg">/month</span>
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
-                    This is the base price for a monthly subscription
+                    This is the starting base price shown to students. Actual seat prices are set via categories.
                   </p>
                 </div>
                 <div>

@@ -45,6 +45,8 @@ interface BookingDisplay {
   bookingStatus?: string;
   keyDeposit?: number;
   seatPrice?: number;
+  lockerPrice?: number;
+  cabinAddress?: string;
   bookingDuration?: 'daily' | 'monthly' | 'weekly';
   userId?: string | { name: string; email: string };
   seatId?: string | { _id: string; number: number; price: number };
@@ -165,9 +167,16 @@ export const BookingsList = ({
                     </p>
                     <p className="text-[11px] text-muted-foreground truncate">{booking.itemName}</p>
                     {booking.bookingType === 'cabin' && (
-                      <p className="text-[10px] text-muted-foreground truncate">
-                        Seat #{booking.itemNumber} · {booking.cabinId?.location?.fullAddress}
-                      </p>
+                      <>
+                        <p className="text-[10px] text-muted-foreground truncate">
+                          Seat #{booking.itemNumber}
+                        </p>
+                        {booking.cabinAddress && (
+                          <p className="text-[10px] text-muted-foreground truncate">
+                            {booking.cabinAddress.split(/\s+/).slice(0, 15).join(' ')}
+                          </p>
+                        )}
+                      </>
                     )}
                     {booking.bookingType === 'hostel' && (
                       <p className="text-[10px] text-muted-foreground">Bed #{booking.itemNumber}</p>
@@ -243,10 +252,13 @@ export const BookingsList = ({
             })()}
 
             {/* Extra info chips */}
-            {(booking.seatPrice > 0 || booking.keyDeposit > 0) && (
-              <div className="flex gap-2 mb-1.5 px-1">
+            {(booking.seatPrice > 0 || booking.lockerPrice > 0 || booking.keyDeposit > 0) && (
+              <div className="flex gap-2 mb-1.5 px-1 flex-wrap">
                 {booking.seatPrice > 0 && (
                   <span className="text-[10px] text-muted-foreground">Seat: ₹{booking.seatPrice?.toLocaleString()}</span>
+                )}
+                {booking.lockerPrice > 0 && (
+                  <span className="text-[10px] text-muted-foreground">Locker: ₹{booking.lockerPrice?.toLocaleString()}</span>
                 )}
                 {booking.keyDeposit > 0 && (
                   <span className="text-[10px] text-muted-foreground">Deposit: ₹{booking.keyDeposit?.toLocaleString()}</span>

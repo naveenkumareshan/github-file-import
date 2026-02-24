@@ -141,6 +141,7 @@ export type Database = {
           created_at: string | null
           description: string | null
           floors: Json | null
+          full_address: string | null
           grid_size: number
           id: string
           image_url: string | null
@@ -148,6 +149,8 @@ export type Database = {
           is_active: boolean | null
           is_booking_active: boolean
           layout_image: string | null
+          locker_available: boolean
+          locker_price: number
           name: string
           price: number | null
           room_elements: Json | null
@@ -166,6 +169,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           floors?: Json | null
+          full_address?: string | null
           grid_size?: number
           id?: string
           image_url?: string | null
@@ -173,6 +177,8 @@ export type Database = {
           is_active?: boolean | null
           is_booking_active?: boolean
           layout_image?: string | null
+          locker_available?: boolean
+          locker_price?: number
           name: string
           price?: number | null
           room_elements?: Json | null
@@ -191,6 +197,7 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           floors?: Json | null
+          full_address?: string | null
           grid_size?: number
           id?: string
           image_url?: string | null
@@ -198,6 +205,8 @@ export type Database = {
           is_active?: boolean | null
           is_booking_active?: boolean
           layout_image?: string | null
+          locker_available?: boolean
+          locker_price?: number
           name?: string
           price?: number | null
           room_elements?: Json | null
