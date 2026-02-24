@@ -1031,14 +1031,14 @@ const VendorSeats: React.FC = () => {
                         {lockerIncluded && <span>₹{selectedCabinInfo.lockerPrice}</span>}
                       </div>
                     )}
-                    <div className="space-y-1">
-                      <span className="text-muted-foreground">Discount</span>
-                      <div className="grid grid-cols-2 gap-1.5">
-                        <Input className="h-7 text-[11px]" type="number" placeholder="₹ Amount" value={discountAmount} onChange={e => setDiscountAmount(e.target.value)} />
-                        <Input className="h-7 text-[11px]" placeholder="Reason" value={discountReason} onChange={e => setDiscountReason(e.target.value)} />
+                    <div className="space-y-0.5">
+                      <span className="text-muted-foreground text-[10px]">Discount</span>
+                      <div className="grid grid-cols-2 gap-1">
+                        <Input className="h-5 text-[9px] px-1.5 border-muted" type="number" placeholder="₹ Amt" value={discountAmount} onChange={e => setDiscountAmount(e.target.value)} />
+                        <Input className="h-5 text-[9px] px-1.5 border-muted" placeholder="Reason" value={discountReason} onChange={e => setDiscountReason(e.target.value)} />
                       </div>
                       {parseFloat(discountAmount) > 0 && (
-                        <div className="flex justify-between text-emerald-600"><span>{discountReason ? `(${discountReason})` : ''}</span><span>-₹{parseFloat(discountAmount)}</span></div>
+                        <div className="flex justify-between text-[9px] text-emerald-600"><span>{discountReason ? `(${discountReason})` : ''}</span><span>-₹{parseFloat(discountAmount)}</span></div>
                       )}
                     </div>
                     <Separator />
