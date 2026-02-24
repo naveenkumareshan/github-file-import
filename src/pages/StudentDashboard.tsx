@@ -8,10 +8,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Navigation } from '@/components/Navigation';
 import { Footer } from '@/components/Footer';
 import { bookingsService } from '@/api/bookingsService';
+import { vendorSeatsService } from '@/api/vendorSeatsService';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, differenceInDays, isPast } from 'date-fns';
-import { Building, Calendar, Check, ArrowUp, ArrowDown, MapPin, Clock, Receipt, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import { Building, Calendar, Check, ArrowUp, ArrowDown, MapPin, Clock, Receipt, CheckCircle2, XCircle, AlertCircle, Wallet } from 'lucide-react';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { useNavigate } from 'react-router-dom';
 import { BookingExpiryDetails } from '@/pages/students/BookingExpiryDetails';
@@ -166,6 +167,7 @@ const StudentDashboard: React.FC = () => {
   const [currentBookings, setCurrentBookings] = useState<BookingData[]>([]);
   const [bookingHistory, setBookingHistory] = useState<BookingData[]>([]);
   const [laundryOrders, setLaundryOrders] = useState<LaundryOrder[]>([]);
+  const [studentDues, setStudentDues] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [loadingLaundry, setLoadingLaundry] = useState<boolean>(true);
   const { user } = useAuth();
@@ -174,6 +176,7 @@ const StudentDashboard: React.FC = () => {
   useEffect(() => {
     fetchBookingData();
     fetchLaundryOrders();
+    fetchStudentDues();
   }, []);
 
   const fetchBookingData = async () => {
@@ -266,6 +269,10 @@ const StudentDashboard: React.FC = () => {
     .filter(order => order.status === 'completed')
     .reduce((sum, order) => sum + order.totalAmount, 0);
 
+  const pendingDues = studentDues.filter(d => d.status !== 'paid' && d.status !== 'cancelled');
+  const totalDueAmount = pendingDues.reduce((s, d) => s + Number(d.due_amount) - Number(d.paid_amount), 0);
+  const hasOverdue = pendingDues.some(d => d.due_date < new Date().toISOString().split('T')[0]);
+
   return (
     <ErrorBoundary>
       <div className="min-h-screen flex flex-col">
@@ -322,12 +329,31 @@ const StudentDashboard: React.FC = () => {
                       </div>
                     </CardContent>
                   </Card>
+
+                  {pendingDues.length > 0 && (
+                    <Card className={hasOverdue ? 'border-red-300 dark:border-red-800' : ''}>
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-muted-foreground">Pending Dues</p>
+                            <h3 className={`text-2xl font-bold mt-1 ${hasOverdue ? 'text-red-600' : ''}`}>
+                              ₹{totalDueAmount.toLocaleString()}
+                            </h3>
+                          </div>
+                          <div className={`h-12 w-12 rounded-full flex items-center justify-center ${hasOverdue ? 'bg-red-100 dark:bg-red-900' : 'bg-orange-100 dark:bg-orange-900'}`}>
+                            <Wallet className={`h-6 w-6 ${hasOverdue ? 'text-red-600 dark:text-red-300' : 'text-orange-600 dark:text-orange-300'}`} />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
                 </div>
                 
                 <Tabs defaultValue="bookings" className="w-full">
                 <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3">
                   <TabsTrigger value="bookings">Current Bookings</TabsTrigger>
                   <TabsTrigger value="history">Booking History</TabsTrigger>
+                  {pendingDues.length > 0 && <TabsTrigger value="dues">My Dues</TabsTrigger>}
                 </TabsList>
                   
                   <TabsContent value="bookings" className="mt-6">
@@ -445,6 +471,61 @@ const StudentDashboard: React.FC = () => {
                                 formatDate={formatDate}
                               />
                             ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  <TabsContent value="dues" className="mt-6">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>My Dues</CardTitle>
+                        <CardDescription>Pending payments for advance bookings</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {pendingDues.length === 0 ? (
+                          <div className="text-center py-8 text-muted-foreground">No pending dues</div>
+                        ) : (
+                          <div className="space-y-3">
+                            {pendingDues.map((due: any) => {
+                              const remaining = Number(due.due_amount) - Number(due.paid_amount);
+                              const isOverdue = due.due_date < new Date().toISOString().split('T')[0];
+                              const daysOverdue = isOverdue ? Math.abs(differenceInDays(new Date(due.due_date), new Date())) : 0;
+                              return (
+                                <div key={due.id} className={`rounded-xl border p-4 space-y-2 ${isOverdue ? 'border-red-300 dark:border-red-800 bg-red-50/50 dark:bg-red-950/20' : ''}`}>
+                                  <div className="flex justify-between items-start">
+                                    <div>
+                                      <p className="font-semibold text-sm">{(due.cabins as any)?.name || 'Reading Room'}</p>
+                                      <p className="text-xs text-muted-foreground">Seat #{(due.seats as any)?.number || '-'}</p>
+                                    </div>
+                                    {isOverdue ? (
+                                      <Badge className="bg-red-500 text-white text-[10px]">{daysOverdue}d Overdue</Badge>
+                                    ) : (
+                                      <Badge className="bg-amber-500 text-white text-[10px]">Pending</Badge>
+                                    )}
+                                  </div>
+                                  <div className="grid grid-cols-3 gap-2 text-xs">
+                                    <div>
+                                      <p className="text-muted-foreground text-[10px]">Total Fee</p>
+                                      <p className="font-medium">₹{Number(due.total_fee).toLocaleString()}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-muted-foreground text-[10px]">Paid</p>
+                                      <p className="font-medium text-emerald-600">₹{(Number(due.advance_paid) + Number(due.paid_amount)).toLocaleString()}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-muted-foreground text-[10px]">Due Amount</p>
+                                      <p className="font-semibold text-red-600">₹{Math.max(0, remaining).toLocaleString()}</p>
+                                    </div>
+                                  </div>
+                                  <div className="flex justify-between text-xs text-muted-foreground">
+                                    <span>Due Date: {due.due_date ? format(new Date(due.due_date), 'dd MMM yyyy') : '-'}</span>
+                                    <span>Seat Valid: {due.proportional_end_date ? format(new Date(due.proportional_end_date), 'dd MMM yyyy') : '-'}</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                       </CardContent>

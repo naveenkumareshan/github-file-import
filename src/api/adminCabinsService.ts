@@ -100,6 +100,12 @@ export const adminCabinsService = {
         locker_mandatory: data.lockerMandatory ?? true,
         full_address: data.fullAddress || '',
         created_by: data.created_by || currentUser?.id || null,
+        advance_booking_enabled: data.advanceBookingEnabled ?? false,
+        advance_percentage: data.advancePercentage ?? 50,
+        advance_flat_amount: data.advanceFlatAmount || null,
+        advance_use_flat: data.advanceUseFlat ?? false,
+        advance_validity_days: data.advanceValidityDays ?? 3,
+        advance_auto_cancel: data.advanceAutoCancel ?? true,
       };
 
       const { data: result, error } = await supabase
@@ -139,6 +145,12 @@ export const adminCabinsService = {
       if (data.lockerMandatory !== undefined) (updateData as any).locker_mandatory = data.lockerMandatory;
       if (data.fullAddress !== undefined) (updateData as any).full_address = data.fullAddress;
       if (data.created_by !== undefined) (updateData as any).created_by = data.created_by;
+      if (data.advanceBookingEnabled !== undefined) (updateData as any).advance_booking_enabled = data.advanceBookingEnabled;
+      if (data.advancePercentage !== undefined) (updateData as any).advance_percentage = data.advancePercentage;
+      if (data.advanceFlatAmount !== undefined) (updateData as any).advance_flat_amount = data.advanceFlatAmount;
+      if (data.advanceUseFlat !== undefined) (updateData as any).advance_use_flat = data.advanceUseFlat;
+      if (data.advanceValidityDays !== undefined) (updateData as any).advance_validity_days = data.advanceValidityDays;
+      if (data.advanceAutoCancel !== undefined) (updateData as any).advance_auto_cancel = data.advanceAutoCancel;
 
       const { data: result, error } = await supabase
         .from('cabins')

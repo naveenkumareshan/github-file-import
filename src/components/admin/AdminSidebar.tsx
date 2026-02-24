@@ -100,6 +100,16 @@ export function AdminSidebar() {
   }
 
   if (user?.role === 'admin' || hasPermission('view_bookings')) {
+    menuItems.push({
+      title: 'Due Management',
+      url: '/admin/due-management',
+      icon: Wallet,
+      roles: ['admin', 'vendor', 'vendor_employee'],
+      permissions: ['view_bookings']
+    });
+  }
+
+  if (user?.role === 'admin' || hasPermission('view_bookings')) {
     const bookingSubItems = [];
     
     if (user?.role === 'admin' || hasPermission('view_bookings')) {

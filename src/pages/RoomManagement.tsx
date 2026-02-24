@@ -202,6 +202,12 @@ const RoomManagement = () => {
           images: cabinData.images,
           isActive: cabinData.isActive,
           created_by: cabinData.created_by || undefined,
+          advanceBookingEnabled: cabinData.advanceBookingEnabled,
+          advancePercentage: cabinData.advancePercentage,
+          advanceFlatAmount: cabinData.advanceFlatAmount,
+          advanceUseFlat: cabinData.advanceUseFlat,
+          advanceValidityDays: cabinData.advanceValidityDays,
+          advanceAutoCancel: cabinData.advanceAutoCancel,
           ownerDetails: {
             ownerName: cabinData.ownerName,
             ownerPhone: cabinData.ownerPhone,

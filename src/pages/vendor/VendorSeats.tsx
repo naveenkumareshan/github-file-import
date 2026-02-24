@@ -66,6 +66,9 @@ const VendorSeats: React.FC = () => {
   // Future booking mode
   const [showFutureBooking, setShowFutureBooking] = useState(false);
 
+  // Advance booking mode
+  const [isAdvanceBooking, setIsAdvanceBooking] = useState(false);
+
   // Booking form state
   const [studentQuery, setStudentQuery] = useState('');
   const [studentResults, setStudentResults] = useState<StudentProfile[]>([]);
@@ -184,6 +187,7 @@ const VendorSeats: React.FC = () => {
     setBookingSuccess(false);
     setLastInvoiceData(null);
     setShowFutureBooking(false);
+    setIsAdvanceBooking(false);
 
     // Set locker default based on cabin
     const cabin = cabins.find(c => c._id === seat.cabinId);
@@ -275,6 +279,26 @@ const VendorSeats: React.FC = () => {
     return Math.max(0, base - discount + locker);
   }, [bookingPrice, lockerIncluded, selectedCabinInfo, discountAmount]);
 
+  // Advance booking computed values
+  const advanceComputed = useMemo(() => {
+    if (!isAdvanceBooking || !selectedCabinInfo?.advanceBookingEnabled) return null;
+    const total = computedTotal;
+    let advanceAmount: number;
+    if (selectedCabinInfo.advanceUseFlat && selectedCabinInfo.advanceFlatAmount) {
+      advanceAmount = Math.min(selectedCabinInfo.advanceFlatAmount, total);
+    } else {
+      advanceAmount = Math.round((selectedCabinInfo.advancePercentage / 100) * total);
+    }
+    const remainingDue = total - advanceAmount;
+    const totalDays = Math.ceil((computedEndDate.getTime() - bookingStartDate.getTime()) / (1000 * 60 * 60 * 24));
+    const proportionalDays = Math.floor((advanceAmount / total) * totalDays);
+    const dueDate = new Date(bookingStartDate);
+    dueDate.setDate(dueDate.getDate() + selectedCabinInfo.advanceValidityDays);
+    const proportionalEndDate = new Date(bookingStartDate);
+    proportionalEndDate.setDate(proportionalEndDate.getDate() + proportionalDays);
+    return { advanceAmount, remainingDue, proportionalDays, dueDate, proportionalEndDate, totalDays };
+  }, [isAdvanceBooking, selectedCabinInfo, computedTotal, computedEndDate, bookingStartDate]);
+
   // Create new student
   const handleCreateStudent = async () => {
     if (!newStudentName || !newStudentEmail) {
@@ -329,6 +353,8 @@ const VendorSeats: React.FC = () => {
       collectedBy: paymentMethod !== 'send_link' ? user?.id : undefined,
       collectedByName: collectedByName,
       transactionId: transactionId,
+      isAdvanceBooking: isAdvanceBooking && !!advanceComputed,
+      advancePaid: isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : undefined,
     };
     const res = await vendorSeatsService.createPartnerBooking(data);
     if (res.success) {
@@ -989,6 +1015,34 @@ const VendorSeats: React.FC = () => {
                     </div>
                   )}
 
+                  {/* Advance Booking Toggle */}
+                  {selectedCabinInfo?.advanceBookingEnabled && (
+                    <div className="flex items-center gap-2 border rounded p-2 bg-amber-50/50 dark:bg-amber-950/20">
+                      <Checkbox
+                        id="advanceBooking"
+                        checked={isAdvanceBooking}
+                        onCheckedChange={(v) => setIsAdvanceBooking(v === true)}
+                      />
+                      <Label htmlFor="advanceBooking" className="text-xs cursor-pointer flex-1">
+                        Advance Booking (Partial Payment)
+                      </Label>
+                    </div>
+                  )}
+
+                  {/* Advance Booking Breakdown */}
+                  {isAdvanceBooking && advanceComputed && (
+                    <div className="border rounded p-2 text-[11px] space-y-1 bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">
+                      <p className="font-semibold text-[11px] text-amber-700 dark:text-amber-400">Advance Booking Details</p>
+                      <div className="flex justify-between"><span>Total Fee</span><span>₹{computedTotal}</span></div>
+                      <div className="flex justify-between text-amber-700 dark:text-amber-400 font-medium"><span>Advance Amount</span><span>₹{advanceComputed.advanceAmount}</span></div>
+                      <div className="flex justify-between text-red-600"><span>Remaining Due</span><span>₹{advanceComputed.remainingDue}</span></div>
+                      <Separator />
+                      <div className="flex justify-between"><span>Proportional Days</span><span>{advanceComputed.proportionalDays} of {advanceComputed.totalDays} days</span></div>
+                      <div className="flex justify-between"><span>Seat Valid Until</span><span>{format(advanceComputed.proportionalEndDate, 'dd MMM yyyy')}</span></div>
+                      <div className="flex justify-between"><span>Due Date</span><span>{format(advanceComputed.dueDate, 'dd MMM yyyy')}</span></div>
+                    </div>
+                  )}
+
                   {/* Discount */}
                   <div className="space-y-1.5">
                     <Label className="text-[10px] uppercase text-muted-foreground">Discount</Label>
@@ -1048,6 +1102,12 @@ const VendorSeats: React.FC = () => {
                     )}
                     <Separator />
                     <div className="flex justify-between font-semibold"><span>Total</span><span>₹{computedTotal}</span></div>
+                    {isAdvanceBooking && advanceComputed && (
+                      <>
+                        <div className="flex justify-between text-amber-700 dark:text-amber-400 font-medium"><span>Advance (to collect now)</span><span>₹{advanceComputed.advanceAmount}</span></div>
+                        <div className="flex justify-between text-red-600"><span>Due Balance</span><span>₹{advanceComputed.remainingDue}</span></div>
+                      </>
+                    )}
                     <div className="text-muted-foreground text-[10px]">
                       Collected by: {paymentMethod === 'send_link' ? 'InhaleStays' : (user?.name || user?.email || 'Partner')}
                     </div>

@@ -164,6 +164,12 @@ export type Database = {
       }
       cabins: {
         Row: {
+          advance_auto_cancel: boolean
+          advance_booking_enabled: boolean
+          advance_flat_amount: number | null
+          advance_percentage: number
+          advance_use_flat: boolean
+          advance_validity_days: number
           amenities: string[] | null
           area: string | null
           capacity: number | null
@@ -194,6 +200,12 @@ export type Database = {
           state: string | null
         }
         Insert: {
+          advance_auto_cancel?: boolean
+          advance_booking_enabled?: boolean
+          advance_flat_amount?: number | null
+          advance_percentage?: number
+          advance_use_flat?: boolean
+          advance_validity_days?: number
           amenities?: string[] | null
           area?: string | null
           capacity?: number | null
@@ -224,6 +236,12 @@ export type Database = {
           state?: string | null
         }
         Update: {
+          advance_auto_cancel?: boolean
+          advance_booking_enabled?: boolean
+          advance_flat_amount?: number | null
+          advance_percentage?: number
+          advance_use_flat?: boolean
+          advance_validity_days?: number
           amenities?: string[] | null
           area?: string | null
           capacity?: number | null
@@ -320,6 +338,126 @@ export type Database = {
             columns: ["cabin_id"]
             isOneToOne: false
             referencedRelation: "cabins"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      due_payments: {
+        Row: {
+          amount: number
+          collected_by: string | null
+          collected_by_name: string
+          created_at: string
+          due_id: string
+          id: string
+          notes: string
+          payment_method: string
+          transaction_id: string
+        }
+        Insert: {
+          amount?: number
+          collected_by?: string | null
+          collected_by_name?: string
+          created_at?: string
+          due_id: string
+          id?: string
+          notes?: string
+          payment_method?: string
+          transaction_id?: string
+        }
+        Update: {
+          amount?: number
+          collected_by?: string | null
+          collected_by_name?: string
+          created_at?: string
+          due_id?: string
+          id?: string
+          notes?: string
+          payment_method?: string
+          transaction_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "due_payments_due_id_fkey"
+            columns: ["due_id"]
+            isOneToOne: false
+            referencedRelation: "dues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dues: {
+        Row: {
+          advance_paid: number
+          booking_id: string | null
+          cabin_id: string | null
+          created_at: string
+          due_amount: number
+          due_date: string
+          id: string
+          paid_amount: number
+          proportional_end_date: string | null
+          seat_id: string | null
+          serial_number: string | null
+          status: string
+          total_fee: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          advance_paid?: number
+          booking_id?: string | null
+          cabin_id?: string | null
+          created_at?: string
+          due_amount?: number
+          due_date: string
+          id?: string
+          paid_amount?: number
+          proportional_end_date?: string | null
+          seat_id?: string | null
+          serial_number?: string | null
+          status?: string
+          total_fee?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          advance_paid?: number
+          booking_id?: string | null
+          cabin_id?: string | null
+          created_at?: string
+          due_amount?: number
+          due_date?: string
+          id?: string
+          paid_amount?: number
+          proportional_end_date?: string | null
+          seat_id?: string | null
+          serial_number?: string | null
+          status?: string
+          total_fee?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dues_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dues_cabin_id_fkey"
+            columns: ["cabin_id"]
+            isOneToOne: false
+            referencedRelation: "cabins"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dues_seat_id_fkey"
+            columns: ["seat_id"]
+            isOneToOne: false
+            referencedRelation: "seats"
             referencedColumns: ["id"]
           },
         ]
