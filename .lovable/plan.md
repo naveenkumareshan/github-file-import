@@ -1,61 +1,179 @@
 
 
-## Maximize Seat Map Area and Show Full Layout Image
+## Student Profile Redesign + Complaints System + Support Tickets
 
-### Problems
+### Overview
 
-1. **Seat map area too small**: The `DateBasedSeatMap` wraps the `FloorPlanViewer` inside a `Card > CardHeader ("Seat Map") > CardContent` which adds padding, a title bar, and border -- all wasting precious screen space on mobile. The zoom controls also sit in a separate row above the canvas, further shrinking the seat area.
-
-2. **Layout image not fully visible**: The background image has `opacity: 30%` (layoutImageOpacity defaults to 30), making it nearly invisible. Students need to clearly see the admin-uploaded floor plan at full opacity so they understand the room layout.
-
-3. **Side padding wasting space**: The `CardContent` has default padding (`p-6`), plus the parent `SeatBookingForm` and `BookSeat` pages add their own `px-3` padding. This compounds to ~40px of dead space on each side.
+Redesign the student profile page layout, add a complaints and customer support system across student/admin/partner sides, make booking transactions clickable, and fix the Active/Expired booking tab logic.
 
 ---
 
-### Changes
+### 1. Profile Page Restructure -- Link-Style Navigation
 
-#### 1. `DateBasedSeatMap.tsx` -- Remove Card wrapper for student view
+**Current**: Profile has accordion sections (Account Info, Personal Info, Academic Info, Security) expanded inline below the header card.
 
-When `exportcsv={false}` (student context), remove the `Card > CardHeader > CardContent` wrapper around the FloorPlanViewer. Render the FloorPlanViewer directly with no card padding or "Seat Map" title. The floor selector buttons also get tighter spacing.
+**New**: Replace the accordion with a list of navigation rows inside the profile card. Each row shows an icon, label, and a chevron-right arrow. Tapping a row navigates to a dedicated sub-page (or opens a sheet/dialog) for that section.
 
-Keep the Card wrapper for `exportcsv={true}` (admin context).
-
-#### 2. `FloorPlanViewer.tsx` -- Compact zoom controls, maximize canvas
-
-- Move zoom controls **inside** the canvas as a floating overlay (absolute positioned, top-right, small transparent buttons) instead of a separate row above
-- Remove `space-y-3` wrapper spacing
-- Increase canvas height from `h-[60vh]` to `h-[70vh]` 
-- Remove border and rounded corners on the canvas for edge-to-edge feel on mobile
-- Set `layoutImageOpacity` to `100` for student view (full visibility of the floor plan image)
-
-#### 3. `DateBasedSeatMap.tsx` -- Pass full opacity for student view
-
-When `exportcsv={false}`, pass `layoutImageOpacity={100}` to `FloorPlanViewer` so the admin-uploaded background image shows at full opacity.
-
-#### 4. `SeatBookingForm.tsx` -- Remove extra label
-
-The "Select Your Seat" label with `text-lg font-semibold` and `mb-4` margin takes space. Make it smaller or remove it since the seat map is self-explanatory.
-
----
-
-### Technical Details
-
-| File | Change |
-|---|---|
-| `src/components/seats/FloorPlanViewer.tsx` | Move zoom buttons inside canvas as floating overlay (absolute top-right, z-30, small semi-transparent buttons). Remove outer `space-y-3`. Canvas: remove border, increase to `h-[70vh]`, remove rounded-lg for student view. Legend: make more compact inline. |
-| `src/components/seats/DateBasedSeatMap.tsx` | When `exportcsv={false}`: remove Card/CardHeader/CardContent wrapper, render FloorPlanViewer directly. Pass `layoutImageOpacity={100}`. Compact floor selector. |
-| `src/components/seats/SeatBookingForm.tsx` | Reduce "Select Your Seat" label size from `text-lg` to `text-sm`, reduce margin. |
-
-**Zoom controls (floating overlay inside canvas):**
+**Layout (reference image style):**
 ```text
 +----------------------------------+
-|                      [- 75% + F] |  <-- small floating buttons
-|                                  |
-|  (seats on full layout image)    |
-|                                  |
-|                        +------+  |
-|                        | mini |  |
-|                        +------+  |
+| [Avatar]  Name                   |
+|           email@example.com      |
++----------------------------------+
+| My Bookings              View All>|
+| [Booking card]                    |
++----------------------------------+
+| > Account Info              >    |
+| > Personal Info             >    |
+| > Academic Info             >    |
+| > Security                  >    |
++----------------------------------+
+| Quick Links                      |
+| [Complaints]  [Customer Support] |
++----------------------------------+
+| [Logout]                         |
 +----------------------------------+
 ```
+
+**Implementation**: Keep ProfileManagement.tsx but replace `<Accordion>` with a list of clickable rows. Each row opens a full-screen sheet (`<Sheet>`) containing the existing form fields for that section. This avoids creating new routes and keeps everything within the profile page.
+
+**Files**: `src/components/profile/ProfileManagement.tsx`
+
+---
+
+### 2. Complaints System (New Feature)
+
+Create a full complaints system where students can report issues related to their active bookings. Partners (cabin owners) and admins can view and act on these complaints.
+
+#### Database
+
+New `complaints` table:
+- `id` (uuid, PK)
+- `user_id` (uuid, references auth user)
+- `cabin_id` (uuid, nullable, references cabins)
+- `booking_id` (uuid, nullable, references bookings)
+- `subject` (text)
+- `description` (text)
+- `status` (text: open, in_progress, resolved, closed)
+- `priority` (text: low, medium, high)
+- `category` (text: cleanliness, noise, facilities, staff, other)
+- `response` (text, nullable -- admin/partner reply)
+- `responded_by` (uuid, nullable)
+- `responded_at` (timestamptz, nullable)
+- `created_at`, `updated_at` (timestamptz)
+
+RLS policies:
+- Students can INSERT their own complaints and SELECT their own
+- Admins can do ALL
+- Partners can SELECT complaints for cabins they manage (future -- for now admin-only on partner side)
+
+#### Student Side
+
+New component `src/components/profile/ComplaintsPage.tsx`:
+- Form to submit a complaint (select booking, category, subject, description)
+- List of past complaints with status badges
+- Accessed via Quick Links on profile
+
+New route: `/student/complaints`
+
+#### Admin Side
+
+New component `src/components/admin/ComplaintsManagement.tsx`:
+- Table of all complaints with filters (status, priority, category)
+- Click to view details, respond, change status
+- Message/reply functionality
+
+New route under admin layout: `/admin/complaints`
+
+#### Partner Side
+
+For now, partner complaints will be visible through the admin panel. A dedicated partner view can be added later.
+
+**Files**:
+- `src/components/profile/ComplaintsPage.tsx` (new)
+- `src/components/admin/ComplaintsManagement.tsx` (new)
+- `src/App.tsx` (new routes)
+- Database migration for `complaints` table
+
+---
+
+### 3. Customer Support System
+
+Create a support ticket system for general issues (not booking-specific) from InhaleStays platform side.
+
+#### Database
+
+New `support_tickets` table:
+- `id` (uuid, PK)
+- `user_id` (uuid)
+- `subject` (text)
+- `description` (text)
+- `status` (text: open, in_progress, resolved, closed)
+- `category` (text: account, payment, technical, general)
+- `admin_response` (text, nullable)
+- `responded_by` (uuid, nullable)
+- `responded_at` (timestamptz, nullable)
+- `created_at`, `updated_at` (timestamptz)
+
+RLS: Same pattern as complaints (students own, admins all).
+
+#### Student Side
+
+New component `src/components/profile/SupportPage.tsx`:
+- Form to submit a support ticket
+- List of past tickets with status
+- Accessed via Quick Links on profile
+
+New route: `/student/support`
+
+#### Admin Side
+
+New component `src/components/admin/SupportTicketsManagement.tsx`:
+- Table of all tickets, filters, respond, change status
+
+New route: `/admin/support-tickets`
+
+**Files**:
+- `src/components/profile/SupportPage.tsx` (new)
+- `src/components/admin/SupportTicketsManagement.tsx` (new)
+- `src/App.tsx` (new routes)
+- Database migration for `support_tickets` table
+
+---
+
+### 4. Booking Transaction Details (Clickable)
+
+**Current**: Booking cards in the profile's "My Bookings" section are not clickable for transaction details.
+
+**Change**: Make each booking card in the profile page clickable. Tapping navigates to `/student/bookings/{bookingId}/transactions/cabin` which already exists and shows the `BookingTransactionView`.
+
+**Files**: `src/components/profile/ProfileManagement.tsx` -- wrap booking cards with `Link`
+
+---
+
+### 5. Fix Active vs Expired Booking Tabs
+
+**Current issue**: `getBookingHistory()` returns ALL bookings (no date filter), so active bookings appear in both Active and Expired tabs.
+
+**Fix**: In `getBookingHistory()`, add a filter to only return bookings where `end_date < today` OR `payment_status != 'completed'` (cancelled/failed). This ensures completed active bookings only show under Active.
+
+Alternatively, filter client-side in `StudentBookings.tsx`: the `pastBookings` list should exclude bookings that are still active (end_date >= today AND payment_status = completed).
+
+**Files**: `src/api/bookingsService.ts` or `src/pages/StudentBookings.tsx`
+
+---
+
+### Technical Summary
+
+| Change | Files |
+|---|---|
+| Profile restructure (nav rows + sheets) | `src/components/profile/ProfileManagement.tsx` |
+| Complaints system -- student | `src/components/profile/ComplaintsPage.tsx` (new) |
+| Complaints system -- admin | `src/components/admin/ComplaintsManagement.tsx` (new) |
+| Support tickets -- student | `src/components/profile/SupportPage.tsx` (new) |
+| Support tickets -- admin | `src/components/admin/SupportTicketsManagement.tsx` (new) |
+| Routes | `src/App.tsx` |
+| Clickable booking transactions | `src/components/profile/ProfileManagement.tsx` |
+| Fix Active/Expired tabs | `src/api/bookingsService.ts` |
+| Database | Migration: `complaints` table, `support_tickets` table with RLS |
 
