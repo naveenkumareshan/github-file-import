@@ -33,6 +33,7 @@ const AdminBookingDetail = () => {
   const [booking, setBooking] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [receipts, setReceipts] = useState<ReceiptRow[]>([]);
+  const [dueData, setDueData] = useState<any>(null);
 
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -62,6 +63,14 @@ const AdminBookingDetail = () => {
           .eq('booking_id', bookingId!)
           .order('created_at', { ascending: false });
         setReceipts((rcpts || []) as ReceiptRow[]);
+
+        const { data: dues } = await supabase
+          .from('dues')
+          .select('*')
+          .eq('booking_id', bookingId!)
+          .limit(1)
+          .maybeSingle();
+        setDueData(dues);
       } else {
         toast({ title: "Error", description: "Failed to fetch booking details", variant: "destructive" });
       }
@@ -203,14 +212,65 @@ const AdminBookingDetail = () => {
 
             <Separator />
 
-            <div className="grid grid-cols-2 gap-4">
+          </CardContent>
+        </Card>
+
+        {/* Payment Summary */}
+        <Card>
+          <CardHeader><CardTitle className="flex items-center gap-2"><IndianRupee className="h-5 w-5" /> Payment Summary</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-3 gap-4">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Total Price</p>
-                <p className="font-semibold">₹{(booking.totalPrice || 0).toLocaleString()}</p>
+                <p className="text-lg font-semibold">₹{(booking.totalPrice || 0).toLocaleString()}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Paid (Receipts)</p>
-                <p className="font-semibold text-green-600">₹{totalPaid.toLocaleString()}</p>
+                <p className="text-sm font-medium text-muted-foreground">Advance Paid</p>
+                <p className="text-lg font-semibold">₹{(dueData?.advance_paid || 0).toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Total Collected</p>
+                <p className="text-lg font-semibold text-green-600">₹{totalPaid.toLocaleString()}</p>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Due Remaining</p>
+                <p className="text-lg font-semibold text-destructive">
+                  ₹{(dueData ? (dueData.due_amount - dueData.paid_amount) : Math.max(0, (booking.totalPrice || 0) - totalPaid)).toLocaleString()}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Status</p>
+                {dueData?.status === 'paid' ? (
+                  <Badge className="bg-green-500 mt-1">Fully Paid</Badge>
+                ) : dueData ? (
+                  <Badge variant="outline" className="border-amber-500 text-amber-500 mt-1">Partial Paid</Badge>
+                ) : totalPaid >= (booking.totalPrice || 0) ? (
+                  <Badge className="bg-green-500 mt-1">Fully Paid</Badge>
+                ) : (
+                  <Badge variant="outline" className="border-amber-500 text-amber-500 mt-1">Partial Paid</Badge>
+                )}
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="grid grid-cols-3 gap-4 text-sm">
+              <div>
+                <p className="text-muted-foreground">Payment Method</p>
+                <p className="capitalize font-medium">{booking.paymentMethod || booking.payment_method || '-'}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Transaction ID</p>
+                <p className="font-medium">{booking.transactionId || booking.transaction_id || '-'}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Collected By</p>
+                <p className="font-medium">{booking.collectedByName || booking.collected_by_name || '-'}</p>
               </div>
             </div>
           </CardContent>
