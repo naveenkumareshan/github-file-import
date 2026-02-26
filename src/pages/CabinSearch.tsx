@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { cabinsService } from '@/api/cabinsService';
+import { reviewsService } from '@/api/reviewsService';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -108,6 +109,20 @@ const CabinSearch = () => {
       const response = await cabinsService.getAllCabins(searchParams);
       if (response.success) {
         const newResults = response.data || [];
+        // Enrich with rating stats
+        const cabinIds = newResults.map((c: any) => c.id || c._id).filter(Boolean);
+        if (cabinIds.length > 0) {
+          try {
+            const stats = await reviewsService.getCabinRatingStatsBatch(cabinIds);
+            newResults.forEach((c: any) => {
+              const id = c.id || c._id;
+              if (id && stats[id]) {
+                c.averageRating = stats[id].average_rating;
+                c.reviewCount = stats[id].review_count;
+              }
+            });
+          } catch (e) { console.error('Failed to fetch rating stats', e); }
+        }
         if (append) setSearchResults(prev => [...prev, ...newResults]);
         else setSearchResults(newResults);
         setTotalPages(response.totalPages || 1);
