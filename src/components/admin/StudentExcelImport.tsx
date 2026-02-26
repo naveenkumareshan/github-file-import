@@ -67,6 +67,24 @@ const StudentExcelImport = () => {
   const selectedCabinData = cabins.find(c => c._id === selectedCabin);
   const floors = selectedCabinData?.floors || [];
 
+  const downloadTemplate = () => {
+    const sampleData = [
+      { name: 'John Doe', email: 'john@example.com', phone: '9876543210', amount: 3000, key_deposite: 500, startDate: '01-03-2026', endDate: '01-04-2026', seat_no: 1, room_name: 'Room A', status: 'booked', receipt_no: 'RCP-001', transaction_id: 'TXN-001', pay_mode: 'Cash' },
+      { name: 'Jane Smith', email: 'jane@example.com', phone: '9123456780', amount: 3500, key_deposite: 500, startDate: '01-03-2026', endDate: '01-04-2026', seat_no: 2, room_name: 'Room A', status: 'booked', receipt_no: 'RCP-002', transaction_id: 'TXN-002', pay_mode: 'UPI' },
+    ];
+    const headers = ['name', 'email', 'phone', 'amount', 'key_deposite', 'startDate', 'endDate', 'seat_no', 'room_name', 'status', 'receipt_no', 'transaction_id', 'pay_mode'];
+    const ws = XLSX.utils.json_to_sheet(sampleData, { header: headers });
+    ws['!cols'] = [
+      { wch: 20 }, { wch: 25 }, { wch: 15 }, { wch: 10 }, { wch: 14 },
+      { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 15 }, { wch: 10 },
+      { wch: 14 }, { wch: 16 }, { wch: 12 },
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Students');
+    XLSX.writeFile(wb, 'student_import_template.xlsx');
+    toast({ title: 'Template Downloaded', description: 'Fill in your student data and upload the file' });
+  };
+
 
 function excelDateToJSDate(serial: number) {
   const utcDays = Math.floor(serial - 25569); // Days since 1970-01-01
@@ -422,10 +440,10 @@ function excelDateToJSEndOfDay(serial: number): Date {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex gap-4">
-            {/* <Button variant="outline" onClick={downloadTemplate}>
+            <Button variant="outline" onClick={downloadTemplate}>
               <Download className="h-4 w-4 mr-2" />
               Download Template
-            </Button> */}
+            </Button>
             <div className="flex-1">
               <Label htmlFor="excel-file">Upload Excel File</Label>
               <Input
