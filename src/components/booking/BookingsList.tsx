@@ -48,6 +48,7 @@ interface BookingDisplay {
   lockerPrice?: number;
   cabinAddress?: string;
   bookingDuration?: 'daily' | 'monthly' | 'weekly';
+  dueAmount?: number;
   userId?: string | { name: string; email: string };
   seatId?: string | { _id: string; number: number; price: number };
 }
@@ -163,7 +164,7 @@ export const BookingsList = ({
                 <div className="flex items-start justify-between gap-1">
                   <div className="min-w-0">
                     <p className="text-[13px] font-semibold text-foreground leading-tight truncate">
-                      {booking.cabinId?.cabinCode || booking.cabinCode || booking.itemName}
+                      {booking.bookingId || booking.cabinCode || booking.itemName}
                     </p>
                     <p className="text-[11px] text-muted-foreground truncate">{booking.itemName}</p>
                     {booking.bookingType === 'cabin' && (
@@ -186,6 +187,9 @@ export const BookingsList = ({
                     {booking.paymentStatus && getStatusBadge(booking.paymentStatus)}
                     {booking.bookingStatus === 'transferred' && (
                       <Badge variant="outline" className="border-amber-500 text-amber-500 text-[10px] px-1.5 py-0.5">Transferred</Badge>
+                    )}
+                    {(booking.dueAmount ?? 0) > 0 && (
+                      <Badge variant="outline" className="border-red-500 text-red-600 text-[10px] px-1.5 py-0.5">Due: ₹{booking.dueAmount?.toLocaleString()}</Badge>
                     )}
                   </div>
                 </div>

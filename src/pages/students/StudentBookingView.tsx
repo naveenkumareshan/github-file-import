@@ -17,6 +17,7 @@ import { BookingTransactionView } from "@/components/booking/BookingTransactionV
 interface BookingDetail {
   _id: string;
   bookingId?: string;
+  serialNumber?: string;
   startDate: string;
   endDate: string;
   bookingDuration: "daily" | "weekly" | "monthly";
@@ -32,6 +33,7 @@ interface BookingDetail {
 const mapBookingData = (raw: any): BookingDetail => ({
   _id: raw.id || raw._id,
   bookingId: raw.booking_id || raw.bookingId || raw.id,
+  serialNumber: raw.serial_number || null,
   startDate: raw.start_date || raw.startDate,
   endDate: raw.end_date || raw.endDate,
   bookingDuration: raw.booking_duration || raw.bookingDuration || "monthly",
@@ -118,7 +120,12 @@ export default function StudentBookingView() {
             <ArrowLeft className="h-3.5 w-3.5" /> Back
           </button>
           <div className="flex items-center justify-between">
-            <h1 className="text-[16px] font-bold">Booking Details</h1>
+            <div>
+              <h1 className="text-[16px] font-bold">Booking Details</h1>
+              {booking.serialNumber && (
+                <p className="text-[11px] text-white/70 mt-0.5">{booking.serialNumber}</p>
+              )}
+            </div>
             <Badge variant={statusColor(booking.paymentStatus)} className="text-[10px] capitalize">
               {booking.paymentStatus}
             </Badge>

@@ -340,6 +340,9 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
     try {
       setIsSubmitting(true);
 
+      const effectiveLockerIncluded = lockerMandatory || lockerOptedIn;
+      const effectiveLockerPrice = effectiveLockerIncluded ? keyDeposit : 0;
+
       const response = await bookingsService.createBooking({
         cabin_id: cabin._id || cabin.id || "",
         seat_id: selectedSeat._id || selectedSeat.id || "",
@@ -350,7 +353,9 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
         duration_count: String(selectedDuration.count),
         total_price: totalPrice,
         payment_status: "pending",
-      });
+        locker_included: effectiveLockerIncluded,
+        locker_price: effectiveLockerPrice,
+      } as any);
 
       if (response.success && response.data) {
         toast({
