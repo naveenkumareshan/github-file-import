@@ -89,28 +89,28 @@ export function AdminSidebar() {
     }
   ];
 
-  if (user?.role === 'admin' || hasPermission('seats_available_map')) {
-    menuItems.push({
-      title: 'Seat Map',
-      url: '/admin/seats-available-map',
-      icon: MapIcon,
-      roles: ['admin', 'vendor', 'vendor_employee'],
-      permissions: ['seats_available_map']
-    });
-  }
-
-  if (user?.role === 'admin' || hasPermission('view_bookings')) {
-    menuItems.push({
-      title: 'Due Management',
-      url: '/admin/due-management',
-      icon: Wallet,
-      roles: ['admin', 'vendor', 'vendor_employee'],
-      permissions: ['view_bookings']
-    });
-  }
-
   if (user?.role === 'admin' || hasPermission('view_bookings')) {
     const readingRoomSubItems = [];
+
+    if (user?.role === 'admin' || hasPermission('seats_available_map')) {
+      readingRoomSubItems.push({
+        title: 'Seat Map',
+        url: '/admin/seats-available-map',
+        icon: MapIcon,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+        permissions: ['seats_available_map']
+      });
+    }
+
+    if (user?.role === 'admin' || hasPermission('view_bookings')) {
+      readingRoomSubItems.push({
+        title: 'Due Management',
+        url: '/admin/due-management',
+        icon: Wallet,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+        permissions: ['view_bookings']
+      });
+    }
     
     if (user?.role === 'admin' || hasPermission('view_bookings')) {
       readingRoomSubItems.push({
