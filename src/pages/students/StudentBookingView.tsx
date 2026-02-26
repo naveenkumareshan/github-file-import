@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
+import { format, differenceInDays } from "date-fns";
 import {
   ArrowLeft,
   Calendar,
@@ -10,43 +11,28 @@ import {
   CreditCard,
   Clock,
   Loader2,
+  ChevronDown,
+  ChevronUp,
+  AlertTriangle,
+  Receipt,
+  Shield,
 } from "lucide-react";
-import { bookingsService } from "@/api/bookingsService";
-import { BookingTransactionView } from "@/components/booking/BookingTransactionView";
+import { supabase } from "@/integrations/supabase/client";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
-interface BookingDetail {
-  _id: string;
-  bookingId?: string;
-  serialNumber?: string;
-  startDate: string;
-  endDate: string;
-  bookingDuration: "daily" | "weekly" | "monthly";
-  durationCount?: number;
-  cabinName?: string;
-  seatNumber?: number;
-  totalPrice?: number;
-  paymentStatus: "completed" | "pending" | "failed";
-  paymentMethod?: string;
-  paymentDate?: string;
+interface ReceiptItem {
+  id: string;
+  amount: number;
+  payment_method: string;
+  created_at: string;
+  serial_number: string | null;
+  receipt_type: string;
+  notes: string;
+  transaction_id: string;
 }
 
-const mapBookingData = (raw: any): BookingDetail => ({
-  _id: raw.id || raw._id,
-  bookingId: raw.booking_id || raw.bookingId || raw.id,
-  serialNumber: raw.serial_number || null,
-  startDate: raw.start_date || raw.startDate,
-  endDate: raw.end_date || raw.endDate,
-  bookingDuration: raw.booking_duration || raw.bookingDuration || "monthly",
-  durationCount: raw.duration_count ? Number(raw.duration_count) : (raw.durationCount || 1),
-  cabinName: raw.cabins?.name || "Reading Room",
-  seatNumber: raw.seat_number || raw.seatNumber || 0,
-  totalPrice: raw.total_price ?? raw.totalPrice ?? 0,
-  paymentStatus: raw.payment_status || raw.paymentStatus || "pending",
-  paymentMethod: raw.payment_method || raw.paymentMethod || null,
-  paymentDate: raw.payment_date || raw.paymentDate || raw.created_at || null,
-});
-
-const safeFmt = (dateStr: string, fmt: string) => {
+const safeFmt = (dateStr: string | null, fmt: string) => {
+  if (!dateStr) return "N/A";
   try {
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return "N/A";
@@ -56,14 +42,55 @@ const safeFmt = (dateStr: string, fmt: string) => {
   }
 };
 
-const statusColor = (s: string) =>
-  s === "completed" ? "default" : s === "pending" ? "outline" : "destructive";
+function CollapsibleSection({
+  title,
+  icon: Icon,
+  defaultOpen = true,
+  children,
+}: {
+  title: string;
+  icon: React.ElementType;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <div className="bg-card rounded-2xl border shadow-sm overflow-hidden">
+        <CollapsibleTrigger asChild>
+          <button className="w-full flex items-center justify-between p-3.5 text-left">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Icon className="h-3.5 w-3.5 text-primary" />
+              </div>
+              <span className="text-[13px] font-semibold text-foreground">{title}</span>
+            </div>
+            {open ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="px-3.5 pb-3.5 pt-0">{children}</div>
+        </CollapsibleContent>
+      </div>
+    </Collapsible>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex justify-between items-center py-1.5 border-b border-border/50 last:border-0">
+      <span className="text-[11px] text-muted-foreground">{label}</span>
+      <span className="text-[12px] font-medium text-foreground text-right">{value}</span>
+    </div>
+  );
+}
 
 export default function StudentBookingView() {
   const { bookingId } = useParams<{ bookingId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [booking, setBooking] = useState<BookingDetail | null>(null);
+  const [booking, setBooking] = useState<any>(null);
+  const [receipts, setReceipts] = useState<ReceiptItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -71,10 +98,23 @@ export default function StudentBookingView() {
     (async () => {
       try {
         setLoading(true);
-        const res = await bookingsService.getBookingById(bookingId);
-        if (res.success && res.data) setBooking(mapBookingData(res.data));
-        else throw new Error("Not found");
-      } catch (err: any) {
+        const [bookingRes, receiptsRes] = await Promise.all([
+          supabase
+            .from("bookings")
+            .select("*, cabins(name), seats:seat_id(price, number, category)")
+            .eq("id", bookingId)
+            .single(),
+          supabase
+            .from("receipts")
+            .select("*")
+            .eq("booking_id", bookingId)
+            .order("created_at", { ascending: false }),
+        ]);
+
+        if (bookingRes.error || !bookingRes.data) throw new Error("Not found");
+        setBooking(bookingRes.data);
+        setReceipts((receiptsRes.data as ReceiptItem[]) || []);
+      } catch {
         toast({ title: "Error", description: "Failed to load booking", variant: "destructive" });
       } finally {
         setLoading(false);
@@ -101,16 +141,36 @@ export default function StudentBookingView() {
     );
   }
 
+  // Derived values
+  const cabinName = booking.cabins?.name || "Reading Room";
+  const seatNumber = booking.seats?.number || booking.seat_number || 0;
+  const seatPrice = booking.seats?.price ?? (booking.total_price - (booking.locker_included ? booking.locker_price : 0));
+  const totalPrice = booking.total_price || 0;
+  const lockerIncluded = booking.locker_included || false;
+  const lockerPrice = booking.locker_price || 0;
+
+  const totalPaid = receipts.reduce((s, r) => s + Number(r.amount), 0);
+  const dueRemaining = Math.max(0, totalPrice - totalPaid);
+
+  const endDate = booking.end_date ? new Date(booking.end_date) : null;
+  const daysLeft = endDate ? differenceInDays(endDate, new Date()) : 0;
+
+  const paymentStatus =
+    dueRemaining === 0 ? "Completed" : daysLeft <= 0 ? "Overdue" : "Partial";
+
+  const paymentBadgeVariant =
+    paymentStatus === "Completed" ? "success" : paymentStatus === "Overdue" ? "destructive" : "outline";
+
   const durationLabel =
-    booking.bookingDuration === "daily"
-      ? `${booking.durationCount || 1} day(s)`
-      : booking.bookingDuration === "weekly"
-      ? `${booking.durationCount || 1} week(s)`
-      : `${booking.durationCount || 1} month(s)`;
+    booking.booking_duration === "daily"
+      ? `${booking.duration_count || 1} day(s)`
+      : booking.booking_duration === "weekly"
+      ? `${booking.duration_count || 1} week(s)`
+      : `${booking.duration_count || 1} month(s)`;
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Compact header */}
+      {/* Header */}
       <div className="bg-gradient-to-br from-primary to-primary/80 text-white px-4 pt-3 pb-5">
         <div className="max-w-lg mx-auto">
           <button
@@ -122,12 +182,12 @@ export default function StudentBookingView() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-[16px] font-bold">Booking Details</h1>
-              {booking.serialNumber && (
-                <p className="text-[11px] text-white/70 mt-0.5">{booking.serialNumber}</p>
+              {booking.serial_number && (
+                <p className="text-[11px] text-white/70 mt-0.5">{booking.serial_number}</p>
               )}
             </div>
-            <Badge variant={statusColor(booking.paymentStatus)} className="text-[10px] capitalize">
-              {booking.paymentStatus}
+            <Badge variant={paymentBadgeVariant} className="text-[10px] capitalize">
+              {paymentStatus}
             </Badge>
           </div>
         </div>
@@ -135,56 +195,108 @@ export default function StudentBookingView() {
 
       {/* Content */}
       <div className="max-w-lg mx-auto px-3 -mt-2 pb-6 space-y-3">
-        {/* Main info card */}
-        <div className="bg-card rounded-2xl border shadow-sm p-3.5 space-y-3">
-          {/* Cabin & Seat */}
-          <div className="flex items-start gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-              <MapPin className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <p className="text-[13px] font-semibold text-foreground">{booking.cabinName}</p>
-              <p className="text-[11px] text-muted-foreground">Seat #{booking.seatNumber || "N/A"}</p>
-            </div>
-          </div>
+        {/* Booking Info */}
+        <CollapsibleSection title="Booking Info" icon={MapPin}>
+          <InfoRow label="Reading Room" value={cabinName} />
+          <InfoRow label="Seat Number" value={`#${seatNumber}`} />
+          <InfoRow label="Booking ID" value={booking.serial_number || booking.id?.slice(0, 8)} />
+          <InfoRow label="Check-in" value={safeFmt(booking.start_date, "dd MMM yyyy")} />
+          <InfoRow label="Check-out" value={safeFmt(booking.end_date, "dd MMM yyyy")} />
+          <InfoRow label="Duration" value={durationLabel} />
+          <InfoRow label="Booked On" value={safeFmt(booking.created_at, "dd MMM yyyy")} />
+        </CollapsibleSection>
 
-          {/* Dates */}
-          <div className="flex items-start gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-              <Calendar className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <p className="text-[13px] text-foreground">
-                {safeFmt(booking.startDate, "dd MMM yyyy")} → {safeFmt(booking.endDate, "dd MMM yyyy")}
-              </p>
-              <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-                <Clock className="h-3 w-3" /> {durationLabel}
-              </p>
-            </div>
-          </div>
-
-          {/* Payment */}
-          <div className="flex items-start gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-              <CreditCard className="h-4 w-4 text-primary" />
-            </div>
-            <div>
-              <p className="text-[13px] font-semibold text-foreground">₹{booking.totalPrice?.toFixed(2) || "0.00"}</p>
-              <p className="text-[11px] text-muted-foreground">
-                {booking.paymentMethod || "Online"} • {booking.paymentDate ? safeFmt(booking.paymentDate, "dd MMM yyyy") : "N/A"}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Transactions */}
-        <div className="bg-card rounded-2xl border shadow-sm p-3.5">
-          <BookingTransactionView
-            bookingId={bookingId}
-            booking={booking}
-            bookingType="cabin"
+        {/* Validity */}
+        <CollapsibleSection title="Validity" icon={Shield}>
+          <InfoRow label="End Date" value={safeFmt(booking.end_date, "dd MMM yyyy")} />
+          <InfoRow
+            label="Days Left"
+            value={
+              <span className={daysLeft <= 0 ? "text-destructive font-bold" : daysLeft <= 5 ? "text-amber-600 font-bold" : ""}>
+                {daysLeft}
+              </span>
+            }
           />
-        </div>
+          {daysLeft <= 0 && (
+            <div className="mt-2">
+              <Badge variant="destructive" className="text-[10px]">
+                <AlertTriangle className="h-3 w-3 mr-1" /> Expired
+              </Badge>
+            </div>
+          )}
+          {daysLeft > 0 && daysLeft <= 5 && (
+            <div className="mt-2">
+              <Badge className="text-[10px] bg-amber-500 text-white border-0">
+                <AlertTriangle className="h-3 w-3 mr-1" /> Expiring Soon
+              </Badge>
+            </div>
+          )}
+        </CollapsibleSection>
+
+        {/* Payment Summary */}
+        <CollapsibleSection title="Payment Summary" icon={CreditCard}>
+          <InfoRow label="Seat Price" value={`₹${Number(seatPrice).toFixed(2)}`} />
+          {lockerIncluded && <InfoRow label="Locker" value={`₹${Number(lockerPrice).toFixed(2)}`} />}
+          <InfoRow label="Total Price" value={<span className="font-bold">₹{Number(totalPrice).toFixed(2)}</span>} />
+          <InfoRow label="Total Paid" value={<span className="text-green-600">₹{totalPaid.toFixed(2)}</span>} />
+          <InfoRow
+            label="Due Remaining"
+            value={
+              <span className={dueRemaining > 0 ? "text-destructive font-bold" : "text-green-600"}>
+                ₹{dueRemaining.toFixed(2)}
+              </span>
+            }
+          />
+          <InfoRow
+            label="Payment Status"
+            value={
+              <Badge variant={paymentBadgeVariant} className="text-[10px]">
+                {paymentStatus}
+              </Badge>
+            }
+          />
+          {dueRemaining > 0 && (
+            <div className="mt-3">
+              <Button
+                size="sm"
+                className="w-full text-[12px]"
+                onClick={() =>
+                  toast({
+                    title: "Pay Due",
+                    description: "Please contact the reading room to clear your dues.",
+                  })
+                }
+              >
+                Pay Due ₹{dueRemaining.toFixed(2)}
+              </Button>
+            </div>
+          )}
+        </CollapsibleSection>
+
+        {/* Payment Receipts */}
+        <CollapsibleSection title={`Payment Receipts (${receipts.length})`} icon={Receipt} defaultOpen={false}>
+          {receipts.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground py-2">No receipts found.</p>
+          ) : (
+            <div className="space-y-2">
+              {receipts.map((r) => (
+                <div key={r.id} className="border rounded-xl p-2.5 bg-muted/30">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[12px] font-semibold text-foreground">₹{Number(r.amount).toFixed(2)}</span>
+                    <span className="text-[10px] text-muted-foreground">{safeFmt(r.created_at, "dd MMM yyyy")}</span>
+                  </div>
+                  <div className="flex gap-2 mt-1">
+                    <span className="text-[10px] text-muted-foreground capitalize">{r.payment_method}</span>
+                    {r.serial_number && (
+                      <span className="text-[10px] text-muted-foreground">• {r.serial_number}</span>
+                    )}
+                  </div>
+                  {r.notes && <p className="text-[10px] text-muted-foreground mt-1">{r.notes}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+        </CollapsibleSection>
       </div>
     </div>
   );
