@@ -900,13 +900,26 @@ const VendorSeats: React.FC = () => {
                           const today = new Date();
                           today.setHours(0,0,0,0);
                           endDate.setHours(0,0,0,0);
-                          const nextDay = addDays(endDate, 1);
+                          
                           if (today < endDate) {
                             toast({
-                              title: 'Booking still active',
-                              description: `Current booking is active until ${endDate.toLocaleDateString('en-IN')}. Renewal will start from ${nextDay.toLocaleDateString('en-IN')}.`,
+                              title: 'Cannot renew yet',
+                              description: `Current booking is active until ${endDate.toLocaleDateString('en-IN')}. Renewal can only be done on or after expiry date.`,
+                              variant: 'destructive',
                             });
+                            return;
                           }
+
+                          // Find latest end date across all bookings for this seat
+                          const allBookings = [...currentBookings, ...futureBookings];
+                          let latestEnd = endDate;
+                          allBookings.forEach(b => {
+                            const bEnd = new Date(b.endDate);
+                            bEnd.setHours(0,0,0,0);
+                            if (bEnd > latestEnd) latestEnd = bEnd;
+                          });
+                          const nextDay = addDays(latestEnd, 1);
+
                           setBookingStartDate(nextDay);
                           setBookingPrice(String(selectedSeat.price));
                           // Pre-select same student
@@ -930,7 +943,14 @@ const VendorSeats: React.FC = () => {
                         size="sm"
                         className="h-8 text-xs gap-1"
                         onClick={() => {
-                          const nextDay = addDays(new Date(selectedSeat.currentBooking!.endDate), 1);
+                          // Find latest end date across all current + future bookings
+                          const allBookings = [...currentBookings, ...futureBookings];
+                          let latestEnd = new Date(selectedSeat.currentBooking!.endDate);
+                          allBookings.forEach(b => {
+                            const bEnd = new Date(b.endDate);
+                            if (bEnd > latestEnd) latestEnd = bEnd;
+                          });
+                          const nextDay = addDays(latestEnd, 1);
                           setBookingStartDate(nextDay);
                           setBookingPrice(String(selectedSeat.price));
                           setShowFutureBooking(true);
@@ -1441,7 +1461,7 @@ const VendorSeats: React.FC = () => {
                           {b.transactionId && <div className="text-muted-foreground">Txn ID: {b.transactionId}</div>}
                           {b.serialNumber && <div className="text-muted-foreground">#{b.serialNumber}</div>}
 
-                          {/* Due Balance Button */}
+                          {/* Due Balance Button - only show collect form when remaining > 0 */}
                           {b.paymentStatus === 'advance_paid' && due && dueRemaining > 0 && (
                             <>
                               <Button
@@ -1503,14 +1523,16 @@ const VendorSeats: React.FC = () => {
                                     onClick={() => handleInlineDueCollect(due.id)}
                                     disabled={collectingDue || !dueCollectAmount}
                                   >
-                              {collectingDue ? 'Processing...' : `Collect ₹${dueCollectAmount}`}
+                                    {collectingDue ? 'Processing...' : `Collect ₹${dueCollectAmount}`}
                                   </Button>
                                 </div>
                               )}
-
-                              {/* Payment History */}
-                              <DuePaymentHistory dueId={due.id} compact />
                             </>
+                          )}
+
+                          {/* Payment History - always show when due exists */}
+                          {due && (
+                            <DuePaymentHistory dueId={due.id} compact />
                           )}
                         </div>
                       );

@@ -6,6 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, Receipt, IndianRupee } from 'lucide-react';
 import { vendorSeatsService } from '@/api/vendorSeatsService';
+import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
 interface DuePayment {
@@ -18,9 +19,17 @@ interface DuePayment {
   created_at: string;
 }
 
+interface ReceiptInfo {
+  id: string;
+  serial_number: string | null;
+  due_payment_id?: string;
+  due_id?: string;
+  amount: number;
+  created_at: string;
+}
+
 interface DuePaymentHistoryProps {
   dueId: string;
-  /** Optional: show summary header with due info */
   dueInfo?: {
     totalFee: number;
     advancePaid: number;
@@ -28,9 +37,7 @@ interface DuePaymentHistoryProps {
     dueAmount: number;
     status: string;
   };
-  /** Compact mode for inline display */
   compact?: boolean;
-  /** Default open state */
   defaultOpen?: boolean;
 }
 
@@ -51,18 +58,29 @@ export const DuePaymentHistory: React.FC<DuePaymentHistoryProps> = ({
   defaultOpen = false,
 }) => {
   const [payments, setPayments] = useState<DuePayment[]>([]);
+  const [receipts, setReceipts] = useState<ReceiptInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(defaultOpen);
 
   useEffect(() => {
     if (!dueId) return;
-    const fetch = async () => {
+    const fetchData = async () => {
       setLoading(true);
+      // Fetch due payments
       const res = await vendorSeatsService.getDuePayments(dueId);
       if (res.success && res.data) setPayments(res.data);
+
+      // Fetch receipts linked to this due
+      const { data: rcpts } = await supabase
+        .from('receipts')
+        .select('id, serial_number, amount, created_at, due_id')
+        .eq('due_id', dueId)
+        .order('created_at', { ascending: true });
+      if (rcpts) setReceipts(rcpts as ReceiptInfo[]);
+
       setLoading(false);
     };
-    fetch();
+    fetchData();
   }, [dueId]);
 
   if (loading) {
@@ -71,7 +89,14 @@ export const DuePaymentHistory: React.FC<DuePaymentHistoryProps> = ({
 
   if (payments.length === 0 && !dueInfo) return null;
 
-  const totalCollected = payments.reduce((s, p) => s + Number(p.amount), 0);
+  // Match receipts to payments by amount + close timestamp
+  const findReceiptForPayment = (payment: DuePayment): ReceiptInfo | undefined => {
+    return receipts.find(r => {
+      const rTime = new Date(r.created_at).getTime();
+      const pTime = new Date(payment.created_at).getTime();
+      return Math.abs(Number(r.amount) - Number(payment.amount)) < 0.01 && Math.abs(rTime - pTime) < 60000;
+    });
+  };
 
   const content = (
     <div className="space-y-1.5">
@@ -87,20 +112,26 @@ export const DuePaymentHistory: React.FC<DuePaymentHistoryProps> = ({
       {payments.length === 0 ? (
         <p className="text-[11px] text-muted-foreground text-center py-2">No payment receipts yet</p>
       ) : (
-        payments.map((p) => (
-          <div key={p.id} className="border rounded p-2 text-[11px] space-y-0.5 bg-muted/30">
-            <div className="flex items-center justify-between">
-              <span className="font-medium">₹{Number(p.amount).toLocaleString()}</span>
-              <span className="text-[10px] text-muted-foreground">{format(new Date(p.created_at), 'dd MMM yyyy, HH:mm')}</span>
+        payments.map((p) => {
+          const receipt = findReceiptForPayment(p);
+          return (
+            <div key={p.id} className="border rounded p-2 text-[11px] space-y-0.5 bg-muted/30">
+              <div className="flex items-center justify-between">
+                <span className="font-medium">₹{Number(p.amount).toLocaleString()}</span>
+                <span className="text-[10px] text-muted-foreground">{format(new Date(p.created_at), 'dd MMM yyyy, HH:mm')}</span>
+              </div>
+              {receipt?.serial_number && (
+                <div className="text-[10px] font-medium text-primary">Receipt: {receipt.serial_number}</div>
+              )}
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                <span>{methodLabel(p.payment_method)}</span>
+                {p.collected_by_name && <span>by {p.collected_by_name}</span>}
+              </div>
+              {p.transaction_id && <div className="text-[10px] text-muted-foreground">Txn: {p.transaction_id}</div>}
+              {p.notes && <div className="text-[10px] text-muted-foreground italic">{p.notes}</div>}
             </div>
-            <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-              <span>{methodLabel(p.payment_method)}</span>
-              {p.collected_by_name && <span>by {p.collected_by_name}</span>}
-            </div>
-            {p.transaction_id && <div className="text-[10px] text-muted-foreground">Txn: {p.transaction_id}</div>}
-            {p.notes && <div className="text-[10px] text-muted-foreground italic">{p.notes}</div>}
-          </div>
-        ))
+          );
+        })
       )}
     </div>
   );
