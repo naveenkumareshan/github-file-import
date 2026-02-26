@@ -1,25 +1,29 @@
 
 
-## Fix: Replace Old Bookings List with Refactored Compact Table
+## Fix All Transactions Table and Detail Navigation
 
-### Problem
-The route `/admin/bookings` still imports and renders the **old** `AdminBookingsList` component (from `src/components/admin/AdminBookingsList.tsx`) which has the Settlement column. The **new** refactored compact table lives in `src/pages/AdminBookings.tsx` but is never used.
+### Problems Identified
+
+1. **Action buttons (green tick / red X)**: The "Complete" and "Cancel" icon buttons in the Actions column don't belong in a transactions listing. Only the "View Details" (eye) button should remain.
+
+2. **Detail page not loading properly**: When clicking the eye icon, it navigates to `/admin/bookings/${b._id}` but the route for `AdminBookingDetail` expects `/admin/bookings/:bookingId/:type`. The missing `/cabin` segment means the detail page (with Payment Summary and Payment Receipts) never renders correctly.
 
 ### Changes
 
-#### `src/App.tsx`
-1. Replace the import of `AdminBookingsList` with `AdminBookings`:
-   - Change `lazy(() => import("./components/admin/AdminBookingsList"))` to `lazy(() => import("./pages/AdminBookings"))`
-2. Update the route element from `<AdminBookingsList />` to `<AdminBookings />`
+#### 1. `src/pages/AdminBookings.tsx`
 
-That is the only file that needs to change. The new `AdminBookings` page already has:
-- No Settlement column
-- Compact row height (~40px)
-- Single-line dates
-- Icon-only action buttons with tooltips
-- 15 rows per page with "Showing X-Y of Z entries" footer
+- **Remove** the `handleUpdateStatus` function entirely (lines 81-93)
+- **Remove** the `CheckCircle2` and `XCircle` imports
+- **Remove** the green tick and red X buttons from the Actions column (lines 182-195), keeping only the Eye (Details) button
+- **Fix navigation URL**: Change `navigate(\`/admin/bookings/${b._id}\`)` to `navigate(\`/admin/bookings/${b._id}/cabin\`)` so the route matches `bookings/:bookingId/:type` and the detail page loads with Payment Summary + Payment Receipts
+
+#### Result
+- Actions column will only show a single "Details" eye icon per row
+- Clicking it will correctly open the `AdminBookingDetail` page with the full Payment Summary (9-field breakdown) and Payment Receipts table
+
+### Files Changed
 
 | File | Change |
 |------|--------|
-| `src/App.tsx` | Swap import + route from old `AdminBookingsList` to new `AdminBookings` |
+| `src/pages/AdminBookings.tsx` | Remove Complete/Cancel buttons, remove `handleUpdateStatus`, fix detail navigation URL to include `/cabin` type |
 
