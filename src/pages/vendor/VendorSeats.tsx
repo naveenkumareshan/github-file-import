@@ -896,7 +896,17 @@ const VendorSeats: React.FC = () => {
                         size="sm"
                         className="h-8 text-xs gap-1"
                         onClick={() => {
-                          const nextDay = addDays(new Date(selectedSeat.currentBooking!.endDate), 1);
+                          const endDate = new Date(selectedSeat.currentBooking!.endDate);
+                          const today = new Date();
+                          today.setHours(0,0,0,0);
+                          endDate.setHours(0,0,0,0);
+                          const nextDay = addDays(endDate, 1);
+                          if (today < endDate) {
+                            toast({
+                              title: 'Booking still active',
+                              description: `Current booking is active until ${endDate.toLocaleDateString('en-IN')}. Renewal will start from ${nextDay.toLocaleDateString('en-IN')}.`,
+                            });
+                          }
                           setBookingStartDate(nextDay);
                           setBookingPrice(String(selectedSeat.price));
                           // Pre-select same student
