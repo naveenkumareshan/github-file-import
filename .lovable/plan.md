@@ -1,48 +1,58 @@
 
 
-## Add Downloadable Excel Template for Student Import
+## Compact Booking Detail Page + Invoice Download
 
-### What This Does
-Adds a working "Download Template" button on the Import Students page so admins can download a ready-to-fill Excel file with the correct column headers, sample data, and formatting guidance.
+### Problem
+The booking detail page currently uses large card titles, `text-lg` / `text-2xl` fonts, heavy padding, and multiple separated cards — making it impossible to screenshot in one page. There is also no invoice download option, even though `src/utils/invoiceGenerator.ts` already exists.
 
-### Template Columns
-Based on the validation logic and backend processing, the template will include these columns:
+### Changes to `src/pages/AdminBookingDetail.tsx`
 
-| Column | Required | Format / Example |
-|--------|----------|-----------------|
-| name | Yes | John Doe |
-| email | Yes | john@example.com |
-| phone | Yes | 9876543210 (10 digits) |
-| amount | Yes | 3000 (seat price, numeric) |
-| key_deposite | No (defaults to 500) | 500 |
-| startDate | Yes | DD-MM-YYYY (e.g. 01-03-2026) |
-| endDate | Yes | DD-MM-YYYY (e.g. 01-04-2026) |
-| seat_no | Yes | 1 (seat number to assign) |
-| room_name | No | Room A |
-| status | Yes | booked |
-| receipt_no | Yes | RCP-001 |
-| transaction_id | Yes | TXN-001 |
-| pay_mode | Yes | Cash / Online / UPI |
+#### 1. Compact Layout (single-page fit)
+- Page title: `text-lg` instead of `text-2xl`, reduce top margin
+- Remove individual `<Card>` wrappers — use a single card with sections separated by thin dividers
+- All labels: `text-[11px]` uppercase muted
+- All values: `text-xs` or `text-sm` font-medium
+- Payment Summary grid values: `text-sm font-semibold` instead of `text-lg`
+- Receipts table: `text-[11px]` cells, `py-1.5` padding
+- Remove extra `<Separator>` gaps, use `space-y-3` instead of `space-y-6`
+- Set `max-w-2xl` instead of `max-w-3xl`
 
-### Changes to `src/components/admin/StudentExcelImport.tsx`
+#### 2. Add "Download Invoice" Button
+- Import `downloadInvoice` and `InvoiceData` from `@/utils/invoiceGenerator`
+- Add a `Download Invoice` button in the page header (next to Back button)
+- Map the booking data to the `InvoiceData` interface:
+  - `serialNumber` from `booking.serialNumber || booking.bookingId`
+  - `studentName/Email/Phone` from `booking.userId` object
+  - `cabinName` from `booking.cabinId?.name`
+  - `seatNumber` from `booking.seatId?.number`
+  - Payment fields from the booking + dues data
+- Opens a print-ready invoice in a new tab
 
-1. **Add `downloadTemplate` function** that:
-   - Creates a worksheet with all 13 column headers
-   - Adds 2 sample rows with realistic example data
-   - Sets readable column widths
-   - Downloads as `student_import_template.xlsx`
-
-2. **Uncomment the "Download Template" button** (lines 425-428) so it becomes visible and clickable
-
-### Issues Found During Review
-
-The current import flow has a **date validation bug**: the `validateStudentData` function in `bulkBookingService.ts` checks `Date.parse(student.startDate)` but Excel dates arrive as serial numbers (e.g. `45352`), not date strings. `Date.parse("45352")` returns `NaN`, causing false validation errors. However, the component currently sets default values for `receipt_no`, `transaction_id`, and `status` in `handleFileUpload` (lines 117-123), so those required-field checks pass.
-
-**No backend changes needed** -- the template just needs to match the existing column names used in `handleFileUpload` and `validateStudentData`.
+#### 3. Section Structure (all within one card)
+```text
++------------------------------------------+
+| < Back   Booking Details   [InvoiceBtn] |
++------------------------------------------+
+| STUDENT: Name | Email | Student ID       |
+|------------------------------------------|
+| BOOKING: ID | Status | Created           |
+|          Check-in | Check-out            |
+|          Room | Seat                      |
+|------------------------------------------|
+| PAYMENT SUMMARY (3x3 compact grid)       |
+|  Seat | Locker | Discount                |
+|  Total | Advance | Due Collected          |
+|  Collected | Remaining | Status           |
+|------------------------------------------|
+| RECEIPTS TABLE (compact rows)            |
+|  Receipt ID | Type | Amt | Method | ...  |
+|  ... | Total Collected row                |
++------------------------------------------+
+```
 
 ### Files Changed
 
 | File | Change |
 |------|--------|
-| `src/components/admin/StudentExcelImport.tsx` | Add `downloadTemplate` function, uncomment Download Template button |
+| `src/pages/AdminBookingDetail.tsx` | Compact all text/spacing, merge into single card, add Download Invoice button using existing `invoiceGenerator` utility |
 
