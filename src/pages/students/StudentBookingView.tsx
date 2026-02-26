@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { razorpayService } from "@/api/razorpayService";
 
 interface ReceiptItem {
   id: string;
@@ -27,6 +28,13 @@ interface ReceiptItem {
   transaction_id: string;
 }
 
+interface DueRecord {
+  id: string;
+  due_amount: number;
+  paid_amount: number;
+  status: string;
+}
+
 const safeFmt = (dateStr: string | null, fmt: string) => {
   if (!dateStr) return "N/A";
   try {
@@ -36,6 +44,19 @@ const safeFmt = (dateStr: string | null, fmt: string) => {
   } catch {
     return "N/A";
   }
+};
+
+const loadRazorpayScript = (): Promise<boolean> => {
+  return new Promise((resolve) => {
+    if (typeof window !== "undefined" && (window as any).Razorpay) {
+      return resolve(true);
+    }
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
 };
 
 function CollapsibleSection({
@@ -87,36 +108,173 @@ export default function StudentBookingView() {
   const { toast } = useToast();
   const [booking, setBooking] = useState<any>(null);
   const [receipts, setReceipts] = useState<ReceiptItem[]>([]);
+  const [dueRecord, setDueRecord] = useState<DueRecord | null>(null);
   const [loading, setLoading] = useState(true);
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
+
+  const fetchData = async () => {
+    if (!bookingId) return;
+    try {
+      setLoading(true);
+      const [bookingRes, receiptsRes, duesRes] = await Promise.all([
+        supabase
+          .from("bookings")
+          .select("*, cabins(name), seats:seat_id(price, number, category)")
+          .eq("id", bookingId)
+          .single(),
+        supabase
+          .from("receipts")
+          .select("*")
+          .eq("booking_id", bookingId)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("dues")
+          .select("id, due_amount, paid_amount, status")
+          .eq("booking_id", bookingId)
+          .in("status", ["pending", "partial"])
+          .maybeSingle(),
+      ]);
+
+      if (bookingRes.error || !bookingRes.data) throw new Error("Not found");
+      setBooking(bookingRes.data);
+      setReceipts((receiptsRes.data as ReceiptItem[]) || []);
+      setDueRecord(duesRes.data as DueRecord | null);
+    } catch {
+      toast({ title: "Error", description: "Failed to load booking", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (!bookingId) return;
-    (async () => {
-      try {
-        setLoading(true);
-        const [bookingRes, receiptsRes] = await Promise.all([
-          supabase
-            .from("bookings")
-            .select("*, cabins(name), seats:seat_id(price, number, category)")
-            .eq("id", bookingId)
-            .single(),
-          supabase
-            .from("receipts")
-            .select("*")
-            .eq("booking_id", bookingId)
-            .order("created_at", { ascending: false }),
-        ]);
-
-        if (bookingRes.error || !bookingRes.data) throw new Error("Not found");
-        setBooking(bookingRes.data);
-        setReceipts((receiptsRes.data as ReceiptItem[]) || []);
-      } catch {
-        toast({ title: "Error", description: "Failed to load booking", variant: "destructive" });
-      } finally {
-        setLoading(false);
-      }
-    })();
+    fetchData();
   }, [bookingId]);
+
+  const handlePayDue = async () => {
+    if (!booking || dueRemaining <= 0) return;
+
+    try {
+      setPaymentProcessing(true);
+
+      const isScriptLoaded = await loadRazorpayScript();
+      if (!isScriptLoaded) {
+        toast({ title: "Error", description: "Unable to load payment SDK", variant: "destructive" });
+        setPaymentProcessing(false);
+        return;
+      }
+
+      // Create Razorpay order
+      const orderRes = await razorpayService.createOrder({
+        amount: dueRemaining,
+        currency: "INR",
+        bookingId: booking.id,
+        bookingType: "cabin",
+        notes: { paymentFor: "due_payment", dueId: dueRecord?.id },
+      });
+
+      if (!orderRes.success || !orderRes.data) {
+        throw new Error(orderRes.error?.message || "Failed to create order");
+      }
+
+      const order = orderRes.data;
+
+      // Test mode handling
+      if (order.testMode) {
+        await processPaymentSuccess({
+          razorpay_payment_id: `test_pay_${Date.now()}`,
+          razorpay_order_id: order.id,
+          razorpay_signature: "test_signature",
+          testMode: true,
+        });
+        return;
+      }
+
+      const options = {
+        key: order.KEY_ID,
+        amount: order.amount,
+        currency: order.currency,
+        name: "Due Payment",
+        description: `Pay due for booking ${booking.serial_number || booking.id.slice(0, 8)}`,
+        order_id: order.id,
+        handler: async (response: any) => {
+          await processPaymentSuccess(response);
+        },
+        modal: {
+          ondismiss: () => {
+            toast({ title: "Payment Cancelled", variant: "destructive" });
+            setPaymentProcessing(false);
+          },
+        },
+        theme: { color: "#3B82F6" },
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+    } catch (error: any) {
+      console.error("Due payment error:", error);
+      toast({ title: "Payment Failed", description: error.message, variant: "destructive" });
+      setPaymentProcessing(false);
+    }
+  };
+
+  const processPaymentSuccess = async (paymentResponse: any) => {
+    try {
+      // Verify payment (skip in test mode)
+      if (!paymentResponse.testMode) {
+        const verifyRes = await razorpayService.verifyPayment({
+          razorpay_payment_id: paymentResponse.razorpay_payment_id,
+          razorpay_order_id: paymentResponse.razorpay_order_id,
+          razorpay_signature: paymentResponse.razorpay_signature,
+          bookingId: booking.id,
+          bookingType: "cabin",
+        });
+        if (!verifyRes.success) throw new Error("Payment verification failed");
+      }
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      // Insert receipt
+      await supabase.from("receipts").insert({
+        booking_id: booking.id,
+        user_id: user.id,
+        cabin_id: booking.cabin_id,
+        seat_id: booking.seat_id,
+        due_id: dueRecord?.id || null,
+        amount: dueRemaining,
+        payment_method: "online",
+        receipt_type: "due_payment",
+        transaction_id: paymentResponse.razorpay_payment_id || "",
+        collected_by: user.id,
+        collected_by_name: "Online Payment",
+        notes: "Due payment by student",
+      });
+
+      // Update dues record if exists
+      if (dueRecord) {
+        const newPaid = Number(dueRecord.paid_amount) + dueRemaining;
+        const newDueAmount = Math.max(0, Number(dueRecord.due_amount) - dueRemaining);
+        await supabase
+          .from("dues")
+          .update({
+            paid_amount: newPaid,
+            due_amount: newDueAmount,
+            status: newDueAmount <= 0 ? "paid" : "partial",
+          })
+          .eq("id", dueRecord.id);
+      }
+
+      toast({ title: "Payment Successful", description: `₹${dueRemaining.toFixed(2)} paid successfully` });
+
+      // Refresh data
+      await fetchData();
+    } catch (error: any) {
+      console.error("Payment processing error:", error);
+      toast({ title: "Error", description: error.message || "Failed to process payment", variant: "destructive" });
+    } finally {
+      setPaymentProcessing(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -233,14 +391,17 @@ export default function StudentBookingView() {
               <Button
                 size="sm"
                 className="w-full text-[12px]"
-                onClick={() =>
-                  toast({
-                    title: "Pay Due",
-                    description: "Please contact the reading room to clear your dues.",
-                  })
-                }
+                onClick={handlePayDue}
+                disabled={paymentProcessing}
               >
-                Pay Due ₹{dueRemaining.toFixed(2)}
+                {paymentProcessing ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  `Pay Due ₹${dueRemaining.toFixed(2)}`
+                )}
               </Button>
             </div>
           )}
