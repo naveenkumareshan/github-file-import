@@ -70,6 +70,11 @@ export type Database = {
           id: string
           locker_included: boolean
           locker_price: number
+          locker_refund_amount: number
+          locker_refund_date: string | null
+          locker_refund_method: string
+          locker_refund_transaction_id: string
+          locker_refunded: boolean
           payment_method: string
           payment_status: string | null
           razorpay_order_id: string | null
@@ -97,6 +102,11 @@ export type Database = {
           id?: string
           locker_included?: boolean
           locker_price?: number
+          locker_refund_amount?: number
+          locker_refund_date?: string | null
+          locker_refund_method?: string
+          locker_refund_transaction_id?: string
+          locker_refunded?: boolean
           payment_method?: string
           payment_status?: string | null
           razorpay_order_id?: string | null
@@ -124,6 +134,11 @@ export type Database = {
           id?: string
           locker_included?: boolean
           locker_price?: number
+          locker_refund_amount?: number
+          locker_refund_date?: string | null
+          locker_refund_method?: string
+          locker_refund_transaction_id?: string
+          locker_refunded?: boolean
           payment_method?: string
           payment_status?: string | null
           razorpay_order_id?: string | null
