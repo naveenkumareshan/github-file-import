@@ -27,7 +27,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { bookingsService } from "@/api/bookingsService";
 import { RazorpayCheckout } from "@/components/payment/RazorpayCheckout";
 import { BookingDuration } from "@/types/BookingTypes";
-import { CalendarIcon, AlertCircle } from "lucide-react";
+import { CalendarIcon, AlertCircle, X, TicketPercent } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -38,7 +38,10 @@ import {
 import ReadingRoomRules from "./ReadingRoomRules";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { seatCategoryService, SeatCategory } from "@/api/seatCategoryService";
+import { couponService } from "@/api/couponService";
 
 const PaymentTimer = lazy(() =>
   import("@/components/booking/PaymentTimer").then((m) => ({
@@ -70,6 +73,12 @@ interface Cabin {
   lockerPrice?:number;
   isActive?:boolean;
   isBookingActive?:boolean;
+  advanceBookingEnabled?: boolean;
+  advancePercentage?: number;
+  advanceFlatAmount?: number | null;
+  advanceUseFlat?: boolean;
+  advanceValidityDays?: number;
+  advanceAutoCancel?: boolean;
 }
 
 export interface RoomElement {
@@ -157,6 +166,11 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
   // Coupon state
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
   const [originalPrice, setOriginalPrice] = useState<number>(0);
+  const [manualCouponCode, setManualCouponCode] = useState('');
+  const [validatingCoupon, setValidatingCoupon] = useState(false);
+
+  // Advance payment state
+  const [useAdvancePayment, setUseAdvancePayment] = useState(false);
 
   // Category filter state
   const [categories, setCategories] = useState<SeatCategory[]>([]);
@@ -325,8 +339,44 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
 
   const handleCouponRemove = () => {
     setAppliedCoupon(null);
+    setManualCouponCode('');
     setTotalPrice(originalPrice);
   };
+
+  const handleInlineCouponApply = async () => {
+    if (!manualCouponCode.trim()) return;
+    try {
+      setValidatingCoupon(true);
+      const response = await couponService.validateCoupon(
+        manualCouponCode.trim().toUpperCase(),
+        'cabin',
+        originalPrice,
+        cabin?._id || cabin?.id
+      );
+      if (response.success) {
+        handleCouponApply(response.data);
+        toast({ title: "Coupon Applied", description: `You saved ₹${response.data.discountAmount}!` });
+      } else {
+        toast({ title: "Invalid Coupon", description: response.error || "Cannot apply this coupon", variant: "destructive" });
+      }
+    } catch (error: any) {
+      toast({ title: "Error", description: error.response?.data?.message || "Failed to validate coupon", variant: "destructive" });
+    } finally {
+      setValidatingCoupon(false);
+    }
+  };
+
+  // Advance payment computed values
+  const advanceEnabled = cabin?.advanceBookingEnabled === true;
+  const advanceAmount = (() => {
+    if (!useAdvancePayment || !advanceEnabled) return totalPrice;
+    if (cabin?.advanceUseFlat && cabin?.advanceFlatAmount) {
+      return Math.min(cabin.advanceFlatAmount, totalPrice);
+    }
+    return Math.round((totalPrice * (cabin?.advancePercentage || 50)) / 100);
+  })();
+  const remainingDue = useAdvancePayment ? totalPrice - advanceAmount : 0;
+  const dueDate = useAdvancePayment ? addDays(new Date(), cabin?.advanceValidityDays || 3) : null;
 
   const handleCreateBooking = async () => {
     if (!isAuthenticated) {
@@ -357,6 +407,8 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
       const effectiveLockerIncluded = lockerMandatory || lockerOptedIn;
       const effectiveLockerPrice = effectiveLockerIncluded ? keyDeposit : 0;
 
+      const paymentAmount = useAdvancePayment ? advanceAmount : totalPrice;
+
       const response = await bookingsService.createBooking({
         cabin_id: cabin._id || cabin.id || "",
         seat_id: selectedSeat._id || selectedSeat.id || "",
@@ -366,7 +418,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
         booking_duration: selectedDuration.type,
         duration_count: String(selectedDuration.count),
         total_price: totalPrice,
-        payment_status: "pending",
+        payment_status: useAdvancePayment ? "advance_paid" : "pending",
         locker_included: effectiveLockerIncluded,
         locker_price: effectiveLockerPrice,
       } as any);
@@ -618,30 +670,6 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
               <>
                 <Separator />
 
-                {lockerMandatory ? (
-                  <Alert>
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      A locker deposit of ₹{keyDeposit} is required for all new
-                      bookings. This deposit will be refunded when you vacate the
-                      seat.
-                    </AlertDescription>
-                  </Alert>
-                ) : (
-                  <div className="flex items-center gap-2 p-3 border rounded-md bg-muted/30">
-                    <input
-                      type="checkbox"
-                      id="lockerOptIn"
-                      checked={lockerOptedIn}
-                      onChange={(e) => setLockerOptedIn(e.target.checked)}
-                      className="h-4 w-4"
-                    />
-                    <label htmlFor="lockerOptIn" className="text-sm cursor-pointer">
-                      Add Locker (₹{keyDeposit} deposit - refundable)
-                    </label>
-                  </div>
-                )}
-
                 <div className="bg-gradient-to-b from-muted/20 to-muted/40 rounded-xl p-4 space-y-2.5">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Selected Seat:</span>
@@ -659,15 +687,35 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                     <span className="text-muted-foreground">Seat Price:</span>
                     <span>₹{Math.round(selectedSeat?.price || 0)} / month</span>
                   </div>
-                  {(lockerMandatory || lockerOptedIn) && (
+
+                  {/* Locker - inline in summary */}
+                  {lockerMandatory ? (
                     <>
                       <Separator className="opacity-30" />
-                      <div className="flex justify-between text-sm text-blue-600">
-                        <span>Locker Deposit:</span>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Locker Deposit <span className="text-xs">(mandatory, refundable)</span>:</span>
                         <span>+ ₹{keyDeposit}</span>
                       </div>
                     </>
+                  ) : (
+                    <>
+                      <Separator className="opacity-30" />
+                      <div className="flex items-center justify-between text-sm">
+                        <label htmlFor="lockerOptIn" className="flex items-center gap-2 cursor-pointer text-muted-foreground">
+                          <input
+                            type="checkbox"
+                            id="lockerOptIn"
+                            checked={lockerOptedIn}
+                            onChange={(e) => setLockerOptedIn(e.target.checked)}
+                            className="h-3.5 w-3.5"
+                          />
+                          Add Locker ₹{keyDeposit} <span className="text-xs">(refundable)</span>
+                        </label>
+                        {lockerOptedIn && <span>+ ₹{keyDeposit}</span>}
+                      </div>
+                    </>
                   )}
+
                   {appliedCoupon && (
                     <>
                       <Separator className="opacity-30" />
@@ -682,18 +730,69 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                     <span className="font-semibold text-base">Total Amount:</span>
                     <span className="font-bold text-lg text-primary">₹{totalPrice.toFixed(2)}</span>
                   </div>
+
+                  {/* Inline coupon */}
+                  <Separator className="opacity-30" />
+                  {appliedCoupon ? (
+                    <div className="flex items-center gap-2">
+                      <TicketPercent className="h-3.5 w-3.5 text-green-600" />
+                      <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs">
+                        {appliedCoupon.coupon.code} — ₹{appliedCoupon.discountAmount} off
+                      </Badge>
+                      <button onClick={handleCouponRemove} className="text-destructive hover:text-destructive/80 ml-auto">
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <TicketPercent className="h-3.5 w-3.5 text-muted-foreground" />
+                      <Input
+                        placeholder="Coupon code"
+                        value={manualCouponCode}
+                        onChange={(e) => setManualCouponCode(e.target.value.toUpperCase())}
+                        className="h-8 text-xs flex-1"
+                      />
+                      <button
+                        onClick={handleInlineCouponApply}
+                        disabled={validatingCoupon || !manualCouponCode.trim()}
+                        className="text-xs font-medium text-primary hover:text-primary/80 disabled:text-muted-foreground whitespace-nowrap"
+                      >
+                        {validatingCoupon ? "..." : "Apply"}
+                      </button>
+                    </div>
+                  )}
                 </div>
 
-                <Suspense fallback={<div className="p-3 text-sm text-muted-foreground">Loading coupons...</div>}>
-                  <CouponSelection 
-                    bookingType="cabin"
-                    bookingAmount={originalPrice}
-                    cabinId={cabin?._id || cabin?.id}
-                    onCouponApply={handleCouponApply}
-                    onCouponRemove={handleCouponRemove}
-                    appliedCoupon={appliedCoupon} 
-                  />
-                </Suspense>
+                {/* Advance Payment Option */}
+                {advanceEnabled && (
+                  <div className="bg-muted/20 rounded-xl p-3 border border-border/50 space-y-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={useAdvancePayment}
+                        onChange={(e) => setUseAdvancePayment(e.target.checked)}
+                        className="h-3.5 w-3.5"
+                      />
+                      <span className="text-sm font-medium">Book with advance payment</span>
+                    </label>
+                    {useAdvancePayment && (
+                      <div className="text-xs text-muted-foreground space-y-1 pl-6">
+                        <div className="flex justify-between">
+                          <span>Pay now:</span>
+                          <span className="font-semibold text-foreground">₹{advanceAmount}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Remaining due:</span>
+                          <span className="font-semibold text-foreground">₹{remainingDue}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Due by:</span>
+                          <span className="font-semibold text-foreground">{dueDate ? format(dueDate, 'dd MMM yyyy') : ''}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <Button
                   className="w-full h-11 rounded-xl shadow-md text-sm font-semibold"
@@ -706,7 +805,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                       Processing...
                     </span>
                   ) : (
-                    "Confirm & Proceed to Payment"
+                    useAdvancePayment ? `Pay ₹${advanceAmount} Advance` : "Confirm & Proceed to Payment"
                   )}
                 </Button>
               </>
@@ -813,7 +912,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
             <div className="flex justify-center">
               <RazorpayCheckout
                 appliedCoupon={appliedCoupon}
-                amount={totalPrice}
+                amount={useAdvancePayment ? advanceAmount : totalPrice}
                 bookingId={bookingId}
                 bookingType="cabin"
                 endDate={endDate}

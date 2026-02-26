@@ -50,6 +50,12 @@ export interface Cabin {
   floors?: { id: string; number: number }[];
   lockerPrice?: number;
   lockerMandatory?: boolean;
+  advanceBookingEnabled?: boolean;
+  advancePercentage?: number;
+  advanceFlatAmount?: number | null;
+  advanceUseFlat?: boolean;
+  advanceValidityDays?: number;
+  advanceAutoCancel?: boolean;
 }
 
 export interface RoomElement {
@@ -130,6 +136,12 @@ const BookSeat = () => {
           isActive: d.is_active !== false,
           category: (d.category as 'standard' | 'premium' | 'luxury') || 'standard',
           imageUrl: d.image_url || 'https://images.unsplash.com/photo-1626948683838-3be9a4e90737?q=80&w=1470&auto=format&fit=crop',
+          advanceBookingEnabled: (d as any).advance_booking_enabled || false,
+          advancePercentage: (d as any).advance_percentage || 50,
+          advanceFlatAmount: (d as any).advance_flat_amount || null,
+          advanceUseFlat: (d as any).advance_use_flat || false,
+          advanceValidityDays: (d as any).advance_validity_days || 3,
+          advanceAutoCancel: (d as any).advance_auto_cancel || true,
         });
         setLayoutImage((d as any).layout_image || null);
         setRoomWidth((d as any).room_width || 800);
