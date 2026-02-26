@@ -23,12 +23,13 @@ import {
 } from '@/components/ui/dialog';
 import {
   LayoutGrid, List, CalendarIcon, Search, Ban, Lock, Unlock,
-  Edit, Save, X, IndianRupee, Users, CheckCircle, Clock, AlertTriangle, RefreshCw, UserPlus, Info, ChevronDown, CreditCard, Banknote, Smartphone, Building2, Send, Download, ArrowLeft,
+  Edit, Save, X, IndianRupee, Users, CheckCircle, Clock, AlertTriangle, RefreshCw, UserPlus, Info, ChevronDown, CreditCard, Banknote, Smartphone, Building2, Send, Download, ArrowLeft, ArrowRightLeft, RotateCcw, Wallet,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   vendorSeatsService, VendorSeat, VendorCabin, StudentProfile, PartnerBookingData, BlockHistoryEntry,
 } from '@/api/vendorSeatsService';
+import { Textarea } from '@/components/ui/textarea';
 import { useVendorEmployeePermissions } from '@/hooks/useVendorEmployeePermissions';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -99,6 +100,22 @@ const VendorSeats: React.FC = () => {
   const [newStudentEmail, setNewStudentEmail] = useState('');
   const [newStudentPhone, setNewStudentPhone] = useState('');
   const [creatingStudent, setCreatingStudent] = useState(false);
+
+  // Transfer seat state
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+  const [transferBookingId, setTransferBookingId] = useState<string>('');
+  const [transferTargetSeatId, setTransferTargetSeatId] = useState<string>('');
+  const [transferring, setTransferring] = useState(false);
+  const [availableSeatsForTransfer, setAvailableSeatsForTransfer] = useState<VendorSeat[]>([]);
+
+  // Inline due collection state
+  const [expandedDueBookingId, setExpandedDueBookingId] = useState<string>('');
+  const [bookingDues, setBookingDues] = useState<Record<string, any>>({});
+  const [dueCollectAmount, setDueCollectAmount] = useState('');
+  const [dueCollectMethod, setDueCollectMethod] = useState('cash');
+  const [dueCollectTxnId, setDueCollectTxnId] = useState('');
+  const [dueCollectNotes, setDueCollectNotes] = useState('');
+  const [collectingDue, setCollectingDue] = useState(false);
 
   const { toast } = useToast();
   const { hasPermission } = useVendorEmployeePermissions();
@@ -206,6 +223,72 @@ const VendorSeats: React.FC = () => {
       const res = await vendorSeatsService.getSeatBlockHistory(seat._id);
       if (res.success && res.data) setBlockHistory(res.data);
     }
+
+    // Fetch dues for advance_paid bookings
+    const advanceBookings = seat.allBookings.filter(b => b.paymentStatus === 'advance_paid');
+    if (advanceBookings.length > 0) {
+      const duesResults: Record<string, any> = {};
+      await Promise.all(advanceBookings.map(async (b) => {
+        const res = await vendorSeatsService.getDueForBooking(b.bookingId);
+        if (res.success && res.data) {
+          duesResults[b.bookingId] = res.data;
+        }
+      }));
+      setBookingDues(duesResults);
+    } else {
+      setBookingDues({});
+    }
+  };
+
+  // Transfer seat handlers
+  const openTransferDialog = async (bookingId: string) => {
+    setTransferBookingId(bookingId);
+    setTransferTargetSeatId('');
+    // Fetch available seats from same cabin
+    if (selectedSeat) {
+      const dateStr = format(selectedDate, 'yyyy-MM-dd');
+      const res = await vendorSeatsService.getSeatsForDate(selectedSeat.cabinId, dateStr);
+      if (res.success && res.data) {
+        setAvailableSeatsForTransfer(res.data.filter(s => s._id !== selectedSeat._id && s.dateStatus === 'available'));
+      }
+    }
+    setTransferDialogOpen(true);
+  };
+
+  const handleTransferSeat = async () => {
+    if (!transferBookingId || !transferTargetSeatId) return;
+    const targetSeat = availableSeatsForTransfer.find(s => s._id === transferTargetSeatId);
+    if (!targetSeat) return;
+    setTransferring(true);
+    const res = await vendorSeatsService.transferBooking(transferBookingId, transferTargetSeatId, targetSeat.cabinId, targetSeat.number);
+    if (res.success) {
+      toast({ title: 'Booking transferred successfully' });
+      setTransferDialogOpen(false);
+      setSheetOpen(false);
+      fetchSeats();
+    } else {
+      toast({ title: 'Error', description: res.error, variant: 'destructive' });
+    }
+    setTransferring(false);
+  };
+
+  // Inline due collection
+  const handleInlineDueCollect = async (dueId: string) => {
+    if (!dueCollectAmount) return;
+    const amt = parseFloat(dueCollectAmount);
+    if (amt <= 0) { toast({ title: 'Enter valid amount', variant: 'destructive' }); return; }
+    setCollectingDue(true);
+    const res = await vendorSeatsService.collectDuePayment(dueId, amt, dueCollectMethod, dueCollectTxnId, dueCollectNotes);
+    if (res.success) {
+      toast({ title: 'Payment collected' });
+      setExpandedDueBookingId('');
+      fetchSeats();
+      // Refresh dues
+      if (selectedSeat) handleSeatClick(selectedSeat);
+    } else {
+      toast({ title: 'Error', description: res.error, variant: 'destructive' });
+    }
+    setCollectingDue(false);
   };
 
   // Price edit
@@ -805,12 +888,36 @@ const VendorSeats: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                  {/* Book Future Dates + Block with Dates buttons */}
+                  {/* Action buttons: Renew, Book Future, Transfer, Block */}
                   {canEdit && (
-                    <div className="flex gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                       <Button
                         size="sm"
-                        className="flex-1 h-8 text-xs gap-1"
+                        className="h-8 text-xs gap-1"
+                        onClick={() => {
+                          const nextDay = addDays(new Date(selectedSeat.currentBooking!.endDate), 1);
+                          setBookingStartDate(nextDay);
+                          setBookingPrice(String(selectedSeat.price));
+                          // Pre-select same student
+                          if (selectedSeat.currentBooking) {
+                            setSelectedStudent({
+                              id: selectedSeat.currentBooking.userId,
+                              name: selectedSeat.currentBooking.studentName,
+                              email: selectedSeat.currentBooking.studentEmail,
+                              phone: selectedSeat.currentBooking.studentPhone,
+                              serialNumber: '',
+                              profilePicture: selectedSeat.currentBooking.profilePicture,
+                            });
+                            setStudentQuery(selectedSeat.currentBooking.studentName);
+                          }
+                          setShowFutureBooking(true);
+                        }}
+                      >
+                        <RotateCcw className="h-3 w-3" /> Renew
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="h-8 text-xs gap-1"
                         onClick={() => {
                           const nextDay = addDays(new Date(selectedSeat.currentBooking!.endDate), 1);
                           setBookingStartDate(nextDay);
@@ -818,7 +925,18 @@ const VendorSeats: React.FC = () => {
                           setShowFutureBooking(true);
                         }}
                       >
-                        <CalendarIcon className="h-3 w-3" /> Book Future Dates
+                        <CalendarIcon className="h-3 w-3" /> Book Future
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 text-xs gap-1"
+                        onClick={() => {
+                          const activeBooking = currentBookings[0];
+                          if (activeBooking) openTransferDialog(activeBooking.bookingId);
+                        }}
+                      >
+                        <ArrowRightLeft className="h-3 w-3" /> Transfer Seat
                       </Button>
                       <Button
                         size="sm"
@@ -1285,31 +1403,104 @@ const VendorSeats: React.FC = () => {
                     Current Booking ({currentBookings.length})
                   </h4>
                   <div className="space-y-2">
-                    {currentBookings.map((b, i) => (
-                      <div key={i} className="border rounded p-2 text-[11px] space-y-1">
-                        <div className="flex justify-between">
-                          <span className="font-medium">{b.studentName}</span>
-                          <Badge variant="outline" className="text-[9px] px-1">{b.paymentStatus}</Badge>
+                    {currentBookings.map((b, i) => {
+                      const due = bookingDues[b.bookingId];
+                      const dueRemaining = due ? Math.max(0, Number(due.due_amount) - Number(due.paid_amount)) : 0;
+                      return (
+                        <div key={i} className="border rounded p-2 text-[11px] space-y-1">
+                          <div className="flex justify-between">
+                            <span className="font-medium">{b.studentName}</span>
+                            <Badge variant="outline" className="text-[9px] px-1">{b.paymentStatus}</Badge>
+                          </div>
+                          <div className="text-muted-foreground">
+                            {new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()}
+                            {b.durationCount && b.bookingDuration && ` · ${b.durationCount} ${b.bookingDuration}`}
+                          </div>
+                          <div className="flex justify-between">
+                            <span>₹{b.totalPrice}{b.lockerIncluded ? ` (incl. locker ₹${b.lockerPrice})` : ''}</span>
+                            <span className="text-muted-foreground">{b.studentPhone}</span>
+                          </div>
+                          {(b.discountAmount ?? 0) > 0 && (
+                            <div className="text-emerald-600">Discount: ₹{b.discountAmount}{b.discountReason ? ` (${b.discountReason})` : ''}</div>
+                          )}
+                          {b.paymentMethod && b.paymentMethod !== 'online' && (
+                            <div className="text-muted-foreground">Payment: {b.paymentMethod === 'send_link' ? 'Payment Link' : b.paymentMethod === 'upi' ? 'UPI' : b.paymentMethod === 'bank_transfer' ? 'Bank Transfer' : 'Cash'}</div>
+                          )}
+                          {b.collectedByName && <div className="text-muted-foreground">Collected by: {b.collectedByName}</div>}
+                          {b.transactionId && <div className="text-muted-foreground">Txn ID: {b.transactionId}</div>}
+                          {b.serialNumber && <div className="text-muted-foreground">#{b.serialNumber}</div>}
+
+                          {/* Due Balance Button */}
+                          {b.paymentStatus === 'advance_paid' && due && dueRemaining > 0 && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="w-full h-7 text-[10px] mt-1 bg-red-50 border-red-200 text-red-600 hover:bg-red-100 dark:bg-red-950/30 dark:border-red-800 dark:text-red-400"
+                                onClick={() => {
+                                  if (expandedDueBookingId === b.bookingId) {
+                                    setExpandedDueBookingId('');
+                                  } else {
+                                    setExpandedDueBookingId(b.bookingId);
+                                    setDueCollectAmount(String(dueRemaining));
+                                    setDueCollectMethod('cash');
+                                    setDueCollectTxnId('');
+                                    setDueCollectNotes('');
+                                  }
+                                }}
+                              >
+                                <Wallet className="h-3 w-3 mr-1" /> Due: ₹{dueRemaining.toLocaleString()}
+                              </Button>
+
+                              {/* Inline Collect Form */}
+                              {expandedDueBookingId === b.bookingId && (
+                                <div className="border rounded p-2 space-y-2 bg-muted/30 mt-1">
+                                  <div>
+                                    <Label className="text-[10px]">Amount to Collect (₹)</Label>
+                                    <Input type="number" className="h-7 text-xs" value={dueCollectAmount} onChange={e => setDueCollectAmount(e.target.value)} />
+                                  </div>
+                                  <div>
+                                    <Label className="text-[10px]">Payment Method</Label>
+                                    <RadioGroup value={dueCollectMethod} onValueChange={setDueCollectMethod} className="grid grid-cols-2 gap-1 mt-1">
+                                      <div className="flex items-center gap-1 border rounded p-1">
+                                        <RadioGroupItem value="cash" id={`dc_cash_${b.bookingId}`} className="h-2.5 w-2.5" />
+                                        <Label htmlFor={`dc_cash_${b.bookingId}`} className="text-[9px] cursor-pointer"><Banknote className="h-2.5 w-2.5 inline mr-0.5" />Cash</Label>
+                                      </div>
+                                      <div className="flex items-center gap-1 border rounded p-1">
+                                        <RadioGroupItem value="upi" id={`dc_upi_${b.bookingId}`} className="h-2.5 w-2.5" />
+                                        <Label htmlFor={`dc_upi_${b.bookingId}`} className="text-[9px] cursor-pointer"><Smartphone className="h-2.5 w-2.5 inline mr-0.5" />UPI</Label>
+                                      </div>
+                                      <div className="flex items-center gap-1 border rounded p-1">
+                                        <RadioGroupItem value="bank_transfer" id={`dc_bank_${b.bookingId}`} className="h-2.5 w-2.5" />
+                                        <Label htmlFor={`dc_bank_${b.bookingId}`} className="text-[9px] cursor-pointer"><Building2 className="h-2.5 w-2.5 inline mr-0.5" />Bank</Label>
+                                      </div>
+                                      <div className="flex items-center gap-1 border rounded p-1">
+                                        <RadioGroupItem value="online" id={`dc_online_${b.bookingId}`} className="h-2.5 w-2.5" />
+                                        <Label htmlFor={`dc_online_${b.bookingId}`} className="text-[9px] cursor-pointer"><CreditCard className="h-2.5 w-2.5 inline mr-0.5" />Online</Label>
+                                      </div>
+                                    </RadioGroup>
+                                  </div>
+                                  {(dueCollectMethod === 'upi' || dueCollectMethod === 'bank_transfer') && (
+                                    <div>
+                                      <Label className="text-[10px]">Transaction ID</Label>
+                                      <Input className="h-7 text-xs" value={dueCollectTxnId} onChange={e => setDueCollectTxnId(e.target.value)} />
+                                    </div>
+                                  )}
+                                  <Button
+                                    size="sm"
+                                    className="w-full h-7 text-[10px]"
+                                    onClick={() => handleInlineDueCollect(due.id)}
+                                    disabled={collectingDue || !dueCollectAmount}
+                                  >
+                                    {collectingDue ? 'Processing...' : `Collect ₹${dueCollectAmount}`}
+                                  </Button>
+                                </div>
+                              )}
+                            </>
+                          )}
                         </div>
-                        <div className="text-muted-foreground">
-                          {new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()}
-                          {b.durationCount && b.bookingDuration && ` · ${b.durationCount} ${b.bookingDuration}`}
-                        </div>
-                        <div className="flex justify-between">
-                          <span>₹{b.totalPrice}{b.lockerIncluded ? ` (incl. locker ₹${b.lockerPrice})` : ''}</span>
-                          <span className="text-muted-foreground">{b.studentPhone}</span>
-                        </div>
-                        {(b.discountAmount ?? 0) > 0 && (
-                          <div className="text-emerald-600">Discount: ₹{b.discountAmount}{b.discountReason ? ` (${b.discountReason})` : ''}</div>
-                        )}
-                        {b.paymentMethod && b.paymentMethod !== 'online' && (
-                          <div className="text-muted-foreground">Payment: {b.paymentMethod === 'send_link' ? 'Payment Link' : b.paymentMethod === 'upi' ? 'UPI' : b.paymentMethod === 'bank_transfer' ? 'Bank Transfer' : 'Cash'}</div>
-                        )}
-                        {b.collectedByName && <div className="text-muted-foreground">Collected by: {b.collectedByName}</div>}
-                        {b.transactionId && <div className="text-muted-foreground">Txn ID: {b.transactionId}</div>}
-                        {b.serialNumber && <div className="text-muted-foreground">#{b.serialNumber}</div>}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </>
               )}
@@ -1380,6 +1571,45 @@ const VendorSeats: React.FC = () => {
           )}
         </SheetContent>
       </Sheet>
+
+      {/* ──── Transfer Seat Dialog ──── */}
+      <Dialog open={transferDialogOpen} onOpenChange={setTransferDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-sm">Transfer Seat</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">Select an available seat to transfer this booking to:</p>
+            {availableSeatsForTransfer.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-4">No available seats in this room.</p>
+            ) : (
+              <div className="grid grid-cols-4 gap-1.5 max-h-[200px] overflow-y-auto">
+                {availableSeatsForTransfer.map(s => (
+                  <div
+                    key={s._id}
+                    onClick={() => setTransferTargetSeatId(s._id)}
+                    className={cn(
+                      "border rounded p-2 text-center cursor-pointer transition-colors text-[11px]",
+                      transferTargetSeatId === s._id
+                        ? "border-primary bg-primary/10 ring-1 ring-primary"
+                        : "hover:bg-muted"
+                    )}
+                  >
+                    <div className="font-bold">S{s.number}</div>
+                    <div className="text-[9px] text-muted-foreground">₹{s.price}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Button size="sm" className="flex-1 h-8 text-xs" onClick={handleTransferSeat} disabled={transferring || !transferTargetSeatId}>
+                {transferring ? 'Transferring...' : 'Confirm Transfer'}
+              </Button>
+              <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setTransferDialogOpen(false)}>Cancel</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
