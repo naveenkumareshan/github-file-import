@@ -460,6 +460,13 @@ export type Database = {
             referencedRelation: "seats"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "dues_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       profiles: {
