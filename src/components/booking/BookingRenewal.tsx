@@ -19,6 +19,7 @@ import { transactionService } from '@/api/transactionService';
 import { razorpayService } from '@/api/razorpayService';
 import { couponService } from '@/api/couponService';
 import { seatsService } from '@/api/seatsService';
+import { bookingsService } from '@/api/bookingsService';
 import { supabase } from '@/integrations/supabase/client';
 import { Booking } from '@/types/BookingTypes';
 
@@ -395,30 +396,64 @@ export const BookingRenewal = React.forwardRef<HTMLDivElement, BookingRenewalPro
         razorpay_payment_id: paymentResponse.razorpay_payment_id,
         razorpay_signature: paymentResponse.razorpay_signature,
         paymentResponse: paymentResponse,
-        bookingId : booking._id, 
-        transactionId : currentTransaction._id, 
+        bookingId: booking._id,
+        transactionId: currentTransaction._id,
       });
 
-      // Process the renewal
-      const renewalResponse = await transactionService.processRenewal(currentTransaction._id, {
+      // Create a NEW booking record for the renewal (locker not charged)
+      const cabinId = typeof booking.cabinId === 'object' ? (booking.cabinId as any)?._id : booking.cabinId;
+      const currentEndDate = new Date(booking.endDate);
+      const newStartDate = addDays(currentEndDate, 1);
+      const newEndDate = calculateNewEndDate();
+
+      const newBooking = await bookingsService.renewBooking({
+        cabin_id: cabinId || '',
+        seat_id: resolvedSeatId || '',
+        seat_number: (booking as any).itemNumber || (typeof booking.seatId === 'object' ? (booking.seatId as any)?.number : 0),
+        start_date: format(newStartDate, 'yyyy-MM-dd'),
+        end_date: format(newEndDate, 'yyyy-MM-dd'),
+        total_price: calculateAdditionalAmount(),
+        payment_status: 'completed',
+        payment_method: 'online',
+        booking_duration: 'monthly',
+        duration_count: String(selectedDuration),
+        locker_included: false,
+        locker_price: 0,
+        razorpay_order_id: paymentResponse.razorpay_order_id,
         razorpay_payment_id: paymentResponse.razorpay_payment_id,
-        razorpay_signature: paymentResponse.razorpay_signature
+        razorpay_signature: paymentResponse.razorpay_signature,
+        discount_amount: getDiscountAmount(),
+        discount_reason: appliedCoupon ? `Coupon: ${appliedCoupon.code}` : '',
       });
 
-      if (renewalResponse.success) {
-        toast({
-          title: "Booking Renewed Successfully",
-          description: `Your booking has been extended until ${format(calculateNewEndDate(), 'PPP')}`,
-          variant: "default"
+      // Create a receipt for the renewal payment
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && newBooking) {
+        await supabase.from('receipts').insert({
+          booking_id: newBooking.id,
+          user_id: user.id,
+          cabin_id: cabinId,
+          seat_id: resolvedSeatId,
+          amount: calculateAdditionalAmount(),
+          payment_method: 'online',
+          receipt_type: 'booking_payment',
+          transaction_id: paymentResponse.razorpay_payment_id || '',
+          collected_by: user.id,
+          collected_by_name: 'Online Payment',
+          notes: `Renewal for ${selectedDuration} month(s)`,
         });
-        setIsDialogOpen(false);
-        setShowPaymentStep(false);
-        setCurrentTransaction(null);
-        onRenewalComplete();
-      } else {
-        throw new Error(renewalResponse.error?.message || "Failed to process renewal");
       }
-    } catch (error) {
+
+      toast({
+        title: "Booking Renewed Successfully",
+        description: `A new booking has been created until ${format(newEndDate, 'PPP')}`,
+        variant: "default"
+      });
+      setIsDialogOpen(false);
+      setShowPaymentStep(false);
+      setCurrentTransaction(null);
+      onRenewalComplete();
+    } catch (error: any) {
       console.error("Renewal processing error:", error);
       toast({
         title: "Renewal Failed",
@@ -580,6 +615,11 @@ export const BookingRenewal = React.forwardRef<HTMLDivElement, BookingRenewalPro
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">You Save:</span>
                         <span className="text-green-600 font-medium">₹{getDiscountAmount().toLocaleString()}</span>
+                      </div>
+                    )}
+                    {booking.lockerIncluded && (
+                      <div className="flex justify-between text-xs mt-1">
+                        <span className="text-muted-foreground italic">Locker deposit already paid on original booking</span>
                       </div>
                     )}
                     <div className="flex justify-between mt-2 text-base">

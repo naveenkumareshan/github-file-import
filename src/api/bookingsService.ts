@@ -18,6 +18,26 @@ interface BookingData {
   duration_count?: string;
 }
 
+interface RenewalBookingData {
+  cabin_id: string;
+  seat_id: string;
+  seat_number: number;
+  start_date: string;
+  end_date: string;
+  total_price: number;
+  payment_status: string;
+  payment_method: string;
+  booking_duration: string;
+  duration_count: string;
+  locker_included: boolean;
+  locker_price: number;
+  razorpay_order_id?: string;
+  razorpay_payment_id?: string;
+  razorpay_signature?: string;
+  discount_amount?: number;
+  discount_reason?: string;
+}
+
 export const bookingsService = {
   createBooking: async (data: BookingData) => {
     try {
@@ -171,7 +191,7 @@ export const bookingsService = {
     }
   },
 
-  renewBooking: async (renewalData: any) => {
+  renewBooking: async (renewalData: RenewalBookingData) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
@@ -179,13 +199,22 @@ export const bookingsService = {
       .from('bookings')
       .insert({
         cabin_id: renewalData.cabin_id,
+        seat_id: renewalData.seat_id,
         seat_number: renewalData.seat_number,
         start_date: renewalData.start_date,
         end_date: renewalData.end_date,
-        total_price: renewalData.totalPrice,
-        payment_status: 'pending',
-        booking_duration: renewalData.bookingDuration,
-        duration_count: String(renewalData.durationCount),
+        total_price: renewalData.total_price,
+        payment_status: renewalData.payment_status,
+        payment_method: renewalData.payment_method,
+        booking_duration: renewalData.booking_duration,
+        duration_count: renewalData.duration_count,
+        locker_included: false,
+        locker_price: 0,
+        razorpay_order_id: renewalData.razorpay_order_id || '',
+        razorpay_payment_id: renewalData.razorpay_payment_id || '',
+        razorpay_signature: renewalData.razorpay_signature || '',
+        discount_amount: renewalData.discount_amount || 0,
+        discount_reason: renewalData.discount_reason || '',
         user_id: user.id,
       })
       .select()
