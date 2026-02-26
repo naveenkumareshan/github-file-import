@@ -1,8 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Navigation } from '@/components/Navigation';
-import { Footer } from '@/components/Footer';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -72,44 +70,34 @@ const BookingConfirmation = () => {
   
   if (loading) {
     return (
-      <div className="flex flex-col min-h-screen">
-        <Navigation />
-        <div className="flex-grow container mx-auto p-6 flex items-center justify-center">
-          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
-        </div>
-        <Footer />
+      <div className="container mx-auto p-6 flex items-center justify-center">
+        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
       </div>
     );
   }
   
   if (error || !booking) {
     return (
-      <div className="flex flex-col min-h-screen">
-        <Navigation />
-        <div className="flex-grow container mx-auto p-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-xl">Error</CardTitle>
-              <CardDescription>
-                {error || 'Booking information not found'}
-              </CardDescription>
-            </CardHeader>
-            <CardFooter>
-              <Button onClick={() => navigate('/hostels')}>Browse Hostels</Button>
-            </CardFooter>
-          </Card>
-        </div>
-        <Footer />
+      <div className="container mx-auto p-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xl">Error</CardTitle>
+            <CardDescription>
+              {error || 'Booking information not found'}
+            </CardDescription>
+          </CardHeader>
+          <CardFooter>
+            <Button onClick={() => navigate('/hostels')}>Browse Hostels</Button>
+          </CardFooter>
+        </Card>
       </div>
     );
   }
   
   return (
     <ErrorBoundary>
-      <div className="flex flex-col min-h-screen">
-        <Navigation />
-        
-        <div className="flex-grow container mx-auto p-6">
+      <div>
+        <div className="container mx-auto p-6">
           <div className="max-w-3xl mx-auto">
             <Card className="border-green-500">
               <CardHeader className="text-center pb-4 border-b">
@@ -241,7 +229,6 @@ const BookingConfirmation = () => {
           </div>
         </div>
         
-        <Footer />
       </div>
     </ErrorBoundary>
   );
