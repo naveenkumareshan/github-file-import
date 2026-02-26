@@ -38,6 +38,7 @@ import {
 import ReadingRoomRules from "./ReadingRoomRules";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { seatCategoryService, SeatCategory } from "@/api/seatCategoryService";
 
 const PaymentTimer = lazy(() =>
   import("@/components/booking/PaymentTimer").then((m) => ({
@@ -156,6 +157,19 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
   // Coupon state
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
   const [originalPrice, setOriginalPrice] = useState<number>(0);
+
+  // Category filter state
+  const [categories, setCategories] = useState<SeatCategory[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+
+  useEffect(() => {
+    const cabinId = cabin?._id || cabin?.id;
+    if (cabinId) {
+      seatCategoryService.getCategories(cabinId).then((res) => {
+        if (res.success) setCategories(res.data);
+      });
+    }
+  }, [cabin?._id, cabin?.id]);
 
   const durations: BookingDuration[] = [
     { type: "monthly", count: 1, price: selectedSeat?.price || 0 },
@@ -422,10 +436,10 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Booking Details</CardTitle>
+      <CardHeader className="py-3 px-4">
+        <h3 className="text-sm font-semibold text-foreground">Booking Details</h3>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-4 pt-0">
         {!bookingCreated ? (
           <div className="space-y-6">
             {/* Step 1: Date and Duration Selection */}
@@ -523,14 +537,11 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
               </div>
             </div>
 
-            <div>
-              <Label className="block mb-1">End Date</Label>
-              <div className="p-2 border rounded bg-muted/30">
-                {endDate
-                  ? format(endDate, "PPP")
-                  : "Will be calculated based on duration"}
-              </div>
-            </div>
+            {endDate && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Ends: {format(endDate, "dd MMM yyyy")}
+              </p>
+            )}
 
             {/* Step 2: Seat Selection */}
             {showSeatSelection && cabin && (
@@ -539,6 +550,38 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                   <Label className="block mb-1 text-sm font-medium text-muted-foreground">
                     Select Your Seat
                   </Label>
+
+                  {/* Category Filter Chips */}
+                  {categories.length > 0 && (
+                    <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                      <button
+                        onClick={() => setSelectedCategory("all")}
+                        className={cn(
+                          "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all",
+                          selectedCategory === "all"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        All
+                      </button>
+                      {categories.map((cat) => (
+                        <button
+                          key={cat.id}
+                          onClick={() => setSelectedCategory(cat.name)}
+                          className={cn(
+                            "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all",
+                            selectedCategory === cat.name
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-muted-foreground hover:text-foreground"
+                          )}
+                        >
+                          {cat.name} • ₹{cat.price}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
                   <Suspense fallback={<div className="p-3 text-sm text-muted-foreground">Loading seat map...</div>}>
                     <DateBasedSeatMap 
                       cabinId={cabin._id || cabin.id || ""}
@@ -552,6 +595,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                       layoutImage={layoutImage}
                       roomWidth={roomWidth}
                       roomHeight={roomHeight}
+                      categoryFilter={selectedCategory === "all" ? undefined : selectedCategory}
                     />
                   </Suspense>
               </div>
