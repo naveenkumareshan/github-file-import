@@ -6,6 +6,7 @@ import { CategoryFilter } from '../components/cabins/CategoryFilter';
 import { CabinsGrid } from '../components/cabins/CabinsGrid';
 import { Footer } from '../components/Footer';
 import { cabinsService } from '../api/cabinsService';
+import { reviewsService } from '../api/reviewsService';
 import { toast } from '@/hooks/use-toast';
 import { Cabin as FrontendCabin } from '../data/cabinsData';
 import ErrorBoundary from '../components/ErrorBoundary';
@@ -56,6 +57,23 @@ const Cabins = () => {
               isActive: cabin.is_active !== false,
             })) : [];
           
+          // Fetch rating stats for all cabins
+          const cabinIds = transformedCabins.map(c => c._id).filter(Boolean) as string[];
+          if (cabinIds.length > 0) {
+            try {
+              const ratingStats = await reviewsService.getCabinRatingStatsBatch(cabinIds);
+              transformedCabins.forEach(c => {
+                const stats = ratingStats[c._id as string];
+                if (stats) {
+                  (c as any).averageRating = stats.average_rating;
+                  (c as any).reviewCount = stats.review_count;
+                }
+              });
+            } catch (e) {
+              console.error('Error fetching rating stats:', e);
+            }
+          }
+
           setCabins(transformedCabins);
         } else {
           setError('Failed to load rooms');

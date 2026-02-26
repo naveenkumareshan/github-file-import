@@ -16,23 +16,19 @@ interface ReviewFormData {
 }
 
 interface ReviewFormProps {
-  entityType: 'Cabin' | 'Hostel';
-  entityId: string;
+  bookingId: string;
+  cabinId: string;
   onReviewSubmitted?: () => void;
 }
 
 export const ReviewForm: React.FC<ReviewFormProps> = ({
-  entityType,
-  entityId,
+  bookingId,
+  cabinId,
   onReviewSubmitted
 }) => {
   const { register, handleSubmit, reset, formState: { errors } } = useForm<ReviewFormData>();
   const [rating, setRating] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleRatingChange = (newRating: number) => {
-    setRating(newRating);
-  };
 
   const onSubmit = async (data: ReviewFormData) => {
     if (rating === 0) {
@@ -46,32 +42,26 @@ export const ReviewForm: React.FC<ReviewFormProps> = ({
 
     try {
       setIsSubmitting(true);
-      const response = await reviewsService.createReview({
-        entityType,
-        entityId,
+      await reviewsService.createReview({
+        booking_id: bookingId,
+        cabin_id: cabinId,
         rating,
         title: data.title,
         comment: data.comment
       });
 
-      if (response.success) {
-        toast({
-          title: "Review submitted",
-          description: "Thank you for your feedback!"
-        });
-        reset();
-        setRating(0);
-        if (onReviewSubmitted) {
-          onReviewSubmitted();
-        }
-      } else {
-        throw new Error(response.message || 'Failed to submit review');
-      }
-    } catch (error) {
+      toast({
+        title: "Review submitted",
+        description: "Your review is pending approval. Thank you for your feedback!"
+      });
+      reset();
+      setRating(0);
+      onReviewSubmitted?.();
+    } catch (error: any) {
       console.error('Error submitting review:', error);
       toast({
         title: "Error",
-        description: error.response?.data?.message || "Failed to submit review. Please try again.",
+        description: error?.message || "Failed to submit review. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -92,7 +82,7 @@ export const ReviewForm: React.FC<ReviewFormProps> = ({
               <button
                 key={star}
                 type="button"
-                onClick={() => handleRatingChange(star)}
+                onClick={() => setRating(star)}
                 className="focus:outline-none"
               >
                 <Star

@@ -9,22 +9,27 @@ import { Navigation } from '@/components/Navigation';
 import { Footer } from '@/components/Footer';
 import { bookingsService } from '@/api/bookingsService';
 import { vendorSeatsService } from '@/api/vendorSeatsService';
+import { reviewsService } from '@/api/reviewsService';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, differenceInDays, isPast } from 'date-fns';
-import { Building, Calendar, Check, ArrowUp, ArrowDown, MapPin, Clock, Receipt, CheckCircle2, XCircle, AlertCircle, Wallet } from 'lucide-react';
+import { Building, Calendar, Check, ArrowUp, ArrowDown, MapPin, Clock, Receipt, CheckCircle2, XCircle, AlertCircle, Wallet, Star, MessageSquare } from 'lucide-react';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { useNavigate } from 'react-router-dom';
 import { BookingExpiryDetails } from '@/pages/students/BookingExpiryDetails';
 import { formatBookingPeriod } from '@/utils/currency';
+import { ReviewForm } from '@/components/reviews/ReviewForm';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 /* ─── Receipt Card for Booking History ─────────────────────────────── */
 interface ReceiptCardProps {
   booking: BookingData;
   formatDate: (d: string) => string;
+  isReviewed?: boolean;
+  onReview?: (booking: BookingData) => void;
 }
 
-const BookingReceiptCard: React.FC<ReceiptCardProps> = ({ booking, formatDate }) => {
+const BookingReceiptCard: React.FC<ReceiptCardProps> = ({ booking, formatDate, isReviewed, onReview }) => {
   const isExpired = booking.end_date ? isPast(new Date(booking.end_date)) : false;
   const daysAgo = booking.end_date ? Math.abs(differenceInDays(new Date(), new Date(booking.end_date))) : 0;
 
@@ -126,6 +131,24 @@ const BookingReceiptCard: React.FC<ReceiptCardProps> = ({ booking, formatDate })
           <span className="text-[10px] text-muted-foreground italic">Expired</span>
         )}
       </div>
+
+      {/* Review button for history cards */}
+      {booking.payment_status === 'completed' && (
+        <div className="border-t bg-muted/30 px-4 py-2">
+          {isReviewed ? (
+            <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3" /> Review Submitted
+            </span>
+          ) : (
+            <button
+              onClick={() => onReview?.(booking)}
+              className="text-[10px] text-primary font-medium flex items-center gap-1 hover:underline"
+            >
+              <Star className="w-3 h-3" /> Review Reading Room
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };
@@ -170,6 +193,8 @@ const StudentDashboard: React.FC = () => {
   const [studentDues, setStudentDues] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [loadingLaundry, setLoadingLaundry] = useState<boolean>(true);
+  const [reviewedBookingIds, setReviewedBookingIds] = useState<Set<string>>(new Set());
+  const [reviewDialogBooking, setReviewDialogBooking] = useState<BookingData | null>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -184,13 +209,29 @@ const StudentDashboard: React.FC = () => {
       setLoading(true);
       
       const currentResponse = await bookingsService.getCurrentBookings();
+      let allBookings: BookingData[] = [];
       if (currentResponse.success && Array.isArray(currentResponse.data)) {
         setCurrentBookings(currentResponse.data as any);
+        allBookings = [...(currentResponse.data as any)];
       }
       
       const historyResponse = await bookingsService.getBookingHistory();
       if (historyResponse.success && Array.isArray(historyResponse.data)) {
         setBookingHistory(historyResponse.data as any);
+        allBookings = [...allBookings, ...(historyResponse.data as any)];
+      }
+
+      // Check which completed bookings already have reviews
+      const completedIds = allBookings
+        .filter(b => b.payment_status === 'completed')
+        .map(b => b.id);
+      if (completedIds.length > 0) {
+        try {
+          const existingReviews = await reviewsService.getUserReviewsForBookings(completedIds);
+          setReviewedBookingIds(new Set(existingReviews.map(r => r.booking_id)));
+        } catch (e) {
+          console.error('Error checking reviews:', e);
+        }
       }
     } catch (error) {
       console.error('Error fetching booking data:', error);
@@ -439,6 +480,24 @@ const StudentDashboard: React.FC = () => {
                                 paymentStatus={booking.payment_status}
                               />
                              }
+                             {/* Review Button */}
+                             {booking.payment_status === 'completed' && (
+                               <div className="mt-3 pt-3 border-t">
+                                 {reviewedBookingIds.has(booking.id) ? (
+                                   <Badge variant="outline" className="text-xs">
+                                     <CheckCircle2 className="h-3 w-3 mr-1" /> Review Submitted
+                                   </Badge>
+                                 ) : (
+                                   <Button
+                                     size="sm"
+                                     variant="outline"
+                                     onClick={(e) => { e.stopPropagation(); setReviewDialogBooking(booking); }}
+                                   >
+                                     <Star className="h-3.5 w-3.5 mr-1" /> Review Reading Room
+                                   </Button>
+                                 )}
+                               </div>
+                             )}
                             </div>
                             ))}
                           </div>
@@ -469,6 +528,8 @@ const StudentDashboard: React.FC = () => {
                                 key={booking.id}
                                 booking={booking}
                                 formatDate={formatDate}
+                                isReviewed={reviewedBookingIds.has(booking.id)}
+                                onReview={(b) => setReviewDialogBooking(b)}
                               />
                             ))}
                           </div>
@@ -598,6 +659,24 @@ const StudentDashboard: React.FC = () => {
           </div>
         </div>
       </div>
+      {/* Review Dialog */}
+      {reviewDialogBooking && (
+        <Dialog open={!!reviewDialogBooking} onOpenChange={() => setReviewDialogBooking(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Review {reviewDialogBooking.cabins?.name || 'Reading Room'}</DialogTitle>
+            </DialogHeader>
+            <ReviewForm
+              bookingId={reviewDialogBooking.id}
+              cabinId={reviewDialogBooking.cabin_id || ''}
+              onReviewSubmitted={() => {
+                setReviewDialogBooking(null);
+                setReviewedBookingIds(prev => new Set([...prev, reviewDialogBooking.id]));
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </ErrorBoundary>
   );
 };
