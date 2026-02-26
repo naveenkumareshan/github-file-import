@@ -86,6 +86,9 @@ const VendorSeats: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState<string>('cash');
   const [transactionId, setTransactionId] = useState('');
 
+  // Two-step booking flow
+  const [bookingStep, setBookingStep] = useState<'details' | 'confirm'>('details');
+
   // Booking success state
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [lastInvoiceData, setLastInvoiceData] = useState<InvoiceData | null>(null);
@@ -192,6 +195,7 @@ const VendorSeats: React.FC = () => {
     setIsAdvanceBooking(false);
     setManualAdvanceAmount('');
     setManualDueDate(undefined);
+    setBookingStep('details');
 
     // Set locker default based on cabin
     const cabin = cabins.find(c => c._id === seat.cabinId);
@@ -403,6 +407,7 @@ const VendorSeats: React.FC = () => {
       };
       setLastInvoiceData(invoiceData);
       setBookingSuccess(true);
+      setBookingStep('details');
       toast({ title: paymentMethod === 'send_link' ? 'Payment link sent' : 'Booking created successfully' });
       fetchSeats();
     } else {
@@ -1075,8 +1080,21 @@ const VendorSeats: React.FC = () => {
                           type="number"
                           placeholder={`₹ ${advanceComputed.advanceAmount}`}
                           value={manualAdvanceAmount}
-                          onChange={e => setManualAdvanceAmount(e.target.value)}
+                          max={computedTotal}
+                          onChange={e => {
+                            const val = parseFloat(e.target.value);
+                            if (e.target.value === '' || isNaN(val)) {
+                              setManualAdvanceAmount(e.target.value);
+                            } else if (val > computedTotal) {
+                              setManualAdvanceAmount(String(computedTotal));
+                            } else {
+                              setManualAdvanceAmount(e.target.value);
+                            }
+                          }}
                         />
+                        {manualAdvanceAmount && parseFloat(manualAdvanceAmount) > computedTotal && (
+                          <p className="text-[9px] text-destructive">Cannot exceed ₹{computedTotal}</p>
+                        )}
                       </div>
                       <div className="space-y-1">
                         <Label className="text-[10px] uppercase text-muted-foreground">Seat Valid Until (Due Date)</Label>
@@ -1100,64 +1118,126 @@ const VendorSeats: React.FC = () => {
                       </div>
                       <Separator />
                       <div className="flex justify-between text-amber-700 dark:text-amber-400 font-medium"><span>Collecting Now</span><span>₹{advanceComputed.advanceAmount}</span></div>
-                      <div className="flex justify-between text-red-600"><span>Due Balance</span><span>₹{advanceComputed.remainingDue}</span></div>
+                      <div className="flex justify-between text-destructive"><span>Due Balance</span><span>₹{advanceComputed.remainingDue}</span></div>
                       <div className="flex justify-between"><span>Seat Valid Until</span><span>{format(advanceComputed.proportionalEndDate, 'dd MMM yyyy')}</span></div>
                     </div>
                   )}
 
-                  {/* Payment Method */}
-                  <div className="space-y-1.5">
-                    <Label className="text-[10px] uppercase text-muted-foreground">Payment Method</Label>
-                    <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="grid grid-cols-2 gap-1.5">
-                      <div className="flex items-center gap-1.5 border rounded p-1.5 cursor-pointer hover:bg-muted/50">
-                        <RadioGroupItem value="send_link" id="pm_link" className="h-3 w-3" />
-                        <Label htmlFor="pm_link" className="text-[10px] cursor-pointer flex items-center gap-1">
-                          <Send className="h-3 w-3" /> Send Link
-                        </Label>
-                      </div>
-                      <div className="flex items-center gap-1.5 border rounded p-1.5 cursor-pointer hover:bg-muted/50">
-                        <RadioGroupItem value="cash" id="pm_cash" className="h-3 w-3" />
-                        <Label htmlFor="pm_cash" className="text-[10px] cursor-pointer flex items-center gap-1">
-                          <Banknote className="h-3 w-3" /> Cash
-                        </Label>
-                      </div>
-                      <div className="flex items-center gap-1.5 border rounded p-1.5 cursor-pointer hover:bg-muted/50">
-                        <RadioGroupItem value="upi" id="pm_upi" className="h-3 w-3" />
-                        <Label htmlFor="pm_upi" className="text-[10px] cursor-pointer flex items-center gap-1">
-                          <Smartphone className="h-3 w-3" /> PhonePe / UPI
-                        </Label>
-                      </div>
-                      <div className="flex items-center gap-1.5 border rounded p-1.5 cursor-pointer hover:bg-muted/50">
-                        <RadioGroupItem value="bank_transfer" id="pm_bank" className="h-3 w-3" />
-                        <Label htmlFor="pm_bank" className="text-[10px] cursor-pointer flex items-center gap-1">
-                          <Building2 className="h-3 w-3" /> Bank Transfer
-                        </Label>
-                      </div>
-                    </RadioGroup>
-                  </div>
-
-                  {/* Transaction ID (required for UPI/Bank) */}
-                  {(paymentMethod === 'upi' || paymentMethod === 'bank_transfer') && (
-                    <div>
-                      <Label className="text-[10px] uppercase text-muted-foreground">Transaction ID *</Label>
-                      <Input className="h-8 text-xs" placeholder="Enter transaction reference ID" value={transactionId} onChange={e => setTransactionId(e.target.value)} />
-                    </div>
+                  {/* Step 1: Book Seat button */}
+                  {bookingStep === 'details' && (
+                    <Button
+                      className="w-full h-9 text-xs"
+                      disabled={!selectedStudent}
+                      onClick={() => {
+                        if (!selectedStudent) {
+                          toast({ title: 'Please select a student first', variant: 'destructive' });
+                          return;
+                        }
+                        setBookingStep('confirm');
+                      }}
+                    >
+                      Book Seat
+                    </Button>
                   )}
 
-                  {/* Collected by */}
-                  <div className="text-muted-foreground text-[10px] px-1">
-                    Collected by: {paymentMethod === 'send_link' ? 'InhaleStays' : (user?.name || user?.email || 'Partner')}
-                  </div>
+                  {/* Step 2: Confirmation Summary + Payment */}
+                  {bookingStep === 'confirm' && (
+                    <div className="space-y-3 border-t pt-3">
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                        <CheckCircle className="h-3 w-3" /> Booking Confirmation
+                      </h4>
 
-                  <Button
-                    className="w-full h-9 text-xs"
-                    disabled={!selectedStudent || creatingBooking || ((paymentMethod === 'upi' || paymentMethod === 'bank_transfer') && !transactionId.trim())}
-                    onClick={handleCreateBooking}
-                  >
-                    {creatingBooking ? 'Creating...' : paymentMethod === 'send_link' 
-                      ? `Send Payment Link · ₹${isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : computedTotal}` 
-                      : `Confirm Booking (${paymentMethod === 'cash' ? 'Cash' : paymentMethod === 'upi' ? 'UPI' : 'Bank Transfer'}) · ₹${isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : computedTotal}`}
-                  </Button>
+                      {/* Read-only summary */}
+                      <div className="border rounded p-3 text-[11px] space-y-1.5 bg-muted/30">
+                        <div className="flex justify-between"><span className="text-muted-foreground">Student</span><span className="font-medium">{selectedStudent?.name}</span></div>
+                        <div className="flex justify-between"><span className="text-muted-foreground">Phone</span><span>{selectedStudent?.phone || '-'}</span></div>
+                        <Separator />
+                        <div className="flex justify-between"><span className="text-muted-foreground">Seat</span><span>#{selectedSeat.number} · {cabins.find(c => c._id === selectedSeat.cabinId)?.name || ''}</span></div>
+                        <div className="flex justify-between"><span className="text-muted-foreground">Period</span><span>{format(bookingStartDate, 'dd MMM')} → {format(computedEndDate, 'dd MMM yyyy')}</span></div>
+                        <Separator />
+                        <div className="flex justify-between"><span>Seat Amount</span><span>₹{parseFloat(bookingPrice) || 0}</span></div>
+                        {lockerIncluded && selectedCabinInfo && (
+                          <div className="flex justify-between"><span>Locker</span><span>₹{selectedCabinInfo.lockerPrice}</span></div>
+                        )}
+                        {parseFloat(discountAmount) > 0 && (
+                          <div className="flex justify-between text-emerald-600"><span>Discount{discountReason ? ` (${discountReason})` : ''}</span><span>-₹{parseFloat(discountAmount)}</span></div>
+                        )}
+                        <Separator />
+                        <div className="flex justify-between font-semibold text-xs"><span>Total</span><span>₹{computedTotal}</span></div>
+                        {isAdvanceBooking && advanceComputed && (
+                          <>
+                            <Separator />
+                            <div className="flex justify-between text-amber-700 dark:text-amber-400 font-medium"><span>Advance</span><span>₹{advanceComputed.advanceAmount}</span></div>
+                            <div className="flex justify-between text-destructive"><span>Due Balance</span><span>₹{advanceComputed.remainingDue}</span></div>
+                            <div className="flex justify-between"><span>Valid Until</span><span>{format(advanceComputed.proportionalEndDate, 'dd MMM yyyy')}</span></div>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Payment Method */}
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] uppercase text-muted-foreground">Payment Method</Label>
+                        <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="grid grid-cols-2 gap-1.5">
+                          <div className="flex items-center gap-1.5 border rounded p-1.5 cursor-pointer hover:bg-muted/50">
+                            <RadioGroupItem value="send_link" id="pm_link" className="h-3 w-3" />
+                            <Label htmlFor="pm_link" className="text-[10px] cursor-pointer flex items-center gap-1">
+                              <Send className="h-3 w-3" /> Send Link
+                            </Label>
+                          </div>
+                          <div className="flex items-center gap-1.5 border rounded p-1.5 cursor-pointer hover:bg-muted/50">
+                            <RadioGroupItem value="cash" id="pm_cash" className="h-3 w-3" />
+                            <Label htmlFor="pm_cash" className="text-[10px] cursor-pointer flex items-center gap-1">
+                              <Banknote className="h-3 w-3" /> Cash
+                            </Label>
+                          </div>
+                          <div className="flex items-center gap-1.5 border rounded p-1.5 cursor-pointer hover:bg-muted/50">
+                            <RadioGroupItem value="upi" id="pm_upi" className="h-3 w-3" />
+                            <Label htmlFor="pm_upi" className="text-[10px] cursor-pointer flex items-center gap-1">
+                              <Smartphone className="h-3 w-3" /> PhonePe / UPI
+                            </Label>
+                          </div>
+                          <div className="flex items-center gap-1.5 border rounded p-1.5 cursor-pointer hover:bg-muted/50">
+                            <RadioGroupItem value="bank_transfer" id="pm_bank" className="h-3 w-3" />
+                            <Label htmlFor="pm_bank" className="text-[10px] cursor-pointer flex items-center gap-1">
+                              <Building2 className="h-3 w-3" /> Bank Transfer
+                            </Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
+
+                      {/* Transaction ID (required for UPI/Bank) */}
+                      {(paymentMethod === 'upi' || paymentMethod === 'bank_transfer') && (
+                        <div>
+                          <Label className="text-[10px] uppercase text-muted-foreground">Transaction ID *</Label>
+                          <Input className="h-8 text-xs" placeholder="Enter transaction reference ID" value={transactionId} onChange={e => setTransactionId(e.target.value)} />
+                        </div>
+                      )}
+
+                      {/* Collected by */}
+                      <div className="text-muted-foreground text-[10px] px-1">
+                        Collected by: {paymentMethod === 'send_link' ? 'InhaleStays' : (user?.name || user?.email || 'Partner')}
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          className="flex-1 h-9 text-xs"
+                          onClick={() => setBookingStep('details')}
+                        >
+                          <ArrowLeft className="h-3 w-3 mr-1" /> Back
+                        </Button>
+                        <Button
+                          className="flex-1 h-9 text-xs"
+                          disabled={creatingBooking || ((paymentMethod === 'upi' || paymentMethod === 'bank_transfer') && !transactionId.trim())}
+                          onClick={handleCreateBooking}
+                        >
+                          {creatingBooking ? 'Creating...' : paymentMethod === 'send_link' 
+                            ? `Send Link · ₹${isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : computedTotal}` 
+                            : `Confirm · ₹${isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : computedTotal}`}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
