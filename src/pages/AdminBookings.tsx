@@ -3,36 +3,43 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
+  Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious,
 } from "@/components/ui/pagination";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { adminBookingsService } from "../api/adminBookingsService";
 import { useToast } from "@/hooks/use-toast";
 import { BookingFilters } from "@/types/BookingTypes";
 import { CheckCircle2, XCircle, Eye, Search, Filter, BookOpen } from "lucide-react";
 
 type BookingStatus = "pending" | "completed" | "failed";
+const PAGE_SIZE = 15;
+
+const fmtDate = (d: string) => {
+  if (!d) return "-";
+  const dt = new Date(d);
+  return dt.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
+};
+
+const fmtDateTime = (d: string) => {
+  if (!d) return "-";
+  const dt = new Date(d);
+  const date = dt.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
+  const time = dt.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true, timeZone: "UTC" });
+  return `${date}, ${time}`;
+};
+
+const fmtRange = (s: string, e: string) => {
+  if (!s || !e) return "-";
+  return `${fmtDate(s)} – ${fmtDate(e)}`;
+};
 
 const AdminBookings = () => {
   const navigate = useNavigate();
@@ -41,123 +48,87 @@ const AdminBookings = () => {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [status, setStatus] = useState<BookingStatus | "">("");
 
-  useEffect(() => {
-    fetchBookings();
-  }, [currentPage, searchQuery, status]);
+  useEffect(() => { fetchBookings(); }, [currentPage, searchQuery, status]);
 
   const fetchBookings = async () => {
     try {
       setLoading(true);
-      const filters: BookingFilters = {
-        page: currentPage,
-        limit: 10,
-        search: searchQuery,
-      };
-      if (status as BookingStatus) {
-        filters.status = status as BookingStatus;
-      }
+      const filters: BookingFilters = { page: currentPage, limit: PAGE_SIZE, search: searchQuery };
+      if (status) filters.status = status as BookingStatus;
       const response = await adminBookingsService.getAllBookings(filters);
       if (response.success) {
         setBookings(response.data || []);
-        const calculatedTotalPages = Math.ceil((response.count || 0) / 10);
-        setTotalPages(response.totalPages || calculatedTotalPages || 1);
+        const count = response.count || 0;
+        setTotalCount(count);
+        setTotalPages(response.totalPages || Math.ceil(count / PAGE_SIZE) || 1);
       } else {
-        toast({
-          title: "Error fetching bookings",
-          description: response.error || "Failed to load bookings",
-          variant: "destructive",
-        });
+        toast({ title: "Error fetching bookings", description: response.error || "Failed to load bookings", variant: "destructive" });
       }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to load bookings",
-        variant: "destructive",
-      });
+    } catch {
+      toast({ title: "Error", description: "Failed to load bookings", variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setCurrentPage(1);
-  };
-
-  const handleStatusChange = (value: string) => {
-    setStatus(value === "all" ? "" : value as BookingStatus);
-    setCurrentPage(1);
-  };
+  const handleSearch = (e: React.FormEvent) => { e.preventDefault(); setCurrentPage(1); };
+  const handleStatusChange = (v: string) => { setStatus(v === "all" ? "" : v as BookingStatus); setCurrentPage(1); };
 
   const handleUpdateStatus = async (bookingId: string, newStatus: BookingStatus) => {
     try {
       const response = await adminBookingsService.updateBooking(bookingId, { status: newStatus });
       if (response.success) {
         toast({ title: "Status Updated", description: `Booking status updated to ${newStatus}` });
-        setBookings((prev) =>
-          prev.map((b) => (b._id === bookingId ? { ...b, status: newStatus } : b))
-        );
+        setBookings((prev) => prev.map((b) => (b._id === bookingId ? { ...b, status: newStatus } : b)));
       } else {
         toast({ title: "Error", description: response.error || "Failed to update booking status", variant: "destructive" });
       }
-    } catch (error) {
+    } catch {
       toast({ title: "Error", description: "Failed to update booking status", variant: "destructive" });
     }
   };
 
-  const getStatusBadgeClass = (s: string): string => {
+  const badgeCls = (s: string) => {
     switch (s) {
-      case "completed": return "bg-emerald-50 text-emerald-700 border border-emerald-200";
-      case "failed": return "bg-red-50 text-red-700 border border-red-200";
-      case "cancelled": return "bg-red-50 text-red-700 border border-red-200";
+      case "completed": case "paid": return "bg-emerald-50 text-emerald-700 border border-emerald-200";
+      case "failed": case "cancelled": return "bg-red-50 text-red-700 border border-red-200";
       case "pending": return "bg-amber-50 text-amber-700 border border-amber-200";
-      case "paid": return "bg-emerald-50 text-emerald-700 border border-emerald-200";
       case "refunded": return "bg-blue-50 text-blue-700 border border-blue-200";
       default: return "bg-muted text-muted-foreground border border-border";
     }
   };
 
+  const showStart = (currentPage - 1) * PAGE_SIZE + 1;
+  const showEnd = Math.min(currentPage * PAGE_SIZE, totalCount);
+
   return (
-    <div className="flex flex-col gap-6">
-      {/* Page Header */}
+    <div className="flex flex-col gap-4">
       <div>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-          <span>Admin Panel</span>
-          <span>/</span>
-          <span className="text-foreground font-medium">All Transactions</span>
+          <span>Admin Panel</span><span>/</span><span className="text-foreground font-medium">All Transactions</span>
         </div>
         <h1 className="text-lg font-semibold tracking-tight">All Transactions</h1>
-        <p className="text-muted-foreground text-xs mt-0.5">
-          View and manage all seat reservations across reading rooms.
-        </p>
+        <p className="text-muted-foreground text-xs mt-0.5">View and manage all seat reservations across reading rooms.</p>
       </div>
 
       <Card className="shadow-sm">
-        <CardHeader className="pb-4 border-b">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex flex-1 gap-2">
-              <form onSubmit={handleSearch} className="flex gap-2 flex-1 max-w-sm">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search by name, email or ID..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9"
-                  />
-                </div>
-                <Button type="submit" size="sm">Search</Button>
-              </form>
-            </div>
+        <CardHeader className="py-3 border-b">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <form onSubmit={handleSearch} className="flex gap-2 flex-1 max-w-sm">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input placeholder="Search by name, email or ID..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9 h-8 text-xs" />
+              </div>
+              <Button type="submit" size="sm" className="h-8 text-xs">Search</Button>
+            </form>
             <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
+              <Filter className="h-3.5 w-3.5 text-muted-foreground" />
               <Select value={status || "all"} onValueChange={handleStatusChange}>
-                <SelectTrigger className="w-36">
-                  <SelectValue placeholder="All Statuses" />
-                </SelectTrigger>
+                <SelectTrigger className="w-32 h-8 text-xs"><SelectValue placeholder="All Statuses" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
@@ -170,113 +141,63 @@ const AdminBookings = () => {
         </CardHeader>
         <CardContent className="p-0">
           {loading ? (
-            <div className="flex justify-center py-16">
-              <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
+            <div className="flex justify-center py-10">
+              <div className="animate-spin h-7 w-7 border-4 border-primary border-t-transparent rounded-full" />
             </div>
           ) : bookings.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-2">
-              <BookOpen className="h-10 w-10 opacity-30" />
-              <p className="text-sm">No bookings found.</p>
+            <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
+              <BookOpen className="h-8 w-8 opacity-30" /><p className="text-xs">No bookings found.</p>
             </div>
           ) : (
-            <>
+            <TooltipProvider delayDuration={200}>
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/30">
-                      <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Booking ID</TableHead>
-                      <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Student</TableHead>
-                      <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Type</TableHead>
-                      <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Room / Seat</TableHead>
-                      <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Booked On</TableHead>
-                      <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Duration</TableHead>
-                      <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Amount</TableHead>
-                      <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Status</TableHead>
-                      <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Payment</TableHead>
-                      <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3 text-right">Actions</TableHead>
+                      {["Booking ID", "Student", "Type", "Room / Seat", "Booked On", "Duration", "Amount", "Status", "Actions"].map(h => (
+                        <TableHead key={h} className={`text-[11px] font-medium text-muted-foreground uppercase tracking-wider py-2 px-3 ${h === "Actions" ? "text-right" : ""}`}>{h}</TableHead>
+                      ))}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {bookings.map((booking, idx) => (
-                      <TableRow key={booking._id} className={idx % 2 === 0 ? "bg-background" : "bg-muted/20"}>
-                        <TableCell className="font-mono text-xs">
-                          {booking.bookingId ? booking.bookingId : booking._id}
+                    {bookings.map((b, idx) => (
+                      <TableRow key={b._id} className={idx % 2 === 0 ? "bg-background" : "bg-muted/20"}>
+                        <TableCell className="py-1.5 px-3 font-mono text-xs">{b.bookingId || b._id}</TableCell>
+                        <TableCell className="py-1.5 px-3 text-xs">
+                          <span className="font-medium">{b.userId?.name || "N/A"}</span>
+                          {b.userId?.email && <span className="text-muted-foreground ml-1">({b.userId.email})</span>}
                         </TableCell>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium text-sm">{booking.userId?.name || "N/A"}</div>
-                            <div className="text-xs text-muted-foreground">{booking.userId?.email || "N/A"}</div>
-                          </div>
+                        <TableCell className="py-1.5 px-3"><Badge variant="outline" className="text-[10px] px-1.5 py-0">{b.type || "Seat"}</Badge></TableCell>
+                        <TableCell className="py-1.5 px-3 text-xs">
+                          {b.roomNumber || (b.cabinId?.name && b.seatId?.number ? `${b.cabinId.name} / S${b.seatId.number}` : "-")}
                         </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="text-xs">{booking.type || "Seat"}</Badge>
+                        <TableCell className="py-1.5 px-3 text-xs whitespace-nowrap">{fmtDateTime(b.createdAt)}</TableCell>
+                        <TableCell className="py-1.5 px-3 text-xs whitespace-nowrap">{fmtRange(b.startDate, b.endDate)}</TableCell>
+                        <TableCell className="py-1.5 px-3 text-xs font-semibold">₹{b.totalPrice}</TableCell>
+                        <TableCell className="py-1.5 px-3">
+                          <span className={`inline-flex items-center rounded-full px-1.5 py-0 text-[10px] font-medium capitalize ${badgeCls(b.status || "pending")}`}>{b.status || "pending"}</span>
                         </TableCell>
-                        <TableCell className="text-sm">
-                          {booking.roomNumber ||
-                            (booking.cabinId?.name && booking.seatId?.number
-                              ? `${booking.cabinId.name} / Seat ${booking.seatId.number}`
-                              : "N/A")}
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {new Date(booking.createdAt).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            {new Date(booking.startDate).toLocaleDateString()} →{" "}
-                            {new Date(booking.endDate).toLocaleDateString()}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {booking.bookingDuration === "daily"
-                              ? `${booking.durationCount || 1} day(s)`
-                              : booking.bookingDuration === "weekly"
-                              ? `${booking.durationCount || 1} week(s)`
-                              : `${booking.durationCount || 1} month(s)`}
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-semibold">₹{booking.totalPrice}</TableCell>
-                        <TableCell>
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${getStatusBadgeClass(booking.status || "pending")}`}>
-                            {booking.status || "pending"}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${getStatusBadgeClass(booking.paymentStatus)}`}>
-                            {booking.paymentStatus}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1.5">
-                            {booking.status !== "completed" && booking.status !== "cancelled" && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 text-xs text-green-600 border-green-200 hover:bg-green-50"
-                                onClick={() => handleUpdateStatus(booking._id, "completed")}
-                              >
-                                <CheckCircle2 className="h-3 w-3 mr-1" />
-                                Complete
-                              </Button>
+                        <TableCell className="py-1.5 px-3 text-right">
+                          <div className="flex justify-end gap-1">
+                            {b.status !== "completed" && b.status !== "cancelled" && (
+                              <Tooltip><TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 text-green-600 hover:bg-green-50" onClick={() => handleUpdateStatus(b._id, "completed")}>
+                                  <CheckCircle2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </TooltipTrigger><TooltipContent>Complete</TooltipContent></Tooltip>
                             )}
-                            {booking.status !== "failed" && booking.status !== "completed" && booking.status !== "cancelled" && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 text-xs text-red-500 border-red-200 hover:bg-red-50"
-                                onClick={() => handleUpdateStatus(booking._id, "failed")}
-                              >
-                                <XCircle className="h-3 w-3 mr-1" />
-                                Cancel
-                              </Button>
+                            {b.status !== "failed" && b.status !== "completed" && b.status !== "cancelled" && (
+                              <Tooltip><TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 text-red-500 hover:bg-red-50" onClick={() => handleUpdateStatus(b._id, "failed")}>
+                                  <XCircle className="h-3.5 w-3.5" />
+                                </Button>
+                              </TooltipTrigger><TooltipContent>Cancel</TooltipContent></Tooltip>
                             )}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-7 text-xs"
-                              onClick={() => navigate(`/admin/bookings/${booking._id}`)}
-                            >
-                              <Eye className="h-3 w-3 mr-1" />
-                              Details
-                            </Button>
+                            <Tooltip><TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => navigate(`/admin/bookings/${b._id}`)}>
+                                <Eye className="h-3.5 w-3.5" />
+                              </Button>
+                            </TooltipTrigger><TooltipContent>Details</TooltipContent></Tooltip>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -285,42 +206,33 @@ const AdminBookings = () => {
                 </Table>
               </div>
 
-              <div className="p-4 border-t">
+              <div className="flex items-center justify-between px-4 py-2 border-t text-xs text-muted-foreground">
+                <span>Showing {showStart}–{showEnd} of {totalCount} entries</span>
                 <Pagination>
                   <PaginationContent>
                     <PaginationItem>
-                      <PaginationPrevious
-                        href="#"
-                        onClick={(e) => { e.preventDefault(); if (currentPage > 1) setCurrentPage(currentPage - 1); }}
-                        className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
-                      />
+                      <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); if (currentPage > 1) setCurrentPage(currentPage - 1); }} className={currentPage === 1 ? "pointer-events-none opacity-50" : ""} />
                     </PaginationItem>
                     {Array.from({ length: totalPages }, (_, i) => i + 1)
-                      .filter((page) => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1)
+                      .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
                       .map((page, index, array) => {
-                        const showEllipsisBefore = index > 0 && array[index - 1] !== page - 1;
-                        const showEllipsisAfter = index < array.length - 1 && array[index + 1] !== page + 1;
+                        const ellipsisBefore = index > 0 && array[index - 1] !== page - 1;
+                        const ellipsisAfter = index < array.length - 1 && array[index + 1] !== page + 1;
                         return (
                           <React.Fragment key={page}>
-                            {showEllipsisBefore && <PaginationItem><PaginationLink href="#" onClick={(e) => e.preventDefault()}>...</PaginationLink></PaginationItem>}
-                            <PaginationItem>
-                              <PaginationLink href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(page); }} isActive={page === currentPage}>{page}</PaginationLink>
-                            </PaginationItem>
-                            {showEllipsisAfter && <PaginationItem><PaginationLink href="#" onClick={(e) => e.preventDefault()}>...</PaginationLink></PaginationItem>}
+                            {ellipsisBefore && <PaginationItem><PaginationLink href="#" onClick={(e) => e.preventDefault()}>...</PaginationLink></PaginationItem>}
+                            <PaginationItem><PaginationLink href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(page); }} isActive={page === currentPage}>{page}</PaginationLink></PaginationItem>
+                            {ellipsisAfter && <PaginationItem><PaginationLink href="#" onClick={(e) => e.preventDefault()}>...</PaginationLink></PaginationItem>}
                           </React.Fragment>
                         );
                       })}
                     <PaginationItem>
-                      <PaginationNext
-                        href="#"
-                        onClick={(e) => { e.preventDefault(); if (currentPage < totalPages) setCurrentPage(currentPage + 1); }}
-                        className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
-                      />
+                      <PaginationNext href="#" onClick={(e) => { e.preventDefault(); if (currentPage < totalPages) setCurrentPage(currentPage + 1); }} className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""} />
                     </PaginationItem>
                   </PaginationContent>
                 </Pagination>
               </div>
-            </>
+            </TooltipProvider>
           )}
         </CardContent>
       </Card>
