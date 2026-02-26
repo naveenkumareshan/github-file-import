@@ -1,45 +1,50 @@
 
 
-## Show Contact Details in Deposits + Transactions, Remove Sidebar Items
+## Sidebar Reorganization: Merge Bookings into Reading Rooms, Add Hostel Booking Items
 
-### 1. Key Deposits -- Show Email and Phone Beside Name
+### Current Sidebar Structure
+```text
+- Bookings
+  - All Transactions
+  - Receipts
+  - Key Deposits
+- Hostels
+  - Manage Hostels
+  - Reviews
+- Reading Rooms
+  - Manage Rooms
+  - Reviews
+```
 
-**File:** `src/components/admin/DepositManagement.tsx`
+### New Sidebar Structure
+```text
+- Reading Rooms (renamed from "Bookings", icon: Building)
+  - All Transactions
+  - Receipts
+  - Key Deposits
+  - Manage Rooms       (moved from old "Reading Rooms")
+  - Reviews            (moved from old "Reading Rooms")
 
-- In the table row (line 350), the User column currently only shows `deposit.user?.name`
-- Add email and phone below the name using the data already available from the Supabase join (`profiles(name, email, phone)`)
-- Layout: Name on first line, email + phone on second line in smaller muted text
+- Hostels (expanded with booking items)
+  - Manage Hostels
+  - Hostel Bookings    (new - links to /admin/hostel-bookings)
+  - Hostel Receipts    (new - links to /admin/hostel-receipts)  
+  - Hostel Deposits    (new - links to /admin/hostel-deposits)
+  - Reviews
+```
 
-### 2. All Transactions -- Show Phone Number
+### Changes
 
-**File:** `src/components/admin/AdminBookingsList.tsx`
+**File: `src/components/admin/AdminSidebar.tsx`**
 
-- The Customer column (lines 434-456) currently shows name, email, userId, and profile picture
-- The `Booking` interface (line 38) does not include a `phone` field in `userId`
-- Need to check whether the backend API already returns phone in the userId populated object
+1. Rename the "Bookings" parent menu item to **"Reading Rooms"** and change its icon from `Calendar` to `Building`
+2. Add "Manage Rooms" (`/admin/rooms`) and "Reviews" (`/admin/reviews?module=Reading Room`) as sub-items after Key Deposits
+3. Remove the separate "Reading Rooms" collapsible section entirely (lines 198-221)
+4. Expand the "Hostels" section to include:
+   - Hostel Bookings (`/admin/hostel-bookings`) -- existing page at `AdminHostelBookings`
+   - Hostel Receipts (`/admin/hostel-receipts`) -- new placeholder or filtered receipts view
+   - Hostel Deposits (`/admin/hostel-deposits`) -- new placeholder or filtered deposits view
+   - Keep existing Manage Hostels and Reviews
 
-**File:** `src/api/adminBookingsService.ts` -- Check if the backend populates phone
-
-Since this uses a MongoDB backend API (`adminBookingsService.getAllBookings`), the phone field depends on what the backend returns. The `userId` is populated from the User model which has a `phone` field. Most likely it's already returned but just not displayed.
-
-**Changes:**
-- Add `phone?: string` to the `userId` type in the `Booking` interface
-- Display phone below email in the Customer column
-
-### 3. Remove Transfer Seat and Manual Booking from Sidebar
-
-**File:** `src/components/admin/AdminSidebar.tsx`
-
-- Remove the two sub-items at lines 133-145:
-  - `Transfer Seat` (`/admin/seat-transfer`)
-  - `Manual Booking` (`/admin/manual-bookings`)
-- The routes and pages remain intact -- they just won't be in the sidebar navigation anymore
-
-### Summary of Changes
-
-| File | Change |
-|------|--------|
-| `src/components/admin/DepositManagement.tsx` | Show email + phone below user name in deposits table |
-| `src/components/admin/AdminBookingsList.tsx` | Add phone to Booking interface, display phone in Customer column |
-| `src/components/admin/AdminSidebar.tsx` | Remove Transfer Seat and Manual Booking sub-items |
+**Note:** The Hostel Receipts and Hostel Deposits pages may not exist yet. The sidebar links will be added now; if the pages need to be created, that can be done as a follow-up. The Hostel Bookings page already exists at `/admin/hostel-bookings` (routed to `AdminHostelBookings`).
 
