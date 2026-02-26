@@ -11,6 +11,13 @@ import { Calendar, Building, BookOpen, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
+interface DueInfo {
+  booking_id: string | null;
+  due_amount: number;
+  paid_amount: number;
+  status: string;
+}
+
 interface Booking {
   id: string;
   cabinId: string;
@@ -39,12 +46,37 @@ const StudentBookings = () => {
   const [currentBookings, setCurrentBookings] = useState<Booking[]>([]);
   const [pastBookings, setPastBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [duesMap, setDuesMap] = useState<Map<string, number>>(new Map());
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!isAuthenticated) return;
     fetchBookings();
+    fetchDues();
   }, [isAuthenticated]);
+
+  const fetchDues = async () => {
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) return;
+      const { data } = await supabase
+        .from('dues')
+        .select('booking_id, due_amount, paid_amount, status')
+        .eq('user_id', authUser.id)
+        .in('status', ['pending', 'overdue']);
+      if (data) {
+        const map = new Map<string, number>();
+        data.forEach((d: DueInfo) => {
+          if (d.booking_id) {
+            map.set(d.booking_id, Number(d.due_amount) - Number(d.paid_amount));
+          }
+        });
+        setDuesMap(map);
+      }
+    } catch (e) {
+      console.error('Error fetching dues:', e);
+    }
+  };
 
   const fetchBookings = async () => {
     try {
@@ -83,6 +115,7 @@ const StudentBookings = () => {
         const seatInfo = seatMap.get(`${booking.cabin_id}|${booking.seat_number}`);
         return {
           id: booking.id,
+          bookingId: booking.serial_number || booking.id?.substring(0, 8),
           startDate: booking.start_date,
           endDate: booking.end_date,
           status: booking.payment_status,
@@ -108,9 +141,16 @@ const StudentBookings = () => {
         };
       };
 
-      setCurrentBookings(allCurrentRaw.map(mapBooking));
+      const mappedCurrent = allCurrentRaw.map(mapBooking).map((b: any) => ({
+        ...b,
+        dueAmount: duesMap.get(b.id) || 0,
+      }));
+      setCurrentBookings(mappedCurrent);
       const today = new Date().toISOString().split('T')[0];
-      const allHistory = allHistoryRaw.map(mapBooking);
+      const allHistory = allHistoryRaw.map(mapBooking).map((b: any) => ({
+        ...b,
+        dueAmount: duesMap.get(b.id) || 0,
+      }));
       setPastBookings(allHistory.filter((b: Booking) => b.endDate < today || b.paymentStatus !== 'completed'));
     } catch (error) {
       console.error('Error fetching bookings:', error);
