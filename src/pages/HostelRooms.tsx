@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Navigation } from '@/components/Navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -50,27 +49,21 @@ export default function HostelRooms() {
 
   if (loading) {
     return (
-      <div className="flex flex-col min-h-screen">
-        <Navigation />
-        <div className="container mx-auto py-10">
-          <div className="text-center">Loading hostel information...</div>
-        </div>
+      <div className="container mx-auto py-10">
+        <div className="text-center">Loading hostel information...</div>
       </div>
     );
   }
 
   if (error || !hostelData) {
     return (
-      <div className="flex flex-col min-h-screen">
-        <Navigation />
-        <div className="container mx-auto py-10">
-          <Alert variant="destructive">
+      <div className="container mx-auto py-10">
+        <Alert variant="destructive">
             <AlertTitle>Error</AlertTitle>
             <AlertDescription>
               {error || 'Failed to load hostel data. Please try again later.'}
             </AlertDescription>
-          </Alert>
-        </div>
+        </Alert>
       </div>
     );
   }
@@ -78,8 +71,7 @@ export default function HostelRooms() {
   const { hostel, roomsAvailability } = hostelData;
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <Navigation />
+    <div>
       <div className="container mx-auto py-10">
         <div className="flex justify-between items-center mb-6">
           <div>

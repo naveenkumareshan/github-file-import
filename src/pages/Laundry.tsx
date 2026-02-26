@@ -1,7 +1,5 @@
 
 import React from 'react';
-import { Navigation } from '../components/Navigation';
-import { Footer } from '../components/Footer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { laundryService } from '@/api/laundryService';
@@ -30,8 +28,7 @@ const LaundryContent = () => {
   });
   
   return (
-    <div className="min-h-screen flex flex-col">
-      <Navigation />
+    <div className="flex flex-col">
       
       <main className="container mx-auto px-4 py-8 flex-grow">
         <div className="flex flex-col md:flex-row justify-between items-center mb-8">
@@ -138,8 +135,6 @@ const LaundryContent = () => {
           </div>
         </div>
       </main>
-      
-      <Footer />
       
       {showLocationModal && (
         <LaundryLocationModal 

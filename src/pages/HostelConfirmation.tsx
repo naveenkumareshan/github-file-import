@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Navigation } from "../components/Navigation";
-import { useAuth } from "../contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { hostelService } from "@/api/hostelService";
 
@@ -61,8 +59,7 @@ const HostelConfirmation = () => {
   };
 
   return (
-    <div className="min-h-screen bg-accent/30">
-      <Navigation />
+    <div className="bg-accent/30">
 
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-md overflow-hidden">
@@ -296,13 +293,6 @@ const HostelConfirmation = () => {
         </div>
       </div>
 
-      <footer className="bg-cabin-dark text-white py-12 mt-12">
-        <div className="container mx-auto px-4">
-          <div className="border-t border-white/20 mt-8 pt-8 text-center text-white/50 text-sm">
-            <p>© 2025 Inhalestays. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };

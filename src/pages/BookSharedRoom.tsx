@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import { Navigation } from '@/components/Navigation';
 import { 
   Card, 
   CardContent, 
@@ -128,37 +127,30 @@ export default function BookSharedRoom() {
   
   if (loading) {
     return (
-      <div className="flex flex-col min-h-screen">
-        <Navigation />
-        <div className="container mx-auto py-10 text-center">Loading...</div>
-      </div>
+      <div className="container mx-auto py-10 text-center">Loading...</div>
     );
   }
   
   if (error || !room || !sharingOption) {
     return (
-      <div className="flex flex-col min-h-screen">
-        <Navigation />
-        <div className="container mx-auto py-10">
-          <Card>
-            <CardHeader>
-              <CardTitle>Error</CardTitle>
-              <CardDescription>
-                {error || 'Room or sharing option not found'}
-              </CardDescription>
-            </CardHeader>
-            <CardFooter>
-              <Button onClick={() => navigate(-1)}>Go Back</Button>
-            </CardFooter>
-          </Card>
-        </div>
+      <div className="container mx-auto py-10">
+        <Card>
+          <CardHeader>
+            <CardTitle>Error</CardTitle>
+            <CardDescription>
+              {error || 'Room or sharing option not found'}
+            </CardDescription>
+          </CardHeader>
+          <CardFooter>
+            <Button onClick={() => navigate(-1)}>Go Back</Button>
+          </CardFooter>
+        </Card>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <Navigation />
+    <div>
       <div className="container mx-auto py-10">
         <div className="max-w-3xl mx-auto">
           <h1 className="text-3xl font-bold mb-6">Book Room</h1>

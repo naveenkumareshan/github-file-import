@@ -1,10 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { Navigation } from '../components/Navigation';
 import { CabinsHeader } from '../components/cabins/CabinsHeader';
 import { CategoryFilter } from '../components/cabins/CategoryFilter';
 import { CabinsGrid } from '../components/cabins/CabinsGrid';
-import { Footer } from '../components/Footer';
 import { cabinsService } from '../api/cabinsService';
 import { reviewsService } from '../api/reviewsService';
 import { toast } from '@/hooks/use-toast';
@@ -100,8 +98,7 @@ const Cabins = () => {
   }, [filter]);
     
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
+    <div className="bg-background">
       
       {/* Hero Banner */}
       <section className="relative py-16 lg:py-20 bg-gradient-hero text-white overflow-hidden">
@@ -141,8 +138,6 @@ const Cabins = () => {
           )}
         </ErrorBoundary>
       </div>
-      
-      <Footer />
     </div>
   );
 };

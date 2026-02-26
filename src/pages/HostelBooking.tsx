@@ -1,8 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Navigation } from '@/components/Navigation';
-import { Footer } from '@/components/Footer';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -274,30 +272,24 @@ const HostelBooking = () => {
 
   if (!room || !hostel || !sharingOption) {
     return (
-      <div className="flex flex-col min-h-screen">
-        <Navigation />
-        <div className="flex-grow container mx-auto p-6 flex items-center justify-center">
-          <Card>
-            <CardHeader>
-              <CardTitle>Missing Information</CardTitle>
-              <CardDescription>Room or sharing option details are missing</CardDescription>
-            </CardHeader>
-            <CardFooter>
-              <Button onClick={() => navigate('/hostels')}>Browse Hostels</Button>
-            </CardFooter>
-          </Card>
-        </div>
-        <Footer />
+      <div className="container mx-auto p-6 flex items-center justify-center">
+        <Card>
+          <CardHeader>
+            <CardTitle>Missing Information</CardTitle>
+            <CardDescription>Room or sharing option details are missing</CardDescription>
+          </CardHeader>
+          <CardFooter>
+            <Button onClick={() => navigate('/hostels')}>Browse Hostels</Button>
+          </CardFooter>
+        </Card>
       </div>
     );
   }
 
   return (
     <ErrorBoundary>
-      <div className="flex flex-col min-h-screen">
-        <Navigation />
-        
-        <div className="flex-grow container mx-auto p-6">
+      <div>
+        <div className="container mx-auto p-6">
           <div className="mb-6">
             <Button variant="ghost" onClick={() => navigate(-1)} className="flex items-center">
               <ChevronLeft className="mr-2 h-4 w-4" />
@@ -512,7 +504,6 @@ const HostelBooking = () => {
           </div>
         </div>
         
-        <Footer />
       </div>
     </ErrorBoundary>
   );

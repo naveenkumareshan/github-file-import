@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Navigation } from '../components/Navigation';
 import { SeatMap } from '../components/SeatMap';
 import { CabinDetails } from '../components/CabinDetails';
 import { BookingSummary } from '../components/BookingSummary';
@@ -218,9 +217,7 @@ const Booking = () => {
   
   if (!cabin) {
     return (
-      <div className="min-h-screen bg-accent/30">
-        <Navigation />
-        
+      <div className="bg-accent/30">
         <Card className="container mx-auto px-4 py-12">
           <CardContent className="text-center">
             <p className="text-lg text-cabin-dark/70">Loading cabin details...</p>
@@ -231,8 +228,7 @@ const Booking = () => {
   }
   
   return (
-    <div className="min-h-screen bg-accent/30">
-      <Navigation />
+    <div className="bg-accent/30">
       
       <div className="container mx-auto px-4 py-12">
         <h1 className="text-3xl font-serif font-bold text-cabin-dark mb-8 text-center">
@@ -393,13 +389,6 @@ const Booking = () => {
         </div>
       )}
       
-      <footer className="bg-cabin-dark text-white py-12 mt-12">
-        <div className="container mx-auto px-4">
-          <div className="border-t border-white/20 mt-8 pt-8 text-center text-white/50 text-sm">
-            <p>© 2025 Inhalestays. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };
