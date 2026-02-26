@@ -625,6 +625,60 @@ export type Database = {
           },
         ]
       }
+      reviews: {
+        Row: {
+          booking_id: string
+          cabin_id: string
+          comment: string
+          created_at: string
+          id: string
+          rating: number
+          status: string
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          booking_id: string
+          cabin_id: string
+          comment: string
+          created_at?: string
+          id?: string
+          rating: number
+          status?: string
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          booking_id?: string
+          cabin_id?: string
+          comment?: string
+          created_at?: string
+          id?: string
+          rating?: number
+          status?: string
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_reviews_booking"
+            columns: ["booking_id"]
+            isOneToOne: true
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_reviews_cabin"
+            columns: ["cabin_id"]
+            isOneToOne: false
+            referencedRelation: "cabins"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       seat_block_history: {
         Row: {
           action: string
@@ -852,6 +906,13 @@ export type Database = {
       generate_serial_number: {
         Args: { p_entity_type: string }
         Returns: string
+      }
+      get_cabin_rating_stats: {
+        Args: { p_cabin_id: string }
+        Returns: {
+          average_rating: number
+          review_count: number
+        }[]
       }
       has_role: {
         Args: {

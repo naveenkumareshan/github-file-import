@@ -1,12 +1,13 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { SeatManagementLink } from '@/components/admin/SeatManagementLink';
 import { useAuth } from '@/contexts/AuthContext';
-import { Users, ChevronRight } from 'lucide-react';
+import { Users, ChevronRight, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 export interface Cabin {
   id: number | string;
@@ -20,6 +21,8 @@ export interface Cabin {
   category?: string;
   cabinCode?: string;
   isActive?: boolean;
+  averageRating?: number;
+  reviewCount?: number;
 }
 
 interface CabinCardProps {
@@ -38,6 +41,8 @@ export const CabinCard = ({ cabin }: CabinCardProps) => {
   const categoryKey = (cabin.category || 'standard') as keyof typeof categoryStyles;
   const styles = categoryStyles[categoryKey] || categoryStyles.standard;
   
+  const hasRating = (cabin.reviewCount || 0) > 0;
+
   return (
     <Link to={`/book-seat/${cabin._id}`} className="block group">
       <Card className="overflow-hidden border-0 shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 bg-card h-full">
@@ -50,6 +55,20 @@ export const CabinCard = ({ cabin }: CabinCardProps) => {
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
           
+          {/* Rating Badge - Top Left */}
+          <div className="absolute top-4 left-4">
+            {hasRating ? (
+              <Badge className="bg-white/95 text-foreground backdrop-blur-sm shadow-lg border-0 px-2.5 py-1 text-xs font-semibold">
+                <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400 mr-1" />
+                {(cabin.averageRating || 0).toFixed(1)} ({cabin.reviewCount})
+              </Badge>
+            ) : (
+              <Badge className="bg-emerald-500 text-white border-0 px-2.5 py-1 text-xs font-semibold">
+                New
+              </Badge>
+            )}
+          </div>
+
           {cabin.category && (
             <div className="absolute top-4 right-4">
               <span className={cn(

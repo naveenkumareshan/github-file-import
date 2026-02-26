@@ -1,42 +1,30 @@
 
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Star } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { useAuth } from '@/hooks/use-auth';
-
-interface Review {
-  _id: string;
-  userId: {
-    _id: string;
-    name: string;
-    avatar?: string;
-  };
-  rating: number;
-  title?: string;
-  comment: string;
-  isApproved: boolean;
-  createdAt: string;
-}
+import type { Review } from '@/api/reviewsService';
 
 interface ReviewsListProps {
   reviews: Review[];
   isLoading: boolean;
+  showActions?: boolean;
   onApprove?: (reviewId: string) => void;
+  onReject?: (reviewId: string) => void;
   onDelete?: (reviewId: string) => void;
 }
 
 export const ReviewsList: React.FC<ReviewsListProps> = ({
   reviews,
   isLoading,
+  showActions = false,
   onApprove,
+  onReject,
   onDelete
 }) => {
-  const { user } = useAuth();
-  
   if (isLoading) {
     return (
       <div className="flex justify-center py-8">
@@ -58,23 +46,22 @@ export const ReviewsList: React.FC<ReviewsListProps> = ({
   return (
     <div className="space-y-4">
       <h3 className="text-xl font-medium mb-4">Customer Reviews</h3>
-      <div style={{height:'30rem', overflow:"scroll"}}>
-
+      <div style={{ height: '30rem', overflow: 'scroll' }}>
         {reviews.map((review) => (
-          <Card key={review._id} className={!review.isApproved ? "border-dashed opacity-75" : ""}>
+          <Card key={review.id} className={review.status !== 'approved' ? "border-dashed opacity-75 mb-3" : "mb-3"}>
             <CardHeader className="pb-2">
               <div className="flex justify-between items-start">
                 <div className="flex items-center gap-3">
                   <Avatar>
-                    <AvatarImage src={review?.userId?.avatar} alt={review.userId?.name} />
+                    <AvatarImage src={review.profiles?.profile_picture || undefined} alt={review.profiles?.name || ''} />
                     <AvatarFallback>
-                      {review?.userId?.name.charAt(0).toUpperCase()}
+                      {(review.profiles?.name || '?').charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <div className="font-medium">{review?.userId?.name}</div>
+                    <div className="font-medium">{review.profiles?.name || 'Anonymous'}</div>
                     <div className="text-sm text-muted-foreground">
-                      {formatDistanceToNow(new Date(review?.createdAt), { addSuffix: true })}
+                      {formatDistanceToNow(new Date(review.created_at), { addSuffix: true })}
                     </div>
                   </div>
                 </div>
@@ -84,33 +71,37 @@ export const ReviewsList: React.FC<ReviewsListProps> = ({
                       <Star
                         key={i}
                         className={`h-4 w-4 ${
-                          i < review?.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
+                          i < review.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
                         }`}
                       />
                     ))}
                   </div>
-                  {!review.isApproved && (
-                    <Badge variant="outline" className="ml-2 text-muted-foreground">
-                      Pending Approval
+                  {review.status !== 'approved' && (
+                    <Badge variant="outline" className="ml-2 text-muted-foreground capitalize">
+                      {review.status}
                     </Badge>
                   )}
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              {review?.title && <p className="font-medium mb-1">{review?.title}</p>}
-              <p className="text-sm text-muted-foreground">{review?.comment}</p>
+              {review.title && <p className="font-medium mb-1">{review.title}</p>}
+              <p className="text-sm text-muted-foreground">{review.comment}</p>
               
-              {/* Admin or Hostel Manager Controls */}
-              {(user?.role === 'admin' || user?.role === 'hostel_manager') && (
+              {showActions && (
                 <div className="flex gap-2 mt-4">
-                  {!review?.isApproved && onApprove && (
-                    <Button size="sm" variant="outline" onClick={() => onApprove(review._id)}>
+                  {review.status !== 'approved' && onApprove && (
+                    <Button size="sm" variant="outline" onClick={() => onApprove(review.id)}>
                       Approve
                     </Button>
                   )}
+                  {review.status !== 'rejected' && onReject && (
+                    <Button size="sm" variant="outline" onClick={() => onReject(review.id)}>
+                      Reject
+                    </Button>
+                  )}
                   {onDelete && (
-                    <Button size="sm" variant="outline" className="text-red-500" onClick={() => onDelete(review._id)}>
+                    <Button size="sm" variant="outline" className="text-red-500" onClick={() => onDelete(review.id)}>
                       Delete
                     </Button>
                   )}
@@ -119,7 +110,6 @@ export const ReviewsList: React.FC<ReviewsListProps> = ({
             </CardContent>
           </Card>
         ))}
-      
       </div>
     </div>
   );
