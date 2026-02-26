@@ -1,34 +1,70 @@
 
 
-## Fix Advance Payment Display on Payment Page
+## Remove Navigation and Footer from All Student Pages
 
-### Problem
-When a student opts for advance payment, the booking is created correctly and the Razorpay checkout receives the correct advance amount (line 915). However, the **payment summary page** (shown after clicking "Confirm & Proceed") still displays:
-- "Total Price: Rs X" (full amount) without any advance breakdown
-- Button text: "Complete Payment" instead of "Pay Rs Y Advance"
+All student/public pages are rendered inside `MobileAppLayout`, which already provides a fixed top header (with logo + avatar) and a fixed bottom navigation bar. However, many child pages still render their own `<Navigation />` component (desktop header) and `<Footer />` (full branded footer), causing duplicate headers and non-app-like layouts.
 
-This confuses the student into thinking they're paying the full amount.
+This plan removes all `<Navigation />` and `<Footer />` usage from pages rendered within the MobileAppLayout shell, making them fit cleanly within the mobile app layout on any phone.
 
-### Fix (Single File)
+---
 
-**File: `src/components/seats/SeatBookingForm.tsx`**
+### Pages to Update
 
-In the post-booking-created section (lines 851-928):
+**1. `src/pages/Cabins.tsx`**
+- Remove `<Navigation />` and `<Footer />` from JSX
+- Remove `min-h-screen` wrapper (MobileAppLayout handles this)
+- Remove unused imports
 
-1. **Add advance payment breakdown** after "Total Price" line (around line 900):
-   - If `useAdvancePayment` is true, show:
-     - "Pay Now: Rs {advanceAmount}" (highlighted in primary color)
-     - "Remaining Due: Rs {remainingDue}" 
-     - "Due By: {dueDate}"
-   - This goes between the Total Price line and the ReadingRoomRules section
+**2. `src/pages/Booking.tsx`**
+- Remove `<Navigation />` from all return paths (loading + main)
+- Remove inline footer block (`<footer className="bg-cabin-dark...">`)
+- Clean wrapper div
 
-2. **Update button text** (line 923):
-   - Change from static "Complete Payment" to:
-     - `useAdvancePayment ? "Pay ₹{advanceAmount} Advance" : "Complete Payment"`
+**3. `src/pages/Confirmation.tsx`**
+- Remove `<Navigation />` and inline footer
+- Remove unused import
 
-3. **Key deposit display fix** (lines 887-889):
-   - Currently always shows `keyDeposit` regardless of whether locker was opted in
-   - Should respect `lockerMandatory` and `lockerOptedIn` state (show effective locker deposit)
+**4. `src/pages/HostelConfirmation.tsx`**
+- Remove `<Navigation />` and inline footer
+- Remove unused import
 
-### No other files need changes
-The Razorpay amount prop (line 915) already correctly passes `useAdvancePayment ? advanceAmount : totalPrice`.
+**5. `src/pages/HostelBooking.tsx`**
+- Remove `<Navigation />` and `<Footer />` from all return paths (error state + main)
+- Remove unused imports
+
+**6. `src/pages/HostelRooms.tsx`**
+- Remove `<Navigation />` from all 3 return paths (loading, error, main)
+- Remove unused import
+
+**7. `src/pages/BookSharedRoom.tsx`**
+- Remove `<Navigation />` from all 3 return paths
+- Remove unused import
+
+**8. `src/pages/BookingConfirmation.tsx`**
+- Remove `<Navigation />` and `<Footer />` from all return paths
+- Remove unused imports
+
+**9. `src/pages/Laundry.tsx`**
+- Remove `<Navigation />` and `<Footer />`
+- Remove unused imports
+
+**10. `src/pages/StudentLogin.tsx`**
+- Remove unused `Navigation` import (not used in JSX but still imported)
+
+**11. `src/pages/StudentRegister.tsx`**
+- Remove unused `Navigation` import
+
+**12. `src/pages/ForgotPassword.tsx`**
+- Remove unused `Navigation` import
+
+---
+
+### What stays unchanged
+- `MobileAppLayout` (already provides app-compatible header + bottom nav)
+- `MobileBottomNav` (unchanged)
+- Admin pages (not affected, use their own AdminLayout)
+- Pages that already don't have Navigation/Footer (Index, About, CabinSearch, BookSeat, Hostels, Profile, StudentBookings, HostelRoomDetails)
+
+### Result
+All student pages will render content only -- no duplicate headers, no heavy footers, fitting cleanly into the app shell with the fixed top header and bottom nav bar, compatible with any phone screen.
+
