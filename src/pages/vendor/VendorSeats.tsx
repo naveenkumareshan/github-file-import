@@ -31,6 +31,7 @@ import {
 } from '@/api/vendorSeatsService';
 import { Textarea } from '@/components/ui/textarea';
 import { useVendorEmployeePermissions } from '@/hooks/useVendorEmployeePermissions';
+import { DuePaymentHistory } from '@/components/booking/DuePaymentHistory';
 import { useAuth } from '@/contexts/AuthContext';
 
 type ViewMode = 'grid' | 'table';
@@ -1492,10 +1493,13 @@ const VendorSeats: React.FC = () => {
                                     onClick={() => handleInlineDueCollect(due.id)}
                                     disabled={collectingDue || !dueCollectAmount}
                                   >
-                                    {collectingDue ? 'Processing...' : `Collect ₹${dueCollectAmount}`}
+                              {collectingDue ? 'Processing...' : `Collect ₹${dueCollectAmount}`}
                                   </Button>
                                 </div>
                               )}
+
+                              {/* Payment History */}
+                              <DuePaymentHistory dueId={due.id} compact />
                             </>
                           )}
                         </div>

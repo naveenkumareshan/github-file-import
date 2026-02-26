@@ -5,8 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { transactionService } from '@/api/transactionService';
+import { vendorSeatsService } from '@/api/vendorSeatsService';
+import { DuePaymentHistory } from '@/components/booking/DuePaymentHistory';
 import { format, differenceInDays } from 'date-fns';
-import { CreditCard, Calendar, RefreshCw, IndianRupee, Clock, TicketPercent } from 'lucide-react';
+import { CreditCard, Calendar, RefreshCw, IndianRupee, Clock, TicketPercent, Wallet } from 'lucide-react';
 
 interface Transaction {
   id: string;
@@ -37,6 +39,7 @@ export const BookingTransactionView = ({ bookingId, bookingType, booking }: Book
     daysRemaining: number;
     totalMonths: number;
   } | null>(null);
+  const [dueData, setDueData] = useState<any>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -82,6 +85,12 @@ export const BookingTransactionView = ({ bookingId, bookingType, booking }: Book
           (sum: number, transaction: any) => sum + transaction.amount, 0
         );
         setTotalPaid(total);
+      }
+
+      // Fetch due for this booking
+      const dueRes = await vendorSeatsService.getDueForBooking(bookingId);
+      if (dueRes.success && dueRes.data) {
+        setDueData(dueRes.data);
       }
     } catch (error) {
       console.error('Error fetching booking transactions:', error);
@@ -308,6 +317,23 @@ export const BookingTransactionView = ({ bookingId, bookingType, booking }: Book
           </div>
         </div>
       </div>
+
+      {/* Due Payments Section */}
+      {dueData && (
+        <div className="bg-card rounded-lg border p-3">
+          <DuePaymentHistory
+            dueId={dueData.id}
+            dueInfo={{
+              totalFee: Number(dueData.total_fee),
+              advancePaid: Number(dueData.advance_paid),
+              paidAmount: Number(dueData.paid_amount),
+              dueAmount: Number(dueData.due_amount),
+              status: dueData.status,
+            }}
+            defaultOpen
+          />
+        </div>
+      )}
     </div>
   );
 };
