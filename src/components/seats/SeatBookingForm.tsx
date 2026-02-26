@@ -884,10 +884,12 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                 <span>Seat Price:</span>
                 <span>₹{seatPrice.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between text-blue-600">
-                <span>Key Deposit:</span>
-                <span>₹{keyDeposit}</span>
-              </div>
+              {((cabin?.lockerMandatory && keyDeposit > 0) || (!cabin?.lockerMandatory && lockerOptedIn && keyDeposit > 0)) && (
+                <div className="flex justify-between text-blue-600">
+                  <span>Key Deposit ({cabin?.lockerMandatory ? 'mandatory' : 'optional'}, refundable):</span>
+                  <span>₹{keyDeposit}</span>
+                </div>
+              )}
               {appliedCoupon && (
                 <div className="flex justify-between text-green-600">
                   <span>Coupon Discount:</span>
@@ -898,6 +900,22 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                 <span>Total Price:</span>
                 <span>₹{totalPrice.toFixed(2)}</span>
               </div>
+              {useAdvancePayment && advanceAmount < totalPrice && (
+                <div className="space-y-1 pt-1">
+                  <div className="flex justify-between text-primary font-bold">
+                    <span>Pay Now (Advance):</span>
+                    <span>₹{advanceAmount.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground text-sm">
+                    <span>Remaining Due:</span>
+                    <span>₹{(totalPrice - advanceAmount).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground text-sm">
+                    <span>Due By:</span>
+                    <span>{endDate ? format(new Date(new Date().getTime() + (cabin?.advanceValidityDays || 3) * 86400000), "dd MMM yyyy") : ""}</span>
+                  </div>
+                </div>
+              )}
               <div>
                 <ReadingRoomRules />
               </div>
@@ -920,7 +938,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                 durationCount={selectedDuration.count}
                 onSuccess={handlePaymentSuccess}
                 onFailure={handlePaymentError}
-                buttonText="Complete Payment"
+                buttonText={useAdvancePayment && advanceAmount < totalPrice ? `Pay ₹${advanceAmount.toFixed(0)} Advance` : "Complete Payment"}
                 buttonDisabled={!agree}
                 buttonVariant="default"
                 className="px-8"
