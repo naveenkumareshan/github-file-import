@@ -114,7 +114,7 @@ export function AdminSidebar() {
     
     if (user?.role === 'admin' || hasPermission('view_bookings')) {
       readingRoomSubItems.push({
-        title: 'All Transactions',
+        title: 'Bookings',
         url: '/admin/bookings',
         icon: Calendar,
         roles: ['admin', 'vendor', 'vendor_employee'],
