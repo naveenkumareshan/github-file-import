@@ -1,44 +1,89 @@
 
 
-## Add Phone and Email Alongside Student Names
+## Controlled Review System for Reading Rooms
 
-Wherever a student name is displayed in admin pages, ensure phone number and email are also shown. Here are the files that need updates:
+### Overview
+Migrate the review system from the legacy backend to the database and implement a controlled review workflow: only students with completed bookings can review, one review per booking, reviews start as "pending", and only approved reviews are publicly visible and counted in ratings.
 
-### Files to Update
+### Database Changes
 
-**1. ComplaintsManagement.tsx (line 137)**
-- Table row currently shows only `(c.profiles as any)?.name`
-- Add phone and email below the name in the table cell
+**New table: `reviews`**
+- `id` (uuid, PK)
+- `user_id` (uuid, NOT NULL) -- references auth.users
+- `booking_id` (uuid, NOT NULL, UNIQUE) -- ensures one review per booking
+- `cabin_id` (uuid, NOT NULL) -- the reading room being reviewed
+- `rating` (integer, NOT NULL) -- 1 to 5
+- `title` (text)
+- `comment` (text, NOT NULL)
+- `status` (text, NOT NULL, default 'pending') -- pending, approved, rejected
+- `created_at`, `updated_at` (timestamps)
 
-**2. SupportTicketsManagement.tsx (line 120)**
-- Table row currently shows only `(t.profiles as any)?.name`
-- Add phone and email below the name in the table cell
+**RLS policies:**
+- Students can INSERT reviews for their own completed bookings
+- Students can SELECT their own reviews
+- Anyone can SELECT approved reviews
+- Admins can SELECT/UPDATE/DELETE all reviews
 
-**3. DashboardExpiringBookings.tsx (line 82)**
-- Currently shows only `booking.studentName`
-- Add phone and email (requires checking if `studentPhone`/`studentEmail` fields exist in the API response, or adding them)
+**Database function: `get_cabin_rating_stats(cabin_uuid)`**
+A security-definer function that returns `{ average_rating, review_count }` for approved reviews of a given cabin. This avoids needing a separate table or materialized view.
 
-**4. DueManagement.tsx (line 207-208)**
-- Currently shows name and phone but missing email
-- Add email line: `(due.profiles as any)?.email`
+### Frontend Changes
 
-**5. Receipts.tsx (line 242-243)**
-- Currently shows name and phone but missing email
-- Add email from profile data (need to also fetch email in the profiles query at line 79)
+**1. Review Service (`src/api/reviewsService.ts`)**
+Rewrite to use Supabase client instead of axios/backend API:
+- `createReview(booking_id, cabin_id, rating, title, comment)`
+- `getApprovedReviews(cabin_id)` -- public reviews
+- `getUserReviewForBooking(booking_id)` -- check if review exists
+- `getAdminReviews(filters)` -- for admin panel
+- `updateReviewStatus(review_id, status)` -- approve/reject
+- `deleteReview(review_id)`
+- `getCabinRatingStats(cabin_id)` -- calls the DB function
 
-**6. SeatTransferManagement.tsx (line 418-419)**
-- Currently shows name and email but missing phone
-- Add phone line (requires the `userId` interface to include `phone`)
+**2. Student Dashboard (`src/pages/StudentDashboard.tsx`)**
+For each completed booking (`payment_status === 'completed'`), show a "Review Reading Room" button. Before showing, check if a review already exists for that booking. If yes, show "Review Submitted" badge instead.
 
-**7. BookingTransactions.tsx (line 61-65)**
-- Currently shows name and email but missing phone
-- Add phone line below email
+**3. Review Form (`src/components/reviews/ReviewForm.tsx`)**
+Update to accept `bookingId` as a prop, submit to Supabase, and show the review was submitted with pending status message.
+
+**4. Reviews Manager (`src/components/reviews/ReviewsManager.tsx`)**
+Update to fetch only approved reviews from Supabase for public display. Remove the old backend API calls.
+
+**5. Reviews List (`src/components/reviews/ReviewsList.tsx`)**
+Minor updates to match new data shape from Supabase (field naming differences).
+
+**6. Admin Review Management (`src/pages/admin/ReviewsManagement.tsx`)**
+Update to use Supabase queries. Add "Reject" button alongside existing "Approve" button. Filter by status (pending/approved/rejected).
+
+**7. Reading Room Card Rating Badge (`src/components/CabinCard.tsx`)**
+Add a badge in the top-left corner:
+- If approved reviews exist: show star icon with average rating and count (e.g., "4.5 (23)")
+- If no approved reviews: show "New" badge
+- Fetch rating stats when cabins are loaded (via the DB function or a joined query)
+
+**8. Cabin Details (`src/components/CabinDetails.tsx`)**
+Update rating display to use the new Supabase-based rating stats.
+
+**9. Cabins listing pages (`src/pages/Cabins.tsx`, search results)**
+Enrich cabin data with rating stats when displaying cards.
 
 ### Technical Details
 
-- For components using Supabase `profiles` join (Complaints, Support Tickets): the query already selects `name, email, phone`, so phone and email are available -- just need to display them
-- For Receipts: update the profiles query to also select `email`, and add `studentEmail` to the mapped data
-- For DashboardExpiringBookings: check if the API response includes phone/email; if not, display what's available
-- For SeatTransferManagement and BookingTransactions: these use backend API data; display phone if available in the response
-- Pattern: show name in bold, then phone and email in smaller muted text below, consistent with AdminBookingsList
+- The `booking_id` UNIQUE constraint on `reviews` enforces one review per booking at the database level
+- A validation trigger ensures the referenced booking belongs to the reviewing user and has `payment_status = 'completed'`
+- The `get_cabin_rating_stats` function filters only `status = 'approved'` reviews, ensuring pending/rejected reviews are excluded from calculations
+- RLS policies ensure students can only create reviews for their own bookings
+
+### Files to Create
+- None (all changes in existing files + DB migration)
+
+### Files to Modify
+- `src/api/reviewsService.ts` -- rewrite for Supabase
+- `src/pages/StudentDashboard.tsx` -- add review button on completed bookings
+- `src/components/reviews/ReviewForm.tsx` -- accept bookingId, use Supabase
+- `src/components/reviews/ReviewsManager.tsx` -- use Supabase queries
+- `src/components/reviews/ReviewsList.tsx` -- adapt to new data shape
+- `src/pages/admin/ReviewsManagement.tsx` -- add reject, use Supabase
+- `src/components/CabinCard.tsx` -- add rating/New badge
+- `src/components/CabinDetails.tsx` -- update rating source
+- `src/pages/Cabins.tsx` -- fetch rating stats for cards
 
