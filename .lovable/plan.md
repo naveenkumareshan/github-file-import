@@ -1,45 +1,86 @@
 
 
-## Add Payment Summary Card to Admin Booking Detail
+## Reset and Rebuild: Payment Summary + Receipts
 
-The current page only shows "Total Price" and "Total Paid (Receipts)" as two fields inside the Booking Information card, plus the raw receipts table. The user wants a dedicated **Payment Summary** card (between Booking Information and Payment Receipts) that shows the full financial picture at a glance.
+### Root Cause
 
-### Changes to `src/pages/AdminBookingDetail.tsx`
+The `adminBookingsService.getBookingById()` (line 117-158) maps raw Supabase data into a legacy format but **drops critical fields**:
+- `payment_method`, `transaction_id`, `collected_by_name` (initial booking payment info)
+- `locker_included`, `locker_price`, `discount_amount`, `discount_reason` (price breakdown)
+- `booking_duration`, `duration_count` (context info)
 
-**1. Fetch dues data alongside booking and receipts**
-- Query the `dues` table by `booking_id` to get `total_fee`, `advance_paid`, `paid_amount`, `due_amount`, and `status`
+The Payment Summary card tries to read `booking.paymentMethod` / `booking.payment_method` but neither exists in the mapped object, so everything shows as `-`.
 
-**2. Add a "Payment Summary" card between Booking Information and Payment Receipts**
+### Plan
 
-Layout:
+#### 1. Fix `adminBookingsService.getBookingById` to include all fields
+
+**File:** `src/api/adminBookingsService.ts` (lines 131-152)
+
+Add the missing fields to the returned data object:
+- `paymentMethod: data.payment_method`
+- `transactionId: data.transaction_id`
+- `collectedByName: data.collected_by_name`
+- `lockerIncluded: data.locker_included`
+- `lockerPrice: Number(data.locker_price) || 0`
+- `discountAmount: Number(data.discount_amount) || 0`
+- `discountReason: data.discount_reason`
+- `bookingDuration: data.booking_duration`
+- `durationCount: data.duration_count`
+
+#### 2. Rebuild Payment Summary card with correct logic
+
+**File:** `src/pages/AdminBookingDetail.tsx`
+
+Derive all financial values from backend data with a single calculation source:
+
 ```text
-+--------------------------------------------------+
-| Payment Summary                                   |
-|                                                   |
-| Total Price     Advance Paid    Total Collected   |
-| Rs.2,300        Rs.500          Rs.1,800          |
-|                                                   |
-| Due Remaining   Status                            |
-| Rs.0            [Fully Paid] (green)              |
-|                                                   |
-| Payment Method: UPI  |  Txn ID: hi hdhdh         |
-| Collected By: Admin User                          |
-+--------------------------------------------------+
+totalPrice      = booking.totalPrice (from DB: seat + locker - discount, already calculated)
+advancePaid     = dueData?.advance_paid || 0 (from dues table)
+totalCollected  = sum of all receipts amounts (from receipts table)
+dueRemaining    = totalPrice - totalCollected (single formula, no branching)
+
+Status:
+  totalCollected = 0          -> "Unpaid" (red)
+  dueRemaining = 0            -> "Fully Paid" (green)
+  totalCollected > 0          -> "Partial Paid" (amber)
 ```
 
-- **Total Price**: from `booking.totalPrice`
-- **Advance Paid**: from `dues.advance_paid` (initial payment at booking time)
-- **Total Collected**: sum of all receipts (existing `totalPaid`)
-- **Due Remaining**: `totalPrice - advance_paid - totalPaid` (or from `dues.due_amount - dues.paid_amount`)
-- **Status**: Green "Fully Paid" badge if dues status is `paid`, Amber "Partial Paid" if not
-- **Payment Method / Txn ID / Collected By**: from the booking record (initial payment info)
+Display layout:
+```text
++---------------------------------------------------+
+| Payment Summary                                    |
+|                                                    |
+| Total Price      Advance Paid     Total Collected  |
+| Rs.2,300         Rs.500           Rs.1,000         |
+|                                                    |
+| Due Remaining    Status                            |
+| Rs.1,300         [Partial Paid]                    |
+|                                                    |
+| Payment Method: UPI | Txn ID: xyz | By: Admin     |
++---------------------------------------------------+
+```
 
-**3. Remove the duplicate Total Price / Total Paid fields from Booking Information card**
-- The last grid row in Booking Information (lines 206-215) showing Total Price and Total Paid will be removed since the new card covers this
+#### 3. Rebuild Payment Receipts table with correct columns
 
-### Technical Details
+**File:** `src/pages/AdminBookingDetail.tsx`
+
+Columns: Receipt ID | Type | Amount | Method | Date | Collected By | Notes
+
+Receipt type mapping:
+- `booking_payment` -> "Advance" (initial booking payment)  
+- `due_collection` -> "Due Collection"
+- Everything else -> "Payment"
+
+Add a summary row at the bottom showing **Total Collected** so it auto-updates.
+
+#### 4. Remove old status badge logic
+
+Replace the complex branching `dueData?.status === 'paid'` / `totalPaid >= ...` logic with the clean three-state formula above.
+
+### Files Changed
 
 | File | Change |
 |------|--------|
-| `src/pages/AdminBookingDetail.tsx` | Add `dueData` state, fetch from `dues` table. Add Payment Summary card with total/advance/collected/remaining/status. Remove price fields from Booking Information card. |
-
+| `src/api/adminBookingsService.ts` | Add missing fields to `getBookingById` return |
+| `src/pages/AdminBookingDetail.tsx` | Rebuild Payment Summary with correct formula, rebuild Receipts table with total row, fix status logic |
