@@ -61,10 +61,12 @@ export const BookingRenewal = React.forwardRef<HTMLDivElement, BookingRenewalPro
   const [checkingAvailability, setCheckingAvailability] = useState(false);
   const [resolvedSeatId, setResolvedSeatId] = useState<string | null>(null);
   const [resolvedSeatPrice, setResolvedSeatPrice] = useState<number>(0);
+  const [outstandingDue, setOutstandingDue] = useState<number>(0);
+  const [outstandingDueId, setOutstandingDueId] = useState<string | null>(null);
 
   const { toast } = useToast();
 
-  // On dialog open, resolve the actual seat UUID and price from DB
+  // On dialog open, resolve the actual seat UUID and price from DB, and fetch outstanding dues
   useEffect(() => {
     if (!isDialogOpen) return;
     const resolve = async () => {
@@ -73,31 +75,45 @@ export const BookingRenewal = React.forwardRef<HTMLDivElement, BookingRenewalPro
       if (typeof seatObj === 'object' && seatObj?._id && seatObj?.price) {
         setResolvedSeatId(seatObj._id);
         setResolvedSeatPrice(Number(seatObj.price));
-        return;
-      }
-      // If seatId is a string UUID, fetch its price
-      if (typeof seatObj === 'string' && seatObj) {
+      } else if (typeof seatObj === 'string' && seatObj) {
         const res = await seatsService.getSeatById(seatObj);
         if (res.success && res.data) {
           setResolvedSeatId(res.data._id);
           setResolvedSeatPrice(Number(res.data.price) || 0);
-          return;
+        }
+      } else {
+        // Fallback: look up by cabin_id + seat_number
+        const cabinId = typeof booking.cabinId === 'object' ? (booking.cabinId as any)?._id : booking.cabinId;
+        const seatNumber = (booking as any).itemNumber || (typeof seatObj === 'object' ? seatObj?.number : undefined);
+        if (cabinId && seatNumber) {
+          const { data } = await supabase
+            .from('seats')
+            .select('id, price')
+            .eq('cabin_id', cabinId)
+            .eq('number', seatNumber)
+            .single();
+          if (data) {
+            setResolvedSeatId(data.id);
+            setResolvedSeatPrice(Number(data.price) || 0);
+          }
         }
       }
-      // Fallback: look up by cabin_id + seat_number
-      const cabinId = typeof booking.cabinId === 'object' ? (booking.cabinId as any)?._id : booking.cabinId;
-      const seatNumber = (booking as any).itemNumber || (typeof seatObj === 'object' ? seatObj?.number : undefined);
-      if (cabinId && seatNumber) {
-        const { data } = await supabase
-          .from('seats')
-          .select('id, price')
-          .eq('cabin_id', cabinId)
-          .eq('number', seatNumber)
-          .single();
-        if (data) {
-          setResolvedSeatId(data.id);
-          setResolvedSeatPrice(Number(data.price) || 0);
-          return;
+
+      // Fetch outstanding dues for this booking
+      const bookingIdVal = booking.id || booking._id;
+      if (bookingIdVal) {
+        const { data: dueData } = await supabase
+          .from('dues')
+          .select('id, due_amount, status')
+          .eq('booking_id', bookingIdVal)
+          .in('status', ['pending', 'partial'])
+          .maybeSingle();
+        if (dueData && Number(dueData.due_amount) > 0) {
+          setOutstandingDue(Number(dueData.due_amount));
+          setOutstandingDueId(dueData.id);
+        } else {
+          setOutstandingDue(0);
+          setOutstandingDueId(null);
         }
       }
     };
@@ -113,14 +129,16 @@ export const BookingRenewal = React.forwardRef<HTMLDivElement, BookingRenewalPro
     const monthlyRate = resolvedSeatPrice || 1000;
     const originalAmount = monthlyRate * selectedDuration;
     
+    let finalAmount = originalAmount;
     if (appliedCoupon) {
       const discountAmount = appliedCoupon.type === 'percentage' 
         ? Math.min((originalAmount * appliedCoupon.value) / 100, appliedCoupon.maxDiscountAmount || Infinity)
         : Math.min(appliedCoupon.value, originalAmount);
-      return Math.max(0, originalAmount - discountAmount);
+      finalAmount = Math.max(0, originalAmount - discountAmount);
     }
     
-    return originalAmount;
+    // Add outstanding dues from previous booking
+    return finalAmount + outstandingDue;
   };
 
   const getOriginalAmount = () => {
@@ -429,12 +447,14 @@ export const BookingRenewal = React.forwardRef<HTMLDivElement, BookingRenewalPro
       // Create a receipt for the renewal payment
       const { data: { user } } = await supabase.auth.getUser();
       if (user && newBooking) {
+        // Renewal receipt (amount minus outstanding due portion)
+        const renewalAmount = calculateAdditionalAmount() - outstandingDue;
         await supabase.from('receipts').insert({
           booking_id: newBooking.id,
           user_id: user.id,
           cabin_id: cabinId,
           seat_id: resolvedSeatId,
-          amount: calculateAdditionalAmount(),
+          amount: renewalAmount,
           payment_method: 'online',
           receipt_type: 'booking_payment',
           transaction_id: paymentResponse.razorpay_payment_id || '',
@@ -442,6 +462,31 @@ export const BookingRenewal = React.forwardRef<HTMLDivElement, BookingRenewalPro
           collected_by_name: 'Online Payment',
           notes: `Renewal for ${selectedDuration} month(s)`,
         });
+
+        // If there was an outstanding due, create a separate receipt for the due portion and mark dues as paid
+        if (outstandingDue > 0 && outstandingDueId) {
+          const oldBookingId = booking.id || booking._id;
+          await supabase.from('receipts').insert({
+            booking_id: oldBookingId,
+            user_id: user.id,
+            cabin_id: cabinId,
+            seat_id: resolvedSeatId,
+            due_id: outstandingDueId,
+            amount: outstandingDue,
+            payment_method: 'online',
+            receipt_type: 'due_payment',
+            transaction_id: paymentResponse.razorpay_payment_id || '',
+            collected_by: user.id,
+            collected_by_name: 'Online Payment',
+            notes: 'Previous due cleared via renewal payment',
+          });
+
+          // Mark the due as paid
+          await supabase
+            .from('dues')
+            .update({ paid_amount: outstandingDue, due_amount: 0, status: 'paid' })
+            .eq('id', outstandingDueId);
+        }
       }
 
       toast({
@@ -606,6 +651,12 @@ export const BookingRenewal = React.forwardRef<HTMLDivElement, BookingRenewalPro
                           <span className="text-green-600">-₹{getDiscountAmount().toLocaleString()}</span>
                         </div>
                       </>
+                    )}
+                    {outstandingDue > 0 && (
+                      <div className="flex justify-between mt-1">
+                        <span className="text-muted-foreground">Previous Due Carried Forward:</span>
+                        <span className="text-destructive font-medium">+₹{outstandingDue.toLocaleString()}</span>
+                      </div>
                     )}
                     <div className="flex justify-between mt-2 text-base">
                       <span className="font-medium">Final Amount:</span>
