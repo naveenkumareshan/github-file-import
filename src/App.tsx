@@ -24,7 +24,7 @@ const EmailJobManagement = lazy(() => import("./components/admin/email_reports/E
 const EmailTemplatesManagement = lazy(() => import("./components/admin/EmailTemplatesManagement"));
 const AdminCoupons = lazy(() => import("./pages/AdminCoupons"));
 const AdminSettingsNew = lazy(() => import("./pages/admin/AdminSettingsNew"));
-const AdminBookingsList = lazy(() => import("./components/admin/AdminBookingsList"));
+const AdminBookings = lazy(() => import("./pages/AdminBookings"));
 const StudentExcelImport = lazy(() => import("./components/admin/StudentExcelImport"));
 const CreateStudentForm = lazy(() => import("./components/admin/CreateStudentForm"));
 const VendorLogin = lazy(() => import("./pages/vendor/VendorLogin"));
@@ -107,7 +107,7 @@ function App() {
             >
               <Route index element={<AdminDashboard />} />
               <Route path="dashboard" element={<AdminDashboard />} />
-              <Route path="bookings" element={<AdminBookingsList />} />
+              <Route path="bookings" element={<AdminBookings />} />
               <Route path="bookings/:bookingId/:type" element={<AdminBookingDetail />} />
               <Route path="seat-transfer" element={<SeatTransferManagementPage />} />
               <Route path="hostel-bookings" element={<AdminHostelBookings />} />
