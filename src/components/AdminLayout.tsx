@@ -7,8 +7,6 @@ import { useAuth } from "@/contexts/AuthContext";
 const routeLabels: Record<string, string> = {
   "/admin/dashboard": "Dashboard",
   "/admin/bookings": "All Transactions",
-  "/admin/seat-transfer": "Transfer Seat",
-  "/admin/manual-bookings": "Manual Booking",
   "/admin/students": "Users",
   "/admin/students-create": "Create User",
   "/admin/students-import": "Import Users",
