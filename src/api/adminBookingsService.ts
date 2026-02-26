@@ -118,7 +118,7 @@ export const adminBookingsService = {
     try {
       const { data, error } = await supabase
         .from('bookings')
-        .select('*, profiles!bookings_user_id_fkey(name, email, phone, profile_picture, serial_number), cabins:cabin_id(name, serial_number), seats:seat_id(number)')
+        .select('*, profiles!bookings_user_id_fkey(name, email, phone, profile_picture, serial_number), cabins:cabin_id(name, serial_number), seats:seat_id(number, price)')
         .eq('id', id)
         .single();
 
@@ -141,6 +141,7 @@ export const adminBookingsService = {
           },
           cabinId: cabin ? { name: cabin.name, cabinCode: cabin.serial_number || '' } : undefined,
           seatId: seat ? { number: seat.number } : undefined,
+          seatPrice: seat ? Number(seat.price) || 0 : 0,
           startDate: data.start_date,
           endDate: data.end_date,
           totalPrice: Number(data.total_price) || 0,

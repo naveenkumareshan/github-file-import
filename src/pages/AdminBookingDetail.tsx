@@ -217,9 +217,15 @@ const AdminBookingDetail = () => {
 
         {/* Payment Summary */}
         {(() => {
+          const seatPrice = booking.seatPrice || 0;
+          const lockerAmount = booking.lockerPrice || 0;
+          const discountAmount = booking.discountAmount || 0;
           const totalPrice = booking.totalPrice || 0;
           const advancePaid = dueData?.advance_paid || 0;
-          const totalCollected = totalPaid;
+          const dueCollected = receipts
+            .filter(r => r.receipt_type === 'due_collection')
+            .reduce((s, r) => s + Number(r.amount), 0);
+          const totalCollected = advancePaid + dueCollected;
           const dueRemaining = Math.max(0, totalPrice - totalCollected);
           const paymentStatus = totalCollected === 0 ? 'unpaid'
             : dueRemaining <= 0 ? 'fully_paid'
@@ -229,6 +235,25 @@ const AdminBookingDetail = () => {
             <Card>
               <CardHeader><CardTitle className="flex items-center gap-2"><IndianRupee className="h-5 w-5" /> Payment Summary</CardTitle></CardHeader>
               <CardContent className="space-y-4">
+                {/* Row 1: Price breakdown */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Seat Price</p>
+                    <p className="text-lg font-semibold">₹{seatPrice.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Locker Amount</p>
+                    <p className="text-lg font-semibold">₹{lockerAmount.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Discount Amount</p>
+                    <p className="text-lg font-semibold text-destructive">{discountAmount > 0 ? '-' : ''}₹{discountAmount.toLocaleString()}</p>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Row 2: Totals */}
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Total Price</p>
@@ -239,14 +264,19 @@ const AdminBookingDetail = () => {
                     <p className="text-lg font-semibold">₹{advancePaid.toLocaleString()}</p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Total Collected</p>
-                    <p className="text-lg font-semibold text-green-600">₹{totalCollected.toLocaleString()}</p>
+                    <p className="text-sm font-medium text-muted-foreground">Due Collected</p>
+                    <p className="text-lg font-semibold">₹{dueCollected.toLocaleString()}</p>
                   </div>
                 </div>
 
                 <Separator />
 
-                <div className="grid grid-cols-2 gap-4">
+                {/* Row 3: Status */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Total Collected</p>
+                    <p className="text-lg font-semibold text-green-600">₹{totalCollected.toLocaleString()}</p>
+                  </div>
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Due Remaining</p>
                     <p className={`text-lg font-semibold ${dueRemaining > 0 ? 'text-destructive' : 'text-green-600'}`}>
