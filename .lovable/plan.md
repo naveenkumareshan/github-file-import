@@ -1,86 +1,59 @@
 
 
-## Reset and Rebuild: Payment Summary + Receipts
+## Move Payment Details to Receipts Table
 
-### Root Cause
+### Problem
+- Payment Method, Transaction ID, and Collected By are shown in the Payment Summary card but belong in Payment Receipts
+- The initial advance/booking payment is not shown as a row in the Payment Receipts table
 
-The `adminBookingsService.getBookingById()` (line 117-158) maps raw Supabase data into a legacy format but **drops critical fields**:
-- `payment_method`, `transaction_id`, `collected_by_name` (initial booking payment info)
-- `locker_included`, `locker_price`, `discount_amount`, `discount_reason` (price breakdown)
-- `booking_duration`, `duration_count` (context info)
+### Changes to `src/pages/AdminBookingDetail.tsx`
 
-The Payment Summary card tries to read `booking.paymentMethod` / `booking.payment_method` but neither exists in the mapped object, so everything shows as `-`.
+**1. Remove from Payment Summary card (lines 268-283)**
+- Delete the last separator and the 3-column grid showing Payment Method, Transaction ID, and Collected By
+- Payment Summary will only show: Total Price, Advance Paid, Total Collected, Due Remaining, Status
 
-### Plan
+**2. Add initial booking payment as first row in Payment Receipts table**
+- Create a synthetic "Advance" row from the booking data itself:
+  - Receipt ID: booking serial number
+  - Type: "Advance" badge
+  - Amount: `dueData?.advance_paid` or `booking.totalPrice` (if no dues record, full amount was paid)
+  - Method: `booking.paymentMethod`
+  - Transaction ID: `booking.transactionId` (add new column)
+  - Date: `booking.createdAt`
+  - Collected By: `booking.collectedByName`
+- This row appears at the bottom of the list (oldest first) or we combine it with existing receipts
 
-#### 1. Fix `adminBookingsService.getBookingById` to include all fields
+**3. Add Transaction ID column to receipts table**
+- Add a "Txn ID" column between Method and Date columns
+- Show `r.transaction_id` for receipt rows, `booking.transactionId` for the advance row
 
-**File:** `src/api/adminBookingsService.ts` (lines 131-152)
+**4. Recalculate Total Collected**
+- Total Collected = advance paid (from booking) + sum of all due collection receipts
+- This ensures the advance payment is counted in the total
 
-Add the missing fields to the returned data object:
-- `paymentMethod: data.payment_method`
-- `transactionId: data.transaction_id`
-- `collectedByName: data.collected_by_name`
-- `lockerIncluded: data.locker_included`
-- `lockerPrice: Number(data.locker_price) || 0`
-- `discountAmount: Number(data.discount_amount) || 0`
-- `discountReason: data.discount_reason`
-- `bookingDuration: data.booking_duration`
-- `durationCount: data.duration_count`
+### Layout after changes
 
-#### 2. Rebuild Payment Summary card with correct logic
-
-**File:** `src/pages/AdminBookingDetail.tsx`
-
-Derive all financial values from backend data with a single calculation source:
-
+Payment Summary card:
 ```text
-totalPrice      = booking.totalPrice (from DB: seat + locker - discount, already calculated)
-advancePaid     = dueData?.advance_paid || 0 (from dues table)
-totalCollected  = sum of all receipts amounts (from receipts table)
-dueRemaining    = totalPrice - totalCollected (single formula, no branching)
+Total Price    Advance Paid    Total Collected
+Rs.2,300       Rs.500          Rs.1,000
 
-Status:
-  totalCollected = 0          -> "Unpaid" (red)
-  dueRemaining = 0            -> "Fully Paid" (green)
-  totalCollected > 0          -> "Partial Paid" (amber)
+Due Remaining  Status
+Rs.1,300       [Partial Paid]
 ```
 
-Display layout:
+Payment Receipts table:
 ```text
-+---------------------------------------------------+
-| Payment Summary                                    |
-|                                                    |
-| Total Price      Advance Paid     Total Collected  |
-| Rs.2,300         Rs.500           Rs.1,000         |
-|                                                    |
-| Due Remaining    Status                            |
-| Rs.1,300         [Partial Paid]                    |
-|                                                    |
-| Payment Method: UPI | Txn ID: xyz | By: Admin     |
-+---------------------------------------------------+
+Receipt ID | Type | Amount | Method | Txn ID | Date | Collected By | Notes
+-----------+------+--------+--------+--------+------+--------------+------
+(booking)  | Advance | 500 | Cash | - | 26 Feb | Admin User | -
+RCPT-00001 | Due Collection | 900 | Cash | - | 26 Feb | Admin User | -
+RCPT-00002 | Due Collection | 100 | Cash | - | 26 Feb | Admin User | -
+                    Total Collected: Rs.1,500
 ```
 
-#### 3. Rebuild Payment Receipts table with correct columns
-
-**File:** `src/pages/AdminBookingDetail.tsx`
-
-Columns: Receipt ID | Type | Amount | Method | Date | Collected By | Notes
-
-Receipt type mapping:
-- `booking_payment` -> "Advance" (initial booking payment)  
-- `due_collection` -> "Due Collection"
-- Everything else -> "Payment"
-
-Add a summary row at the bottom showing **Total Collected** so it auto-updates.
-
-#### 4. Remove old status badge logic
-
-Replace the complex branching `dueData?.status === 'paid'` / `totalPaid >= ...` logic with the clean three-state formula above.
-
-### Files Changed
-
+### Files
 | File | Change |
 |------|--------|
-| `src/api/adminBookingsService.ts` | Add missing fields to `getBookingById` return |
-| `src/pages/AdminBookingDetail.tsx` | Rebuild Payment Summary with correct formula, rebuild Receipts table with total row, fix status logic |
+| `src/pages/AdminBookingDetail.tsx` | Remove payment details from summary, add advance row + txn ID column to receipts table |
+
