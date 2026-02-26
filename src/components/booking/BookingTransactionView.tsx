@@ -113,7 +113,7 @@ export const BookingTransactionView = ({ bookingId, bookingType, booking }: Book
           <div className="space-y-1.5">
             <div className="flex justify-between items-center">
               <span className="text-[11px] text-muted-foreground">Booking ID</span>
-              <span className="text-[12px] font-medium">#{booking.bookingId || booking._id}</span>
+              <span className="text-[12px] font-medium">{booking.serial_number || `#${(booking.id || booking._id)?.slice(0, 8)}`}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-[11px] text-muted-foreground">
