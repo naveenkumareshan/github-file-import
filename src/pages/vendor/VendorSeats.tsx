@@ -901,16 +901,7 @@ const VendorSeats: React.FC = () => {
                           today.setHours(0,0,0,0);
                           endDate.setHours(0,0,0,0);
                           
-                          if (today < endDate) {
-                            toast({
-                              title: 'Cannot renew yet',
-                              description: `Current booking is active until ${endDate.toLocaleDateString('en-IN')}. Renewal can only be done on or after expiry date.`,
-                              variant: 'destructive',
-                            });
-                            return;
-                          }
-
-                          // Find latest end date across all bookings for this seat
+                          // Find latest end date across all bookings for this seat (allow pre-booking renewals)
                           const allBookings = [...currentBookings, ...futureBookings];
                           let latestEnd = endDate;
                           allBookings.forEach(b => {

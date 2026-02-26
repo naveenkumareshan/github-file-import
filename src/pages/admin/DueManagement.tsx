@@ -10,7 +10,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Wallet, AlertTriangle, IndianRupee, Calendar, Search, Banknote, Smartphone, Building2, CreditCard } from 'lucide-react';
+import { Wallet, AlertTriangle, IndianRupee, Calendar, Search, Banknote, Smartphone, Building2, CreditCard, Receipt } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { vendorSeatsService, VendorCabin } from '@/api/vendorSeatsService';
 import { Textarea } from '@/components/ui/textarea';
@@ -24,6 +26,12 @@ const DueManagement: React.FC = () => {
   const [filterCabin, setFilterCabin] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Receipts dialog
+  const [receiptsOpen, setReceiptsOpen] = useState(false);
+  const [receiptsDue, setReceiptsDue] = useState<any>(null);
+  const [receipts, setReceipts] = useState<any[]>([]);
+  const [receiptsLoading, setReceiptsLoading] = useState(false);
 
   // Collect drawer
   const [collectOpen, setCollectOpen] = useState(false);
@@ -70,6 +78,19 @@ const DueManagement: React.FC = () => {
     if (diff < 0) return <span className="text-red-600 font-semibold text-[11px]">{Math.abs(diff)}d overdue</span>;
     if (diff === 0) return <span className="text-amber-600 font-semibold text-[11px]">Due today</span>;
     return <span className="text-muted-foreground text-[11px]">{diff}d left</span>;
+  };
+
+  const openReceipts = async (due: any) => {
+    setReceiptsDue(due);
+    setReceiptsOpen(true);
+    setReceiptsLoading(true);
+    const { data } = await supabase
+      .from('receipts')
+      .select('*')
+      .eq('booking_id', due.booking_id)
+      .order('created_at', { ascending: false });
+    setReceipts(data || []);
+    setReceiptsLoading(false);
   };
 
   const openCollect = (due: any) => {
@@ -205,11 +226,16 @@ const DueManagement: React.FC = () => {
                         </TableCell>
                         <TableCell className="py-2">{getStatusBadge(due)}</TableCell>
                         <TableCell className="py-2">
-                          {remaining > 0 && (
-                            <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => openCollect(due)}>
-                              Collect
+                          <div className="flex gap-1">
+                            {remaining > 0 && (
+                              <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => openCollect(due)}>
+                                Collect
+                              </Button>
+                            )}
+                            <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2 gap-1" onClick={() => openReceipts(due)}>
+                              <Receipt className="h-3 w-3" /> Receipts
                             </Button>
-                          )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -289,6 +315,47 @@ const DueManagement: React.FC = () => {
           )}
         </SheetContent>
       </Sheet>
+
+      {/* Receipts Dialog */}
+      <Dialog open={receiptsOpen} onOpenChange={setReceiptsOpen}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-sm">Booking Receipts</DialogTitle>
+          </DialogHeader>
+          {receiptsDue && (
+            <div className="text-[11px] text-muted-foreground mb-2">
+              {(receiptsDue.profiles as any)?.name} · {(receiptsDue.bookings as any)?.serial_number || 'N/A'}
+            </div>
+          )}
+          {receiptsLoading ? (
+            <div className="flex justify-center py-8"><div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full" /></div>
+          ) : receipts.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground text-xs">No receipts found</div>
+          ) : (
+            <div className="space-y-2">
+              {receipts.map((r, i) => (
+                <div key={r.id} className="border rounded p-3 space-y-1 text-[11px]">
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold text-xs">{r.serial_number || `#${i + 1}`}</span>
+                    <Badge variant="outline" className="text-[9px] h-5">
+                      {r.receipt_type === 'booking_payment' ? 'Booking' : 'Due Collection'}
+                    </Badge>
+                  </div>
+                  <Separator className="my-1" />
+                  <div className="grid grid-cols-2 gap-1">
+                    <div><span className="text-muted-foreground">Amount:</span> <span className="font-medium">₹{Number(r.amount).toLocaleString()}</span></div>
+                    <div><span className="text-muted-foreground">Method:</span> {r.payment_method}</div>
+                    <div><span className="text-muted-foreground">Date:</span> {format(new Date(r.created_at), 'dd MMM yy, hh:mm a')}</div>
+                    <div><span className="text-muted-foreground">By:</span> {r.collected_by_name || '-'}</div>
+                    {r.transaction_id && <div className="col-span-2"><span className="text-muted-foreground">Txn ID:</span> {r.transaction_id}</div>}
+                    {r.notes && <div className="col-span-2"><span className="text-muted-foreground">Notes:</span> {r.notes}</div>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
