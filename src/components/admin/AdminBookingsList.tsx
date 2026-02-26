@@ -41,6 +41,7 @@ interface Booking {
   userId: {
     name: string;
     email: string;
+    phone?: string;
     userId: string;
     profilePicture:string;
   };
@@ -438,6 +439,11 @@ const AdminBookingsList = () => {
                         <div className="text-sm text-muted-foreground">
                           {booking.userId?.email || "N/A"}
                         </div>
+                        {booking.userId?.phone && (
+                          <div className="text-sm text-muted-foreground">
+                            {booking.userId.phone}
+                          </div>
+                        )}
                         <div className="text-sm text-muted-foreground">
                           {booking.userId?.userId || "N/A"}
                           { booking.userId.profilePicture && <a

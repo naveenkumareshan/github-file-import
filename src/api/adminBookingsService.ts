@@ -70,6 +70,7 @@ export const adminBookingsService = {
           userId: {
             name: profile?.name || 'N/A',
             email: profile?.email || 'N/A',
+            phone: profile?.phone || '',
             userId: profile?.serial_number || '',
             profilePicture: profile?.profile_picture || '',
           },

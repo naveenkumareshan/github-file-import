@@ -347,7 +347,11 @@ export const DepositManagement: React.FC<ReportDateRangePickerProps> = ({
                           <span className="font-mono text-xs">{deposit.booking?.bookingId || 'N/A'}</span>
                           {deposit.transactionId && <div className="text-xs text-muted-foreground">TR: {deposit.transactionId}</div>}
                         </td>
-                        <td className="px-3 py-2 whitespace-nowrap text-sm">{deposit.user?.name || 'N/A'}</td>
+                        <td className="px-3 py-2 whitespace-nowrap text-sm">
+                          <div className="font-medium">{deposit.user?.name || 'N/A'}</div>
+                          {deposit.user?.email && <div className="text-xs text-muted-foreground">{deposit.user.email}</div>}
+                          {deposit.user?.phone && <div className="text-xs text-muted-foreground">{deposit.user.phone}</div>}
+                        </td>
                         <td className="px-3 py-2 whitespace-nowrap text-sm">{deposit.cabin?.name || 'N/A'}</td>
                         <td className="px-3 py-2 whitespace-nowrap text-sm">{deposit.seat?.number || 'N/A'}</td>
                         <td className="px-3 py-2 whitespace-nowrap text-sm font-semibold">₹{deposit.keyDeposit}</td>
