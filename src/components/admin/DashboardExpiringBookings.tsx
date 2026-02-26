@@ -80,6 +80,11 @@ export function DashboardExpiringBookings() {
               >
                 <div>
                   <p className="font-medium">{booking.studentName || 'Student'}</p>
+                  {(booking.studentPhone || booking.studentEmail) && (
+                    <p className="text-xs text-muted-foreground">
+                      {booking.studentPhone}{booking.studentPhone && booking.studentEmail ? ' · ' : ''}{booking.studentEmail}
+                    </p>
+                  )}
                   <p className="text-sm text-muted-foreground">
                     {booking.cabinId?.name || 'Cabin'} - Seat {booking.seatId?.number || 'N/A'}
                   </p>

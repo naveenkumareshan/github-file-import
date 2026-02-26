@@ -134,7 +134,11 @@ const ComplaintsManagement = () => {
                     <TableRow key={c.id}>
                       <TableCell className="text-xs font-mono">{c.serial_number || '—'}</TableCell>
                       <TableCell className="text-xs">{format(new Date(c.created_at), 'd MMM yy')}</TableCell>
-                      <TableCell className="text-xs">{(c.profiles as any)?.name || '—'}</TableCell>
+                      <TableCell className="text-xs">
+                        <div className="font-medium">{(c.profiles as any)?.name || '—'}</div>
+                        {(c.profiles as any)?.phone && <div className="text-[10px] text-muted-foreground">{(c.profiles as any)?.phone}</div>}
+                        {(c.profiles as any)?.email && <div className="text-[10px] text-muted-foreground">{(c.profiles as any)?.email}</div>}
+                      </TableCell>
                       <TableCell className="text-xs max-w-[200px] truncate">{c.subject}</TableCell>
                       <TableCell><Badge variant="outline" className="text-[10px] capitalize">{c.category}</Badge></TableCell>
                       <TableCell><span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${priorityBadge[c.priority] || ''}`}>{c.priority}</span></TableCell>

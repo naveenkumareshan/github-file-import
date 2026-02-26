@@ -61,6 +61,7 @@ export const BookingTransactions: React.FC<BookingTransactionsProps> = ({ dateRa
       cell: ({ row }) => (
         <div>
           <div className="font-medium">{row.original.user?.name || 'N/A'}</div>
+          {row.original.user?.phone && <div className="text-xs text-muted-foreground">{row.original.user?.phone}</div>}
           <div className="text-xs text-muted-foreground">{row.original.user?.email}</div>
         </div>
       ),

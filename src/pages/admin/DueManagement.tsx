@@ -205,7 +205,8 @@ const DueManagement: React.FC = () => {
                       <TableRow key={due.id} className="text-[11px]">
                         <TableCell className="py-2">
                           <div className="font-medium text-[11px]">{(due.profiles as any)?.name || 'N/A'}</div>
-                          <div className="text-[10px] text-muted-foreground">{(due.profiles as any)?.phone || ''}</div>
+                          {(due.profiles as any)?.phone && <div className="text-[10px] text-muted-foreground">{(due.profiles as any)?.phone}</div>}
+                          {(due.profiles as any)?.email && <div className="text-[10px] text-muted-foreground">{(due.profiles as any)?.email}</div>}
                         </TableCell>
                         <TableCell className="py-2">
                           <div className="text-[11px]">{(due.cabins as any)?.name || ''}</div>

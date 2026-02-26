@@ -76,7 +76,7 @@ const Receipts: React.FC = () => {
       const bookingIds = [...new Set((data || []).filter(r => r.booking_id).map(r => r.booking_id!))];
 
       const [profilesRes, cabinsRes, seatsRes, bookingsRes] = await Promise.all([
-        userIds.length > 0 ? supabase.from('profiles').select('id, name, phone').in('id', userIds) : { data: [] },
+        userIds.length > 0 ? supabase.from('profiles').select('id, name, phone, email').in('id', userIds) : { data: [] },
         cabinIds.length > 0 ? supabase.from('cabins').select('id, name').in('id', cabinIds) : { data: [] },
         seatIds.length > 0 ? supabase.from('seats').select('id, number').in('id', seatIds) : { data: [] },
         bookingIds.length > 0 ? supabase.from('bookings').select('id, serial_number').in('id', bookingIds) : { data: [] },
@@ -92,6 +92,7 @@ const Receipts: React.FC = () => {
         amount: Number(r.amount),
         studentName: profileMap[r.user_id]?.name || 'N/A',
         studentPhone: profileMap[r.user_id]?.phone || '',
+        studentEmail: profileMap[r.user_id]?.email || '',
         cabinName: r.cabin_id ? cabinMap[r.cabin_id]?.name || '' : '',
         seatNumber: r.seat_id ? seatMap[r.seat_id]?.number : undefined,
         bookingSerial: r.booking_id ? bookingMap[r.booking_id]?.serial_number || '' : '',
@@ -241,6 +242,7 @@ const Receipts: React.FC = () => {
                   <TableCell className="text-xs">
                     <div className="font-medium">{r.studentName}</div>
                     {r.studentPhone && <div className="text-muted-foreground text-[10px]">{r.studentPhone}</div>}
+                    {(r as any).studentEmail && <div className="text-muted-foreground text-[10px]">{(r as any).studentEmail}</div>}
                   </TableCell>
                   <TableCell className="text-xs">
                     {r.cabinName}{r.seatNumber !== undefined ? ` / #${r.seatNumber}` : ''}
