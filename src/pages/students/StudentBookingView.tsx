@@ -6,16 +6,12 @@ import { useToast } from "@/hooks/use-toast";
 import { format, differenceInDays } from "date-fns";
 import {
   ArrowLeft,
-  Calendar,
   MapPin,
   CreditCard,
-  Clock,
   Loader2,
   ChevronDown,
   ChevronUp,
-  AlertTriangle,
   Receipt,
-  Shield,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -148,6 +144,7 @@ export default function StudentBookingView() {
   const totalPrice = booking.total_price || 0;
   const lockerIncluded = booking.locker_included || false;
   const lockerPrice = booking.locker_price || 0;
+  const discountAmount = booking.discount_amount || 0;
 
   const totalPaid = receipts.reduce((s, r) => s + Number(r.amount), 0);
   const dueRemaining = Math.max(0, totalPrice - totalPaid);
@@ -206,37 +203,13 @@ export default function StudentBookingView() {
           <InfoRow label="Booked On" value={safeFmt(booking.created_at, "dd MMM yyyy")} />
         </CollapsibleSection>
 
-        {/* Validity */}
-        <CollapsibleSection title="Validity" icon={Shield}>
-          <InfoRow label="End Date" value={safeFmt(booking.end_date, "dd MMM yyyy")} />
-          <InfoRow
-            label="Days Left"
-            value={
-              <span className={daysLeft <= 0 ? "text-destructive font-bold" : daysLeft <= 5 ? "text-amber-600 font-bold" : ""}>
-                {daysLeft}
-              </span>
-            }
-          />
-          {daysLeft <= 0 && (
-            <div className="mt-2">
-              <Badge variant="destructive" className="text-[10px]">
-                <AlertTriangle className="h-3 w-3 mr-1" /> Expired
-              </Badge>
-            </div>
-          )}
-          {daysLeft > 0 && daysLeft <= 5 && (
-            <div className="mt-2">
-              <Badge className="text-[10px] bg-amber-500 text-white border-0">
-                <AlertTriangle className="h-3 w-3 mr-1" /> Expiring Soon
-              </Badge>
-            </div>
-          )}
-        </CollapsibleSection>
-
         {/* Payment Summary */}
         <CollapsibleSection title="Payment Summary" icon={CreditCard}>
           <InfoRow label="Seat Price" value={`₹${Number(seatPrice).toFixed(2)}`} />
           {lockerIncluded && <InfoRow label="Locker" value={`₹${Number(lockerPrice).toFixed(2)}`} />}
+          {discountAmount > 0 && (
+            <InfoRow label="Discount" value={<span className="text-green-600">-₹{Number(discountAmount).toFixed(2)}</span>} />
+          )}
           <InfoRow label="Total Price" value={<span className="font-bold">₹{Number(totalPrice).toFixed(2)}</span>} />
           <InfoRow label="Total Paid" value={<span className="text-green-600">₹{totalPaid.toFixed(2)}</span>} />
           <InfoRow
