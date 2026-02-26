@@ -1,59 +1,52 @@
 
 
-## Enhance Payment Summary with Full Price Breakdown
+## Compact All Transactions Table Refactor
 
 ### Problem
-The Payment Summary card currently only shows Total Price, Advance Paid, Total Collected, Due Remaining, and Status. The user wants a full breakdown including Seat Price, Locker Amount, and Discount Amount.
+The current table has excessive row height, multi-line dates, large buttons, and a "Payment" (settlement) column that belongs in receipts, not bookings. Pagination is limited to 10 rows.
 
-### Changes
+### Changes to `src/pages/AdminBookings.tsx`
 
-#### 1. Update `src/api/adminBookingsService.ts` - Fetch seat price
+#### 1. Change page size from 10 to 15
+- Update `limit: 10` to `limit: 15` in `fetchBookings`
+- Update `Math.ceil((response.count || 0) / 10)` to use 15
 
-**Line 121**: Add `price` to the seat select query:
-```
-seats:seat_id(number, price)
-```
+#### 2. Remove the "Payment" column (settlement)
+- Remove the `Payment` TableHead
+- Remove the corresponding TableCell showing `booking.paymentStatus`
 
-**Line 143**: Include seat price in the returned data:
-```
-seatPrice: seat ? Number(seat.price) || 0 : 0,
-```
+#### 3. Compact all table cells
+- TableHead: reduce py-3 to py-2
+- TableCell: add `py-1.5 px-3 text-xs` for tight rows (~40px height)
+- Student cell: single line `Name (email)` instead of stacked div
+- Booked On: single-line format `26 Feb 2026, 9:09 AM` using `toLocaleDateString` + `toLocaleTimeString`
+- Duration cell: single line `26 Feb - 26 Mar` (remove second line with day/week/month count, or append inline)
+- Amount: `text-xs font-semibold`
+- Status badge: already compact, keep as-is
 
-#### 2. Rebuild Payment Summary card in `src/pages/AdminBookingDetail.tsx`
+#### 4. Compact Actions column
+- Replace text buttons (Complete, Cancel, Details) with icon-only buttons wrapped in Tooltip
+- Use small `h-6 w-6` icon buttons
+- Eye icon for details, CheckCircle2 for complete, XCircle for cancel
 
-Replace the current Payment Summary (lines 218-271) with a new card showing all requested fields:
+#### 5. Add "Showing X-Y of Z entries" footer
+- Add a row below pagination: `Showing {start}-{end} of {total} entries`
+- Use `totalDocs` from API response (store in state)
 
-**Layout:**
+#### 6. Reduce outer spacing
+- Change gap-6 to gap-4 on wrapper
+- Remove CardHeader padding overhead, use `py-3` instead of `pb-4`
+- Loader/empty states: reduce `py-16` to `py-10`
+
+### Date formatting helper (inline)
 ```text
-+---------------------------------------------------+
-| Payment Summary                                    |
-|                                                    |
-| Seat Price       Locker Amount    Discount Amount  |
-| Rs.2,000         Rs.500           Rs.200           |
-|                                                    |
-| Total Price      Advance Paid     Due Collected    |
-| Rs.2,300         Rs.500           Rs.800           |
-|                                                    |
-| Total Collected  Due Remaining    Status           |
-| Rs.1,300         Rs.1,000         [Partial Paid]   |
-+---------------------------------------------------+
+formatDate(dateStr) => "26 Feb 2026, 9:09 AM"
+formatDateRange(start, end) => "26 Feb - 26 Mar 2026"
 ```
-
-**Calculation logic (single source of truth):**
-- `seatPrice` = `booking.seatPrice` (from seat table)
-- `lockerAmount` = `booking.lockerPrice` (from bookings table)
-- `discountAmount` = `booking.discountAmount` (from bookings table)
-- `totalPrice` = `booking.totalPrice` (already calculated in DB as seat + locker - discount)
-- `advancePaid` = `dueData?.advance_paid || 0` (from dues table)
-- `dueCollected` = sum of receipts where `receipt_type === 'due_collection'`
-- `totalCollected` = `advancePaid + dueCollected` (advance + all due collections)
-- `dueRemaining` = `Math.max(0, totalPrice - totalCollected)`
-- Status: Unpaid / Partial Paid / Fully Paid (same three-state logic)
 
 ### Files Changed
 
 | File | Change |
 |------|--------|
-| `src/api/adminBookingsService.ts` | Add `price` to seat select, return `seatPrice` |
-| `src/pages/AdminBookingDetail.tsx` | Rebuild Payment Summary with 9 fields in 3 rows |
+| `src/pages/AdminBookings.tsx` | Compact table, remove Payment column, icon-only actions with tooltips, 15 rows/page, add entry count footer |
 
