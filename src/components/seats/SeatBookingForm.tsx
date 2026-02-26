@@ -610,17 +610,6 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                   <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">3</div>
                   <Label className="text-sm font-semibold text-foreground">Review & Pay</Label>
                 </div>
-
-                <Suspense fallback={<div className="p-3 text-sm text-muted-foreground">Loading coupons...</div>}>
-                  <CouponSelection 
-                    bookingType="cabin"
-                    bookingAmount={originalPrice}
-                    cabinId={cabin?._id || cabin?.id}
-                    onCouponApply={handleCouponApply}
-                    onCouponRemove={handleCouponRemove}
-                    appliedCoupon={appliedCoupon} 
-                  />
-                </Suspense>
               </>
             )}
 
@@ -694,6 +683,17 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                     <span className="font-bold text-lg text-primary">₹{totalPrice.toFixed(2)}</span>
                   </div>
                 </div>
+
+                <Suspense fallback={<div className="p-3 text-sm text-muted-foreground">Loading coupons...</div>}>
+                  <CouponSelection 
+                    bookingType="cabin"
+                    bookingAmount={originalPrice}
+                    cabinId={cabin?._id || cabin?.id}
+                    onCouponApply={handleCouponApply}
+                    onCouponRemove={handleCouponRemove}
+                    appliedCoupon={appliedCoupon} 
+                  />
+                </Suspense>
 
                 <Button
                   className="w-full h-11 rounded-xl shadow-md text-sm font-semibold"
