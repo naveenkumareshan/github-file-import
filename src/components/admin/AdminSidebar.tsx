@@ -132,18 +132,6 @@ export function AdminSidebar() {
     if (user?.role === 'admin' || user?.role=='vendor') {
       bookingSubItems.push(
         {
-          title: 'Transfer Seat',
-          url: '/admin/seat-transfer',
-          icon: ArrowLeftRight,
-          roles: ['admin','vendor']
-        },
-        {
-          title: 'Manual Booking',
-          url: '/admin/manual-bookings',
-          icon: BookOpen,
-          roles: ['admin','vendor']
-        },
-        {
           title: 'Key Deposits',
           url: '/admin/deposits-restrictions',
           icon: Wallet,
