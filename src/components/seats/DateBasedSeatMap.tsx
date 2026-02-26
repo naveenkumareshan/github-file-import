@@ -380,22 +380,32 @@ const DateBasedSeatMapComponent: React.FC<DateBasedSeatMapProps> = ({
         </Card>
       ) : (
         <div>
-          {/* Compact floor selector for student view */}
-          <div className="flex gap-1.5 mb-2 overflow-x-auto pb-1">
-            {floorsList?.map((floor) => {
-              const isActive = selectedfloor === floor.number.toString();
-              return (
-                <button
-                  key={floor.number}
-                  type="button"
-                  onClick={() => setSelectedFloor(floor.number.toString())}
-                  className={`flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-all whitespace-nowrap ${isActive ? "bg-blue-50 border-blue-400 text-blue-700" : "hover:border-blue-300 text-muted-foreground"}`}
-                >
-                  <Building className={`h-3 w-3 ${isActive ? "text-blue-600" : ""}`} />
-                  Floor {floor.number}
-                </button>
-              );
-            })}
+          {/* Pill-style floor selector + available counter */}
+          <div className="flex items-center gap-2 mb-3">
+            <div className="flex gap-1 bg-muted/50 rounded-xl p-1 overflow-x-auto no-scrollbar">
+              {floorsList?.map((floor) => {
+                const isActive = selectedfloor === floor.number.toString();
+                return (
+                  <button
+                    key={floor.number}
+                    type="button"
+                    onClick={() => setSelectedFloor(floor.number.toString())}
+                    className={cn(
+                      "flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all whitespace-nowrap",
+                      isActive
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <Building className="h-3 w-3" />
+                    Floor {floor.number}
+                  </button>
+                );
+              })}
+            </div>
+            <Badge variant="secondary" className="text-[10px] px-2 py-0.5 whitespace-nowrap">
+              {availableCount} available
+            </Badge>
           </div>
           {loading ? (
             <div className="flex justify-center py-8">

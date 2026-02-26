@@ -2,10 +2,12 @@ import React, { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { cabinsService } from "@/api/cabinsService";
-import { ArrowLeft, Users, IndianRupee, Layers, Armchair } from "lucide-react";
+import { ArrowLeft, Users, IndianRupee, Layers, Armchair, Lock, Star, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { CabinImageSlider } from "@/components/CabinImageSlider";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Separator } from "@/components/ui/separator";
 
 const SeatBookingForm = lazy(() =>
   import("@/components/seats/SeatBookingForm").then((m) => ({
@@ -58,6 +60,29 @@ export interface RoomElement {
     y: number;
   };
 }
+
+const BookSeatSkeleton = () => (
+  <div className="min-h-screen bg-background pb-24">
+    <Skeleton className="w-full aspect-[16/9]" />
+    <div className="px-3 pt-3 flex gap-2">
+      <Skeleton className="h-8 w-24 rounded-full" />
+      <Skeleton className="h-8 w-20 rounded-full" />
+      <Skeleton className="h-8 w-20 rounded-full" />
+    </div>
+    <div className="px-3 pt-3 space-y-2">
+      <Skeleton className="h-4 w-3/4" />
+      <Skeleton className="h-4 w-1/2" />
+      <div className="flex gap-2 mt-3">
+        <Skeleton className="h-6 w-16 rounded-md" />
+        <Skeleton className="h-6 w-20 rounded-md" />
+        <Skeleton className="h-6 w-14 rounded-md" />
+      </div>
+    </div>
+    <div className="px-3 pt-4">
+      <Skeleton className="h-[300px] w-full rounded-xl" />
+    </div>
+  </div>
+);
 
 const BookSeat = () => {
   const { cabinId } = useParams<{ cabinId: string }>();
@@ -149,9 +174,7 @@ const BookSeat = () => {
   return (
     <div className="min-h-screen bg-background pb-24">
       {loading ? (
-        <div className="flex justify-center py-20">
-          <div className="animate-spin h-7 w-7 border-4 border-primary border-t-transparent rounded-full" />
-        </div>
+        <BookSeatSkeleton />
       ) : error ? (
         <div className="flex flex-col items-center justify-center py-20 px-4">
           <p className="text-center text-destructive text-sm mb-4">{error}</p>
@@ -159,70 +182,98 @@ const BookSeat = () => {
         </div>
       ) : cabin && (
         <>
-          {/* Hero Image Section */}
+          {/* Hero Image Section - Taller & Richer */}
           <div className="relative">
-            <div className="w-full aspect-[16/10] overflow-hidden bg-muted">
+            <div className="w-full aspect-[16/9] overflow-hidden bg-muted">
               <CabinImageSlider images={cabinImages} />
             </div>
-            {/* Gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 pointer-events-none" />
-            {/* Back button */}
+            {/* Multi-stop gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/5 to-black/30 pointer-events-none" />
+            {/* Frosted back button */}
             <Button
               variant="ghost"
               size="icon"
               onClick={handleGoBack}
-              className="absolute top-3 left-3 h-8 w-8 rounded-full bg-black/30 backdrop-blur-sm text-white hover:bg-black/50"
+              className="absolute top-3 left-3 h-9 w-9 rounded-full bg-black/40 backdrop-blur-md text-white hover:bg-black/60 border border-white/10"
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
             {/* Category badge */}
-            <Badge className={`absolute top-3 right-3 ${getCategoryColor(cabin.category)} border-0 text-xs`}>
+            <Badge className={`absolute top-3 right-3 ${getCategoryColor(cabin.category)} border-0 text-xs shadow-lg`}>
               {cabin.category.charAt(0).toUpperCase() + cabin.category.slice(1)}
             </Badge>
-            {/* Name overlay */}
-            <div className="absolute bottom-0 left-0 right-0 p-3">
-              <h1 className="text-white font-semibold text-lg leading-tight drop-shadow-lg">{cabin.name}</h1>
+            {/* Name + Rating overlay */}
+            <div className="absolute bottom-0 left-0 right-0 p-4">
+              <h1 className="text-white font-bold text-xl leading-tight drop-shadow-lg">{cabin.name}</h1>
+              {cabin.averageRating && cabin.averageRating > 0 && (
+                <div className="flex items-center gap-1 mt-1">
+                  <Star className="h-3.5 w-3.5 text-amber-400 fill-amber-400" />
+                  <span className="text-white/90 text-xs font-medium">{cabin.averageRating.toFixed(1)}</span>
+                  {cabin.reviewCount && cabin.reviewCount > 0 && (
+                    <span className="text-white/60 text-xs">({cabin.reviewCount} reviews)</span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Info Chips */}
+          {/* Info Chips - Elevated with accent colors */}
           <div className="px-3 pt-3">
             <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted text-foreground text-xs font-medium whitespace-nowrap">
-                <IndianRupee className="h-3 w-3" />
+              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs font-semibold whitespace-nowrap shadow-sm border border-emerald-500/20">
+                <IndianRupee className="h-3.5 w-3.5" />
                 ₹{cabin.price}/mo
               </div>
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted text-foreground text-xs font-medium whitespace-nowrap">
-                <Users className="h-3 w-3" />
+              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-500/10 text-blue-700 dark:text-blue-400 text-xs font-semibold whitespace-nowrap shadow-sm border border-blue-500/20">
+                <Users className="h-3.5 w-3.5" />
                 {cabin.capacity} seats
               </div>
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted text-foreground text-xs font-medium whitespace-nowrap">
-                <Layers className="h-3 w-3" />
+              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-500/10 text-purple-700 dark:text-purple-400 text-xs font-semibold whitespace-nowrap shadow-sm border border-purple-500/20">
+                <Layers className="h-3.5 w-3.5" />
                 {cabin.floors?.length || 1} floor{(cabin.floors?.length || 1) > 1 ? 's' : ''}
               </div>
+              {cabin.lockerPrice !== undefined && cabin.lockerPrice > 0 && (
+                <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs font-semibold whitespace-nowrap shadow-sm border border-amber-500/20">
+                  <Lock className="h-3.5 w-3.5" />
+                  Locker ₹{cabin.lockerPrice}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Details & Amenities (always visible) */}
-          <div className="px-3 pt-2">
-            <h3 className="text-sm font-medium text-foreground mb-2">Details & Amenities</h3>
-            {cabin.description && (
-              <p className="text-xs text-muted-foreground mb-3">{cabin.description}</p>
-            )}
-            {cabin.amenities?.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {cabin.amenities.map((amenity) => (
-                  <span key={amenity} className="inline-flex items-center text-xs bg-muted text-muted-foreground px-2 py-1 rounded-md">
-                    ✓ {amenity}
-                  </span>
-                ))}
-              </div>
-            )}
+          {/* Details & Amenities - Card-like section */}
+          <div className="px-3 pt-3">
+            <div className="bg-muted/30 rounded-xl p-3 border border-border/50">
+              <h3 className="text-sm font-semibold text-foreground mb-2">Details & Amenities</h3>
+              {cabin.description && (
+                <p className="text-xs text-muted-foreground leading-relaxed">{cabin.description}</p>
+              )}
+              {cabin.description && cabin.amenities?.length > 0 && (
+                <Separator className="my-2.5 opacity-50" />
+              )}
+              {cabin.amenities?.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {cabin.amenities.map((amenity) => (
+                    <span key={amenity} className="inline-flex items-center gap-1 text-xs bg-primary/5 text-foreground border border-primary/10 px-2.5 py-1 rounded-lg">
+                      <CheckCircle2 className="h-3 w-3 text-primary" />
+                      {amenity}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Booking Form */}
-          <div className="px-3 pt-2" ref={bookingFormRef}>
-            <Suspense fallback={<div className="p-3 text-sm text-muted-foreground">Loading booking form...</div>}>
+          <div className="px-3 pt-3" ref={bookingFormRef}>
+            <Suspense fallback={
+              <div className="space-y-3 p-4">
+                <Skeleton className="h-6 w-1/3" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-[200px] w-full rounded-xl" />
+              </div>
+            }>
               <SeatBookingForm
                 cabin={cabin}
                 selectedSeat={selectedSeat}
@@ -236,25 +287,27 @@ const BookSeat = () => {
             </Suspense>
           </div>
 
-          {/* Sticky Bottom Seat Info Card */}
+          {/* Sticky Bottom Seat Info Card - Enhanced */}
           {selectedSeat && cabin.isBookingActive && (
-            <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border shadow-lg">
+            <div className="fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-t from-background via-background to-background/95 border-t border-border shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.15)] backdrop-blur-sm">
               <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
-                <Armchair className="h-5 w-5 text-primary flex-shrink-0" />
+                <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Armchair className="h-5 w-5 text-primary" />
+                </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-semibold text-sm text-foreground">Seat #{selectedSeat.number}</span>
+                    <span className="font-bold text-sm text-foreground">Seat #{selectedSeat.number}</span>
                     {selectedSeat.category && (
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-primary/30 text-primary">
                         {selectedSeat.category}
                       </Badge>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground">₹{selectedSeat.price}/mo</p>
+                  <p className="text-xs text-muted-foreground font-medium">₹{selectedSeat.price}/mo</p>
                 </div>
                 <Button
                   size="sm"
-                  className="text-xs h-8 px-4"
+                  className="text-xs h-9 px-5 rounded-xl shadow-md bg-primary hover:bg-primary/90 animate-pulse"
                   onClick={() => bookingFormRef.current?.scrollIntoView({ behavior: 'smooth' })}
                 >
                   Book Now

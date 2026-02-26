@@ -435,51 +435,45 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
   };
 
   return (
-    <Card>
-      <CardHeader className="py-3 px-4">
-        <h3 className="text-sm font-semibold text-foreground">Booking Details</h3>
+    <Card className="border-t-2 border-t-primary shadow-md overflow-hidden">
+      <CardHeader className="py-3 px-4 bg-muted/20">
+        <div className="flex items-center gap-2">
+          <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">1</div>
+          <h3 className="text-sm font-semibold text-foreground">Booking Details</h3>
+        </div>
       </CardHeader>
-      <CardContent className="px-4 pt-0">
+      <CardContent className="px-4 pt-3">
         {!bookingCreated ? (
-          <div className="space-y-6">
-            {/* Step 1: Date and Duration Selection */}
+          <div className="space-y-5">
+            {/* Step 1: Duration Type as horizontal pills */}
             <div>
-              <Label className="block mb-2">Booking Duration</Label>
-              <RadioGroup
-                value={selectedDuration.type}
-                onValueChange={(value: "daily" | "weekly" | "monthly") =>
-                  handleDurationTypeChange(value)
-                }
-                className="flex flex-col space-y-3"
-              >
-                {durations.map((option) => (
-                  <div
-                    key={option.type}
-                    className="flex items-center space-x-2"
+              <Label className="block mb-2 text-xs text-muted-foreground uppercase tracking-wide">Duration Type</Label>
+              <div className="flex gap-1.5 bg-muted/50 rounded-xl p-1">
+                {(["daily", "weekly", "monthly"] as const).map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => handleDurationTypeChange(type)}
+                    className={cn(
+                      "flex-1 py-2 rounded-lg text-xs font-semibold transition-all",
+                      selectedDuration.type === type
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
                   >
-                    <RadioGroupItem value={option.type} id={option.type} />
-                    <Label htmlFor={option.type} className="flex-1">
-                      {option.type.charAt(0).toUpperCase() +
-                        option.type.slice(1)}
-                      <span className="text-muted-foreground text-xs ml-1">
-                        (Base rate per{" "}
-                        {option.type == "daily"
-                          ? "Day"
-                          : option.type.slice(0, -2)}
-                        )
-                      </span>
-                    </Label>
-                  </div>
+                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                  </button>
                 ))}
-              </RadioGroup>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <div className="w-32">
-                <Label htmlFor="durationCount" className="block mb-1">
-                  {selectedDuration.type == "daily"
+            {/* Duration count + Start date in a styled row */}
+            <div className="flex items-end gap-2 bg-muted/20 rounded-xl p-3 border border-border/50">
+              <div className="w-28">
+                <Label htmlFor="durationCount" className="block mb-1 text-xs text-muted-foreground">
+                  {selectedDuration.type === "daily"
                     ? "Days"
-                    : selectedDuration.type == "monthly"
+                    : selectedDuration.type === "monthly"
                     ? "Months"
                     : "Weeks"}
                 </Label>
@@ -488,8 +482,8 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                   value={selectedDuration.count + ""}
                   onValueChange={handleDurationCountChange}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a duration" />
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Select" />
                   </SelectTrigger>
                   <SelectContent className="max-h-80">
                     {selection.map((month) => (
@@ -502,13 +496,13 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
               </div>
 
               <div className="flex-1">
-                <Label className="block mb-1">Start Date</Label>
+                <Label className="block mb-1 text-xs text-muted-foreground">Start Date</Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
                       className={cn(
-                        "w-full justify-start text-left font-normal",
+                        "w-full justify-start text-left font-normal h-9",
                         !startDate && "text-muted-foreground"
                       )}
                     >
@@ -525,10 +519,8 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                       disabled={(date) => {
                         const today = new Date();
                         const tenDaysFromNow = new Date();
-
                         today.setUTCHours(0, 0, 0, 0);
                         tenDaysFromNow.setDate(today.getDate() + 4);
-
                         return date < today || date > tenDaysFromNow;
                       }}
                     />
@@ -537,19 +529,24 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
               </div>
             </div>
 
+            {/* End date as a styled badge */}
             {endDate && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Ends: {format(endDate, "dd MMM yyyy")}
-              </p>
+              <div className="flex items-center gap-1.5">
+                <span className="inline-flex items-center gap-1 text-xs font-medium bg-primary/10 text-primary rounded-full px-3 py-1">
+                  <CalendarIcon className="h-3 w-3" />
+                  Ends: {format(endDate, "dd MMM yyyy")}
+                </span>
+              </div>
             )}
 
             {/* Step 2: Seat Selection */}
             {showSeatSelection && cabin && (
               <div className="space-y-4">
                 <Separator />
-                  <Label className="block mb-1 text-sm font-medium text-muted-foreground">
-                    Select Your Seat
-                  </Label>
+                <div className="flex items-center gap-2">
+                  <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">2</div>
+                  <Label className="text-sm font-semibold text-foreground">Select Your Seat</Label>
+                </div>
 
                   {/* Category Filter Chips */}
                   {categories.length > 0 && (
@@ -565,17 +562,21 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                       >
                         All
                       </button>
-                      {categories.map((cat) => (
+                  {categories.map((cat, index) => (
                         <button
                           key={cat.id}
                           onClick={() => setSelectedCategory(cat.name)}
                           className={cn(
-                            "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all",
+                            "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all flex items-center gap-1.5",
                             selectedCategory === cat.name
-                              ? "bg-primary text-primary-foreground"
+                              ? "bg-primary text-primary-foreground shadow-sm"
                               : "bg-muted text-muted-foreground hover:text-foreground"
                           )}
                         >
+                          <span className={cn(
+                            "h-2 w-2 rounded-full",
+                            index % 3 === 0 ? "bg-emerald-400" : index % 3 === 1 ? "bg-purple-400" : "bg-amber-400"
+                          )} />
                           {cat.name} • ₹{cat.price}
                         </button>
                       ))}
@@ -601,10 +602,14 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
               </div>
             )}
 
-            {/* Step 3: Coupon Selection - Only show after seat selection */}
+            {/* Step 3: Coupon & Summary */}
             {selectedSeat && cabin.isBookingActive && (
               <>
                 <Separator />
+                <div className="flex items-center gap-2">
+                  <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">3</div>
+                  <Label className="text-sm font-semibold text-foreground">Review & Pay</Label>
+                </div>
 
                 <Suspense fallback={<div className="p-3 text-sm text-muted-foreground">Loading coupons...</div>}>
                   <CouponSelection 
@@ -648,43 +653,50 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                   </div>
                 )}
 
-                <div className="space-y-2">
+                <div className="bg-gradient-to-b from-muted/20 to-muted/40 rounded-xl p-4 space-y-2.5">
                   <div className="flex justify-between items-center">
-                    <span>Selected Seat:</span>
+                    <span className="text-sm text-muted-foreground">Selected Seat:</span>
                     <div className="flex items-center gap-2">
-                      <span>#{selectedSeat.number}</span>
+                      <span className="font-semibold">#{selectedSeat.number}</span>
                       {(selectedSeat as any).category && (
-                        <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
                           {(selectedSeat as any).category}
                         </span>
                       )}
                     </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Seat Price:</span>
+                  <Separator className="opacity-30" />
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Seat Price:</span>
                     <span>₹{Math.round(selectedSeat?.price || 0)} / month</span>
                   </div>
                   {(lockerMandatory || lockerOptedIn) && (
-                    <div className="flex justify-between text-blue-600">
-                      <span>Locker Deposit:</span>
-                      <span>+ ₹{keyDeposit}</span>
-                    </div>
+                    <>
+                      <Separator className="opacity-30" />
+                      <div className="flex justify-between text-sm text-blue-600">
+                        <span>Locker Deposit:</span>
+                        <span>+ ₹{keyDeposit}</span>
+                      </div>
+                    </>
                   )}
                   {appliedCoupon && (
-                    <div className="flex justify-between text-green-600">
-                      <span>Coupon Discount ({appliedCoupon.coupon.code}):</span>
-                      <span>- ₹{appliedCoupon.discountAmount}</span>
-                    </div>
+                    <>
+                      <Separator className="opacity-30" />
+                      <div className="flex justify-between text-sm text-green-600">
+                        <span>Coupon ({appliedCoupon.coupon.code}):</span>
+                        <span>- ₹{appliedCoupon.discountAmount}</span>
+                      </div>
+                    </>
                   )}
-
-                  <div className="flex justify-between font-medium text-lg">
-                    <span>Total Amount:</span>
-                    <span>₹{totalPrice.toFixed(2)}</span>
+                  <Separator />
+                  <div className="flex justify-between items-center pt-1">
+                    <span className="font-semibold text-base">Total Amount:</span>
+                    <span className="font-bold text-lg text-primary">₹{totalPrice.toFixed(2)}</span>
                   </div>
                 </div>
 
                 <Button
-                  className="w-full"
+                  className="w-full h-11 rounded-xl shadow-md text-sm font-semibold"
                   onClick={handleCreateBooking}
                   disabled={isSubmitting || !selectedSeat}
                 >
