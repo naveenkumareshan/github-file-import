@@ -14,6 +14,7 @@ import { Wallet, AlertTriangle, IndianRupee, Calendar, Search, Banknote, Smartph
 import { useToast } from '@/hooks/use-toast';
 import { vendorSeatsService, VendorCabin } from '@/api/vendorSeatsService';
 import { Textarea } from '@/components/ui/textarea';
+import { DuePaymentHistory } from '@/components/booking/DuePaymentHistory';
 
 const DueManagement: React.FC = () => {
   const [dues, setDues] = useState<any[]>([]);
@@ -280,6 +281,10 @@ const DueManagement: React.FC = () => {
               <Button className="w-full h-9 text-xs" onClick={handleCollect} disabled={collecting || !collectAmount}>
                 {collecting ? 'Processing...' : `Confirm Collection · ₹${collectAmount}`}
               </Button>
+
+              {/* Payment History */}
+              <Separator className="my-3" />
+              <DuePaymentHistory dueId={selectedDue.id} defaultOpen />
             </div>
           )}
         </SheetContent>
