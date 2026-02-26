@@ -4,36 +4,32 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { transactionService } from '@/api/transactionService';
 import { vendorSeatsService } from '@/api/vendorSeatsService';
 import { DuePaymentHistory } from '@/components/booking/DuePaymentHistory';
 import { format, differenceInDays } from 'date-fns';
-import { CreditCard, Calendar, RefreshCw, IndianRupee, Clock, TicketPercent, Wallet } from 'lucide-react';
+import { CreditCard, Calendar, RefreshCw, IndianRupee, Clock, TicketPercent, Wallet, Receipt } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
-interface Transaction {
+interface ReceiptRow {
   id: string;
-  transactionId: string;
-  transactionType: 'booking' | 'renewal' | 'cancellation' | 'refund';
+  serial_number: string | null;
   amount: number;
-  status: 'pending' | 'completed' | 'failed' | 'cancelled';
-  paymentMethod?: string;
-  additionalMonths?: number;
-  newEndDate?: string;
-  previousEndDate?: string;
-  createdAt: string;
-  razorpay_payment_id?: string;
+  payment_method: string;
+  receipt_type: string;
+  collected_by_name: string;
+  notes: string;
+  created_at: string;
 }
 
 interface BookingTransactionViewProps {
   bookingId: string;
-  booking:any;
+  booking: any;
   bookingType: 'cabin' | 'hostel';
 }
 
 export const BookingTransactionView = ({ bookingId, bookingType, booking }: BookingTransactionViewProps) => {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [receipts, setReceipts] = useState<ReceiptRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [totalPaid, setTotalPaid] = useState(0);
   const [validityInfo, setValidityInfo] = useState<{
     currentEndDate: string;
     daysRemaining: number;
@@ -43,96 +39,59 @@ export const BookingTransactionView = ({ bookingId, bookingType, booking }: Book
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchBookingTransactions();
+    fetchData();
   }, []);
 
-  const fetchBookingTransactions = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
-            
-        // Calculate validity information
-        if (booking?.endDate) {
-          try {
-            const endDate = new Date(booking.endDate);
-            const today = new Date();
-            const daysRemaining = differenceInDays(endDate, today);
-            
-            setValidityInfo({
-              currentEndDate: booking.endDate,
-              daysRemaining: Math.max(0, daysRemaining),
-              totalMonths: booking.months || booking.durationCount || 1
-            });
-          } catch (e) {
-            console.error('Error parsing endDate:', e);
-          }
+
+      // Calculate validity information
+      if (booking?.endDate) {
+        try {
+          const endDate = new Date(booking.endDate);
+          const today = new Date();
+          const daysRemaining = differenceInDays(endDate, today);
+          setValidityInfo({
+            currentEndDate: booking.endDate,
+            daysRemaining: Math.max(0, daysRemaining),
+            totalMonths: booking.months || booking.durationCount || 1
+          });
+        } catch (e) {
+          console.error('Error parsing endDate:', e);
         }
-      
-      // Fetch user transactions and filter for this booking
-      const transactionsResponse = await transactionService.getUserTransactions();
-      if (transactionsResponse.success && transactionsResponse.data) {
-        const txList = Array.isArray(transactionsResponse.data) ? transactionsResponse.data : (transactionsResponse.data?.data || []);
-        const bookingTransactions = txList.filter(
-          (transaction: any) => transaction.bookingId === bookingId
-        );
-        
-        setTransactions(bookingTransactions);
-        
-        // Calculate total paid amount
-        const completedTransactions = bookingTransactions.filter(
-          (transaction: any) => transaction.status === 'completed'
-        );
-        const total = completedTransactions.reduce(
-          (sum: number, transaction: any) => sum + transaction.amount, 0
-        );
-        setTotalPaid(total);
       }
+
+      // Fetch receipts from receipts table
+      const { data: rcpts } = await supabase
+        .from('receipts')
+        .select('*')
+        .eq('booking_id', bookingId)
+        .order('created_at', { ascending: false });
+      setReceipts((rcpts || []) as ReceiptRow[]);
 
       // Fetch due for this booking
       const dueRes = await vendorSeatsService.getDueForBooking(bookingId);
-      if (dueRes.success && dueRes.data) {
-        setDueData(dueRes.data);
-      }
+      if (dueRes.success && dueRes.data) setDueData(dueRes.data);
     } catch (error) {
-      console.error('Error fetching booking transactions:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load transaction history",
-        variant: "destructive"
-      });
+      console.error('Error fetching booking data:', error);
+      toast({ title: "Error", description: "Failed to load transaction history", variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
   const getStatusBadge = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'completed':
-        return <Badge className="bg-green-500">Completed</Badge>;
-      case 'pending':
-        return <Badge variant="outline" className="border-amber-500 text-amber-500">Pending</Badge>;
-      case 'failed':
-        return <Badge variant="destructive">Failed</Badge>;
-      case 'cancelled':
-        return <Badge variant="outline" className="border-gray-500 text-gray-500">Cancelled</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
+    switch (status?.toLowerCase()) {
+      case 'completed': return <Badge className="bg-green-500">Completed</Badge>;
+      case 'pending': return <Badge variant="outline" className="border-amber-500 text-amber-500">Pending</Badge>;
+      case 'advance_paid': return <Badge variant="outline" className="border-blue-500 text-blue-500">Advance Paid</Badge>;
+      case 'failed': return <Badge variant="destructive">Failed</Badge>;
+      default: return <Badge variant="outline">{status}</Badge>;
     }
   };
 
-  const getTransactionTypeBadge = (type: string) => {
-    switch (type.toLowerCase()) {
-      case 'booking':
-        return <Badge variant="outline" className="border-blue-500 text-blue-500">Initial Payment</Badge>;
-      case 'renewal':
-        return <Badge variant="outline" className="border-purple-500 text-purple-500">Renewal</Badge>;
-      case 'cancellation':
-        return <Badge variant="outline" className="border-red-500 text-red-500">Cancellation</Badge>;
-      case 'refund':
-        return <Badge variant="outline" className="border-orange-500 text-orange-500">Refund</Badge>;
-      default:
-        return <Badge variant="outline">{type}</Badge>;
-    }
-  };
+  const totalPaid = receipts.reduce((s, r) => s + Number(r.amount), 0);
 
   if (loading) {
     return (
@@ -169,21 +128,12 @@ export const BookingTransactionView = ({ bookingId, bookingType, booking }: Book
               </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-[11px] text-muted-foreground">Seat Price</span>
-              <span className="text-[12px] font-medium">₹{(booking.seatPrice || booking.totalPrice || 0).toLocaleString()}</span>
+              <span className="text-[11px] text-muted-foreground">Total Price</span>
+              <span className="text-[12px] font-medium">₹{(booking.totalPrice || 0).toLocaleString()}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-[11px] text-muted-foreground">Total Paid</span>
-              <div className="text-right">
-                {booking?.originalPrice && booking?.appliedCoupon ? (
-                  <>
-                    <span className="text-[11px] text-muted-foreground line-through mr-1">₹{booking.originalPrice.toLocaleString()}</span>
-                    <span className="text-[12px] font-medium">₹{totalPaid.toLocaleString()}</span>
-                  </>
-                ) : (
-                  <span className="text-[12px] font-medium">₹{totalPaid.toLocaleString()}</span>
-                )}
-              </div>
+              <span className="text-[12px] font-medium text-green-600">₹{totalPaid.toLocaleString()}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-[11px] text-muted-foreground">Payment Status</span>
@@ -245,46 +195,41 @@ export const BookingTransactionView = ({ bookingId, bookingType, booking }: Book
         </div>
       )}
 
-      {/* Transaction History */}
+      {/* Payment Receipts */}
       <div className="bg-card rounded-lg border p-3">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-[13px] font-semibold flex items-center gap-1.5">
-            <CreditCard className="h-3.5 w-3.5" />
-            Transactions
+            <Receipt className="h-3.5 w-3.5" />
+            Payment Receipts
           </h3>
-          <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px]" onClick={fetchBookingTransactions}>
+          <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px]" onClick={fetchData}>
             <RefreshCw className="h-3 w-3" />
           </Button>
         </div>
-        {transactions.length === 0 ? (
+        {receipts.length === 0 ? (
           <div className="text-center py-4 text-muted-foreground">
             <CreditCard className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-[12px]">No transactions found</p>
+            <p className="text-[12px]">No receipts found</p>
           </div>
         ) : (
           <div className="space-y-2">
-            {transactions.map((transaction) => (
-              <div key={transaction.id} className="border rounded-lg p-2 space-y-1">
+            {receipts.map((r) => (
+              <div key={r.id} className="border rounded-lg p-2 space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-muted-foreground">{transaction.transactionId}</span>
-                  {getStatusBadge(transaction.status)}
+                  <span className="text-[11px] font-medium text-primary">{r.serial_number || '-'}</span>
+                  <Badge variant="outline" className="text-[9px]">
+                    {r.receipt_type === 'due_collection' ? 'Due Collection' : 'Booking Payment'}
+                  </Badge>
                 </div>
                 <div className="flex items-center justify-between">
-                  {getTransactionTypeBadge(transaction.transactionType)}
-                  <span className="text-[12px] font-medium">₹{transaction.amount.toLocaleString()}</span>
+                  <span className="text-[12px] font-medium">₹{Number(r.amount).toLocaleString()}</span>
+                  <span className="text-[10px] text-muted-foreground capitalize">{r.payment_method}</span>
                 </div>
                 <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                  <span>{format(new Date(transaction.createdAt), 'dd MMM yyyy, HH:mm')}</span>
-                  <span>{transaction.paymentMethod || 'Online'}</span>
+                  <span>{format(new Date(r.created_at), 'dd MMM yyyy, HH:mm')}</span>
+                  {r.collected_by_name && <span>by {r.collected_by_name}</span>}
                 </div>
-                {transaction.transactionType === 'renewal' && transaction.additionalMonths && (
-                  <p className="text-[10px] text-muted-foreground">
-                    +{transaction.additionalMonths} months
-                    {transaction.previousEndDate && transaction.newEndDate && (
-                      <> · {format(new Date(transaction.previousEndDate), 'dd MMM')} → {format(new Date(transaction.newEndDate), 'dd MMM yyyy')}</>
-                    )}
-                  </p>
-                )}
+                {r.notes && <div className="text-[10px] text-muted-foreground italic">{r.notes}</div>}
               </div>
             ))}
           </div>
@@ -298,18 +243,14 @@ export const BookingTransactionView = ({ bookingId, bookingType, booking }: Book
           Payment Summary
         </h3>
         <div className="space-y-1">
-          {transactions
-            .filter(t => t.status === 'completed')
-            .map((transaction, index) => (
-              <div key={transaction.id} className="flex justify-between items-center text-[12px]">
-                <span className="text-muted-foreground">
-                  {transaction.transactionType === 'booking' ? 'Initial Payment' :
-                   transaction.transactionType === 'renewal' ? `Renewal ${index}` :
-                   transaction.transactionType}
-                </span>
-                <span className="font-medium">₹{transaction.amount.toLocaleString()}</span>
-              </div>
-            ))}
+          {receipts.map((r, index) => (
+            <div key={r.id} className="flex justify-between items-center text-[12px]">
+              <span className="text-muted-foreground">
+                {r.receipt_type === 'booking_payment' ? 'Initial Payment' : `Due Collection ${index}`}
+              </span>
+              <span className="font-medium">₹{Number(r.amount).toLocaleString()}</span>
+            </div>
+          ))}
           <Separator className="my-1" />
           <div className="flex justify-between items-center text-[13px] font-semibold">
             <span>Total Paid</span>
