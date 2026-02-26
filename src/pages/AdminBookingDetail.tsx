@@ -216,65 +216,75 @@ const AdminBookingDetail = () => {
         </Card>
 
         {/* Payment Summary */}
-        <Card>
-          <CardHeader><CardTitle className="flex items-center gap-2"><IndianRupee className="h-5 w-5" /> Payment Summary</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Price</p>
-                <p className="text-lg font-semibold">₹{(booking.totalPrice || 0).toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Advance Paid</p>
-                <p className="text-lg font-semibold">₹{(dueData?.advance_paid || 0).toLocaleString()}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Collected</p>
-                <p className="text-lg font-semibold text-green-600">₹{totalPaid.toLocaleString()}</p>
-              </div>
-            </div>
+        {(() => {
+          const totalPrice = booking.totalPrice || 0;
+          const advancePaid = dueData?.advance_paid || 0;
+          const totalCollected = totalPaid;
+          const dueRemaining = Math.max(0, totalPrice - totalCollected);
+          const paymentStatus = totalCollected === 0 ? 'unpaid'
+            : dueRemaining <= 0 ? 'fully_paid'
+            : 'partial_paid';
 
-            <Separator />
+          return (
+            <Card>
+              <CardHeader><CardTitle className="flex items-center gap-2"><IndianRupee className="h-5 w-5" /> Payment Summary</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Total Price</p>
+                    <p className="text-lg font-semibold">₹{totalPrice.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Advance Paid</p>
+                    <p className="text-lg font-semibold">₹{advancePaid.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Total Collected</p>
+                    <p className="text-lg font-semibold text-green-600">₹{totalCollected.toLocaleString()}</p>
+                  </div>
+                </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Due Remaining</p>
-                <p className="text-lg font-semibold text-destructive">
-                  ₹{(dueData ? (dueData.due_amount - dueData.paid_amount) : Math.max(0, (booking.totalPrice || 0) - totalPaid)).toLocaleString()}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Status</p>
-                {dueData?.status === 'paid' ? (
-                  <Badge className="bg-green-500 mt-1">Fully Paid</Badge>
-                ) : dueData ? (
-                  <Badge variant="outline" className="border-amber-500 text-amber-500 mt-1">Partial Paid</Badge>
-                ) : totalPaid >= (booking.totalPrice || 0) ? (
-                  <Badge className="bg-green-500 mt-1">Fully Paid</Badge>
-                ) : (
-                  <Badge variant="outline" className="border-amber-500 text-amber-500 mt-1">Partial Paid</Badge>
-                )}
-              </div>
-            </div>
+                <Separator />
 
-            <Separator />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Due Remaining</p>
+                    <p className={`text-lg font-semibold ${dueRemaining > 0 ? 'text-destructive' : 'text-green-600'}`}>
+                      ₹{dueRemaining.toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Status</p>
+                    {paymentStatus === 'fully_paid' ? (
+                      <Badge className="bg-green-500 mt-1">Fully Paid</Badge>
+                    ) : paymentStatus === 'partial_paid' ? (
+                      <Badge variant="outline" className="border-amber-500 text-amber-500 mt-1">Partial Paid</Badge>
+                    ) : (
+                      <Badge variant="destructive" className="mt-1">Unpaid</Badge>
+                    )}
+                  </div>
+                </div>
 
-            <div className="grid grid-cols-3 gap-4 text-sm">
-              <div>
-                <p className="text-muted-foreground">Payment Method</p>
-                <p className="capitalize font-medium">{booking.paymentMethod || booking.payment_method || '-'}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Transaction ID</p>
-                <p className="font-medium">{booking.transactionId || booking.transaction_id || '-'}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Collected By</p>
-                <p className="font-medium">{booking.collectedByName || booking.collected_by_name || '-'}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+                <Separator />
+
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Payment Method</p>
+                    <p className="capitalize font-medium">{booking.paymentMethod || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Transaction ID</p>
+                    <p className="font-medium">{booking.transactionId || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Collected By</p>
+                    <p className="font-medium">{booking.collectedByName || '-'}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
 
         {/* Payment Receipts */}
         <Card>
@@ -298,7 +308,7 @@ const AdminBookingDetail = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Receipt #</TableHead>
+                      <TableHead>Receipt ID</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Amount</TableHead>
                       <TableHead>Method</TableHead>
@@ -313,7 +323,9 @@ const AdminBookingDetail = () => {
                         <TableCell className="font-medium text-xs">{r.serial_number || '-'}</TableCell>
                         <TableCell>
                           <Badge variant="outline" className="text-[10px]">
-                            {r.receipt_type === 'due_collection' ? 'Due Collection' : 'Booking Payment'}
+                            {r.receipt_type === 'booking_payment' ? 'Advance'
+                              : r.receipt_type === 'due_collection' ? 'Due Collection'
+                              : 'Payment'}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -328,6 +340,17 @@ const AdminBookingDetail = () => {
                         <TableCell className="text-xs text-muted-foreground">{r.notes || '-'}</TableCell>
                       </TableRow>
                     ))}
+                    {/* Total Collected summary row */}
+                    <TableRow className="bg-muted/30 font-semibold">
+                      <TableCell colSpan={2} className="text-right text-sm">Total Collected</TableCell>
+                      <TableCell>
+                        <div className="flex items-center text-green-600">
+                          <IndianRupee className="h-3.5 w-3.5 mr-0.5" />
+                          <span>{totalPaid.toLocaleString()}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell colSpan={4}></TableCell>
+                    </TableRow>
                   </TableBody>
                 </Table>
               </div>

@@ -149,6 +149,15 @@ export const adminBookingsService = {
           createdAt: data.created_at,
           razorpayPaymentId: data.razorpay_payment_id,
           razorpayOrderId: data.razorpay_order_id,
+          paymentMethod: data.payment_method || '',
+          transactionId: data.transaction_id || '',
+          collectedByName: data.collected_by_name || '',
+          lockerIncluded: data.locker_included,
+          lockerPrice: Number(data.locker_price) || 0,
+          discountAmount: Number(data.discount_amount) || 0,
+          discountReason: data.discount_reason || '',
+          bookingDuration: data.booking_duration,
+          durationCount: data.duration_count,
         },
       };
     } catch (error) {
