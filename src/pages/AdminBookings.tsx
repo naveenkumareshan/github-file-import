@@ -17,7 +17,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { adminBookingsService } from "../api/adminBookingsService";
 import { useToast } from "@/hooks/use-toast";
 import { BookingFilters } from "@/types/BookingTypes";
-import { CheckCircle2, XCircle, Eye, Search, Filter, BookOpen } from "lucide-react";
+import { Eye, Search, Filter, BookOpen } from "lucide-react";
 
 type BookingStatus = "pending" | "completed" | "failed";
 const PAGE_SIZE = 15;
@@ -78,19 +78,6 @@ const AdminBookings = () => {
   const handleSearch = (e: React.FormEvent) => { e.preventDefault(); setCurrentPage(1); };
   const handleStatusChange = (v: string) => { setStatus(v === "all" ? "" : v as BookingStatus); setCurrentPage(1); };
 
-  const handleUpdateStatus = async (bookingId: string, newStatus: BookingStatus) => {
-    try {
-      const response = await adminBookingsService.updateBooking(bookingId, { status: newStatus });
-      if (response.success) {
-        toast({ title: "Status Updated", description: `Booking status updated to ${newStatus}` });
-        setBookings((prev) => prev.map((b) => (b._id === bookingId ? { ...b, status: newStatus } : b)));
-      } else {
-        toast({ title: "Error", description: response.error || "Failed to update booking status", variant: "destructive" });
-      }
-    } catch {
-      toast({ title: "Error", description: "Failed to update booking status", variant: "destructive" });
-    }
-  };
 
   const badgeCls = (s: string) => {
     switch (s) {
@@ -178,27 +165,11 @@ const AdminBookings = () => {
                           <span className={`inline-flex items-center rounded-full px-1.5 py-0 text-[10px] font-medium capitalize ${badgeCls(b.status || "pending")}`}>{b.status || "pending"}</span>
                         </TableCell>
                         <TableCell className="py-1.5 px-3 text-right">
-                          <div className="flex justify-end gap-1">
-                            {b.status !== "completed" && b.status !== "cancelled" && (
-                              <Tooltip><TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-6 w-6 text-green-600 hover:bg-green-50" onClick={() => handleUpdateStatus(b._id, "completed")}>
-                                  <CheckCircle2 className="h-3.5 w-3.5" />
-                                </Button>
-                              </TooltipTrigger><TooltipContent>Complete</TooltipContent></Tooltip>
-                            )}
-                            {b.status !== "failed" && b.status !== "completed" && b.status !== "cancelled" && (
-                              <Tooltip><TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-6 w-6 text-red-500 hover:bg-red-50" onClick={() => handleUpdateStatus(b._id, "failed")}>
-                                  <XCircle className="h-3.5 w-3.5" />
-                                </Button>
-                              </TooltipTrigger><TooltipContent>Cancel</TooltipContent></Tooltip>
-                            )}
-                            <Tooltip><TooltipTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => navigate(`/admin/bookings/${b._id}`)}>
-                                <Eye className="h-3.5 w-3.5" />
-                              </Button>
-                            </TooltipTrigger><TooltipContent>Details</TooltipContent></Tooltip>
-                          </div>
+                          <Tooltip><TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => navigate(`/admin/bookings/${b._id}/cabin`)}>
+                              <Eye className="h-3.5 w-3.5" />
+                            </Button>
+                          </TooltipTrigger><TooltipContent>Details</TooltipContent></Tooltip>
                         </TableCell>
                       </TableRow>
                     ))}
