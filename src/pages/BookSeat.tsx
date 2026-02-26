@@ -2,10 +2,9 @@ import React, { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { cabinsService } from "@/api/cabinsService";
-import { ArrowLeft, ChevronDown, ChevronUp, Users, IndianRupee, Layers, Armchair } from "lucide-react";
+import { ArrowLeft, Users, IndianRupee, Layers, Armchair } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { CabinImageSlider } from "@/components/CabinImageSlider";
 
 const SeatBookingForm = lazy(() =>
@@ -72,7 +71,7 @@ const BookSeat = () => {
   const [error, setError] = useState<string | null>(null);
   const [roomElements, setRoomElements] = useState<RoomElement[]>([]);
   const [hideSeats, setHideSeats] = useState(false);
-  const [detailsOpen, setDetailsOpen] = useState(false);
+  
   const [layoutImage, setLayoutImage] = useState<string | null>(null);
   const [roomWidth, setRoomWidth] = useState(800);
   const [roomHeight, setRoomHeight] = useState(600);
@@ -204,28 +203,21 @@ const BookSeat = () => {
             </div>
           </div>
 
-          {/* Collapsible Details */}
+          {/* Details & Amenities (always visible) */}
           <div className="px-3 pt-2">
-            <Collapsible open={detailsOpen} onOpenChange={setDetailsOpen}>
-              <CollapsibleTrigger className="flex items-center justify-between w-full py-2 text-sm font-medium text-foreground">
-                <span>Details & Amenities</span>
-                {detailsOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-              </CollapsibleTrigger>
-              <CollapsibleContent className="pb-3">
-                {cabin.description && (
-                  <p className="text-xs text-muted-foreground mb-3">{cabin.description}</p>
-                )}
-                {cabin.amenities?.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {cabin.amenities.map((amenity) => (
-                      <span key={amenity} className="inline-flex items-center text-xs bg-muted text-muted-foreground px-2 py-1 rounded-md">
-                        ✓ {amenity}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </CollapsibleContent>
-            </Collapsible>
+            <h3 className="text-sm font-medium text-foreground mb-2">Details & Amenities</h3>
+            {cabin.description && (
+              <p className="text-xs text-muted-foreground mb-3">{cabin.description}</p>
+            )}
+            {cabin.amenities?.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {cabin.amenities.map((amenity) => (
+                  <span key={amenity} className="inline-flex items-center text-xs bg-muted text-muted-foreground px-2 py-1 rounded-md">
+                    ✓ {amenity}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Booking Form */}

@@ -40,6 +40,7 @@ interface DateBasedSeatMapProps {
   layoutImage?: string | null;
   roomWidth?: number;
   roomHeight?: number;
+  categoryFilter?: string;
 }
 
 const DateBasedSeatMapComponent: React.FC<DateBasedSeatMapProps> = ({
@@ -55,6 +56,7 @@ const DateBasedSeatMapComponent: React.FC<DateBasedSeatMapProps> = ({
   layoutImage,
   roomWidth = 800,
   roomHeight = 600,
+  categoryFilter,
 }) => {
   const [startDate, setStartDate] = useState<Date>(propStartDate || new Date());
   const [endDate, setEndDate] = useState<Date>(
@@ -208,17 +210,19 @@ const DateBasedSeatMapComponent: React.FC<DateBasedSeatMapProps> = ({
   };
 
   // Transform seats to show availability status
-  const transformedSeats = availableSeats.map((seat) => {
-    const availabilityInfo = seatAvailability.find(
-      (info) => info.seatId === seat._id
-    );
-    return {
-      ...seat,
-      isAvailable: availabilityInfo?.isAvailable ?? seat.isAvailable,
-      conflictingBookings: availabilityInfo?.conflictingBookings || [],
-      isDateFiltered: true,
-    };
-  });
+  const transformedSeats = availableSeats
+    .map((seat) => {
+      const availabilityInfo = seatAvailability.find(
+        (info) => info.seatId === seat._id
+      );
+      return {
+        ...seat,
+        isAvailable: availabilityInfo?.isAvailable ?? seat.isAvailable,
+        conflictingBookings: availabilityInfo?.conflictingBookings || [],
+        isDateFiltered: true,
+      };
+    })
+    .filter((seat) => !categoryFilter || seat.category === categoryFilter);
 
   const availableCount = transformedSeats.filter(
     (seat) => seat.isAvailable
@@ -460,13 +464,13 @@ const DateBasedSeatMapComponent: React.FC<DateBasedSeatMapProps> = ({
 
 // Memoize the component with custom comparison function
 export const DateBasedSeatMap = memo(DateBasedSeatMapComponent, (prevProps, nextProps) => {
-  // Compare all relevant props to determine if re-render is needed
   return (
     prevProps.cabinId === nextProps.cabinId &&
     prevProps.exportcsv === nextProps.exportcsv &&
     prevProps.startDate?.getTime() === nextProps.startDate?.getTime() &&
     prevProps.endDate?.getTime() === nextProps.endDate?.getTime() &&
     prevProps.selectedSeat?._id === nextProps.selectedSeat?._id &&
+    prevProps.categoryFilter === nextProps.categoryFilter &&
     JSON.stringify(prevProps.roomElements) === JSON.stringify(nextProps.roomElements)
   );
 });
