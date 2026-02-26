@@ -19,7 +19,7 @@ import LaundryAgentPage from "./pages/LaundryAgentPage";
 
 const AdminBookingView = lazy(() => import("./pages/AdminBookingView"));
 const BookingReportsPage = lazy(() => import("./components/admin/reports/BookingReportsPage"));
-const ManualBookingManagement = lazy(() => import("./pages/admin/ManualBookingManagement"));
+
 const EmailJobManagement = lazy(() => import("./components/admin/email_reports/EmailJobManagement"));
 const EmailTemplatesManagement = lazy(() => import("./components/admin/EmailTemplatesManagement"));
 const AdminCoupons = lazy(() => import("./pages/AdminCoupons"));
@@ -33,7 +33,7 @@ const VendorEmployees = lazy(() => import("./pages/vendor/VendorEmployees"));
 const VendorPayouts = lazy(() => import("./components/vendor/VendorPayouts"));
 const AdminPayouts = lazy(() => import("./pages/admin/AdminPayouts"));
 const VendorApproval = lazy(() => import("./components/admin/VendorApproval"));
-const SeatTransferManagementPage = lazy(() => import("./pages/admin/SeatTransferManagement"));
+
 const DepositAndRestrictionManagement = lazy(() => import("./pages/admin/DepositAndRestrictionManagement"));
 const LocationManagement = lazy(() => import("./components/admin/LocationManagement"));
 const NotificationManagement = lazy(() => import("./components/admin/NotificationManagement"));
@@ -109,7 +109,7 @@ function App() {
               <Route path="dashboard" element={<AdminDashboard />} />
               <Route path="bookings" element={<AdminBookings />} />
               <Route path="bookings/:bookingId/:type" element={<AdminBookingDetail />} />
-              <Route path="seat-transfer" element={<SeatTransferManagementPage />} />
+              
               <Route path="hostel-bookings" element={<AdminHostelBookings />} />
               <Route path="rooms" element={<AdminRooms />} />
               <Route path="students" element={<AdminStudents />} />
@@ -136,8 +136,6 @@ function App() {
               <Route path="notifications" element={<NotificationManagement />} />
               <Route path="reviews" element={<ReviewsManagement />} />
               <Route path="error-logs" element={<ErrorLogManagement />} />
-              <Route path="manual-bookings" element={<ManualBookingManagement />} />
-              <Route path="/admin/manual-bookings/:type/:bookingId" element={<ManualBookingManagement />} />
               <Route path="profile" element={<VendorProfilePage />} />
               <Route path="banners" element={<BannerManagementPage />} />
               <Route path="complaints" element={<ComplaintsManagement />} />
