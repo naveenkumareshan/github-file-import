@@ -354,7 +354,7 @@ export default function StudentBookingView() {
         <CollapsibleSection title="Booking Info" icon={MapPin}>
           <InfoRow label="Reading Room" value={cabinName} />
           <InfoRow label="Seat Number" value={`#${seatNumber}`} />
-          <InfoRow label="Booking ID" value={booking.serial_number || booking.id?.slice(0, 8)} />
+          <InfoRow label="Booking ID" value={booking.serial_number || `#${booking.id?.slice(0, 8)}`} />
           <InfoRow label="Check-in" value={safeFmt(booking.start_date, "dd MMM yyyy")} />
           <InfoRow label="Check-out" value={safeFmt(booking.end_date, "dd MMM yyyy")} />
           <InfoRow label="Duration" value={durationLabel} />
