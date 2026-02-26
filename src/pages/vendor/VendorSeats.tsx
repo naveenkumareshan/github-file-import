@@ -763,23 +763,27 @@ const VendorSeats: React.FC = () => {
         <SheetContent side="right" className="w-[400px] sm:w-[440px] p-4 overflow-y-auto">
           {selectedSeat && (
             <>
-              <SheetHeader className="pb-2">
-                <SheetTitle className="text-sm flex items-center gap-2">
-                  Seat #{selectedSeat.number}
-                  <Badge variant="outline" className="text-[10px]">{selectedSeat.category}</Badge>
-                  <span className="text-xs text-muted-foreground ml-auto">₹{selectedSeat.price}/mo</span>
-                </SheetTitle>
-              </SheetHeader>
-              <Separator className="my-2" />
+              {!(bookingSuccess && lastInvoiceData) && (
+                <>
+                  <SheetHeader className="pb-2">
+                    <SheetTitle className="text-sm flex items-center gap-2">
+                      Seat #{selectedSeat.number}
+                      <Badge variant="outline" className="text-[10px]">{selectedSeat.category}</Badge>
+                      <span className="text-xs text-muted-foreground ml-auto">₹{selectedSeat.price}/mo</span>
+                    </SheetTitle>
+                  </SheetHeader>
+                  <Separator className="my-2" />
 
-              {/* Status info */}
-              <div className={cn("rounded p-2 mb-3 border text-xs", statusColors(selectedSeat.dateStatus))}>
-                <div className="flex items-center gap-1.5">
-                  {statusIcon(selectedSeat.dateStatus)}
-                  <span className="font-medium">{statusLabel(selectedSeat.dateStatus)}</span>
-                  <span className="text-muted-foreground ml-auto">for {format(selectedDate, 'dd MMM yyyy')}</span>
-                </div>
-              </div>
+                  {/* Status info */}
+                  <div className={cn("rounded p-2 mb-3 border text-xs", statusColors(selectedSeat.dateStatus))}>
+                    <div className="flex items-center gap-1.5">
+                      {statusIcon(selectedSeat.dateStatus)}
+                      <span className="font-medium">{statusLabel(selectedSeat.dateStatus)}</span>
+                      <span className="text-muted-foreground ml-auto">for {format(selectedDate, 'dd MMM yyyy')}</span>
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* ── BOOKED / EXPIRING: Show student info ── */}
               {(selectedSeat.dateStatus === 'booked' || selectedSeat.dateStatus === 'expiring_soon') && selectedSeat.currentBooking && !showFutureBooking && (
