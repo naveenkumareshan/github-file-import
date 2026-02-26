@@ -1,79 +1,27 @@
 
 
-## 1. Pay Due Button - Student Side Razorpay Payment
+## Fix Booking ID Display in Student Booking Details
 
-### Current State
-The "Pay Due" button on `StudentBookingView` currently shows a toast saying "contact the reading room." It needs to trigger an actual Razorpay payment flow so students can self-serve due clearance.
+### Problem
+The Booking ID field in the "Booking Info" section shows a raw UUID (e.g., `#da925ed4-b490-...`) instead of the human-readable serial number (e.g., `IS-BOOK-2026-00002`). This happens because some bookings may not have a `serial_number` set, and the fallback displays the raw UUID.
 
 ### Changes
 
 **File: `src/pages/students/StudentBookingView.tsx`**
-- Add Razorpay script loader (reuse pattern from `BookingRenewal.tsx`)
-- Replace the toast-based "Pay Due" button with a real payment flow:
-  1. Click "Pay Due" -> call `razorpay-create-order` edge function with `amount = dueRemaining`, `bookingId = booking.id`
-  2. Open Razorpay checkout modal
-  3. On success -> call `razorpay-verify-payment` edge function
-  4. Create a receipt in the `receipts` table with `receipt_type: 'due_payment'`
-  5. Update the `dues` record: increment `paid_amount` by the paid amount, recalculate `due_amount`, update status to `paid` if fully cleared
-  6. Refresh booking data and receipts on screen
-- Add loading state for payment processing
-- Also fetch the `dues` record for this booking to know the due_id (needed for updating dues table)
 
-**File: `supabase/functions/razorpay-create-order/index.ts`**
-- No changes needed -- it already accepts any `bookingId` and `amount`
+1. **Booking ID row (line 357)**: Change the display logic so that:
+   - If `serial_number` exists, show it (e.g., `IS-BOOK-2026-00002`)
+   - If not, show a shortened version like `#BOOK-{first 8 chars}` instead of raw UUID slice
+   - The header already shows `serial_number` correctly -- make the Booking Info row consistent
 
----
+2. **Also check**: The `BookingTransactionView` component is still used on the separate `/student/bookings/:bookingId/transactions/:bookingType` route (`BookingTransactions.tsx`). Its line 116 shows `booking.bookingId || booking._id` which are MongoDB field names, not the Supabase `serial_number`. Update that component's Booking ID display to use `serial_number` as well for consistency.
 
-## 2. Add Existing Dues to Renewal Amount
+**File: `src/components/booking/BookingTransactionView.tsx`**
 
-### Current State
-`BookingRenewal.tsx` calculates the renewal amount purely from `seatPrice * months - coupon discount`. It does not consider any outstanding dues on the current booking.
+- Line 116: Change `#{booking.bookingId || booking._id}` to use `booking.serial_number` first, then fall back to a shortened ID.
 
-### Changes
-
-**File: `src/components/booking/BookingRenewal.tsx`**
-- On dialog open, fetch outstanding dues for the current booking:
-  ```typescript
-  const { data: dueData } = await supabase
-    .from('dues')
-    .select('id, due_amount, status')
-    .eq('booking_id', booking.id || booking._id)
-    .in('status', ['pending', 'partial'])
-    .maybeSingle();
-  ```
-- Store `outstandingDue` amount in state
-- In `calculateAdditionalAmount()`: add `outstandingDue` to the final amount
-- In the Extension Summary UI: show a "Previous Due Carried Forward" row with the outstanding amount (in red)
-- In `handlePaymentSuccess()`: after creating the renewal booking, if there was an outstanding due:
-  - Update the old dues record to `paid` status (since it's now included in the renewal payment)
-  - Create a receipt against the old booking for the due amount portion
-  - Create the renewal receipt for the renewal portion
-
-### Technical Details
-
-**Due payment flow (StudentBookingView):**
-```text
-Student clicks "Pay Due ₹X"
-  -> razorpay-create-order (amount=dueRemaining, bookingId=booking.id)
-  -> Razorpay modal opens
-  -> Student pays
-  -> razorpay-verify-payment
-  -> INSERT receipt (booking_id, amount, receipt_type='due_payment')
-  -> UPDATE dues SET paid_amount += X, due_amount -= X, status = 'paid' if due_amount = 0
-  -> Refresh UI
+### Summary of display logic
 ```
-
-**Renewal with dues carry-forward:**
-```text
-Renewal amount = (seatPrice * months) - couponDiscount + outstandingDue
-Extension Summary shows:
-  - Seat Price x N months: ₹X
-  - Discount: -₹Y (if coupon)
-  - Previous Due: +₹Z (if any, in red)
-  - Final Amount: ₹Total
+Booking ID = booking.serial_number || `#${booking.id?.slice(0, 8)}`
 ```
-
-### Files to Modify
-- `src/pages/students/StudentBookingView.tsx` -- wire up Razorpay payment for dues
-- `src/components/booking/BookingRenewal.tsx` -- fetch and add outstanding dues to renewal amount
-
+Both pages will consistently show the serial number when available.
