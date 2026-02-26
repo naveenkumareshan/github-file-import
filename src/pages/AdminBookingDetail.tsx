@@ -265,22 +265,6 @@ const AdminBookingDetail = () => {
                   </div>
                 </div>
 
-                <Separator />
-
-                <div className="grid grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">Payment Method</p>
-                    <p className="capitalize font-medium">{booking.paymentMethod || '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Transaction ID</p>
-                    <p className="font-medium">{booking.transactionId || '-'}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Collected By</p>
-                    <p className="font-medium">{booking.collectedByName || '-'}</p>
-                  </div>
-                </div>
               </CardContent>
             </Card>
           );
@@ -297,64 +281,91 @@ const AdminBookingDetail = () => {
             </Button>
           </CardHeader>
           <CardContent>
-            {receipts.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <CreditCard className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <h3 className="text-lg font-medium mb-2">No receipts found</h3>
-                <p>Payment receipts for this booking will appear here.</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Receipt ID</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Method</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Collected By</TableHead>
-                      <TableHead>Notes</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {receipts.map((r) => (
-                      <TableRow key={r.id}>
-                        <TableCell className="font-medium text-xs">{r.serial_number || '-'}</TableCell>
+            {(() => {
+              const advanceAmount = dueData?.advance_paid || 0;
+              const hasAdvance = advanceAmount > 0;
+              const allRows = [
+                ...(hasAdvance ? [{
+                  id: 'advance-row',
+                  serial_number: booking.serialNumber || booking.bookingId || '-',
+                  amount: advanceAmount,
+                  payment_method: booking.paymentMethod || 'cash',
+                  receipt_type: 'booking_payment',
+                  transaction_id: booking.transactionId || '',
+                  collected_by_name: booking.collectedByName || '-',
+                  notes: '',
+                  created_at: booking.createdAt,
+                  due_id: null,
+                  isSynthetic: true,
+                }] : []),
+                ...receipts.filter(r => r.receipt_type !== 'booking_payment'),
+              ];
+              const grandTotal = allRows.reduce((s, r) => s + Number(r.amount), 0);
+
+              if (allRows.length === 0) {
+                return (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <CreditCard className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <h3 className="text-lg font-medium mb-2">No receipts found</h3>
+                    <p>Payment receipts for this booking will appear here.</p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Receipt ID</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Method</TableHead>
+                        <TableHead>Txn ID</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Collected By</TableHead>
+                        <TableHead>Notes</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {allRows.map((r: any) => (
+                        <TableRow key={r.id}>
+                          <TableCell className="font-medium text-xs">{r.serial_number || '-'}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="text-[10px]">
+                              {r.receipt_type === 'booking_payment' ? 'Advance'
+                                : r.receipt_type === 'due_collection' ? 'Due Collection'
+                                : 'Payment'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center">
+                              <IndianRupee className="h-3.5 w-3.5 mr-0.5" />
+                              <span className="font-medium">{Number(r.amount).toLocaleString()}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-xs capitalize">{r.payment_method}</TableCell>
+                          <TableCell className="text-xs">{r.transaction_id || '-'}</TableCell>
+                          <TableCell className="text-xs">{r.created_at ? format(new Date(r.created_at), 'dd MMM yyyy, HH:mm') : '-'}</TableCell>
+                          <TableCell className="text-xs">{r.collected_by_name || '-'}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{r.notes || '-'}</TableCell>
+                        </TableRow>
+                      ))}
+                      <TableRow className="bg-muted/30 font-semibold">
+                        <TableCell colSpan={2} className="text-right text-sm">Total Collected</TableCell>
                         <TableCell>
-                          <Badge variant="outline" className="text-[10px]">
-                            {r.receipt_type === 'booking_payment' ? 'Advance'
-                              : r.receipt_type === 'due_collection' ? 'Due Collection'
-                              : 'Payment'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center">
+                          <div className="flex items-center text-green-600">
                             <IndianRupee className="h-3.5 w-3.5 mr-0.5" />
-                            <span className="font-medium">{Number(r.amount).toLocaleString()}</span>
+                            <span>{grandTotal.toLocaleString()}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-xs capitalize">{r.payment_method}</TableCell>
-                        <TableCell className="text-xs">{format(new Date(r.created_at), 'dd MMM yyyy, HH:mm')}</TableCell>
-                        <TableCell className="text-xs">{r.collected_by_name || '-'}</TableCell>
-                        <TableCell className="text-xs text-muted-foreground">{r.notes || '-'}</TableCell>
+                        <TableCell colSpan={5}></TableCell>
                       </TableRow>
-                    ))}
-                    {/* Total Collected summary row */}
-                    <TableRow className="bg-muted/30 font-semibold">
-                      <TableCell colSpan={2} className="text-right text-sm">Total Collected</TableCell>
-                      <TableCell>
-                        <div className="flex items-center text-green-600">
-                          <IndianRupee className="h-3.5 w-3.5 mr-0.5" />
-                          <span>{totalPaid.toLocaleString()}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell colSpan={4}></TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+                    </TableBody>
+                  </Table>
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
       </div>
