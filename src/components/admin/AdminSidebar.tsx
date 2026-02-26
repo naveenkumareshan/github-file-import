@@ -110,17 +110,17 @@ export function AdminSidebar() {
   }
 
   if (user?.role === 'admin' || hasPermission('view_bookings')) {
-    const bookingSubItems = [];
+    const readingRoomSubItems = [];
     
     if (user?.role === 'admin' || hasPermission('view_bookings')) {
-      bookingSubItems.push({
+      readingRoomSubItems.push({
         title: 'All Transactions',
         url: '/admin/bookings',
         icon: Calendar,
         roles: ['admin', 'vendor', 'vendor_employee'],
         permissions: ['view_bookings']
       });
-      bookingSubItems.push({
+      readingRoomSubItems.push({
         title: 'Receipts',
         url: '/admin/receipts',
         icon: CreditCard,
@@ -130,23 +130,39 @@ export function AdminSidebar() {
     }
     
     if (user?.role === 'admin' || user?.role=='vendor') {
-      bookingSubItems.push(
-        {
-          title: 'Key Deposits',
-          url: '/admin/deposits-restrictions',
-          icon: Wallet,
-          roles: ['admin','vendor']
-        }
-      );
+      readingRoomSubItems.push({
+        title: 'Key Deposits',
+        url: '/admin/deposits-restrictions',
+        icon: Wallet,
+        roles: ['admin','vendor']
+      });
     }
 
-    if (bookingSubItems.length > 0) {
+    // Add Manage Rooms and Reviews (moved from old "Reading Rooms" section)
+    if (user?.role === 'admin' || hasPermission('view_reading_rooms')) {
+      readingRoomSubItems.push({
+        title: 'Manage Rooms',
+        url: '/admin/rooms',
+        icon: Building,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+        permissions: ['view_reading_rooms']
+      });
+      readingRoomSubItems.push({
+        title: 'Reviews',
+        url: '/admin/reviews?module=Reading Room',
+        icon: Star,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+        permissions: ['manage_reviews']
+      });
+    }
+
+    if (readingRoomSubItems.length > 0) {
       menuItems.push({
-        title: 'Bookings',
-        icon: Calendar,
+        title: 'Reading Rooms',
+        icon: Building,
         roles: ['admin', 'vendor', 'vendor_employee'],
         permissions: ['view_bookings'],
-        subItems: bookingSubItems,
+        subItems: readingRoomSubItems,
       });
     }
   }
@@ -185,33 +201,29 @@ export function AdminSidebar() {
           permissions: ['view_reading_rooms']
         },
         {
-          title: 'Reviews',
-          url: '/admin/reviews?module=Hostel',
-          icon: Star,
+          title: 'Hostel Bookings',
+          url: '/admin/hostel-bookings',
+          icon: Calendar,
           roles: ['admin', 'vendor', 'vendor_employee'],
-          permissions: ['manage_reviews']
-        }
-      ],
-    });
-  }
-
-  if (user?.role === 'admin' || hasPermission('view_reading_rooms')) {
-    menuItems.push({
-      title: 'Reading Rooms',
-      icon: Building,
-      roles: ['admin', 'vendor', 'vendor_employee'],
-      permissions: ['view_reading_rooms'],
-      subItems: [
+          permissions: ['view_reading_rooms']
+        },
         {
-          title: 'Manage Rooms',
-          url: '/admin/rooms',
-          icon: Building,
+          title: 'Hostel Receipts',
+          url: '/admin/hostel-receipts',
+          icon: CreditCard,
+          roles: ['admin', 'vendor', 'vendor_employee'],
+          permissions: ['view_reading_rooms']
+        },
+        {
+          title: 'Hostel Deposits',
+          url: '/admin/hostel-deposits',
+          icon: Wallet,
           roles: ['admin', 'vendor', 'vendor_employee'],
           permissions: ['view_reading_rooms']
         },
         {
           title: 'Reviews',
-          url: '/admin/reviews?module=Reading Room',
+          url: '/admin/reviews?module=Hostel',
           icon: Star,
           roles: ['admin', 'vendor', 'vendor_employee'],
           permissions: ['manage_reviews']
