@@ -382,7 +382,7 @@ export const vendorSeatsService = {
         .from('bookings')
         .select('id')
         .eq('seat_id', data.seatId)
-        .eq('payment_status', 'completed')
+        .in('payment_status', ['completed', 'advance_paid'])
         .lte('start_date', data.endDate)
         .gte('end_date', data.startDate)
         .limit(1);
@@ -468,6 +468,25 @@ export const vendorSeatsService = {
           status: 'pending',
           proportional_end_date: proportionalEndDateStr,
         } as any);
+      }
+
+      // Create receipt for this booking payment
+      try {
+        await supabase.from('receipts').insert({
+          booking_id: insertedData?.id,
+          user_id: data.userId,
+          cabin_id: data.cabinId,
+          seat_id: data.seatId,
+          amount: data.isAdvanceBooking && data.advancePaid ? data.advancePaid : data.totalPrice,
+          payment_method: data.paymentMethod || 'cash',
+          transaction_id: data.transactionId || '',
+          collected_by: data.collectedBy || null,
+          collected_by_name: data.collectedByName || '',
+          receipt_type: 'booking_payment',
+          notes: data.isAdvanceBooking ? 'Advance payment' : '',
+        } as any);
+      } catch (e) {
+        console.error('Receipt creation failed:', e);
       }
 
       return { success: true, serialNumber: insertedData?.serial_number || serialData || '' };
@@ -758,6 +777,26 @@ export const vendorSeatsService = {
         await supabase.from('bookings').update({ payment_status: 'completed' }).eq('id', due.booking_id);
       }
 
+      // Create receipt for due collection
+      try {
+        await supabase.from('receipts').insert({
+          booking_id: due.booking_id || null,
+          due_id: dueId,
+          user_id: due.user_id,
+          cabin_id: due.cabin_id,
+          seat_id: due.seat_id,
+          amount,
+          payment_method: paymentMethod,
+          transaction_id: txnId || '',
+          collected_by: user?.id || null,
+          collected_by_name: profile?.name || '',
+          receipt_type: 'due_collection',
+          notes: notes || '',
+        } as any);
+      } catch (e) {
+        console.error('Receipt creation failed:', e);
+      }
+
       return { success: true };
     } catch (error) {
       console.error('Error collecting payment:', error);
@@ -812,6 +851,28 @@ export const vendorSeatsService = {
 
   transferBooking: async (bookingId: string, newSeatId: string, newCabinId: string, newSeatNumber: number) => {
     try {
+      // Fetch booking dates first
+      const { data: booking, error: bkErr } = await supabase
+        .from('bookings')
+        .select('start_date, end_date')
+        .eq('id', bookingId)
+        .single();
+      if (bkErr) throw bkErr;
+
+      // Check target seat for overlapping bookings
+      const { data: overlap } = await supabase
+        .from('bookings')
+        .select('id')
+        .eq('seat_id', newSeatId)
+        .in('payment_status', ['completed', 'advance_paid'])
+        .lte('start_date', booking.end_date)
+        .gte('end_date', booking.start_date)
+        .limit(1);
+
+      if (overlap && overlap.length > 0) {
+        return { success: false, error: 'Target seat has an existing booking for those dates' };
+      }
+
       const { error: bookingError } = await supabase
         .from('bookings')
         .update({ seat_id: newSeatId, cabin_id: newCabinId, seat_number: newSeatNumber })

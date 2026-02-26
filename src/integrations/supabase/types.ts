@@ -541,6 +541,75 @@ export type Database = {
         }
         Relationships: []
       }
+      receipts: {
+        Row: {
+          amount: number
+          booking_id: string | null
+          cabin_id: string | null
+          collected_by: string | null
+          collected_by_name: string
+          created_at: string
+          due_id: string | null
+          id: string
+          notes: string
+          payment_method: string
+          receipt_type: string
+          seat_id: string | null
+          serial_number: string | null
+          transaction_id: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          booking_id?: string | null
+          cabin_id?: string | null
+          collected_by?: string | null
+          collected_by_name?: string
+          created_at?: string
+          due_id?: string | null
+          id?: string
+          notes?: string
+          payment_method?: string
+          receipt_type?: string
+          seat_id?: string | null
+          serial_number?: string | null
+          transaction_id?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          booking_id?: string | null
+          cabin_id?: string | null
+          collected_by?: string | null
+          collected_by_name?: string
+          created_at?: string
+          due_id?: string | null
+          id?: string
+          notes?: string
+          payment_method?: string
+          receipt_type?: string
+          seat_id?: string | null
+          serial_number?: string | null
+          transaction_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipts_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipts_due_id_fkey"
+            columns: ["due_id"]
+            isOneToOne: false
+            referencedRelation: "dues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       seat_block_history: {
         Row: {
           action: string

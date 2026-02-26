@@ -120,6 +120,13 @@ export function AdminSidebar() {
         roles: ['admin', 'vendor', 'vendor_employee'],
         permissions: ['view_bookings']
       });
+      bookingSubItems.push({
+        title: 'Receipts',
+        url: '/admin/receipts',
+        icon: CreditCard,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+        permissions: ['view_bookings']
+      });
     }
     
     if (user?.role === 'admin' || user?.role=='vendor') {
