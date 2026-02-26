@@ -33,6 +33,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useVendorEmployeePermissions } from '@/hooks/useVendorEmployeePermissions';
 import { DuePaymentHistory } from '@/components/booking/DuePaymentHistory';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 type ViewMode = 'grid' | 'table';
 type StatusFilter = 'all' | 'available' | 'booked' | 'expiring_soon' | 'blocked';
@@ -67,6 +68,13 @@ const VendorSeats: React.FC = () => {
 
   // Future booking mode
   const [showFutureBooking, setShowFutureBooking] = useState(false);
+  const [isRenewMode, setIsRenewMode] = useState(false);
+
+  // Receipts dialog state
+  const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
+  const [receiptDialogBookingId, setReceiptDialogBookingId] = useState('');
+  const [receiptDialogData, setReceiptDialogData] = useState<any[]>([]);
+  const [receiptDialogLoading, setReceiptDialogLoading] = useState(false);
 
   // Advance booking mode
   const [isAdvanceBooking, setIsAdvanceBooking] = useState(false);
@@ -210,10 +218,13 @@ const VendorSeats: React.FC = () => {
     setBookingSuccess(false);
     setLastInvoiceData(null);
     setShowFutureBooking(false);
+    setIsRenewMode(false);
     setIsAdvanceBooking(false);
     setManualAdvanceAmount('');
     setManualDueDate(undefined);
     setBookingStep('details');
+    setReceiptDialogOpen(false);
+    setReceiptDialogData([]);
 
     // Set locker default based on cabin
     const cabin = cabins.find(c => c._id === seat.cabinId);
@@ -225,11 +236,11 @@ const VendorSeats: React.FC = () => {
       if (res.success && res.data) setBlockHistory(res.data);
     }
 
-    // Fetch dues for advance_paid bookings
-    const advanceBookings = seat.allBookings.filter(b => b.paymentStatus === 'advance_paid');
-    if (advanceBookings.length > 0) {
+    // Fetch dues for all bookings (to show paid/due info on both current and future cards)
+    const allBookingsWithDues = seat.allBookings;
+    if (allBookingsWithDues.length > 0) {
       const duesResults: Record<string, any> = {};
-      await Promise.all(advanceBookings.map(async (b) => {
+      await Promise.all(allBookingsWithDues.map(async (b) => {
         const res = await vendorSeatsService.getDueForBooking(b.bookingId);
         if (res.success && res.data) {
           duesResults[b.bookingId] = res.data;
@@ -925,6 +936,7 @@ const VendorSeats: React.FC = () => {
                             });
                             setStudentQuery(selectedSeat.currentBooking.studentName);
                           }
+                          setIsRenewMode(true);
                           setShowFutureBooking(true);
                         }}
                       >
@@ -944,6 +956,7 @@ const VendorSeats: React.FC = () => {
                           const nextDay = addDays(latestEnd, 1);
                           setBookingStartDate(nextDay);
                           setBookingPrice(String(selectedSeat.price));
+                          setIsRenewMode(false);
                           setShowFutureBooking(true);
                         }}
                       >
@@ -1047,71 +1060,92 @@ const VendorSeats: React.FC = () => {
               {(selectedSeat.dateStatus === 'available' || showFutureBooking) && canEdit && !bookingSuccess && (
                 <div className="space-y-3">
                   {showFutureBooking && (
-                    <Button variant="ghost" size="sm" className="h-6 text-xs gap-1 px-1" onClick={() => setShowFutureBooking(false)}>
+                    <Button variant="ghost" size="sm" className="h-6 text-xs gap-1 px-1" onClick={() => { setShowFutureBooking(false); setIsRenewMode(false); }}>
                       <ArrowLeft className="h-3 w-3" /> Back to seat info
                     </Button>
                   )}
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                    <UserPlus className="h-3 w-3" /> {showFutureBooking ? 'Book Future Dates' : 'Book This Seat'}
-                  </h4>
 
-                  {/* Student search */}
-                  <div>
-                    <Label className="text-[10px] uppercase text-muted-foreground">Search Student</Label>
-                    <Input
-                      className="h-8 text-xs"
-                      placeholder="Name, phone, or email..."
-                      value={studentQuery}
-                      onChange={e => { setStudentQuery(e.target.value); setSelectedStudent(null); }}
-                    />
-                    {studentResults.length > 0 && !selectedStudent && (
-                      <div className="border rounded mt-1 max-h-[150px] overflow-y-auto">
-                        {studentResults.map(s => (
-                          <div
-                            key={s.id}
-                            className="px-2 py-1.5 text-[11px] hover:bg-muted cursor-pointer border-b last:border-0"
-                            onClick={() => { setSelectedStudent(s); setStudentQuery(s.name); setStudentResults([]); }}
-                          >
-                            <div className="font-medium">{s.name}</div>
-                            <div className="text-muted-foreground">{s.phone} · {s.email}</div>
-                          </div>
-                        ))}
+                  {/* Renew mode header: show "Booked till X" */}
+                  {isRenewMode && showFutureBooking && selectedSeat.currentBooking && (
+                    <div className="border rounded p-2 bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800 text-[11px] space-y-0.5">
+                      <div className="font-medium text-amber-700 dark:text-amber-400">
+                        Booked till {new Date(selectedSeat.currentBooking.endDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                       </div>
-                    )}
-                    {selectedStudent && (
-                      <div className="mt-1 border rounded p-2 bg-muted/50 text-[11px] flex justify-between items-center">
-                        <div>
-                          <span className="font-medium">{selectedStudent.name}</span>
-                          <span className="text-muted-foreground ml-2">{selectedStudent.phone}</span>
-                        </div>
-                        <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => { setSelectedStudent(null); setStudentQuery(''); }}>
-                          <X className="h-3 w-3" />
-                        </Button>
+                      <div className="text-muted-foreground">
+                        Renewal starts from {format(bookingStartDate, 'dd MMM yyyy')}
                       </div>
-                    )}
-                  </div>
-
-                  {/* Create New Student */}
-                  {!selectedStudent && (
-                    <Collapsible open={showNewStudent} onOpenChange={setShowNewStudent}>
-                      <CollapsibleTrigger asChild>
-                        <Button variant="outline" size="sm" className="w-full h-7 text-[11px] gap-1">
-                          <UserPlus className="h-3 w-3" /> Create New Student
-                          <ChevronDown className={cn("h-3 w-3 ml-auto transition-transform", showNewStudent && "rotate-180")} />
-                        </Button>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="space-y-2 mt-2">
-                        <Input className="h-7 text-xs" placeholder="Name *" value={newStudentName} onChange={e => setNewStudentName(e.target.value)} />
-                        <Input className="h-7 text-xs" placeholder="Email *" type="email" value={newStudentEmail} onChange={e => setNewStudentEmail(e.target.value)} />
-                        <Input className="h-7 text-xs" placeholder="Phone" value={newStudentPhone} onChange={e => setNewStudentPhone(e.target.value)} />
-                        <Button size="sm" className="w-full h-7 text-[11px]" onClick={handleCreateStudent} disabled={creatingStudent || !newStudentName || !newStudentEmail}>
-                          {creatingStudent ? 'Creating...' : 'Create & Select'}
-                        </Button>
-                      </CollapsibleContent>
-                    </Collapsible>
+                    </div>
                   )}
 
-                  {/* Plan */}
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                    <UserPlus className="h-3 w-3" /> {isRenewMode ? 'Renew Booking' : showFutureBooking ? 'Book Future Dates' : 'Book This Seat'}
+                  </h4>
+
+                  {/* Student selection: locked in renew mode */}
+                  {isRenewMode && selectedStudent ? (
+                    <div className="border rounded p-2 bg-muted/50 text-[11px]">
+                      <div className="font-medium">{selectedStudent.name}</div>
+                      <div className="text-muted-foreground">{selectedStudent.phone} · {selectedStudent.email}</div>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Student search */}
+                      <div>
+                        <Label className="text-[10px] uppercase text-muted-foreground">Search Student</Label>
+                        <Input
+                          className="h-8 text-xs"
+                          placeholder="Name, phone, or email..."
+                          value={studentQuery}
+                          onChange={e => { setStudentQuery(e.target.value); setSelectedStudent(null); }}
+                        />
+                        {studentResults.length > 0 && !selectedStudent && (
+                          <div className="border rounded mt-1 max-h-[150px] overflow-y-auto">
+                            {studentResults.map(s => (
+                              <div
+                                key={s.id}
+                                className="px-2 py-1.5 text-[11px] hover:bg-muted cursor-pointer border-b last:border-0"
+                                onClick={() => { setSelectedStudent(s); setStudentQuery(s.name); setStudentResults([]); }}
+                              >
+                                <div className="font-medium">{s.name}</div>
+                                <div className="text-muted-foreground">{s.phone} · {s.email}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {selectedStudent && (
+                          <div className="mt-1 border rounded p-2 bg-muted/50 text-[11px] flex justify-between items-center">
+                            <div>
+                              <span className="font-medium">{selectedStudent.name}</span>
+                              <span className="text-muted-foreground ml-2">{selectedStudent.phone}</span>
+                            </div>
+                            <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => { setSelectedStudent(null); setStudentQuery(''); }}>
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Create New Student */}
+                      {!selectedStudent && (
+                        <Collapsible open={showNewStudent} onOpenChange={setShowNewStudent}>
+                          <CollapsibleTrigger asChild>
+                            <Button variant="outline" size="sm" className="w-full h-7 text-[11px] gap-1">
+                              <UserPlus className="h-3 w-3" /> Create New Student
+                              <ChevronDown className={cn("h-3 w-3 ml-auto transition-transform", showNewStudent && "rotate-180")} />
+                            </Button>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="space-y-2 mt-2">
+                            <Input className="h-7 text-xs" placeholder="Name *" value={newStudentName} onChange={e => setNewStudentName(e.target.value)} />
+                            <Input className="h-7 text-xs" placeholder="Email *" type="email" value={newStudentEmail} onChange={e => setNewStudentEmail(e.target.value)} />
+                            <Input className="h-7 text-xs" placeholder="Phone" value={newStudentPhone} onChange={e => setNewStudentPhone(e.target.value)} />
+                            <Button size="sm" className="w-full h-7 text-[11px]" onClick={handleCreateStudent} disabled={creatingStudent || !newStudentName || !newStudentEmail}>
+                              {creatingStudent ? 'Creating...' : 'Create & Select'}
+                            </Button>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      )}
+                    </>
+                  )}
                   <div>
                     <Label className="text-[10px] uppercase text-muted-foreground">Plan</Label>
                     <Select value={bookingPlan} onValueChange={setBookingPlan}>
@@ -1430,9 +1464,15 @@ const VendorSeats: React.FC = () => {
                       const dueRemaining = due ? Math.max(0, Number(due.due_amount) - Number(due.paid_amount)) : 0;
                       return (
                         <div key={i} className="border rounded p-2 text-[11px] space-y-1">
-                          <div className="flex justify-between">
+                          <div className="flex justify-between items-center">
                             <span className="font-medium">{b.studentName}</span>
-                            <Badge variant="outline" className="text-[9px] px-1">{b.paymentStatus}</Badge>
+                            {b.paymentStatus === 'completed' ? (
+                              <Badge className="text-[9px] px-1.5 py-0 bg-emerald-500 text-white border-emerald-500">Fully Paid</Badge>
+                            ) : b.paymentStatus === 'advance_paid' ? (
+                              <Badge className="text-[9px] px-1.5 py-0 bg-amber-500 text-white border-amber-500">Partial Paid</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[9px] px-1">{b.paymentStatus}</Badge>
+                            )}
                           </div>
                           <div className="text-muted-foreground">
                             {new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()}
@@ -1442,6 +1482,11 @@ const VendorSeats: React.FC = () => {
                             <span>₹{b.totalPrice}{b.lockerIncluded ? ` (incl. locker ₹${b.lockerPrice})` : ''}</span>
                             <span className="text-muted-foreground">{b.studentPhone}</span>
                           </div>
+                          {/* Paid & Due amounts */}
+                          <div className="flex justify-between text-[10px]">
+                            <span className="text-emerald-600">Paid: ₹{b.paymentStatus === 'completed' ? b.totalPrice : (due ? Number(due.advance_paid) + Number(due.paid_amount) : 0)}</span>
+                            <span className="text-red-500">Due: ₹{b.paymentStatus === 'completed' ? 0 : dueRemaining}</span>
+                          </div>
                           {(b.discountAmount ?? 0) > 0 && (
                             <div className="text-emerald-600">Discount: ₹{b.discountAmount}{b.discountReason ? ` (${b.discountReason})` : ''}</div>
                           )}
@@ -1450,7 +1495,7 @@ const VendorSeats: React.FC = () => {
                           )}
                           {b.collectedByName && <div className="text-muted-foreground">Collected by: {b.collectedByName}</div>}
                           {b.transactionId && <div className="text-muted-foreground">Txn ID: {b.transactionId}</div>}
-                          {b.serialNumber && <div className="text-muted-foreground">#{b.serialNumber}</div>}
+                          {b.serialNumber && <div className="font-medium text-primary">#{b.serialNumber}</div>}
 
                           {/* Due Balance Button - only show collect form when remaining > 0 */}
                           {b.paymentStatus === 'advance_paid' && due && dueRemaining > 0 && (
@@ -1521,10 +1566,29 @@ const VendorSeats: React.FC = () => {
                             </>
                           )}
 
-                          {/* Payment History - always show when due exists */}
-                          {due && (
-                            <DuePaymentHistory dueId={due.id} compact />
-                          )}
+                          {/* Action buttons row */}
+                          <div className="flex gap-1.5 mt-1">
+                            {due && <DuePaymentHistory dueId={due.id} compact />}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-6 text-[9px] px-2 gap-1"
+                              onClick={async () => {
+                                setReceiptDialogBookingId(b.bookingId);
+                                setReceiptDialogLoading(true);
+                                setReceiptDialogOpen(true);
+                                const { data } = await supabase
+                                  .from('receipts')
+                                  .select('*')
+                                  .eq('booking_id', b.bookingId)
+                                  .order('created_at', { ascending: true });
+                                setReceiptDialogData(data || []);
+                                setReceiptDialogLoading(false);
+                              }}
+                            >
+                              <IndianRupee className="h-2.5 w-2.5" /> Receipts
+                            </Button>
+                          </div>
                         </div>
                       );
                     })}
@@ -1540,11 +1604,21 @@ const VendorSeats: React.FC = () => {
                     Future Bookings ({futureBookings.length})
                   </h4>
                   <div className="space-y-2">
-                    {futureBookings.map((b, i) => (
+                    {futureBookings.map((b, i) => {
+                      const futureDue = bookingDues[b.bookingId];
+                      const futureDueRemaining = futureDue ? Math.max(0, Number(futureDue.due_amount) - Number(futureDue.paid_amount)) : 0;
+                      const futurePaid = futureDue ? Number(futureDue.advance_paid) + Number(futureDue.paid_amount) : (b.paymentStatus === 'completed' ? b.totalPrice : 0);
+                      return (
                       <div key={i} className="border rounded p-2 text-[11px] space-y-1">
-                        <div className="flex justify-between">
+                        <div className="flex justify-between items-center">
                           <span className="font-medium">{b.studentName}</span>
-                          <Badge variant="outline" className="text-[9px] px-1">{b.paymentStatus}</Badge>
+                          {b.paymentStatus === 'completed' ? (
+                            <Badge className="text-[9px] px-1.5 py-0 bg-emerald-500 text-white border-emerald-500">Fully Paid</Badge>
+                          ) : b.paymentStatus === 'advance_paid' ? (
+                            <Badge className="text-[9px] px-1.5 py-0 bg-amber-500 text-white border-amber-500">Partial Paid</Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[9px] px-1">{b.paymentStatus}</Badge>
+                          )}
                         </div>
                         <div className="text-muted-foreground">
                           {new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()}
@@ -1553,13 +1627,39 @@ const VendorSeats: React.FC = () => {
                           <span>₹{b.totalPrice}{b.lockerIncluded ? ` (incl. locker ₹${b.lockerPrice})` : ''}</span>
                           <span className="text-muted-foreground">{b.studentPhone}</span>
                         </div>
+                        {/* Paid & Due amounts */}
+                        <div className="flex justify-between text-[10px]">
+                          <span className="text-emerald-600">Paid: ₹{futurePaid}</span>
+                          <span className="text-red-500">Due: ₹{b.paymentStatus === 'completed' ? 0 : futureDueRemaining}</span>
+                        </div>
                         {(b.discountAmount ?? 0) > 0 && (
                           <div className="text-emerald-600">Discount: ₹{b.discountAmount}{b.discountReason ? ` (${b.discountReason})` : ''}</div>
                         )}
                         {b.collectedByName && <div className="text-muted-foreground">Collected by: {b.collectedByName}</div>}
-                        {b.transactionId && <div className="text-muted-foreground">Txn ID: {b.transactionId}</div>}
+                        {b.serialNumber && <div className="font-medium text-primary">#{b.serialNumber}</div>}
+                        {/* Receipts button */}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 text-[9px] px-2 gap-1"
+                          onClick={async () => {
+                            setReceiptDialogBookingId(b.bookingId);
+                            setReceiptDialogLoading(true);
+                            setReceiptDialogOpen(true);
+                            const { data } = await supabase
+                              .from('receipts')
+                              .select('*')
+                              .eq('booking_id', b.bookingId)
+                              .order('created_at', { ascending: true });
+                            setReceiptDialogData(data || []);
+                            setReceiptDialogLoading(false);
+                          }}
+                        >
+                          <IndianRupee className="h-2.5 w-2.5" /> Receipts
+                        </Button>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </>
               )}
@@ -1635,6 +1735,38 @@ const VendorSeats: React.FC = () => {
               <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setTransferDialogOpen(false)}>Cancel</Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ──── Receipts Dialog ──── */}
+      <Dialog open={receiptDialogOpen} onOpenChange={setReceiptDialogOpen}>
+        <DialogContent className="max-w-sm max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-sm">Booking Receipts</DialogTitle>
+          </DialogHeader>
+          {receiptDialogLoading ? (
+            <div className="flex justify-center py-8"><div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full" /></div>
+          ) : receiptDialogData.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-4">No receipts found for this booking.</p>
+          ) : (
+            <div className="space-y-2">
+              {receiptDialogData.map((r: any) => (
+                <div key={r.id} className="border rounded p-2 text-[11px] space-y-0.5">
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium">₹{Number(r.amount).toLocaleString()}</span>
+                    <Badge variant="outline" className="text-[9px] px-1">{r.receipt_type === 'due_collection' ? 'Due Collection' : 'Booking Payment'}</Badge>
+                  </div>
+                  {r.serial_number && <div className="text-[10px] font-medium text-primary">{r.serial_number}</div>}
+                  <div className="flex justify-between text-[10px] text-muted-foreground">
+                    <span>{r.payment_method === 'cash' ? 'Cash' : r.payment_method === 'upi' ? 'UPI' : r.payment_method === 'bank_transfer' ? 'Bank Transfer' : r.payment_method}</span>
+                    <span>{new Date(r.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                  </div>
+                  {r.transaction_id && <div className="text-[10px] text-muted-foreground">Txn: {r.transaction_id}</div>}
+                  {r.collected_by_name && <div className="text-[10px] text-muted-foreground">By: {r.collected_by_name}</div>}
+                </div>
+              ))}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
