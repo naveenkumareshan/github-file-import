@@ -27,6 +27,7 @@ interface CabinResult {
     area?: { _id: string; name: string };
   };
   averageRating?: number;
+  reviewCount?: number;
   distance?: number;
 }
 
@@ -109,6 +110,18 @@ export const CabinSearchResults = ({
                 <span className={`absolute top-1 left-1 text-[9px] font-bold text-white px-1.5 py-0.5 rounded-md ${getCategoryColor(cabin.category)}`}>
                   {cabin.category.charAt(0).toUpperCase() + cabin.category.slice(1)}
                 </span>
+                {/* Rating / New badge */}
+                {(cabin.reviewCount && cabin.reviewCount > 0) ? (
+                  <span className="absolute top-1 right-1 flex items-center gap-0.5 text-[9px] font-bold bg-white/90 text-foreground px-1.5 py-0.5 rounded-md shadow-sm">
+                    <Star className="h-2.5 w-2.5 text-yellow-500 fill-yellow-500" />
+                    {(cabin.averageRating || 0).toFixed(1)}
+                    <span className="text-muted-foreground font-normal">({cabin.reviewCount})</span>
+                  </span>
+                ) : (
+                  <span className="absolute top-1 right-1 text-[9px] font-bold bg-green-500 text-white px-1.5 py-0.5 rounded-md">
+                    New
+                  </span>
+                )}
                 {/* Distance badge */}
                 {cabin.distance && (
                   <span className="absolute bottom-1 right-1 text-[9px] bg-black/60 text-white px-1.5 py-0.5 rounded-md">
@@ -149,12 +162,6 @@ export const CabinSearchResults = ({
                 <div className="flex items-center justify-between mt-2">
                   <div className="flex items-center gap-2">
                     <span className="text-[13px] font-bold text-primary">₹{cabin.price}<span className="text-[10px] font-normal text-muted-foreground">/mo</span></span>
-                    {cabin.averageRating > 0 && (
-                      <div className="flex items-center gap-0.5">
-                        <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
-                        <span className="text-[11px] text-muted-foreground">{cabin.averageRating.toFixed(1)}</span>
-                      </div>
-                    )}
                   </div>
                   <span className="text-[11px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-lg">Book</span>
                 </div>
