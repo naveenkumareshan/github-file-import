@@ -650,7 +650,7 @@ export const vendorSeatsService = {
     try {
       let query = supabase
         .from('dues')
-        .select('*, profiles:user_id(name, email, phone), cabins:cabin_id(name), seats:seat_id(number)')
+        .select('*, profiles:user_id(name, email, phone), cabins:cabin_id(name), seats:seat_id(number), bookings:booking_id(serial_number)')
         .order('created_at', { ascending: false });
 
       if (filters?.cabinId && filters.cabinId !== 'all') {
@@ -793,6 +793,41 @@ export const vendorSeatsService = {
       return { success: true, data: data || [] };
     } catch (error) {
       return { success: false, data: [] };
+    }
+  },
+
+  getDueForBooking: async (bookingId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('dues')
+        .select('*')
+        .eq('booking_id', bookingId)
+        .maybeSingle();
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      return { success: false, data: null };
+    }
+  },
+
+  transferBooking: async (bookingId: string, newSeatId: string, newCabinId: string, newSeatNumber: number) => {
+    try {
+      const { error: bookingError } = await supabase
+        .from('bookings')
+        .update({ seat_id: newSeatId, cabin_id: newCabinId, seat_number: newSeatNumber })
+        .eq('id', bookingId);
+      if (bookingError) throw bookingError;
+
+      // Update dues record if exists
+      await supabase
+        .from('dues')
+        .update({ seat_id: newSeatId, cabin_id: newCabinId } as any)
+        .eq('booking_id', bookingId);
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error transferring booking:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Failed' };
     }
   },
 };

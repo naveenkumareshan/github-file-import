@@ -166,6 +166,7 @@ const DueManagement: React.FC = () => {
                   <TableRow className="text-[10px]">
                     <TableHead className="text-[10px]">Student</TableHead>
                     <TableHead className="text-[10px]">Room / Seat</TableHead>
+                    <TableHead className="text-[10px]">Booking</TableHead>
                     <TableHead className="text-[10px] text-right">Total</TableHead>
                     <TableHead className="text-[10px] text-right">Paid</TableHead>
                     <TableHead className="text-[10px] text-right">Due</TableHead>
@@ -187,6 +188,9 @@ const DueManagement: React.FC = () => {
                         <TableCell className="py-2">
                           <div className="text-[11px]">{(due.cabins as any)?.name || ''}</div>
                           <div className="text-[10px] text-muted-foreground">Seat #{(due.seats as any)?.number || ''}</div>
+                        </TableCell>
+                        <TableCell className="py-2">
+                          <div className="text-[10px] text-muted-foreground">{(due.bookings as any)?.serial_number || '-'}</div>
                         </TableCell>
                         <TableCell className="py-2 text-right font-medium">₹{Number(due.total_fee).toLocaleString()}</TableCell>
                         <TableCell className="py-2 text-right text-emerald-600">₹{(Number(due.advance_paid) + Number(due.paid_amount)).toLocaleString()}</TableCell>
