@@ -416,6 +416,7 @@ export default function SeatTransferManagement() {
                       </span>
                     </div>
                     <p className="text-sm font-medium text-foreground">{booking.userId.name}</p>
+                    {(booking.userId as any).phone && <p className="text-xs text-muted-foreground">{(booking.userId as any).phone}</p>}
                     <p className="text-xs text-muted-foreground">{booking.userId.email}</p>
                     <div className="flex flex-wrap items-center gap-2 mt-2">
                       <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs bg-muted text-muted-foreground border border-border/60">{booking.cabinId.name}</span>

@@ -117,7 +117,11 @@ const SupportTicketsManagement = () => {
                     <TableRow key={t.id}>
                       <TableCell className="text-xs font-mono">{t.serial_number || '—'}</TableCell>
                       <TableCell className="text-xs">{format(new Date(t.created_at), 'd MMM yy')}</TableCell>
-                      <TableCell className="text-xs">{(t.profiles as any)?.name || '—'}</TableCell>
+                      <TableCell className="text-xs">
+                        <div className="font-medium">{(t.profiles as any)?.name || '—'}</div>
+                        {(t.profiles as any)?.phone && <div className="text-[10px] text-muted-foreground">{(t.profiles as any)?.phone}</div>}
+                        {(t.profiles as any)?.email && <div className="text-[10px] text-muted-foreground">{(t.profiles as any)?.email}</div>}
+                      </TableCell>
                       <TableCell className="text-xs max-w-[200px] truncate">{t.subject}</TableCell>
                       <TableCell><Badge variant="outline" className="text-[10px] capitalize">{t.category}</Badge></TableCell>
                       <TableCell><span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${statusBadge[t.status] || ''}`}>{t.status?.replace('_', ' ')}</span></TableCell>
