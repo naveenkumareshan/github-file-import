@@ -38,6 +38,9 @@ const cabinSchema = z.object({
   category: z.enum(['standard', 'premium', 'luxury']),
   serialNumber: z.string().optional(),
   isActive: z.boolean().default(true),
+  openingTime: z.string().min(1, 'Opening time is required'),
+  closingTime: z.string().min(1, 'Closing time is required'),
+  workingDays: z.array(z.string()).min(1, 'Select at least one working day'),
 });
 
 type CabinFormValues = z.infer<typeof cabinSchema>;
@@ -54,6 +57,9 @@ interface CabinData {
   category: 'standard' | 'premium' | 'luxury';
   serialNumber?: string;
   isActive: boolean;
+  openingTime?: string;
+  closingTime?: string;
+  workingDays?: string[];
 }
 
 interface CabinFormProps {
@@ -66,6 +72,8 @@ export function CabinForm({ initialData, onSuccess, cabinId }: CabinFormProps) {
   const isEditing = !!cabinId;
   const [isSubmitting, setIsSubmitting] = useState(false);
   
+  const ALL_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
   const defaultValues: Partial<CabinFormValues> = {
     name: '',
     description: '',
@@ -77,14 +85,19 @@ export function CabinForm({ initialData, onSuccess, cabinId }: CabinFormProps) {
     category: 'standard',
     serialNumber: '',
     isActive: true,
+    openingTime: '06:00',
+    closingTime: '22:00',
+    workingDays: ALL_DAYS,
   };
 
   // If we have initial data, merge it with the default values
   const formValues = initialData ? {
     ...defaultValues,
     ...initialData,
-    // Convert the array to a comma-separated string if it exists
     amenities: Array.isArray(initialData.amenities) ? initialData.amenities.join(', ') : '',
+    openingTime: initialData.openingTime || initialData.opening_time || '06:00',
+    closingTime: initialData.closingTime || initialData.closing_time || '22:00',
+    workingDays: initialData.workingDays || (Array.isArray(initialData.working_days) ? initialData.working_days : ALL_DAYS),
   } : defaultValues;
 
   const form = useForm<CabinFormValues>({
@@ -105,7 +118,10 @@ export function CabinForm({ initialData, onSuccess, cabinId }: CabinFormProps) {
         amenities: values.amenities || [], // Ensure it's an array
         category: values.category,
         images: values.images,
-        isActive: values.isActive
+        isActive: values.isActive,
+        openingTime: values.openingTime,
+        closingTime: values.closingTime,
+        workingDays: values.workingDays,
       };
       
       // Add optional fields if they exist
@@ -296,6 +312,78 @@ export function CabinForm({ initialData, onSuccess, cabinId }: CabinFormProps) {
               )}
             />
           </div>
+        </div>
+
+        {/* Timings Section */}
+        <div className="space-y-4 border rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-foreground">Room Timings</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="openingTime"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Opening Time *</FormLabel>
+                  <FormControl>
+                    <Input type="time" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="closingTime"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Closing Time *</FormLabel>
+                  <FormControl>
+                    <Input type="time" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+          <FormField
+            control={form.control}
+            name="workingDays"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Working Days *</FormLabel>
+                <div className="flex flex-wrap gap-2">
+                  {ALL_DAYS.map(day => {
+                    const isSelected = (field.value || []).includes(day);
+                    return (
+                      <label
+                        key={day}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border cursor-pointer text-sm font-medium transition-colors ${
+                          isSelected
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'bg-muted text-muted-foreground border-border hover:border-primary/50'
+                        }`}
+                      >
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={(checked) => {
+                            const current = field.value || [];
+                            if (checked) {
+                              field.onChange([...current, day]);
+                            } else {
+                              field.onChange(current.filter((d: string) => d !== day));
+                            }
+                          }}
+                          className="sr-only"
+                        />
+                        {day}
+                      </label>
+                    );
+                  })}
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
         
         <FormField

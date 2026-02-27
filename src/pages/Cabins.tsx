@@ -21,6 +21,9 @@ interface BackendCabin {
   image_url?: string;
   category: 'standard' | 'premium' | 'luxury';
   is_active: boolean;
+  opening_time?: string;
+  closing_time?: string;
+  working_days?: string[];
 }
 
 const Cabins = () => {
@@ -53,6 +56,9 @@ const Cabins = () => {
               imageUrl: cabin.image_url || 'https://images.unsplash.com/photo-1513694203232-719a280e022f',
               category: cabin.category || 'standard',
               isActive: cabin.is_active !== false,
+              openingTime: cabin.opening_time || undefined,
+              closingTime: cabin.closing_time || undefined,
+              workingDays: cabin.working_days || undefined,
             })) : [];
           
           // Fetch rating stats for all cabins

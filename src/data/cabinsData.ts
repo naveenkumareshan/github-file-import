@@ -14,6 +14,9 @@ export interface Cabin {
   averageRating?: number;
   reviewCount?: number;
   cabinCode?: string;
+  openingTime?: string;
+  closingTime?: string;
+  workingDays?: string[];
 }
 
 export interface PricingBreakdown {

@@ -56,6 +56,9 @@ export interface Cabin {
   advanceUseFlat?: boolean;
   advanceValidityDays?: number;
   advanceAutoCancel?: boolean;
+  openingTime?: string;
+  closingTime?: string;
+  workingDays?: string[];
 }
 
 export interface RoomElement {
@@ -142,6 +145,9 @@ const BookSeat = () => {
           advanceUseFlat: (d as any).advance_use_flat || false,
           advanceValidityDays: (d as any).advance_validity_days || 3,
           advanceAutoCancel: (d as any).advance_auto_cancel || true,
+          openingTime: (d as any).opening_time || undefined,
+          closingTime: (d as any).closing_time || undefined,
+          workingDays: Array.isArray((d as any).working_days) ? (d as any).working_days : undefined,
         });
         setLayoutImage((d as any).layout_image || null);
         setRoomWidth((d as any).room_width || 800);
