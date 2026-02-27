@@ -72,7 +72,7 @@ const StudentRegister = () => {
         
         toast({
           title: "Registration Successful",
-          description: "Your account has been created. You can now log in.",
+          description: "Please check your email to verify your account before logging in.",
         });
         navigate('/student/login');
       } else {

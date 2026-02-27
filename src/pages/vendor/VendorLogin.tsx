@@ -173,7 +173,7 @@ const VendorLogin: React.FC = () => {
 
               <div className="flex items-center justify-between">
                 <Link 
-                  to="/forgot-password" 
+                  to="/student/forgot-password" 
                   className="text-sm text-primary hover:underline"
                 >
                   Forgot password?
