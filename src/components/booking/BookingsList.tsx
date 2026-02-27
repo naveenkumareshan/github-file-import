@@ -241,7 +241,7 @@ export const BookingsList = ({
             </div>
 
             {/* Compact validity indicator */}
-            {booking.paymentStatus === 'completed' && (() => {
+            {['completed', 'advance_paid'].includes(booking.paymentStatus) && (() => {
               const now = new Date();
               const end = new Date(booking.endDate);
               const start = new Date(booking.startDate);
@@ -306,7 +306,7 @@ export const BookingsList = ({
                 </div>
               )}
 
-              {booking.paymentStatus === 'completed' && (
+              {['completed', 'advance_paid'].includes(booking.paymentStatus) && (
                 <>
                   <Link to={`/student/bookings/${booking.id}`} className="flex-1">
                     <Button variant="outline" size="sm" className="w-full h-8 text-[12px] rounded-xl gap-1">

@@ -370,7 +370,7 @@ export default function StudentBookingView() {
                 </span>
               }
             />
-          ) : cabin?.slots_enabled ? (
+          ) : booking.cabins?.slots_enabled ? (
             <InfoRow label="Booking Type" value="Full Day" />
           ) : null}
           <InfoRow label="Booked On" value={safeFmt(booking.created_at, "dd MMM yyyy")} />
