@@ -101,6 +101,9 @@ export type Database = {
         Row: {
           booking_duration: string | null
           cabin_id: string | null
+          check_in_notes: string | null
+          checked_in_at: string | null
+          checked_in_by: string | null
           collected_by: string | null
           collected_by_name: string
           created_at: string | null
@@ -134,6 +137,9 @@ export type Database = {
         Insert: {
           booking_duration?: string | null
           cabin_id?: string | null
+          check_in_notes?: string | null
+          checked_in_at?: string | null
+          checked_in_by?: string | null
           collected_by?: string | null
           collected_by_name?: string
           created_at?: string | null
@@ -167,6 +173,9 @@ export type Database = {
         Update: {
           booking_duration?: string | null
           cabin_id?: string | null
+          check_in_notes?: string | null
+          checked_in_at?: string | null
+          checked_in_by?: string | null
           collected_by?: string | null
           collected_by_name?: string
           created_at?: string | null
@@ -449,7 +458,9 @@ export type Database = {
           category: string
           created_at: string
           description: string
+          hostel_id: string | null
           id: string
+          module: string | null
           priority: string
           responded_at: string | null
           responded_by: string | null
@@ -466,7 +477,9 @@ export type Database = {
           category?: string
           created_at?: string
           description: string
+          hostel_id?: string | null
           id?: string
+          module?: string | null
           priority?: string
           responded_at?: string | null
           responded_by?: string | null
@@ -483,7 +496,9 @@ export type Database = {
           category?: string
           created_at?: string
           description?: string
+          hostel_id?: string | null
           id?: string
+          module?: string | null
           priority?: string
           responded_at?: string | null
           responded_by?: string | null
@@ -737,6 +752,9 @@ export type Database = {
           booking_duration: string
           cancellation_reason: string | null
           cancelled_at: string | null
+          check_in_notes: string | null
+          checked_in_at: string | null
+          checked_in_by: string | null
           collected_by: string | null
           collected_by_name: string | null
           created_at: string
@@ -767,6 +785,9 @@ export type Database = {
           booking_duration?: string
           cancellation_reason?: string | null
           cancelled_at?: string | null
+          check_in_notes?: string | null
+          checked_in_at?: string | null
+          checked_in_by?: string | null
           collected_by?: string | null
           collected_by_name?: string | null
           created_at?: string
@@ -797,6 +818,9 @@ export type Database = {
           booking_duration?: string
           cancellation_reason?: string | null
           cancelled_at?: string | null
+          check_in_notes?: string | null
+          checked_in_at?: string | null
+          checked_in_by?: string | null
           collected_by?: string | null
           collected_by_name?: string | null
           created_at?: string
