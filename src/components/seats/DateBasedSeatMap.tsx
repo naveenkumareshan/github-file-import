@@ -41,6 +41,7 @@ interface DateBasedSeatMapProps {
   roomWidth?: number;
   roomHeight?: number;
   categoryFilter?: string;
+  slotId?: string;
 }
 
 const DateBasedSeatMapComponent: React.FC<DateBasedSeatMapProps> = ({
@@ -57,6 +58,7 @@ const DateBasedSeatMapComponent: React.FC<DateBasedSeatMapProps> = ({
   roomWidth = 800,
   roomHeight = 600,
   categoryFilter,
+  slotId,
 }) => {
   const [startDate, setStartDate] = useState<Date>(propStartDate || new Date());
   const [endDate, setEndDate] = useState<Date>(
@@ -86,7 +88,8 @@ const DateBasedSeatMapComponent: React.FC<DateBasedSeatMapProps> = ({
         cabinId,
         selectedfloor,
         startDate.toISOString(),
-        endDate.toISOString()
+        endDate.toISOString(),
+        slotId
       );
 
       if (response.success) {
@@ -122,7 +125,7 @@ const DateBasedSeatMapComponent: React.FC<DateBasedSeatMapProps> = ({
     if (startDate && endDate && cabinId) {
       fetchAvailableSeats();
     }
-  }, [startDate, endDate, cabinId, selectedfloor]);
+  }, [startDate, endDate, cabinId, selectedfloor, slotId]);
 
   // Export availability data
   const exportAvailability = () => {
@@ -481,6 +484,7 @@ export const DateBasedSeatMap = memo(DateBasedSeatMapComponent, (prevProps, next
     prevProps.endDate?.getTime() === nextProps.endDate?.getTime() &&
     prevProps.selectedSeat?._id === nextProps.selectedSeat?._id &&
     prevProps.categoryFilter === nextProps.categoryFilter &&
+    prevProps.slotId === nextProps.slotId &&
     JSON.stringify(prevProps.roomElements) === JSON.stringify(nextProps.roomElements)
   );
 });

@@ -202,7 +202,7 @@ export const seatsService = {
     }
   },
 
-  checkSeatsAvailabilityBulk: async (cabinId: string, startDate: string, endDate: string) => {
+  checkSeatsAvailabilityBulk: async (cabinId: string, startDate: string, endDate: string, slotId?: string) => {
     try {
       const { data: seats, error } = await supabase
         .from('seats').select('*').eq('cabin_id', cabinId);
@@ -210,13 +210,18 @@ export const seatsService = {
 
       const { data: bookings } = await supabase
         .from('bookings')
-        .select('seat_id')
+        .select('seat_id, slot_id')
         .eq('cabin_id', cabinId)
-        .eq('payment_status', 'completed')
+        .not('payment_status', 'in', '("cancelled","failed")')
         .lte('start_date', endDate)
         .gte('end_date', startDate);
 
-      const bookedSeatIds = new Set((bookings || []).map(b => b.seat_id));
+      const conflicting = (bookings || []).filter(b => {
+        if (slotId) return b.slot_id === slotId;
+        return true;
+      });
+
+      const bookedSeatIds = new Set(conflicting.map(b => b.seat_id));
 
       return {
         success: true,
@@ -232,7 +237,7 @@ export const seatsService = {
     }
   },
 
-  getAvailableSeatsForDateRange: async (cabinId: string, floor: string, startDate: string, endDate: string) => {
+  getAvailableSeatsForDateRange: async (cabinId: string, floor: string, startDate: string, endDate: string, slotId?: string) => {
     try {
       // Fetch ALL seats for this cabin/floor (not just available ones)
       const { data: seats, error } = await supabase
@@ -243,16 +248,24 @@ export const seatsService = {
         .order('number');
       if (error) throw error;
 
-      // Fetch conflicting bookings
-      const { data: bookings } = await supabase
+      // Fetch conflicting bookings — exclude cancelled/failed
+      let bookingQuery = supabase
         .from('bookings')
-        .select('seat_id')
+        .select('seat_id, slot_id')
         .eq('cabin_id', cabinId)
-        .eq('payment_status', 'completed')
+        .not('payment_status', 'in', '("cancelled","failed")')
         .lte('start_date', endDate)
         .gte('end_date', startDate);
 
-      const bookedSeatIds = new Set((bookings || []).map(b => b.seat_id));
+      const { data: bookings } = await bookingQuery;
+
+      // Filter by slot if provided — same seat can be booked in different slots
+      const conflicting = (bookings || []).filter(b => {
+        if (slotId) return b.slot_id === slotId;
+        return true;
+      });
+
+      const bookedSeatIds = new Set(conflicting.map(b => b.seat_id));
 
       // Return ALL seats, marking booked ones as unavailable
       return {

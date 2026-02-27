@@ -180,6 +180,10 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
   const [availableSlots, setAvailableSlots] = useState<CabinSlot[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<CabinSlot | null>(null);
 
+  // Cabin-scoped due check state
+  const [hasPendingDues, setHasPendingDues] = useState(false);
+  const [pendingDueAmount, setPendingDueAmount] = useState(0);
+
   // Category filter state
   const [categories, setCategories] = useState<SeatCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -205,6 +209,25 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
       setSelectedSlot(null);
     }
   }, [cabin?._id, cabin?.id, cabin?.slotsEnabled]);
+
+  // Cabin-scoped pending dues check
+  useEffect(() => {
+    const cabinId = cabin?._id || cabin?.id;
+    if (!user?.id || !cabinId) return;
+    const checkDues = async () => {
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data } = await supabase
+        .from('dues')
+        .select('due_amount, paid_amount')
+        .eq('user_id', user.id)
+        .eq('cabin_id', cabinId)
+        .eq('status', 'pending');
+      const unpaid = (data || []).filter(d => d.due_amount > d.paid_amount);
+      setHasPendingDues(unpaid.length > 0);
+      setPendingDueAmount(unpaid.reduce((sum, d) => sum + (d.due_amount - d.paid_amount), 0));
+    };
+    checkDues();
+  }, [user?.id, cabin?._id, cabin?.id]);
 
   const durations: BookingDuration[] = [
     { type: "monthly", count: 1, price: selectedSeat?.price || 0 },
@@ -268,17 +291,19 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
       setEndDate(newEndDate);
 
       if (selectedSeat) {
+        // Pricing source of truth: slot price if slotsEnabled, else seat price
+        const monthlyBasePrice = cabin?.slotsEnabled && selectedSlot ? selectedSlot.price : selectedSeat.price;
         let basePrice = 0;
 
         switch (selectedDuration.type) {
           case "daily":
-            basePrice = (selectedSeat.price / 30) * selectedDuration.count;
+            basePrice = (monthlyBasePrice / 30) * selectedDuration.count;
             break;
           case "weekly":
-            basePrice = (selectedSeat.price / 4) * selectedDuration.count;
+            basePrice = (monthlyBasePrice / 4) * selectedDuration.count;
             break;
           case "monthly":
-            basePrice = selectedSeat.price * selectedDuration.count;
+            basePrice = monthlyBasePrice * selectedDuration.count;
             break;
         }
 
@@ -299,7 +324,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
         }
       }
     }
-  }, [selectedSeat, selectedDuration, startDate, keyDeposit, appliedCoupon, lockerOptedIn, lockerMandatory]);
+  }, [selectedSeat, selectedDuration, startDate, keyDeposit, appliedCoupon, lockerOptedIn, lockerMandatory, selectedSlot, cabin?.slotsEnabled]);
 
   useEffect(() => {
     if (startDate) {
@@ -419,6 +444,18 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
         description: "Please fill in all the required fields",
         variant: "destructive",
       });
+      return;
+    }
+
+    // Block if slots enabled but no slot selected
+    if (cabin.slotsEnabled && !selectedSlot) {
+      toast({ title: "Select a Slot", description: "Please select a time slot before booking", variant: "destructive" });
+      return;
+    }
+
+    // Cabin-scoped due check
+    if (hasPendingDues) {
+      toast({ title: "Pending Dues", description: `Please clear your pending dues of ₹${pendingDueAmount} for this reading room before making a new booking.`, variant: "destructive" });
       return;
     }
 
@@ -613,8 +650,54 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
               </div>
             )}
 
-            {/* Step 2: Seat Selection */}
-            {showSeatSelection && cabin && (
+            {/* Pending Dues Warning */}
+            {hasPendingDues && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Pending Dues</AlertTitle>
+                <AlertDescription>
+                  You have unpaid dues of ₹{pendingDueAmount} for this reading room. Please clear them before booking a new seat.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Slot Selection - shown when slotsEnabled */}
+            {cabin?.slotsEnabled && availableSlots.length > 0 && showSeatSelection && (
+              <div className="space-y-2">
+                <Separator />
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-primary" />
+                  <Label className="text-sm font-semibold text-foreground">Select Time Slot</Label>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {availableSlots.map((slot) => (
+                    <button
+                      key={slot.id}
+                      type="button"
+                      onClick={() => setSelectedSlot(slot)}
+                      className={cn(
+                        "p-3 rounded-xl border text-left transition-all",
+                        selectedSlot?.id === slot.id
+                          ? "border-primary bg-primary/10 shadow-sm"
+                          : "border-border hover:border-primary/50"
+                      )}
+                    >
+                      <div className="font-medium text-sm">{slot.name}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {formatTime(slot.start_time)} – {formatTime(slot.end_time)}
+                      </div>
+                      <div className="text-xs font-semibold text-primary mt-1">₹{slot.price}/mo</div>
+                    </button>
+                  ))}
+                </div>
+                {!selectedSlot && (
+                  <p className="text-xs text-destructive">Please select a time slot to continue</p>
+                )}
+              </div>
+            )}
+
+            {/* Step 2: Seat Selection - block if slots enabled but no slot selected */}
+            {showSeatSelection && cabin && (!cabin.slotsEnabled || selectedSlot) && !hasPendingDues && (
               <div className="space-y-4">
                 <Separator />
                 <div className="flex items-center gap-2">
@@ -671,6 +754,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                       roomWidth={roomWidth}
                       roomHeight={roomHeight}
                       categoryFilter={selectedCategory === "all" ? undefined : selectedCategory}
+                      slotId={selectedSlot?.id}
                     />
                   </Suspense>
               </div>

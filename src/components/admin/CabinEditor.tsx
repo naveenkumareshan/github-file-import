@@ -795,14 +795,12 @@ export function CabinEditor({
             <CollapsibleContent>
               <CardContent className="px-4 pb-4 pt-0 space-y-4">
                 <LocationSelector
-                  selectedCountry={'684063018f9d4f4736616a42'}
-                  selectedState={cabin?.state?._id ? cabin?.state?._id : cabin?.state}
-                  selectedCity={cabin.city?._id ? cabin.city?._id : cabin.city}
-                  selectedArea={cabin.area?._id ? cabin.area?._id : cabin.area}
+                  selectedState={cabin?.state}
+                  selectedCity={cabin?.city}
+                  selectedArea={cabin?.area}
                   onStateChange={(state) => { if (state) setCabin(prev => ({ ...prev, state, city: '', area: '' })); }}
                   onCityChange={(city) => { if (city) setCabin(prev => ({ ...prev, city, area: '' })); }}
                   onAreaChange={(area) => { if (area) setCabin(prev => ({ ...prev, area })); }}
-                  showCountry={false}
                 />
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
