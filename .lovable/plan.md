@@ -1,66 +1,53 @@
 
 
-## Auth System Audit and Fixes
+## Fix Student Profile Image Upload
 
-After reviewing all login portals, Google OAuth, forgot/reset password, and signup flows, here are the issues found and the plan to fix them:
+### Problems Found
 
----
-
-### Issues Found
-
-| # | Issue | Severity | Where |
-|---|-------|----------|-------|
-| 1 | **Google OAuth uses legacy Express backend** | Critical | `SocialLoginButtons.tsx` opens a popup to `/api/auth/google` (old Express server). The backend has been migrated to Supabase, so this flow is completely broken. | 
-| 2 | **Forgot Password uses legacy Express backend** | Critical | `ForgotPassword.tsx` calls `passwordResetService.requestPasswordReset()` which hits `/auth/forgot-password` on the old Express API via axios. |
-| 3 | **Reset Password uses legacy Express backend** | Critical | `ResetPassword.tsx` uses token-based validation via the old API. Should use Supabase's recovery flow (`supabase.auth.updateUser`). |
-| 4 | **Partner "Forgot Password" link goes to 404** | Medium | `VendorLogin.tsx` line 176 links to `/forgot-password` which has no route. Should be `/student/forgot-password` or a shared route. |
-| 5 | **Registration success message is misleading** | Low | Says "You can now log in" but email confirmation is required (auto-confirm is NOT enabled). Should tell user to check their email. |
-
----
+1. **No file upload UI**: The Camera button on the avatar opens the "Account Info" sheet but there's no file input to actually pick and upload a profile picture.
+2. **Missing storage bucket**: `userProfileService.uploadProfilePicture()` tries to upload to a `profiles` storage bucket, but that bucket doesn't exist. Only `banners` and `cabin-images` buckets are configured.
+3. **No connection between upload and profile save**: Even if an image were uploaded, the profile picture URL isn't being set anywhere in the account section form.
 
 ### Fix Plan
 
-#### 1. Fix Google OAuth -- use Lovable Cloud managed OAuth
+#### 1. Create `profiles` storage bucket (database migration)
 
-- Use the Configure Social Login tool to set up Google OAuth via Lovable Cloud
-- Replace `SocialLoginButtons.tsx` entirely to use `lovable.auth.signInWithOAuth("google")` instead of the legacy popup flow
-- Remove dependency on `getImageUrl` for auth URLs and the `authService` social login methods
-- The `SocialLogin` function in `AuthContext.tsx` becomes unnecessary (Supabase `onAuthStateChange` handles the session automatically after OAuth redirect)
+Create a public storage bucket called `profiles` with RLS policies allowing authenticated users to upload/manage their own avatar files.
 
-#### 2. Fix Forgot Password -- use Supabase auth
+```sql
+INSERT INTO storage.buckets (id, name, public) VALUES ('profiles', 'profiles', true);
 
-- Rewrite `ForgotPassword.tsx` to call `supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/reset-password' })`
-- Remove dependency on `passwordResetService.ts`
+CREATE POLICY "Users can upload own avatar"
+  ON storage.objects FOR INSERT
+  WITH CHECK (bucket_id = 'profiles' AND auth.uid()::text = (storage.foldername(name))[1]);
 
-#### 3. Fix Reset Password -- use Supabase recovery flow
+CREATE POLICY "Users can update own avatar"
+  ON storage.objects FOR UPDATE
+  USING (bucket_id = 'profiles' AND auth.uid()::text = (storage.foldername(name))[1]);
 
-- Create a new `/reset-password` route (public, not behind auth)
-- Rewrite `ResetPassword.tsx` to:
-  - Check for `type=recovery` in URL hash (Supabase's callback pattern)
-  - Call `supabase.auth.updateUser({ password: newPassword })` to set the new password
-  - Remove the token-based validation logic
-- Update the route in `App.tsx` from `/student/reset-password/:token` to `/reset-password` (Supabase redirects here directly)
-- Keep `/student/forgot-password` route pointing to the updated ForgotPassword page
+CREATE POLICY "Anyone can view profile images"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'profiles');
+```
 
-#### 4. Fix Partner "Forgot Password" link
+#### 2. Add profile picture upload UI in ProfileManagement.tsx
 
-- Update `VendorLogin.tsx` to link to `/student/forgot-password` (shared forgot password page)
+- Add a hidden file input triggered by the Camera button on the avatar
+- On file selection, call `userProfileService.uploadProfilePicture(file)`
+- On success, update the local `profile.profile_picture` state with the returned URL
+- Show a loading spinner on the avatar while uploading
 
-#### 5. Fix Registration success message
+#### 3. Fix upload path in userProfileService.ts
 
-- Update `StudentRegister.tsx` to show "Please check your email to verify your account before logging in" instead of "You can now log in"
-
----
+Update `uploadProfilePicture` to use a path format that matches the RLS policy:
+- Path: `{user.id}/avatar.{ext}` (so `foldername` returns the user ID)
+- Add cache-busting timestamp to the public URL to avoid stale images
 
 ### Files Changed
 
-| File | Action |
+| File | Change |
 |------|--------|
-| `src/components/auth/SocialLoginButtons.tsx` | Rewrite to use Lovable Cloud OAuth |
-| `src/pages/ForgotPassword.tsx` | Use `supabase.auth.resetPasswordForEmail` |
-| `src/pages/ResetPassword.tsx` | Use Supabase recovery flow |
-| `src/App.tsx` | Add `/reset-password` route, keep legacy route |
-| `src/pages/vendor/VendorLogin.tsx` | Fix forgot password link |
-| `src/pages/StudentRegister.tsx` | Fix success message |
-| `src/contexts/AuthContext.tsx` | Clean up unused `SocialLogin` method |
+| Database migration | Create `profiles` storage bucket + RLS policies |
+| `src/components/profile/ProfileManagement.tsx` | Add hidden file input on Camera button, handle upload with loading state |
+| `src/api/userProfileService.ts` | Fix upload path to `{userId}/avatar.{ext}` for RLS compatibility, add cache-busting |
 
