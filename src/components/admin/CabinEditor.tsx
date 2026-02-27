@@ -614,7 +614,27 @@ export function CabinEditor({
                     <Label htmlFor="slotsEnabled" className="text-sm font-medium">Enable Slots</Label>
                     <p className="text-xs text-muted-foreground">Students pick a batch/slot when booking</p>
                   </div>
-                  <Switch id="slotsEnabled" checked={cabin.slotsEnabled} onCheckedChange={(checked) => setCabin(prev => ({ ...prev, slotsEnabled: checked }))} />
+                  <Switch id="slotsEnabled" checked={cabin.slotsEnabled} onCheckedChange={async (checked) => {
+                    if (!checked && existingCabin?.id) {
+                      // Check for active slot-based bookings before disabling
+                      const { data: slotBookings } = await supabase
+                        .from('bookings')
+                        .select('id')
+                        .eq('cabin_id', existingCabin.id)
+                        .not('slot_id', 'is', null)
+                        .not('payment_status', 'in', '("cancelled","failed")')
+                        .limit(1);
+                      if (slotBookings && slotBookings.length > 0) {
+                        toast({
+                          title: 'Cannot Disable Slots',
+                          description: 'Active slot-based bookings exist. Please cancel or complete them first.',
+                          variant: 'destructive',
+                        });
+                        return;
+                      }
+                    }
+                    setCabin(prev => ({ ...prev, slotsEnabled: checked }));
+                  }} />
                 </div>
 
                 {cabin.slotsEnabled && existingCabin?.id && (

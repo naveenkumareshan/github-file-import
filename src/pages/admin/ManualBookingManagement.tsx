@@ -12,13 +12,18 @@ import { Label } from '@/components/ui/label';
 import { DateBasedSeatMap } from '@/components/seats/DateBasedSeatMap';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { adminCabinsService } from '@/api/adminCabinsService';
+import { cabinSlotService, CabinSlot } from '@/api/cabinSlotService';
+import { Badge } from '@/components/ui/badge';
+import { Clock } from 'lucide-react';
+import { formatTime } from '@/utils/timingUtils';
 
 // Define bookingType type to fix TypeScript errors
 type BookingType = 'cabin' | 'hostel';
 
 // Interface for Cabin data
 interface Cabin {
-  _id: string;
+  id: string;
+  _id?: string;
   name: string;
   description: string;
   price: number;
@@ -26,6 +31,7 @@ interface Cabin {
   amenities: string[];
   imageUrl?: string;
   floors?: { id: string; number: number }[];
+  slots_enabled?: boolean;
 }
 
 export interface Seat {
@@ -58,11 +64,16 @@ const ManualBookingManagement: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   // State for booking flow
-  const [step, setStep] = useState<'select-user' | 'select-cabin' | 'select-dates' | 'select-seat' | 'booking-details'>('select-user');
+  const [step, setStep] = useState<'select-user' | 'select-cabin' | 'select-dates' | 'select-slot' | 'select-seat' | 'booking-details'>('select-user');
   const [cabins, setCabins] = useState<Cabin[]>([]);
   const [selectedCabin, setSelectedCabin] = useState<Cabin | null>(null);
   const [seats, setSeats] = useState<Seat[]>([]);
   const [selectedSeat, setSelectedSeat] = useState<Seat | null>(null);
+
+  // Slot state
+  const [cabinSlotsEnabled, setCabinSlotsEnabled] = useState(false);
+  const [availableSlots, setAvailableSlots] = useState<CabinSlot[]>([]);
+  const [selectedSlot, setSelectedSlot] = useState<CabinSlot | null>(null);
 
   // State for booking form
   const [bookingType, setBookingType] = useState<BookingType>('cabin');
@@ -93,7 +104,6 @@ const ManualBookingManagement: React.FC = () => {
   const fetchUsers = async (searchTerm) => {
     setLoading(true);
     try {
-      // Use getUsers instead of getAllUsers
       const response = await adminUsersService.getUsers({search:searchTerm});
       if (response.data) {
         setUsers(response.data);
@@ -146,8 +156,9 @@ useEffect(() => {
 
   // Load seats when cabin is selected
   useEffect(() => {
-    if (selectedCabin && selectedCabin._id) {
-      fetchSeats(selectedCabin._id);
+    const cId = selectedCabin?.id || selectedCabin?._id;
+    if (selectedCabin && cId) {
+      fetchSeats(cId);
     }
   }, [selectedCabin]);
 
@@ -195,26 +206,40 @@ useEffect(() => {
     }
   };
 
-  const handleCabinSelect = (cabin: Cabin) => {
+  const getCabinId = (cabin: Cabin) => cabin.id || cabin._id || '';
+
+  const handleCabinSelect = async (cabin: Cabin) => {
     setSelectedCabin(cabin);
-    setCabinId(cabin._id);
+    const cId = getCabinId(cabin);
+    setCabinId(cId);
+    
+    // Check for slots
+    const slotsEnabled = cabin.slots_enabled === true;
+    setCabinSlotsEnabled(slotsEnabled);
+    setSelectedSlot(null);
+    setAvailableSlots([]);
+    
+    if (slotsEnabled) {
+      const res = await cabinSlotService.getSlotsByCabin(cId);
+      if (res.success) {
+        setAvailableSlots(res.data);
+      }
+    }
+    
     setStep('select-dates');
-    // Prefill the total price based on the cabin
     setTotalPrice(cabin.price);
     setFinalPrice(cabin.price);
   };
 
   const handleSeatSelect = (seat: Seat) => {
-    // Always allow selection for admin, but show warning for unavailable seats
     setSelectedSeat(seat);
-    setSeatId(seat._id);
+    const sId = seat.id || seat._id;
+    setSeatId(sId);
     
-    // Update total price based on seat price if available
-    if (seat.price) {
-      setTotalPrice(seat.price);
-    }
+    // Update total price: use slot price if slot selected, else seat price
+    const basePrice = (cabinSlotsEnabled && selectedSlot) ? selectedSlot.price : (seat.price || selectedCabin?.price || 0);
+    setTotalPrice(basePrice * months);
     
-    // Show warning if seat is not available
     if (!seat.isAvailable) {
       toast({
         title: "Seat Unavailable",
@@ -225,24 +250,16 @@ useEffect(() => {
     
     setStep('booking-details');
 
-    // Update end date based on new months value
     if (startDate) {
       const startDateObj = new Date(startDate);
       const endDateObj = new Date(startDateObj);
       endDateObj.setMonth(endDateObj.getMonth() + months);
       setEndDate(endDateObj.toISOString().split('T')[0]);
     }
-    
-    // Update total price based on duration
-    if (seat) {
-      const basePrice = seat.price || (selectedCabin ? selectedCabin.price : 0);
-      setTotalPrice(basePrice * months);
-    }
   };
 
   const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setStartDate(e.target.value);
-    // Calculate end date based on months
     const startDateObj = new Date(e.target.value);
     const endDateObj = new Date(startDateObj);
     endDateObj.setMonth(endDateObj.getMonth() + months);
@@ -251,10 +268,8 @@ useEffect(() => {
 
   const handleMonthsChange = (months) => {
     const monthsValue = Number(months);
-    console.log(monthsValue)
     setMonths(monthsValue);
     
-    // Update end date based on new months value
     if (startDate) {
       const startDateObj = new Date(startDate);
       const endDateObj = new Date(startDateObj);
@@ -262,9 +277,8 @@ useEffect(() => {
       setEndDate(endDateObj.toISOString().split('T')[0]);
     }
     
-    // Update total price based on duration
     if (selectedSeat) {
-      const basePrice = selectedSeat.price || (selectedCabin ? selectedCabin.price : 0);
+      const basePrice = (cabinSlotsEnabled && selectedSlot) ? selectedSlot.price : (selectedSeat.price || selectedCabin?.price || 0);
       setTotalPrice(basePrice * monthsValue);
     }
   };
@@ -298,15 +312,23 @@ useEffect(() => {
     setStep('select-user');
     setSelectedCabin(null);
     setSelectedSeat(null);
+    setSelectedSlot(null);
+    setCabinSlotsEnabled(false);
   };
 
   const handleBackToCabinSelection = () => {
     setStep('select-cabin');
     setSelectedSeat(null);
+    setSelectedSlot(null);
   };
 
   const handleBackToDateSelection = () => {
     setStep('select-dates');
+    setSelectedSeat(null);
+  };
+
+  const handleBackToSlotSelection = () => {
+    setStep('select-slot');
     setSelectedSeat(null);
   };
 
@@ -315,6 +337,17 @@ useEffect(() => {
   };
 
   const handleDateSelectionComplete = () => {
+    if (cabinSlotsEnabled && availableSlots.length > 0) {
+      setStep('select-slot');
+    } else {
+      setStep('select-seat');
+    }
+  };
+
+  const handleSlotSelect = (slot: CabinSlot) => {
+    setSelectedSlot(slot);
+    // Update pricing to use slot price
+    setTotalPrice(slot.price * months);
     setStep('select-seat');
   };
 
@@ -338,8 +371,8 @@ useEffect(() => {
 
     const bookingData = {
       userId: selectedUser,
-      cabinId: selectedCabin._id,
-      seatId: selectedSeat._id,
+      cabinId: getCabinId(selectedCabin),
+      seatId: selectedSeat.id || selectedSeat._id,
       startDate,
       endDate,
       totalPrice:finalPrice,
@@ -351,7 +384,8 @@ useEffect(() => {
       notes,
       months,
       durationCount,
-      bookingDuration
+      bookingDuration,
+      ...(selectedSlot ? { slot_id: selectedSlot.id } : {}),
     };
 
     try {
@@ -363,7 +397,6 @@ useEffect(() => {
           description: 'Booking created successfully.',
         });
         navigate('/admin/bookings');
-        // Reset form and go back to user selection
         resetForm();
         setStep('select-user');
       } else {
@@ -381,6 +414,9 @@ useEffect(() => {
     setSelectedUser('');
     setSelectedCabin(null);
     setSelectedSeat(null);
+    setSelectedSlot(null);
+    setCabinSlotsEnabled(false);
+    setAvailableSlots([]);
     setCabinId('');
     setSeatId('');
     setStartDate(new Date().toISOString().split('T')[0]);
@@ -442,29 +478,35 @@ useEffect(() => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {cabins.map((cabin) => (
-            <Card 
-              key={cabin._id} 
-              className={`cursor-pointer transition-all ${selectedCabin?._id === cabin._id ? 'border-primary' : 'hover:shadow-md'}`}
-              onClick={() => handleCabinSelect(cabin)}
-            >
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">{cabin.name}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">{cabin.description?.substring(0, 100)}...</p>
-                <p className="font-medium mt-2">₹{cabin.price} / month</p>
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {cabin.amenities?.slice(0, 3).map((amenity, index) => (
-                    <span key={index} className="text-xs bg-muted px-2 py-1 rounded">{amenity}</span>
-                  ))}
-                  {cabin.amenities?.length > 3 && (
-                    <span className="text-xs bg-muted px-2 py-1 rounded">+{cabin.amenities.length - 3} more</span>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+          {cabins.map((cabin) => {
+            const cId = getCabinId(cabin);
+            return (
+              <Card 
+                key={cId} 
+                className={`cursor-pointer transition-all ${getCabinId(selectedCabin!) === cId ? 'border-primary' : 'hover:shadow-md'}`}
+                onClick={() => handleCabinSelect(cabin)}
+              >
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">{cabin.name}</CardTitle>
+                    {cabin.slots_enabled && <Badge variant="secondary" className="text-[10px]">Slots</Badge>}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">{cabin.description?.substring(0, 100)}...</p>
+                  <p className="font-medium mt-2">₹{cabin.price} / month</p>
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {cabin.amenities?.slice(0, 3).map((amenity, index) => (
+                      <span key={index} className="text-xs bg-muted px-2 py-1 rounded">{amenity}</span>
+                    ))}
+                    {cabin.amenities?.length > 3 && (
+                      <span className="text-xs bg-muted px-2 py-1 rounded">+{cabin.amenities.length - 3} more</span>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
       
@@ -517,11 +559,6 @@ useEffect(() => {
               <Input type="date" id="endDate" value={endDate} disabled />
             </div>
             
-            {/* <div>
-              <Label htmlFor="durationCount">Duration Count</Label>
-              <Input type="number" id="durationCount" value={durationCount} onChange={handleDurationCountChange} min={1} />
-            </div>
-             */}
             <div>
               <Label htmlFor="bookingDuration">Booking Duration Type</Label>
               <Select value={bookingDuration} onValueChange={handleBookingDurationChange}>
@@ -529,8 +566,6 @@ useEffect(() => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {/* <SelectItem value="daily">Daily</SelectItem>
-                  <SelectItem value="weekly">Weekly</SelectItem> */}
                   <SelectItem value="monthly">Monthly</SelectItem>
                 </SelectContent>
               </Select>
@@ -541,10 +576,51 @@ useEffect(() => {
             className="mt-4"
             disabled={!startDate || !endDate}
           >
-            Continue to Seat Selection
+            {cabinSlotsEnabled ? 'Continue to Slot Selection' : 'Continue to Seat Selection'}
           </Button>
         </CardContent>
       </Card>
+    </div>
+  );
+
+  // Rendering the slot selection view
+  const renderSlotSelection = () => (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold">Select a Time Slot for {selectedCabin?.name}</h2>
+        <Button variant="outline" onClick={handleBackToDateSelection}>Back to Date Selection</Button>
+      </div>
+
+      {availableSlots.length === 0 ? (
+        <Card>
+          <CardContent className="py-8 text-center">
+            <p className="text-muted-foreground">No active slots available for this reading room.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {availableSlots.map((slot) => (
+            <Card
+              key={slot.id}
+              className={`cursor-pointer transition-all ${selectedSlot?.id === slot.id ? 'border-primary ring-2 ring-primary/20' : 'hover:shadow-md'}`}
+              onClick={() => handleSlotSelect(slot)}
+            >
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-base">{slot.name}</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  {formatTime(slot.start_time)} – {formatTime(slot.end_time)}
+                </p>
+                <p className="font-semibold mt-2 text-primary">₹{slot.price}/month</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 
@@ -553,8 +629,22 @@ useEffect(() => {
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold">Select a Seat in {selectedCabin?.name}</h2>
-        <Button variant="outline" onClick={handleBackToDateSelection}>Back to Date Selection</Button>
+        <Button variant="outline" onClick={cabinSlotsEnabled ? handleBackToSlotSelection : handleBackToDateSelection}>
+          {cabinSlotsEnabled ? 'Back to Slot Selection' : 'Back to Date Selection'}
+        </Button>
       </div>
+
+      {/* Selected Slot Info */}
+      {selectedSlot && (
+        <Card className="mb-4">
+          <CardContent className="py-3">
+            <div className="flex items-center gap-2 text-sm">
+              <Clock className="h-4 w-4 text-primary" />
+              <span className="font-medium">Slot:</span> {selectedSlot.name} ({formatTime(selectedSlot.start_time)} – {formatTime(selectedSlot.end_time)}) • ₹{selectedSlot.price}/mo
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Selected Seat Details */}
       {selectedSeat && (
@@ -591,13 +681,14 @@ useEffect(() => {
       
       {selectedCabin && (
         <DateBasedSeatMap
-          cabinId={selectedCabin._id}
+          cabinId={getCabinId(selectedCabin)}
           floorsList={selectedCabin.floors}
           startDate={new Date(startDate)}
           endDate={new Date(endDate)}
           onSeatSelect={handleSeatSelect}
           selectedSeat={selectedSeat}
           exportcsv={false}
+          slotId={selectedSlot?.id}
         />
       )}
     </div>
@@ -613,6 +704,14 @@ useEffect(() => {
       
       <Card>
         <CardContent className="p-6 space-y-4">
+          {/* Slot info banner */}
+          {selectedSlot && (
+            <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg text-sm flex items-center gap-2">
+              <Clock className="h-4 w-4 text-primary" />
+              <span><strong>Slot:</strong> {selectedSlot.name} ({formatTime(selectedSlot.start_time)} – {formatTime(selectedSlot.end_time)}) • ₹{selectedSlot.price}/mo</span>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label htmlFor="startDate">Start Date</Label>
@@ -644,11 +743,6 @@ useEffect(() => {
               <Input type="date" id="endDate" value={endDate} disabled />
             </div>
             
-            {/* <div>
-              <Label htmlFor="durationCount">Duration Count</Label>
-              <Input type="number" id="durationCount" value={durationCount} onChange={handleDurationCountChange} min={1} />
-            </div>
-             */}
             <div>
               <Label htmlFor="bookingDuration">Booking Duration Type</Label>
               <Select value={bookingDuration} onValueChange={handleBookingDurationChange} disabled>
@@ -656,8 +750,6 @@ useEffect(() => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {/* <SelectItem value="daily">Daily</SelectItem>
-                  <SelectItem value="weekly">Weekly</SelectItem> */}
                   <SelectItem value="monthly">Monthly</SelectItem>
                 </SelectContent>
               </Select>
@@ -683,9 +775,7 @@ useEffect(() => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {/* <SelectItem value="pending">Pending</SelectItem> */}
                   <SelectItem value="completed">Completed</SelectItem>
-                  {/* <SelectItem value="failed">Failed</SelectItem> */}
                 </SelectContent>
               </Select>
             </div>
@@ -707,7 +797,7 @@ useEffect(() => {
               </Select>
             </div>
           </div>
-                       <div>
+                     <div>
               <Label htmlFor="transaction_id">Transaction Id</Label>
               <Input type="text" id="transaction_id" value={transaction_id}  onChange={(e) => setTransactionId(e.target.value)}
 />
@@ -781,6 +871,15 @@ useEffect(() => {
     </div>
   );
 
+  // Build step list dynamically
+  const allSteps = cabinSlotsEnabled
+    ? ['select-user','select-cabin','select-dates','select-slot','select-seat','booking-details'] as const
+    : ['select-user','select-cabin','select-dates','select-seat','booking-details'] as const;
+  
+  const stepLabels = cabinSlotsEnabled
+    ? ['Select User','Select Room','Select Dates','Select Slot','Select Seat','Booking Details']
+    : ['Select User','Select Room','Select Dates','Select Seat','Booking Details'];
+
   return (
     <div className="flex flex-col gap-4">
       {/* Page Header */}
@@ -791,16 +890,15 @@ useEffect(() => {
 
       {/* Step Indicator */}
       <div className="flex items-center gap-2">
-        {(['select-user','select-cabin','select-dates','select-seat','booking-details'] as const).map((s, idx) => {
-          const labels = ['Select User','Select Room','Select Dates','Select Seat','Booking Details'];
-          const currentIdx = ['select-user','select-cabin','select-dates','select-seat','booking-details'].indexOf(step);
+        {allSteps.map((s, idx) => {
+          const currentIdx = (allSteps as readonly string[]).indexOf(step);
           return (
             <React.Fragment key={s}>
               <div className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold transition-colors ${idx <= currentIdx ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
                 {idx + 1}
               </div>
-              <span className={`text-xs hidden sm:inline ${idx === currentIdx ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>{labels[idx]}</span>
-              {idx < 4 && <div className={`flex-1 h-px ${idx < currentIdx ? 'bg-primary' : 'bg-border'}`} />}
+              <span className={`text-xs hidden sm:inline ${idx === currentIdx ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>{stepLabels[idx]}</span>
+              {idx < allSteps.length - 1 && <div className={`flex-1 h-px ${idx < currentIdx ? 'bg-primary' : 'bg-border'}`} />}
             </React.Fragment>
           );
         })}
@@ -818,6 +916,7 @@ useEffect(() => {
           {step === 'select-user' && renderUserSelection()}
           {step === 'select-cabin' && renderCabinSelection()}
           {step === 'select-dates' && renderDateSelection()}
+          {step === 'select-slot' && renderSlotSelection()}
           {step === 'select-seat' && renderSeatSelection()}
           {step === 'booking-details' && renderBookingDetailsForm()}
         </TabsContent>

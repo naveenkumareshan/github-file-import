@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { cabinSlotService, CabinSlot } from '@/api/cabinSlotService';
 import { toast } from '@/hooks/use-toast';
 import { Plus, Trash2, Clock, Edit2, Check, X } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { formatTime } from '@/utils/timingUtils';
 import {
   AlertDialog,
@@ -77,6 +78,23 @@ export function SlotManagement({ cabinId }: SlotManagementProps) {
   };
 
   const handleDelete = async (id: string) => {
+    // Check for active bookings referencing this slot
+    const { data: activeBookings } = await supabase
+      .from('bookings')
+      .select('id')
+      .eq('slot_id', id)
+      .not('payment_status', 'in', '("cancelled","failed")')
+      .limit(1);
+
+    if (activeBookings && activeBookings.length > 0) {
+      toast({
+        title: 'Cannot Delete Slot',
+        description: 'This slot has active bookings. Please deactivate it instead of deleting.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const res = await cabinSlotService.deleteSlot(id);
     if (res.success) {
       toast({ title: 'Slot Deleted' });
