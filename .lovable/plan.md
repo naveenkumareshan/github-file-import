@@ -1,52 +1,50 @@
 
 
-## Fix Seat Availability for Slot Conflicts and Category Filter Behavior
+## Fix Review & Pay Missing Details + Advance Payment Duration Control
 
-### Problem 1: Full Day Booking Not Blocking Slot-Specific Checks
-When a seat is booked for "Full Day" (stored as `slot_id = null` in the database), the current availability logic in `seatsService.ts` fails to recognize this conflict when checking for a specific slot (e.g., Morning or Evening). This is because the filter `b.slot_id === slotId` skips rows where `slot_id` is null.
+### Issue 1: Missing Details in "Review & Pay" Section
+The Step 3 "Review & Pay" summary (lines 796-887 in `SeatBookingForm.tsx`) only shows Selected Seat, Seat Price, Locker, and Total Amount. It's missing:
+- **Seat Type** (category like AC/Non-AC)
+- **Duration Type** (Daily/Weekly/Monthly with count)
+- **Time Slot** (if a slot is selected)
 
-**Fix in `src/api/seatsService.ts`** (two places -- `getAvailableSeatsForDateRange` and `checkSeatsAvailabilityBulk`):
+**Fix in `src/components/seats/SeatBookingForm.tsx`** (around line 808, after the Selected Seat row):
 
-Change the slot conflict filter logic from:
-```typescript
-if (slotId) return b.slot_id === slotId;
-```
-to:
-```typescript
-if (slotId) return b.slot_id === slotId || b.slot_id === null;
-```
+Add three new rows in the summary card:
+1. **Duration**: Show `{count} {type}` (e.g., "1 Monthly") with start-end date range
+2. **Time Slot**: Show slot name and time range (only when a slot is selected and it's not Full Day with no slots enabled)
 
-This ensures that "Full Day" bookings (null slot_id) always block the seat for any specific slot, while still allowing two different specific slots to coexist on the same seat.
+The seat category is already shown as a badge next to the seat number (line 801-804), so that's covered. But we should also add the duration and slot info.
 
 ---
 
-### Problem 2: Category Filter Hides All Other Seats
-When a category is selected (e.g., "AC"), seats of other categories disappear entirely from the map. Users lose spatial context and cannot see the room layout properly.
+### Issue 2: Advance Payment Duration Restriction
 
-**Fix in `src/components/seats/DateBasedSeatMap.tsx`**:
+Currently, `advanceBookingEnabled` applies globally to all duration types. The admin/partner should be able to specify which duration types allow advance payment (e.g., only Monthly).
 
-Instead of filtering out non-matching seats, pass all seats through but mark non-matching ones as unavailable and unselectable:
-
-Change the `transformedSeats` logic (line 216-228) from filtering by category to marking non-matching category seats as unavailable:
-```typescript
-const transformedSeats = availableSeats.map((seat) => {
-  const availabilityInfo = seatAvailability.find(
-    (info) => info.seatId === seat._id
-  );
-  const categoryMismatch = categoryFilter && seat.category !== categoryFilter;
-  return {
-    ...seat,
-    isAvailable: categoryMismatch ? false : (availabilityInfo?.isAvailable ?? seat.isAvailable),
-    isCategoryMismatch: categoryMismatch,
-    conflictingBookings: availabilityInfo?.conflictingBookings || [],
-    isDateFiltered: true,
-  };
-});
+**Database Migration**: Add a new column to the `cabins` table:
+```sql
+ALTER TABLE cabins 
+  ADD COLUMN advance_applicable_durations jsonb NOT NULL DEFAULT '["daily","weekly","monthly"]';
 ```
 
-Remove the `.filter(...)` call entirely so all seats remain visible.
+**Admin UI (`CabinEditor.tsx`)**: Inside the advance booking section (after the existing fields, around line 509), add checkboxes for "Allow advance for" with Daily/Weekly/Monthly options. Only show durations that are in `allowedDurations`.
 
-Additionally, update the `onSeatSelect` handler passed to `FloorPlanViewer` to prevent selecting category-mismatched seats (wrap the handler to check the flag).
+**API Layer (`adminCabinsService.ts`)**: Map `advanceApplicableDurations` to `advance_applicable_durations` in create/update.
+
+**Student Booking (`SeatBookingForm.tsx`)**: Change the `advanceEnabled` check from:
+```typescript
+const advanceEnabled = cabin?.advanceBookingEnabled === true;
+```
+to:
+```typescript
+const advanceApplicableDurations = (cabin as any)?.advance_applicable_durations || 
+  (cabin as any)?.advanceApplicableDurations || ['daily','weekly','monthly'];
+const advanceEnabled = cabin?.advanceBookingEnabled === true && 
+  advanceApplicableDurations.includes(selectedDuration.type);
+```
+
+This makes the "Book with advance payment" checkbox only appear when the selected duration type is in the allowed list.
 
 ---
 
@@ -54,6 +52,8 @@ Additionally, update the `onSeatSelect` handler passed to `FloorPlanViewer` to p
 
 | File | Change |
 |------|--------|
-| `src/api/seatsService.ts` | Fix slot conflict logic in two methods to treat `slot_id = null` (Full Day) as conflicting with any specific slot |
-| `src/components/seats/DateBasedSeatMap.tsx` | Show all seats regardless of category filter; mark non-matching ones as unavailable instead of hiding them |
+| Database migration | Add `advance_applicable_durations` column to `cabins` |
+| `src/api/adminCabinsService.ts` | Map `advanceApplicableDurations` in create/update |
+| `src/components/admin/CabinEditor.tsx` | Add "Allow advance for" duration checkboxes inside advance booking section; add state field |
+| `src/components/seats/SeatBookingForm.tsx` | Add duration type, slot info rows to Review & Pay summary; conditionally show advance based on selected duration |
 
