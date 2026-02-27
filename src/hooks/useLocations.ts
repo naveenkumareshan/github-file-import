@@ -1,40 +1,38 @@
-
 import { useState, useEffect } from 'react';
-import { locationsService, Country, State, City, Area } from '@/api/locationsService';
+import { locationsService, State, City, Area } from '@/api/locationsService';
 
 export const useLocations = () => {
-  const [countries, setCountries] = useState<Country[]>([]);
   const [states, setStates] = useState<State[]>([]);
   const [cities, setCities] = useState<City[]>([]);
   const [areas, setAreas] = useState<Area[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Load all countries on mount
+  // Load states on mount
   useEffect(() => {
-    loadCountries();
+    loadStates();
   }, []);
 
-  const loadCountries = async () => {
+  const loadStates = async () => {
     setLoading(true);
     try {
-      const response = await locationsService.getCountries({ limit: 200 });
+      const response = await locationsService.getStates({ limit: 200 });
       if (response.success) {
-        setCountries(response.data.data);
+        setStates(response.data);
       }
     } catch (error) {
-      console.error('Error loading countries:', error);
+      console.error('Error loading states:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const getStatesByCountry = async (countryId: string): Promise<State[]> => {
+  const getStatesByCountry = async (_countryId?: string): Promise<State[]> => {
+    // Country is hardcoded as India, so just return all states
     try {
-      const response = await locationsService.getStates({ countryId, limit: 200 });
+      const response = await locationsService.getStates({ limit: 200 });
       if (response.success) {
-        const statesData = response.data.data;
-        setStates(statesData);
-        return statesData;
+        setStates(response.data);
+        return response.data;
       }
       return [];
     } catch (error) {
@@ -47,9 +45,8 @@ export const useLocations = () => {
     try {
       const response = await locationsService.getCities({ stateId, limit: 200 });
       if (response.success) {
-        const citiesData = response.data.data;
-        setCities(citiesData);
-        return citiesData;
+        setCities(response.data);
+        return response.data;
       }
       return [];
     } catch (error) {
@@ -62,9 +59,8 @@ export const useLocations = () => {
     try {
       const response = await locationsService.getAreas({ cityId, limit: 200 });
       if (response.success) {
-        const areasData = response.data.data;
-        setAreas(areasData);
-        return areasData;
+        setAreas(response.data);
+        return response.data;
       }
       return [];
     } catch (error) {
@@ -73,16 +69,14 @@ export const useLocations = () => {
     }
   };
 
-  const getLocationById = (type: 'country' | 'state' | 'city' | 'area', id: string) => {
+  const getLocationById = (type: 'state' | 'city' | 'area', id: string) => {
     switch (type) {
-      case 'country':
-        return countries.find(country => country._id === id);
       case 'state':
-        return states.find(state => state._id === id);
+        return states.find(state => state.id === id);
       case 'city':
-        return cities.find(city => city._id === id);
+        return cities.find(city => city.id === id);
       case 'area':
-        return areas.find(area => area._id === id);
+        return areas.find(area => area.id === id);
       default:
         return null;
     }
@@ -98,23 +92,15 @@ export const useLocations = () => {
     try {
       if (type === 'state' || !type) {
         const response = await locationsService.getStates({ search: query, limit: 50 });
-        if (response.success) {
-          results.states = response.data.data;
-        }
+        if (response.success) results.states = response.data;
       }
-
       if (type === 'city' || !type) {
         const response = await locationsService.getCities({ search: query, limit: 50 });
-        if (response.success) {
-          results.cities = response.data.data;
-        }
+        if (response.success) results.cities = response.data;
       }
-
       if (type === 'area' || !type) {
         const response = await locationsService.getAreas({ search: query, limit: 50 });
-        if (response.success) {
-          results.areas = response.data.data;
-        }
+        if (response.success) results.areas = response.data;
       }
     } catch (error) {
       console.error('Error searching locations:', error);
@@ -124,7 +110,7 @@ export const useLocations = () => {
   };
 
   return {
-    countries,
+    countries: [], // empty for backward compat
     states,
     cities,
     areas,

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,27 +7,22 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MapPin, Plus, Search, Edit, Trash2 } from 'lucide-react';
+import { MapPin, Plus, Search, EyeOff } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { locationsService, Country, State, City, Area, LocationFilters } from '@/api/locationsService';
+import { locationsService, State, City, Area } from '@/api/locationsService';
 
 const LocationManagement: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('countries');
-  const [countries, setCountries] = useState<Country[]>([]);
+  const [activeTab, setActiveTab] = useState('states');
   const [states, setStates] = useState<State[]>([]);
   const [cities, setCities] = useState<City[]>([]);
   const [areas, setAreas] = useState<Area[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<any>(null);
 
   const [formData, setFormData] = useState({
     name: '',
     code: '',
-    countryId: '',
     stateId: '',
     cityId: '',
     pincode: '',
@@ -38,55 +32,33 @@ const LocationManagement: React.FC = () => {
 
   useEffect(() => {
     loadData();
-  }, [activeTab, currentPage, searchTerm]);
+  }, [activeTab, searchTerm]);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const filters: LocationFilters = {
-        page: currentPage,
-        limit: 20,
-        search: searchTerm
-      };
-
-      let response;
       switch (activeTab) {
-        case 'countries':
-          response = await locationsService.getCountries(filters);
-          if (response.success) {
-            setCountries(response.data.data);
-            setTotalPages(response.data.pagination.pages);
-          }
+        case 'states': {
+          const response = searchTerm
+            ? await locationsService.getStates({ search: searchTerm })
+            : await locationsService.getAllStates();
+          if (response.success) setStates(response.data);
           break;
-        case 'states':
-          response = await locationsService.getStates(filters);
-          if (response.success) {
-            setStates(response.data.data);
-            setTotalPages(response.data.pagination.pages);
-          }
+        }
+        case 'cities': {
+          const response = await locationsService.getCities({ search: searchTerm || undefined });
+          if (response.success) setCities(response.data);
           break;
-        case 'cities':
-          response = await locationsService.getCities(filters);
-          if (response.success) {
-            setCities(response.data.data);
-            setTotalPages(response.data.pagination.pages);
-          }
+        }
+        case 'areas': {
+          const response = await locationsService.getAreas({ search: searchTerm || undefined });
+          if (response.success) setAreas(response.data);
           break;
-        case 'areas':
-          response = await locationsService.getAreas(filters);
-          if (response.success) {
-            setAreas(response.data.data);
-            setTotalPages(response.data.pagination.pages);
-          }
-          break;
+        }
       }
     } catch (error) {
       console.error('Load data error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load location data",
-        variant: "destructive"
-      });
+      toast({ title: "Error", description: "Failed to load location data", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -94,25 +66,15 @@ const LocationManagement: React.FC = () => {
 
   const handleCreate = async () => {
     try {
-      let response;
+      let response: any;
       switch (activeTab) {
-        case 'countries':
-          response = await locationsService.createCountry({
-            name: formData.name,
-            code: formData.code
-          });
-          break;
         case 'states':
-          response = await locationsService.createState({
-            name: formData.name,
-            code: formData.code,
-            countryId: formData.countryId
-          });
+          response = await locationsService.createState({ name: formData.name, code: formData.code });
           break;
         case 'cities':
           response = await locationsService.createCity({
             name: formData.name,
-            stateId: formData.stateId,
+            state_id: formData.stateId,
             latitude: formData.latitude ? parseFloat(formData.latitude) : undefined,
             longitude: formData.longitude ? parseFloat(formData.longitude) : undefined
           });
@@ -120,7 +82,7 @@ const LocationManagement: React.FC = () => {
         case 'areas':
           response = await locationsService.createArea({
             name: formData.name,
-            cityId: formData.cityId,
+            city_id: formData.cityId,
             pincode: formData.pincode,
             latitude: formData.latitude ? parseFloat(formData.latitude) : undefined,
             longitude: formData.longitude ? parseFloat(formData.longitude) : undefined
@@ -129,119 +91,73 @@ const LocationManagement: React.FC = () => {
       }
 
       if (response?.success) {
-        toast({
-          title: "Success",
-          description: `${activeTab.slice(0, -1)} created successfully`
-        });
+        toast({ title: "Success", description: `${activeTab.slice(0, -1)} created successfully` });
         setIsCreateDialogOpen(false);
         resetForm();
         loadData();
       } else {
         throw new Error(response?.error || 'Create failed');
       }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error.message || `Failed to create ${activeTab.slice(0, -1)}`,
-        variant: "destructive"
-      });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || `Failed to create`, variant: "destructive" });
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm(`Are you sure you want to delete this ${activeTab.slice(0, -1)}?`)) {
-      return;
-    }
+  const handleDeactivate = async (id: string) => {
+    if (!confirm(`Are you sure you want to deactivate this ${activeTab.slice(0, -1)}?`)) return;
 
     try {
-      let response;
+      let response: any;
       switch (activeTab) {
-        case 'countries':
-          response = await locationsService.deleteCountry(id);
-          break;
         case 'states':
-          response = await locationsService.deleteState(id);
+          response = await locationsService.deactivateState(id);
           break;
         case 'cities':
-          response = await locationsService.deleteCity(id);
+          response = await locationsService.deactivateCity(id);
           break;
         case 'areas':
-          response = await locationsService.deleteArea(id);
+          response = await locationsService.deactivateArea(id);
           break;
       }
 
       if (response?.success) {
-        toast({
-          title: "Success",
-          description: `${activeTab.slice(0, -1)} deleted successfully`
-        });
+        toast({ title: "Success", description: `${activeTab.slice(0, -1)} deactivated successfully` });
         loadData();
       } else {
-        throw new Error(response?.error || 'Delete failed');
+        throw new Error(response?.error || 'Deactivate failed');
       }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error.message || `Failed to delete ${activeTab.slice(0, -1)}`,
-        variant: "destructive"
-      });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || `Failed to deactivate`, variant: "destructive" });
     }
   };
 
   const resetForm = () => {
-    setFormData({
-      name: '',
-      code: '',
-      countryId: '',
-      stateId: '',
-      cityId: '',
-      pincode: '',
-      latitude: '',
-      longitude: ''
-    });
-    setEditingItem(null);
+    setFormData({ name: '', code: '', stateId: '', cityId: '', pincode: '', latitude: '', longitude: '' });
   };
+
+  // Load states for city creation dropdown
+  const [allStates, setAllStates] = useState<State[]>([]);
+  const [allCities, setAllCities] = useState<City[]>([]);
+  useEffect(() => {
+    locationsService.getAllStates().then(r => { if (r.success) setAllStates(r.data); });
+  }, []);
+  useEffect(() => {
+    if (formData.stateId) {
+      locationsService.getCities({ stateId: formData.stateId }).then(r => { if (r.success) setAllCities(r.data); });
+    }
+  }, [formData.stateId]);
 
   const renderCreateForm = () => (
     <div className="space-y-4">
       <div>
         <Label htmlFor="name">Name</Label>
-        <Input
-          id="name"
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          placeholder="Enter name"
-        />
+        <Input id="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Enter name" />
       </div>
-
-      {(activeTab === 'countries' || activeTab === 'states') && (
-        <div>
-          <Label htmlFor="code">Code</Label>
-          <Input
-            id="code"
-            value={formData.code}
-            onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-            placeholder="Enter code (e.g., IN, KA)"
-            maxLength={3}
-          />
-        </div>
-      )}
 
       {activeTab === 'states' && (
         <div>
-          <Label htmlFor="countryId">Country</Label>
-          <Select value={formData.countryId} onValueChange={(value) => setFormData({ ...formData, countryId: value })}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select country" />
-            </SelectTrigger>
-            <SelectContent>
-              {countries.map((country) => (
-                <SelectItem key={country._id} value={country._id}>
-                  {country.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label htmlFor="code">Code</Label>
+          <Input id="code" value={formData.code} onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })} placeholder="e.g., KA" maxLength={3} />
         </div>
       )}
 
@@ -249,14 +165,10 @@ const LocationManagement: React.FC = () => {
         <div>
           <Label htmlFor="stateId">State</Label>
           <Select value={formData.stateId} onValueChange={(value) => setFormData({ ...formData, stateId: value })}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select state" />
-            </SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="Select state" /></SelectTrigger>
             <SelectContent>
-              {states.map((state) => (
-                <SelectItem key={state._id} value={state._id}>
-                  {state.name}
-                </SelectItem>
+              {allStates.map((state) => (
+                <SelectItem key={state.id} value={state.id}>{state.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -266,28 +178,30 @@ const LocationManagement: React.FC = () => {
       {activeTab === 'areas' && (
         <>
           <div>
+            <Label htmlFor="stateId">State</Label>
+            <Select value={formData.stateId} onValueChange={(value) => setFormData({ ...formData, stateId: value, cityId: '' })}>
+              <SelectTrigger><SelectValue placeholder="Select state" /></SelectTrigger>
+              <SelectContent>
+                {allStates.map((state) => (
+                  <SelectItem key={state.id} value={state.id}>{state.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
             <Label htmlFor="cityId">City</Label>
             <Select value={formData.cityId} onValueChange={(value) => setFormData({ ...formData, cityId: value })}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select city" />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Select city" /></SelectTrigger>
               <SelectContent>
-                {cities.map((city) => (
-                  <SelectItem key={city._id} value={city._id}>
-                    {city.name}
-                  </SelectItem>
+                {allCities.map((city) => (
+                  <SelectItem key={city.id} value={city.id}>{city.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
           <div>
             <Label htmlFor="pincode">Pincode</Label>
-            <Input
-              id="pincode"
-              value={formData.pincode}
-              onChange={(e) => setFormData({ ...formData, pincode: e.target.value })}
-              placeholder="Enter pincode"
-            />
+            <Input id="pincode" value={formData.pincode} onChange={(e) => setFormData({ ...formData, pincode: e.target.value })} placeholder="Enter pincode" />
           </div>
         </>
       )}
@@ -296,36 +210,18 @@ const LocationManagement: React.FC = () => {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Label htmlFor="latitude">Latitude</Label>
-            <Input
-              id="latitude"
-              type="number"
-              step="any"
-              value={formData.latitude}
-              onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
-              placeholder="Enter latitude"
-            />
+            <Input id="latitude" type="number" step="any" value={formData.latitude} onChange={(e) => setFormData({ ...formData, latitude: e.target.value })} placeholder="Latitude" />
           </div>
           <div>
             <Label htmlFor="longitude">Longitude</Label>
-            <Input
-              id="longitude"
-              type="number"
-              step="any"
-              value={formData.longitude}
-              onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
-              placeholder="Enter longitude"
-            />
+            <Input id="longitude" type="number" step="any" value={formData.longitude} onChange={(e) => setFormData({ ...formData, longitude: e.target.value })} placeholder="Longitude" />
           </div>
         </div>
       )}
 
       <div className="flex justify-end space-x-2">
-        <Button variant="outline" onClick={() => { setIsCreateDialogOpen(false); resetForm(); }}>
-          Cancel
-        </Button>
-        <Button onClick={handleCreate}>
-          Create
-        </Button>
+        <Button variant="outline" onClick={() => { setIsCreateDialogOpen(false); resetForm(); }}>Cancel</Button>
+        <Button onClick={handleCreate}>Create</Button>
       </div>
     </div>
   );
@@ -335,17 +231,13 @@ const LocationManagement: React.FC = () => {
     let columns: string[] = [];
 
     switch (activeTab) {
-      case 'countries':
-        data = countries;
-        columns = ['Name', 'Code', 'Status', 'Actions'];
-        break;
       case 'states':
         data = states;
-        columns = ['Name', 'Code', 'Country', 'Status', 'Actions'];
+        columns = ['Name', 'Code', 'Status', 'Actions'];
         break;
       case 'cities':
         data = cities;
-        columns = ['Name', 'State', 'Country', 'Coordinates', 'Actions'];
+        columns = ['Name', 'State', 'Coordinates', 'Actions'];
         break;
       case 'areas':
         data = areas;
@@ -364,57 +256,38 @@ const LocationManagement: React.FC = () => {
         </TableHeader>
         <TableBody>
           {data.map((item) => (
-            <TableRow key={item._id}>
+            <TableRow key={item.id}>
               <TableCell>{item.name}</TableCell>
-              {item.code && <TableCell>{item.code}</TableCell>}
+              {activeTab === 'states' && <TableCell>{item.code}</TableCell>}
               {activeTab === 'states' && (
-                <TableCell>{item.countryId?.name || 'N/A'}</TableCell>
+                <TableCell>
+                  <span className={`px-2 py-1 rounded-full text-xs ${item.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    {item.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                </TableCell>
               )}
               {activeTab === 'cities' && (
                 <>
-                  <TableCell>{item.stateId?.name || 'N/A'}</TableCell>
-                  <TableCell>{item.stateId?.countryId?.name || 'N/A'}</TableCell>
+                  <TableCell>{item.state?.name || 'N/A'}</TableCell>
                   <TableCell>
-                    {item.latitude && item.longitude 
-                      ? `${item.latitude}, ${item.longitude}`
-                      : 'N/A'
-                    }
+                    {item.latitude && item.longitude ? `${item.latitude}, ${item.longitude}` : 'N/A'}
                   </TableCell>
                 </>
               )}
               {activeTab === 'areas' && (
                 <>
-                  <TableCell>{item.cityId?.name || 'N/A'}</TableCell>
+                  <TableCell>{item.city?.name || 'N/A'}</TableCell>
                   <TableCell>{item.pincode || 'N/A'}</TableCell>
                   <TableCell>
-                    {item.latitude && item.longitude 
-                      ? `${item.latitude}, ${item.longitude}`
-                      : 'N/A'
-                    }
+                    {item.latitude && item.longitude ? `${item.latitude}, ${item.longitude}` : 'N/A'}
                   </TableCell>
                 </>
               )}
-              {(activeTab === 'countries' || activeTab === 'states') && (
-                <TableCell>
-                  <span className={`px-2 py-1 rounded-full text-xs ${
-                    item.isActive 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-red-100 text-red-800'
-                  }`}>
-                    {item.isActive ? 'Active' : 'Inactive'}
-                  </span>
-                </TableCell>
-              )}
               <TableCell>
-                <div className="flex space-x-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDelete(item._id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+                <Button variant="outline" size="sm" onClick={() => handleDeactivate(item.id)}>
+                  <EyeOff className="h-4 w-4 mr-1" />
+                  Deactivate
+                </Button>
               </TableCell>
             </TableRow>
           ))}
@@ -428,7 +301,7 @@ const LocationManagement: React.FC = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Location Management</h1>
-          <p className="text-muted-foreground">Manage countries, states, cities, and areas</p>
+          <p className="text-muted-foreground">Manage states, cities, and areas</p>
         </div>
       </div>
 
@@ -441,13 +314,8 @@ const LocationManagement: React.FC = () => {
             </CardTitle>
             <div className="flex space-x-2">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search locations..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 w-64"
-                />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Input placeholder="Search locations..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10 w-64" />
               </div>
               <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                 <DialogTrigger asChild>
@@ -467,71 +335,27 @@ const LocationManagement: React.FC = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="countries">Countries</TabsTrigger>
+          <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setSearchTerm(''); }}>
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="states">States</TabsTrigger>
               <TabsTrigger value="cities">Cities</TabsTrigger>
               <TabsTrigger value="areas">Areas</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="countries" className="mt-6">
-              {loading ? (
-                <div className="text-center py-8">Loading countries...</div>
-              ) : (
-                renderTable()
-              )}
-            </TabsContent>
-
             <TabsContent value="states" className="mt-6">
-              {loading ? (
-                <div className="text-center py-8">Loading states...</div>
-              ) : (
-                renderTable()
-              )}
+              {loading ? <div className="text-center py-8">Loading states...</div> : renderTable()}
             </TabsContent>
-
             <TabsContent value="cities" className="mt-6">
-              {loading ? (
-                <div className="text-center py-8">Loading cities...</div>
-              ) : (
-                renderTable()
-              )}
+              {loading ? <div className="text-center py-8">Loading cities...</div> : renderTable()}
             </TabsContent>
-
             <TabsContent value="areas" className="mt-6">
-              {loading ? (
-                <div className="text-center py-8">Loading areas...</div>
-              ) : (
-                renderTable()
-              )}
+              {loading ? <div className="text-center py-8">Loading areas...</div> : renderTable()}
             </TabsContent>
           </Tabs>
-
-          {totalPages > 1 && (
-            <div className="flex justify-center mt-6 space-x-2">
-              <Button
-                variant="outline"
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-              >
-                Previous
-              </Button>
-              <span className="flex items-center px-4">
-                Page {currentPage} of {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                disabled={currentPage === totalPages}
-              >
-                Next
-              </Button>
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>
   );
 };
-export  default LocationManagement;
+
+export default LocationManagement;

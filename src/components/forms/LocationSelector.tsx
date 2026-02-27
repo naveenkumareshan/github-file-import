@@ -7,7 +7,7 @@ import {
   SelectValue
 } from '@/components/ui/select';
 import { useLocations } from '@/hooks/useLocations';
-import { Country, State, City, Area } from '@/api/locationsService';
+import { State, City, Area } from '@/api/locationsService';
 
 interface LocationSelectorProps {
   selectedCountry?: string;
@@ -26,37 +26,25 @@ interface LocationSelectorProps {
 }
 
 const LocationSelectorComponent: React.FC<LocationSelectorProps> = ({
-  selectedCountry,
   selectedState,
   selectedCity,
   selectedArea,
-  onCountryChange,
   onStateChange,
   onCityChange,
   onAreaChange,
-  showCountry = true,
   showState = true,
   showCity = true,
   showArea = true,
   disabled = false
 }) => {
-  const { countries, getStatesByCountry, getCitiesByState, getAreasByCity } = useLocations();
+  const { states, getCitiesByState, getAreasByCity } = useLocations();
 
-  const [states, setStates] = useState<State[]>([]);
-  const [cities, setCities] = useState<City[]>([]);
-  const [areas, setAreas] = useState<Area[]>([]);
-
-  useEffect(() => {
-    if (selectedCountry) {
-      loadStates(selectedCountry);
-    }
-  }, [selectedCountry]);
+  const [localCities, setLocalCities] = useState<City[]>([]);
+  const [localAreas, setLocalAreas] = useState<Area[]>([]);
 
   useEffect(() => {
     if (selectedState) {
       loadCities(selectedState);
-    } else {
-      setCities([]);
     }
   }, [selectedState]);
 
@@ -64,30 +52,18 @@ const LocationSelectorComponent: React.FC<LocationSelectorProps> = ({
     if (selectedCity) {
       loadAreas(selectedCity);
     } else {
-      setAreas([]);
+      setLocalAreas([]);
     }
   }, [selectedCity]);
 
-  const loadStates = async (countryId: string) => {
-    const statesData = await getStatesByCountry(countryId);
-    setStates(statesData);
-  };
-
   const loadCities = async (stateId: string) => {
     const citiesData = await getCitiesByState(stateId);
-    setCities(citiesData);
+    setLocalCities(citiesData);
   };
 
   const loadAreas = async (cityId: string) => {
     const areasData = await getAreasByCity(cityId);
-    setAreas(areasData);
-  };
-
-  const handleCountryChange = (countryId: string) => {
-    onCountryChange?.(countryId);
-    onStateChange?.('');
-    onCityChange?.('');
-    onAreaChange?.('');
+    setLocalAreas(areasData);
   };
 
   const handleStateChange = (stateId: string) => {
@@ -102,25 +78,7 @@ const LocationSelectorComponent: React.FC<LocationSelectorProps> = ({
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      {showCountry && (
-        <div>
-          <label className="text-sm font-medium mb-1 block">Country</label>
-          <Select value={selectedCountry} onValueChange={handleCountryChange} disabled={disabled}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select country" />
-            </SelectTrigger>
-            <SelectContent>
-              {countries.map((country) => (
-                <SelectItem key={country._id} value={country._id}>
-                  {country.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {showState && (
         <div>
           <label className="text-sm font-medium mb-1 block">State</label>
@@ -130,7 +88,7 @@ const LocationSelectorComponent: React.FC<LocationSelectorProps> = ({
             </SelectTrigger>
             <SelectContent>
               {states.map((state) => (
-                <SelectItem key={state._id} value={state._id}>
+                <SelectItem key={state.id} value={state.id}>
                   {state.name}
                 </SelectItem>
               ))}
@@ -142,13 +100,13 @@ const LocationSelectorComponent: React.FC<LocationSelectorProps> = ({
       {showCity && (
         <div>
           <label className="text-sm font-medium mb-1 block">City</label>
-          <Select value={selectedCity} onValueChange={handleCityChange} >
+          <Select value={selectedCity} onValueChange={handleCityChange} disabled={disabled || !selectedState}>
             <SelectTrigger>
               <SelectValue placeholder="Select city" />
             </SelectTrigger>
             <SelectContent>
-              {cities.map((city) => (
-                <SelectItem key={city._id} value={city._id}>
+              {localCities.map((city) => (
+                <SelectItem key={city.id} value={city.id}>
                   {city.name}
                 </SelectItem>
               ))}
@@ -165,8 +123,8 @@ const LocationSelectorComponent: React.FC<LocationSelectorProps> = ({
               <SelectValue placeholder="Select area" />
             </SelectTrigger>
             <SelectContent>
-              {areas.map((area) => (
-                <SelectItem key={area._id} value={area._id}>
+              {localAreas.map((area) => (
+                <SelectItem key={area.id} value={area.id}>
                   {area.name}
                 </SelectItem>
               ))}
@@ -178,5 +136,5 @@ const LocationSelectorComponent: React.FC<LocationSelectorProps> = ({
   );
 };
 
-// ✅ Memoized export with custom prop comparison
+// Memoized export
 export const LocationSelector = React.memo(LocationSelectorComponent);
