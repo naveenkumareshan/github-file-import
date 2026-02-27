@@ -1,31 +1,27 @@
 
 
-## Fix: Amount Column Overlapping Text in Booking Tables
+## Compress Booking Table Row Height
 
-### Problem
-The 2x2 grid layout in the Amount column has insufficient spacing (`gap-x-3`), causing Seat/Locker and Paid/Due values to visually overlap, as shown in the screenshot.
+Reduce vertical space across all booking table rows by tightening fonts, padding, badges, and text wrapping in both Reading Room and Hostel booking tables.
 
-### Solution
-Increase horizontal gap and add minimum width to each column so values don't collide.
+### Changes (2 files)
 
-### Changes
+#### `src/pages/AdminBookings.tsx` (Reading Room)
 
-#### 1. `src/pages/AdminBookings.tsx` (line 168)
-- Change `gap-x-3` to `gap-x-4` for more horizontal space
-- Add `min-w-[140px]` on the grid container to ensure enough room
-- Make each grid item `whitespace-nowrap` to prevent wrapping mid-value
+1. **Student cell** (line 153-156): Reduce to `text-[11px]`, put name+email on one line with `whitespace-nowrap`, truncate email with `max-w-[180px] truncate inline-block align-bottom`
+2. **Category badge** (line 157): Already `text-[10px]` -- add `leading-none` and keep `py-0` to flatten it further
+3. **Room/Seat cell** (line 158-160): Add `whitespace-nowrap` to prevent text wrapping across multiple lines
+4. **Row padding**: Change all `py-1.5` to `py-1` across every TableCell for tighter rows
+5. **Amount grid** (line 168): Reduce `gap-y-0.5` to `gap-y-0`, keep `gap-x-4`
 
-#### 2. `src/pages/hotelManager/AdminHostelBookings.tsx` (line 228)
-- Same spacing fix: `gap-x-3` to `gap-x-4`, add `min-w-[140px]`, `whitespace-nowrap` on items
+#### `src/pages/hotelManager/AdminHostelBookings.tsx` (Hostel)
 
-### Visual Result
-```text
-Before (overlapping):     After (spaced):
-Seat: ₹2,000Locker: 300   Seat: ₹2,000    Locker: ₹300
-Paid: ₹2,300Due: ₹0        Paid: ₹2,300    Due: ₹0
-```
+Same set of changes:
+1. **Student cell** (line 214-216): `text-[11px]`, `whitespace-nowrap`, truncated email
+2. **Row padding**: All `py-1.5` to `py-1`
+3. **Room/Bed cell** (line 219-221): Add `whitespace-nowrap`
+4. **Amount grid** (line 228): `gap-y-0` instead of `gap-y-0.5`
 
-### Files modified: 2
-- `src/pages/AdminBookings.tsx`
-- `src/pages/hotelManager/AdminHostelBookings.tsx`
+### Expected Result
+Row height drops from ~80px to ~40-44px, matching the premium SaaS density target. No content is lost -- just tighter spacing and prevented wrapping.
 
