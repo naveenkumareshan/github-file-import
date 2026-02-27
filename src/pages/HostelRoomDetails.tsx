@@ -178,18 +178,7 @@ const HostelRoomDetails = () => {
     });
   };
 
-  /* ─── Price calculations ─── */
-  const totalPrice = discountedPrice * durationCount;
-  const calculateAdvanceAmount = () => {
-    if (!hostel?.advance_booking_enabled) return null;
-    if (hostel.advance_use_flat && hostel.advance_flat_amount) {
-      return Math.min(hostel.advance_flat_amount, totalPrice);
-    }
-    return Math.round(totalPrice * (hostel.advance_percentage / 100));
-  };
-  const advanceAmount = calculateAdvanceAmount();
-  const payableAmount = (useAdvancePayment && advanceAmount !== null) ? advanceAmount : totalPrice;
-
+  /* ─── Derived references (moved before payment handler) ─── */
   const selectedRoom = selectedBed ? rooms.find(r =>
     r.hostel_sharing_options?.some((opt: any) => opt.id === selectedBed.sharing_option_id)
   ) : null;
@@ -324,6 +313,18 @@ const HostelRoomDetails = () => {
     ? Math.round(effectiveBasePrice * (1 - selectedStayPackage.discount_percentage / 100))
     : effectiveBasePrice;
   const priceLabel = durationType === 'daily' ? '/day' : durationType === 'weekly' ? '/wk' : '/mo';
+
+  /* ─── Price calculations (after discountedPrice is defined) ─── */
+  const totalPrice = discountedPrice * durationCount;
+  const calculateAdvanceAmount = () => {
+    if (!hostel?.advance_booking_enabled) return null;
+    if (hostel.advance_use_flat && hostel.advance_flat_amount) {
+      return Math.min(hostel.advance_flat_amount, totalPrice);
+    }
+    return Math.round(totalPrice * (hostel.advance_percentage / 100));
+  };
+  const advanceAmount = calculateAdvanceAmount();
+  const payableAmount = (useAdvancePayment && advanceAmount !== null) ? advanceAmount : totalPrice;
 
   /* ─── Render ─── */
   return (
