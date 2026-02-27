@@ -1,44 +1,40 @@
 
 
-## Fix Blank Pages on Reading Room and Booking Card Click (Student Side)
+## Remove Visible Scrollbar from Student Pages
 
 ### Problem
-When a student clicks on a reading room card (`/book-seat/:id`) or a booking detail card (`/student/bookings/:id`), the page goes blank. This is caused by lazy-loaded components failing silently without an error boundary to catch and display a fallback UI.
-
-### Root Cause
-In `src/App.tsx`, the student routes use `StudentSuspense` (Suspense with a basic "Loading..." fallback) but have **no ErrorBoundary**. If a lazy-loaded chunk fails to load (network issue, cache invalidation) or the component throws a runtime error, the entire page crashes to blank.
+The custom scrollbar styling in `src/index.css` (`::-webkit-scrollbar` rules) creates a visible scrollbar track and thumb on the right side of every page. On mobile student pages, this looks out of place and is unnecessary since mobile users scroll by touch.
 
 ### Fix
 
-**File: `src/App.tsx`**
+**File: `src/components/student/MobileAppLayout.tsx`**
 
-1. Create a `StudentErrorBoundary` wrapper that combines `ErrorBoundary` + `Suspense` for all student/public lazy routes.
-2. Wrap the `StudentSuspense` component with `ErrorBoundary` so that chunk load failures and runtime errors show a user-friendly error screen with a "Retry" button instead of a blank page.
-3. Update the Suspense fallback to show a proper loading skeleton instead of just text.
+Add a CSS class to the layout wrapper that hides scrollbars on all student pages:
 
-**Changes:**
-- Import `ErrorBoundary` from `@/components/ErrorBoundary`
-- Update `StudentSuspense` to wrap children in both `ErrorBoundary` and `Suspense`:
+- Add a `no-scrollbar` (or `scrollbar-hide`) class to the outer `<div>` so that the main content area hides the scrollbar while still allowing normal scroll behavior.
 
-```tsx
-const StudentSuspense = ({ children }: { children: React.ReactNode }) => (
-  <ErrorBoundary>
-    <Suspense fallback={<div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}>
-      {children}
-    </Suspense>
-  </ErrorBoundary>
-);
+**File: `src/index.css`**
+
+Add a utility class that hides scrollbars across browsers:
+
+```css
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 ```
 
-This single change wraps ALL student and public routes with error recovery, preventing blank pages throughout the app.
+Then apply this class in `MobileAppLayout` on the root wrapper and/or the `<main>` element so all student routes inherit hidden scrollbars.
 
 ### Technical Details
 
 | File | Change |
 |------|--------|
-| `src/App.tsx` | Import `ErrorBoundary` and `Loader2`; update `StudentSuspense` to wrap with ErrorBoundary and use a spinner fallback |
+| `src/index.css` | Add `.no-scrollbar` utility class to hide scrollbars |
+| `src/components/student/MobileAppLayout.tsx` | Apply `no-scrollbar` class to the root div and main element |
 
 ### Result
-- If a lazy chunk fails to load, the error boundary shows "Something went wrong" with a "Try Again" button
-- If a component throws a runtime error, users see the error message instead of a blank page
-- The loading state shows a centered spinner instead of plain text
+All student-facing pages will scroll normally via touch but will no longer show a visible scrollbar track on the right side. Admin pages remain unaffected.
