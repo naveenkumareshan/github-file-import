@@ -1,60 +1,36 @@
 
 
-## Fix Expired Toast Loop and Advance-Paid Booking Classification
+## Fix Three Issues: Header Due Info, Advance-Paid Card Actions, and View Details Crash
 
-### Problem 1: Expired Toast Keeps Firing
-The `PaymentTimer` component calls `onExpiry()` on every interval tick (every second) once the timer hits zero. This causes the toast and cancellation API call to fire repeatedly.
+### Issue 1: Replace "Next Payment" with Due Info
+The "Next Payment" card in the header is not useful. Replace it with a "Due Amount" card that shows:
+- If the student has any pending/overdue dues: show the total due amount and due date
+- Add a "Pay" button that navigates to the booking detail page where they can pay
+- If no dues: show "No Dues" with a checkmark
 
-**Fix in `src/components/booking/PaymentTimer.tsx`**:
-- Add a `useRef` flag (`hasExpiredRef`) to track whether `onExpiry` has already been called.
-- Only call `onExpiry()` once, then set the flag to `true`.
+**File: `src/pages/StudentBookings.tsx`**
+- Fetch full due info (including `due_date`) instead of just amount
+- Replace the "Next Payment" card with a "Due Amount" card
+- Update `activeCount` to also count `advance_paid` bookings (line 166)
 
-```typescript
-const hasExpiredRef = useRef(false);
+### Issue 2: Advance-Paid Bookings Missing View Details and Renew Buttons
+In `BookingsList.tsx` line 309, the action buttons (View Details, Renew) only render when `paymentStatus === 'completed'`. Bookings with `advance_paid` status are excluded.
 
-// Inside calculateTimeLeft:
-if (remainingMs === 0) {
-  setTimeLeft(0);
-  setIsExpired(true);
-  if (onExpiry && !hasExpiredRef.current) {
-    hasExpiredRef.current = true;
-    onExpiry();
-  }
-}
-```
+**File: `src/components/booking/BookingsList.tsx`**
+- Change condition from `booking.paymentStatus === 'completed'` to `['completed', 'advance_paid'].includes(booking.paymentStatus)` (line 309)
+- Also update the validity indicator block (line 244) to include `advance_paid`
 
----
+### Issue 3: View Details Page Crashes
+In `src/pages/students/StudentBookingView.tsx` line 373, the code references `cabin?.slots_enabled` but `cabin` is never declared as a variable. It should be `booking.cabins?.slots_enabled`. This causes a runtime error that breaks the entire page.
 
-### Problem 2: Advance-Paid Bookings Appearing in Expired Tab
-Two sub-issues:
-1. `getCurrentBookings()` in `bookingsService.ts` only fetches `.eq('payment_status', 'completed')`, so `advance_paid` bookings are excluded from the Active tab.
-2. The expired filter in `StudentBookings.tsx` line 154 uses `b.paymentStatus !== 'completed'`, which catches `advance_paid` as "not completed" and puts them in Expired.
-
-**Fix in `src/api/bookingsService.ts` (`getCurrentBookings`)**:
-- Change `.eq('payment_status', 'completed')` to `.in('payment_status', ['completed', 'advance_paid'])` so active advance-paid bookings appear in the Active tab.
-
-**Fix in `src/pages/StudentBookings.tsx` (line 154)**:
-- Update the expired filter to exclude `advance_paid` from showing up as expired:
-```typescript
-setPastBookings(
-  allHistory.filter((b: Booking) =>
-    (b.endDate < today && !['pending'].includes(b.paymentStatus)) ||
-    ['failed', 'cancelled'].includes(b.paymentStatus)
-  )
-);
-```
-
-This ensures:
-- **Active tab**: Shows ongoing bookings with `completed` or `advance_paid` status whose end date is >= today
-- **Expired tab**: Only shows bookings whose end date has truly passed, or those with `failed`/`cancelled` status
-- `advance_paid` bookings with a future end date stay in the Active tab
-
----
+**File: `src/pages/students/StudentBookingView.tsx`**
+- Change `cabin?.slots_enabled` to `booking.cabins?.slots_enabled` on line 373
 
 ### Files Modified
 
 | File | Change |
 |------|--------|
-| `src/components/booking/PaymentTimer.tsx` | Add ref guard to prevent `onExpiry` from firing repeatedly |
-| `src/api/bookingsService.ts` | Include `advance_paid` in `getCurrentBookings` query |
-| `src/pages/StudentBookings.tsx` | Fix expired tab filter to only show truly expired or failed/cancelled bookings |
+| `src/pages/StudentBookings.tsx` | Replace "Next Payment" card with Due Amount card; count advance_paid in activeCount |
+| `src/components/booking/BookingsList.tsx` | Show View Details and Renew for advance_paid bookings; show validity indicator for advance_paid |
+| `src/pages/students/StudentBookingView.tsx` | Fix undefined `cabin` variable to `booking.cabins` |
+
