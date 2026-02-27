@@ -136,7 +136,7 @@ const Receipts: React.FC = () => {
       case 'cash': return 'Cash';
       case 'upi': return 'UPI';
       case 'bank_transfer': return 'Bank';
-      case 'send_link': return 'Online';
+      case 'online': return 'Online';
       default: return m;
     }
   };
