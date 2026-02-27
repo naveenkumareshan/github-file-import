@@ -1024,6 +1024,7 @@ export type Database = {
           description: string | null
           discount_percentage: number
           display_order: number
+          duration_type: string
           hostel_id: string
           id: string
           is_active: boolean
@@ -1038,6 +1039,7 @@ export type Database = {
           description?: string | null
           discount_percentage?: number
           display_order?: number
+          duration_type?: string
           hostel_id: string
           id?: string
           is_active?: boolean
@@ -1052,6 +1054,7 @@ export type Database = {
           description?: string | null
           discount_percentage?: number
           display_order?: number
+          duration_type?: string
           hostel_id?: string
           id?: string
           is_active?: boolean

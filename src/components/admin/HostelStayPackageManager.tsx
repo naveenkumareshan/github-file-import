@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { hostelStayPackageService, StayPackage, CreateStayPackageData } from '@/api/hostelStayPackageService';
+import { hostelStayPackageService, StayPackage, CreateStayPackageData, DurationType } from '@/api/hostelStayPackageService';
 import { Plus, Trash2, Edit, Package } from 'lucide-react';
 import {
   Dialog,
@@ -36,6 +36,7 @@ export const HostelStayPackageManager: React.FC<HostelStayPackageManagerProps> =
     lock_in_months: 0,
     notice_months: 1,
     description: '',
+    duration_type: 'monthly',
   });
 
   const fetchPackages = async () => {
@@ -64,6 +65,7 @@ export const HostelStayPackageManager: React.FC<HostelStayPackageManagerProps> =
       lock_in_months: 0,
       notice_months: 1,
       description: '',
+      duration_type: 'monthly',
     });
     setEditingPackage(null);
   };
@@ -80,6 +82,7 @@ export const HostelStayPackageManager: React.FC<HostelStayPackageManagerProps> =
         lock_in_months: pkg.lock_in_months,
         notice_months: pkg.notice_months,
         description: pkg.description || '',
+        duration_type: pkg.duration_type || 'monthly',
       });
     } else {
       resetForm();
@@ -153,6 +156,7 @@ export const HostelStayPackageManager: React.FC<HostelStayPackageManagerProps> =
                     {pkg.discount_percentage > 0 && (
                       <Badge className="bg-green-600 text-white text-[10px]">{pkg.discount_percentage}% off</Badge>
                     )}
+                    <Badge variant="secondary" className="text-[10px] capitalize">{pkg.duration_type || 'monthly'}</Badge>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     Min {pkg.min_months}mo · Lock-in {pkg.lock_in_months}mo · Deposit {pkg.deposit_months}mo · Notice {pkg.notice_months}mo
@@ -179,9 +183,23 @@ export const HostelStayPackageManager: React.FC<HostelStayPackageManagerProps> =
             <DialogTitle>{editingPackage ? 'Edit Package' : 'Add Package'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div>
-              <Label>Package Name</Label>
-              <Input value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="e.g. 3 Months or more" />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Package Name</Label>
+                <Input value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="e.g. 3 Months or more" />
+              </div>
+              <div>
+                <Label>Duration Type</Label>
+                <select
+                  value={formData.duration_type || 'monthly'}
+                  onChange={e => setFormData({ ...formData, duration_type: e.target.value as DurationType })}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
