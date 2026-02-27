@@ -1,43 +1,54 @@
 
 
-## Fix Due Balance Calculation to Include Security Deposit
+## Show Separate Amounts (Bed/Seat + Deposit/Locker) in All Booking Lists
 
 ### Problem
-When collecting a security deposit alongside a partial payment, the "Due Balance" only considers the bed total minus advance, ignoring the security deposit. For example:
-- Total: 4500, Security Deposit: 5000, Grand Total: 9500
-- Advance Paid: 2250
-- Current Due Balance: 2250 (4500 - 2250) -- WRONG
-- Correct Due Balance: 7250 (9500 - 2250)
+Currently, all booking lists show a single "Amount" figure (total_price). The user wants two amounts displayed:
+1. **Bed/Seat Amount** (after discount)
+2. **Security Deposit** (hostel) or **Locker Amount** (reading room)
 
-### Changes in `src/pages/admin/HostelBedMap.tsx`
+### Changes
 
-**1. `advanceComputed` memo (line ~556)**: Include security deposit in the remaining due calculation:
+#### 1. Admin Hostel Bookings (`src/pages/hotelManager/AdminHostelBookings.tsx`)
+- Update the query to also select `security_deposit, discount_amount` (if stored) from `hostel_bookings`
+- Replace the single Amount cell (line 198) with two lines:
+  - Bed: total_price (this is the bed amount after discount)
+  - Deposit: security_deposit (if > 0)
+- Show grand total (total_price + security_deposit) as a subtle sub-line
+
+#### 2. Student Dashboard - Hostel Bookings (`src/pages/StudentDashboard.tsx`)
+- The hostel booking cards (lines 119-122 and 485-488) currently show `total_price`
+- Update to show bed amount and security deposit separately
+- The `BookingData` interface needs `security_deposit` and `locker_price` fields added
+- For reading room bookings fetched via `bookingsService`, the data should already include `locker_price` and `discount_amount` from the `bookings` table
+
+#### 3. BookingsList Component (`src/components/booking/BookingsList.tsx`)
+- The price display area (around line 206) shows `₹{booking.totalPrice.toLocaleString()}`
+- Split into: Seat amount (totalPrice - lockerPrice) and Locker (lockerPrice)
+- Use existing `booking.seatPrice` and `booking.lockerPrice` fields from the `BookingDisplay` interface (already defined but not displayed separately)
+
+#### 4. Hostel Bed Details Dialog (`src/components/admin/HostelBedDetailsDialog.tsx`)
+- Update the booking history table to show bed amount + deposit columns instead of single amount
+
+### Visual Format (Amount Column)
+```text
+Hostel:                    Reading Room:
+Bed: 4,500                 Seat: 3,500
+Deposit: 5,000             Locker: 500
 ```
-remainingDue = (total + securityDeposit) - advanceAmount
-```
 
-**2. Booking creation (line ~613)**: Fix `remaining` to include security deposit:
-```
-remaining = (total + secDepAmt) - advanceAmt
-```
+When deposit/locker is 0, only the bed/seat amount is shown (no second line).
 
-**3. `remaining_amount` in booking insert (line ~626)**: Use the corrected `remaining` value (already does).
+### Technical Details
 
-**4. `hostel_dues` insert (line ~666-668)**: Update `total_fee` and `due_amount` to include security deposit so the due management page tracks the full outstanding balance.
+**Data availability:**
+- `hostel_bookings` table has `total_price` (bed amount) and `security_deposit` columns -- both already queried
+- `bookings` table has `total_price`, `locker_price`, `locker_included`, `discount_amount` columns
+- The `BookingDisplay` interface in BookingsList already has `seatPrice` and `lockerPrice` fields
 
-**5. `lastBookingInfo.remainingDue` (line ~695)**: Already uses `remaining`, so it will be correct once the calculation is fixed.
+**Files to modify:**
+1. `src/pages/hotelManager/AdminHostelBookings.tsx` -- Amount cell split
+2. `src/pages/StudentDashboard.tsx` -- Interface + display updates for both booking types
+3. `src/components/booking/BookingsList.tsx` -- Price display split
+4. `src/components/admin/HostelBedDetailsDialog.tsx` -- Table amount column split
 
-### Specific Line Changes
-
-| Location | Current | Fixed |
-|---|---|---|
-| Line 556 (advanceComputed) | `remainingDue = total - advanceAmount` | `remainingDue = total + secDepAmt - advanceAmount` (needs security deposit state access in memo) |
-| Line 613 (booking creation) | `remaining = total - advanceAmt` | `remaining = (total + secDepAmt) - advanceAmt` |
-| Line 666 (dues total_fee) | `total_fee: total` | `total_fee: total + secDepAmt` |
-| Line 668 (dues due_amount) | `due_amount: remaining` | Already uses corrected `remaining` |
-
-Since `advanceComputed` is a `useMemo` that doesn't currently have access to `collectSecurityDeposit` and `securityDepositAmount`, those dependencies will be added to include the security deposit in the due balance shown in the form UI (lines 1333-1334 and 1378-1379).
-
-### Summary
-- 4 calculation fixes in `HostelBedMap.tsx`
-- Due balance will correctly reflect: Grand Total (bed total + security deposit) minus advance paid
