@@ -95,7 +95,7 @@ export const userProfileService = {
       if (!user) return { success: false };
 
       const ext = file.name.split('.').pop();
-      const path = `avatars/${user.id}.${ext}`;
+      const path = `${user.id}/avatar.${ext}`;
 
       const { error: uploadError } = await supabase.storage
         .from('profiles')
@@ -104,7 +104,7 @@ export const userProfileService = {
       if (uploadError) return { success: false };
 
       const { data: urlData } = supabase.storage.from('profiles').getPublicUrl(path);
-      const url = urlData.publicUrl;
+      const url = `${urlData.publicUrl}?t=${Date.now()}`;
 
       await supabase.from('profiles').upsert({ id: user.id, profile_picture: url });
 
