@@ -22,6 +22,8 @@ import {
   Info,
   CheckCircle,
   ImageIcon,
+  MapPin,
+  Phone,
 } from "lucide-react";
 import { CabinImageSlider } from "@/components/CabinImageSlider";
 import { getImageUrl } from "@/lib/utils";
@@ -32,6 +34,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { HostelBedMap } from "@/components/hostels/HostelBedMap";
+import { StayDurationPackages } from "@/components/hostels/StayDurationPackages";
+import { StayPackage } from "@/api/hostelStayPackageService";
 
 const HostelRoomDetails = () => {
   const { roomId: hostelId } = useParams<{ roomId: string }>();
@@ -48,6 +53,8 @@ const HostelRoomDetails = () => {
   const [selectedRoom, setSelectedRoom] = useState<any | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isImageGalleryOpen, setIsImageGalleryOpen] = useState(false);
+  const [isBedMapOpen, setIsBedMapOpen] = useState(false);
+  const [selectedStayPackage, setSelectedStayPackage] = useState<StayPackage | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -109,6 +116,7 @@ const HostelRoomDetails = () => {
         room,
         hostel,
         sharingOption: selectedSharingOption,
+        stayPackage: selectedStayPackage,
       },
     });
   };
@@ -363,6 +371,29 @@ const HostelRoomDetails = () => {
                                   );
                                 })}
 
+                                {/* Stay Duration Packages */}
+                                {selectedSharingOption && selectedRoomId === room.id && (
+                                  <div className="mt-4">
+                                    <Separator className="mb-4" />
+                                    <StayDurationPackages
+                                      hostelId={hostel.id}
+                                      monthlyPrice={selectedSharingOption.price_monthly}
+                                      selectedPackage={selectedStayPackage}
+                                      onSelectPackage={setSelectedStayPackage}
+                                    />
+                                  </div>
+                                )}
+
+                                {/* View Bed Map */}
+                                <Button
+                                  variant="outline"
+                                  className="w-full"
+                                  onClick={() => setIsBedMapOpen(true)}
+                                >
+                                  <MapPin className="mr-2 h-4 w-4" />
+                                  View Bed Map
+                                </Button>
+
                                 <Button
                                   className="w-full"
                                   disabled={
@@ -385,6 +416,19 @@ const HostelRoomDetails = () => {
                                     This option is currently full
                                   </p>
                                 ) : null}
+
+                                {/* Contact for short stays */}
+                                {hostel.contact_phone && (
+                                  <div className="text-center p-3 bg-muted/50 rounded-lg">
+                                    <p className="text-xs text-muted-foreground">
+                                      To book for less than 30 days, contact{' '}
+                                      <a href={`tel:${hostel.contact_phone}`} className="text-primary font-medium">
+                                        <Phone className="h-3 w-3 inline mr-0.5" />
+                                        {hostel.contact_phone}
+                                      </a>
+                                    </p>
+                                  </div>
+                                )}
                               </div>
                             ) : (
                               <div className="text-center py-6">
@@ -404,6 +448,16 @@ const HostelRoomDetails = () => {
             </div>
           </div>
         </div>
+
+        {/* Bed Map Dialog */}
+        <Dialog open={isBedMapOpen} onOpenChange={setIsBedMapOpen}>
+          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Bed Map - {hostel.name}</DialogTitle>
+            </DialogHeader>
+            <HostelBedMap hostelId={hostel.id} readOnly />
+          </DialogContent>
+        </Dialog>
 
         {/* Image Gallery Dialog */}
         <Dialog open={isImageGalleryOpen} onOpenChange={setIsImageGalleryOpen}>
