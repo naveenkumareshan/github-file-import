@@ -1,59 +1,60 @@
 
 
-## Streamline Review & Pay: Merge Terms + Direct Payment
+## Fix Expired Toast Loop and Advance-Paid Booking Classification
 
-### What Changes
-The current booking flow has an unnecessary extra confirmation screen after clicking "Confirm & Proceed to Payment". This plan removes that extra step by moving the terms acceptance and payment button directly into the Review & Pay section (Step 3).
+### Problem 1: Expired Toast Keeps Firing
+The `PaymentTimer` component calls `onExpiry()` on every interval tick (every second) once the timer hits zero. This causes the toast and cancellation API call to fire repeatedly.
 
-### New Flow
-1. **Step 3 (Review & Pay)** -- Shows summary + Reading Room Rules + "I agree to terms" checkbox + Pay button
-2. On clicking Pay: Creates booking in database (pending status) and immediately opens Razorpay payment
-3. **If payment succeeds** -- Booking confirmed, redirected to confirmation page
-4. **If payment fails or dismissed** -- Redirect to My Bookings where the booking shows as "pending" with a 5-minute countdown timer and a "Pay Now" button
-5. **After 5 minutes** -- Auto-cancel the booking and release the seat
+**Fix in `src/components/booking/PaymentTimer.tsx`**:
+- Add a `useRef` flag (`hasExpiredRef`) to track whether `onExpiry` has already been called.
+- Only call `onExpiry()` once, then set the flag to `true`.
 
-### Technical Changes
+```typescript
+const hasExpiredRef = useRef(false);
 
-**File: `src/components/seats/SeatBookingForm.tsx`**
+// Inside calculateTimeLeft:
+if (remainingMs === 0) {
+  setTimeLeft(0);
+  setIsExpired(true);
+  if (onExpiry && !hasExpiredRef.current) {
+    hasExpiredRef.current = true;
+    onExpiry();
+  }
+}
+```
 
-1. **Move Terms + Rules into the Review & Pay card** (lines 912-958 area):
-   - Add `ReadingRoomRules` component and the "I agree to terms" checkbox directly below the coupon section inside the summary card
-   - Change the button from "Confirm & Proceed to Payment" to directly trigger `handleCreateBookingAndPay`
+---
 
-2. **Merge booking creation + payment into one action** (`handleCreateBookingAndPay`):
-   - Create the booking (pending status) -- same as current `handleCreateBooking`
-   - On success, immediately invoke Razorpay checkout programmatically
-   - On Razorpay success: confirm booking, navigate to confirmation
-   - On Razorpay failure/dismiss: navigate to My Bookings with a toast saying "Complete payment within 5 minutes"
+### Problem 2: Advance-Paid Bookings Appearing in Expired Tab
+Two sub-issues:
+1. `getCurrentBookings()` in `bookingsService.ts` only fetches `.eq('payment_status', 'completed')`, so `advance_paid` bookings are excluded from the Active tab.
+2. The expired filter in `StudentBookings.tsx` line 154 uses `b.paymentStatus !== 'completed'`, which catches `advance_paid` as "not completed" and puts them in Expired.
 
-3. **Remove the second confirmation screen** (lines 973-1095):
-   - The `bookingCreated` state-driven view with duplicate summary, terms, timer, and RazorpayCheckout is no longer needed
-   - Replace it with a simple "redirecting..." state or remove entirely
+**Fix in `src/api/bookingsService.ts` (`getCurrentBookings`)**:
+- Change `.eq('payment_status', 'completed')` to `.in('payment_status', ['completed', 'advance_paid'])` so active advance-paid bookings appear in the Active tab.
 
-4. **Button should be disabled** until `agree` is true (terms accepted)
+**Fix in `src/pages/StudentBookings.tsx` (line 154)**:
+- Update the expired filter to exclude `advance_paid` from showing up as expired:
+```typescript
+setPastBookings(
+  allHistory.filter((b: Booking) =>
+    (b.endDate < today && !['pending'].includes(b.paymentStatus)) ||
+    ['failed', 'cancelled'].includes(b.paymentStatus)
+  )
+);
+```
 
-5. **Integrate RazorpayCheckout programmatically**: Instead of rendering the `RazorpayCheckout` component in the UI, trigger it after booking creation. Use the existing `RazorpayCheckout` component but render it conditionally after booking is created, auto-triggering payment.
+This ensures:
+- **Active tab**: Shows ongoing bookings with `completed` or `advance_paid` status whose end date is >= today
+- **Expired tab**: Only shows bookings whose end date has truly passed, or those with `failed`/`cancelled` status
+- `advance_paid` bookings with a future end date stay in the Active tab
 
-**File: `src/components/booking/BookingsList.tsx`** (already has the infrastructure)
-- Already shows pending bookings with `PaymentTimer` (5 min) and `RazorpayCheckout` for retry
-- Already has `handlePaymentExpiry` that shows expiry toast
-- No changes needed here -- it already supports the "pay within 5 minutes" flow
-
-**File: `src/api/bookingsService.ts`** (if needed)
-- Verify that the auto-cancel logic works: when the timer expires and the student doesn't pay, the booking should be cancelled and seat released
-- Currently `handlePaymentExpiry` in `BookingsList` just shows a toast but doesn't actually cancel. Need to add an API call to cancel the booking on expiry.
-
-**File: `src/components/booking/BookingsList.tsx`**
-- Update `handlePaymentExpiry` to actually call `bookingsService.cancelBooking(bookingId)` to cancel and release the seat after 5 minutes
-
-### Summary of UI Changes
-- **Before**: Review & Pay summary -> Click "Confirm" -> New screen with duplicate summary + terms + timer + payment
-- **After**: Review & Pay summary + terms checkbox + "Pay Now" button -> Creates booking + opens Razorpay immediately -> On failure, go to My Bookings (5 min window)
+---
 
 ### Files Modified
 
 | File | Change |
 |------|--------|
-| `src/components/seats/SeatBookingForm.tsx` | Move terms/rules into Step 3 card, merge create+pay, remove second confirmation screen |
-| `src/components/booking/BookingsList.tsx` | Add actual booking cancellation on timer expiry |
-
+| `src/components/booking/PaymentTimer.tsx` | Add ref guard to prevent `onExpiry` from firing repeatedly |
+| `src/api/bookingsService.ts` | Include `advance_paid` in `getCurrentBookings` query |
+| `src/pages/StudentBookings.tsx` | Fix expired tab filter to only show truly expired or failed/cancelled bookings |
