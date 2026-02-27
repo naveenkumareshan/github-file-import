@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
-import { passwordResetService } from '@/api/passwordResetService';
+import { supabase } from '@/integrations/supabase/client';
 import { Mail, CheckCircle } from 'lucide-react';
 
 const ForgotPassword = () => {
@@ -29,22 +29,24 @@ const ForgotPassword = () => {
     setIsSubmitting(true);
     
     try {
-      const response = await passwordResetService.requestPasswordReset({ email });
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
       
-      if (response.success) {
-        toast({
-          title: "Reset Email Sent",
-          description: "Check your email for password reset instructions."
-        });
-        setIsEmailSent(true);
-      } else {
-        throw new Error(response.message || "Failed to send reset email");
+      if (error) {
+        throw error;
       }
-    } catch (error) {
+      
+      toast({
+        title: "Reset Email Sent",
+        description: "Check your email for password reset instructions."
+      });
+      setIsEmailSent(true);
+    } catch (error: any) {
       console.error('Password reset error:', error);
       toast({
         title: "Reset Failed",
-        description: error.response?.data?.message || error.message || "Could not send reset email. Please try again.",
+        description: error.message || "Could not send reset email. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -58,8 +60,8 @@ const ForgotPassword = () => {
         <div className="max-w-md mx-auto">
           <Card>
             <CardHeader className="text-center">
-              <div className="mx-auto w-12 h-12 bg-cabin-wood/10 rounded-full flex items-center justify-center mb-4">
-                <Mail className="h-6 w-6 text-cabin-wood" />
+              <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                <Mail className="h-6 w-6 text-primary" />
               </div>
               <CardTitle className="text-2xl font-serif">Forgot Password</CardTitle>
               <CardDescription>
@@ -85,12 +87,12 @@ const ForgotPassword = () => {
                   
                   <Button 
                     type="submit" 
-                    className="w-full hover:bg-cabin-dark/90"
+                    className="w-full"
                     disabled={isSubmitting}
                   >
                     {isSubmitting ? (
                       <>
-                        <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2" />
+                        <div className="animate-spin h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full mr-2" />
                         Sending...
                       </>
                     ) : (
@@ -138,7 +140,7 @@ const ForgotPassword = () => {
             <CardFooter className="flex justify-center">
               <p className="text-sm text-muted-foreground">
                 Remember your password?{' '}
-                <Link to="/student/login" className="text-cabin-wood hover:underline font-medium">
+                <Link to="/student/login" className="text-primary hover:underline font-medium">
                   Return to Login
                 </Link>
               </p>
@@ -146,7 +148,6 @@ const ForgotPassword = () => {
           </Card>
         </div>
       </div>
-  
     </div>
   );
 };

@@ -201,6 +201,7 @@ function App() {
               <Route path="/student/register" element={<StudentSuspense><Register /></StudentSuspense>} />
               <Route path="/student/forgot-password" element={<StudentSuspense><ForgotPassword /></StudentSuspense>} />
               <Route path="/student/reset-password/:token" element={<StudentSuspense><ResetPassword /></StudentSuspense>} />
+              <Route path="/reset-password" element={<StudentSuspense><ResetPassword /></StudentSuspense>} />
               <Route
                 path="/student/dashboard"
                 element={<ProtectedRoute><StudentSuspense><StudentBookings /></StudentSuspense></ProtectedRoute>}

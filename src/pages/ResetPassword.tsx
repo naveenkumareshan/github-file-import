@@ -1,52 +1,49 @@
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Navigation } from '../components/Navigation';
+import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
-import { passwordResetService } from '@/api/passwordResetService';
+import { supabase } from '@/integrations/supabase/client';
 import { Lock, CheckCircle, AlertTriangle } from 'lucide-react';
 
 const ResetPassword = () => {
-  const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isValidToken, setIsValidToken] = useState<boolean | null>(null);
   const [isPasswordReset, setIsPasswordReset] = useState(false);
+  const [isRecoverySession, setIsRecoverySession] = useState<boolean | null>(null);
   
   useEffect(() => {
-    if (token) {
-      validateToken();
-    }
-  }, [token]);
-  
-  const validateToken = async () => {
-    try {
-      const response = await passwordResetService.validateResetToken(token!);
-      setIsValidToken(response.success);
-      
-      if (!response.success) {
-        toast({
-          title: "Invalid Reset Link",
-          description: "This reset link is invalid or has expired.",
-          variant: "destructive"
-        });
+    // Listen for the PASSWORD_RECOVERY event from Supabase
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsRecoverySession(true);
       }
-    } catch (error) {
-      console.error('Token validation error:', error);
-      setIsValidToken(false);
-      toast({
-        title: "Invalid Reset Link",
-        description: "This reset link is invalid or has expired.",
-        variant: "destructive"
-      });
-    }
-  };
+    });
+
+    // Also check if there's already a session (user clicked the link)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        // Check URL hash for recovery type
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const type = hashParams.get('type');
+        if (type === 'recovery' || session) {
+          setIsRecoverySession(true);
+        }
+      } else {
+        // Give a short delay for the auth state change to fire
+        setTimeout(() => {
+          setIsRecoverySession((prev) => prev === null ? false : prev);
+        }, 2000);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,25 +78,22 @@ const ResetPassword = () => {
     setIsSubmitting(true);
     
     try {
-      const response = await passwordResetService.resetPassword({
-        token: token!,
-        newPassword
-      });
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
       
-      if (response.success) {
-        setIsPasswordReset(true);
-        toast({
-          title: "Password Reset Successful",
-          description: "Your password has been reset successfully."
-        });
-      } else {
-        throw new Error(response.message || "Failed to reset password");
+      if (error) {
+        throw error;
       }
-    } catch (error) {
+      
+      setIsPasswordReset(true);
+      toast({
+        title: "Password Reset Successful",
+        description: "Your password has been reset successfully."
+      });
+    } catch (error: any) {
       console.error('Password reset error:', error);
       toast({
         title: "Reset Failed",
-        description: error.response?.data?.message || error.message || "Failed to reset password. Please try again.",
+        description: error.message || "Failed to reset password. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -107,14 +101,14 @@ const ResetPassword = () => {
     }
   };
   
-  if (isValidToken === null) {
+  if (isRecoverySession === null) {
     return (
       <div className="min-h-screen bg-accent/30">
         <div className="container mx-auto px-4 py-12">
           <div className="max-w-md mx-auto">
             <Card>
               <CardContent className="flex justify-center py-12">
-                <div className="animate-spin h-8 w-8 border-4 border-cabin-wood border-t-transparent rounded-full"></div>
+                <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
               </CardContent>
             </Card>
           </div>
@@ -123,15 +117,15 @@ const ResetPassword = () => {
     );
   }
   
-  if (isValidToken === false) {
+  if (isRecoverySession === false) {
     return (
       <div className="min-h-screen bg-accent/30">
         <div className="container mx-auto px-4 py-12">
           <div className="max-w-md mx-auto">
             <Card>
               <CardHeader className="text-center">
-                <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
-                  <AlertTriangle className="h-6 w-6 text-red-600" />
+                <div className="mx-auto w-12 h-12 bg-destructive/10 rounded-full flex items-center justify-center mb-4">
+                  <AlertTriangle className="h-6 w-6 text-destructive" />
                 </div>
                 <CardTitle className="text-2xl font-serif">Invalid Reset Link</CardTitle>
                 <CardDescription>
@@ -143,8 +137,8 @@ const ResetPassword = () => {
                   The reset link may have expired or already been used. Please request a new password reset.
                 </p>
                 <Button 
-                  onClick={() => navigate('/forgot-password')}
-                  className="w-full bg-cabin-dark hover:bg-cabin-dark/90"
+                  onClick={() => navigate('/student/forgot-password')}
+                  className="w-full"
                 >
                   Request New Reset Link
                 </Button>
@@ -158,16 +152,15 @@ const ResetPassword = () => {
   
   return (
     <div className="min-h-screen bg-accent/30">
-      
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-md mx-auto">
           <Card>
             <CardHeader className="text-center">
-              <div className="mx-auto w-12 h-12 bg-cabin-wood/10 rounded-full flex items-center justify-center mb-4">
+              <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
                 {isPasswordReset ? (
                   <CheckCircle className="h-6 w-6 text-green-600" />
                 ) : (
-                  <Lock className="h-6 w-6 text-cabin-wood" />
+                  <Lock className="h-6 w-6 text-primary" />
                 )}
               </div>
               <CardTitle className="text-2xl font-serif">
@@ -218,12 +211,12 @@ const ResetPassword = () => {
                   
                   <Button 
                     type="submit" 
-                    className="w-full hover:bg-cabin-dark/90"
+                    className="w-full"
                     disabled={isSubmitting}
                   >
                     {isSubmitting ? (
                       <>
-                        <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2" />
+                        <div className="animate-spin h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full mr-2" />
                         Resetting Password...
                       </>
                     ) : (
@@ -243,7 +236,7 @@ const ResetPassword = () => {
                 
                 <Button 
                   onClick={() => navigate('/student/login')}
-                  className="w-full bg-cabin-dark hover:bg-cabin-dark/90"
+                  className="w-full"
                 >
                   Go to Login
                 </Button>
@@ -253,7 +246,7 @@ const ResetPassword = () => {
             <CardFooter className="flex justify-center">
               <p className="text-sm text-muted-foreground">
                 Remember your password?{' '}
-                <Link to="/student/login" className="text-cabin-wood hover:underline font-medium">
+                <Link to="/student/login" className="text-primary hover:underline font-medium">
                   Return to Login
                 </Link>
               </p>
