@@ -141,7 +141,7 @@ const AdminBookings = () => {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/30">
-                      {["Booking ID", "Student", "Type", "Room / Seat", "Booked On", "Duration", "Amount", "Status", "Actions"].map(h => (
+                      {["Booking ID", "Student", "Category", "Room / Seat", "Slot", "Booked On", "Duration", "Amount", "Status", "Actions"].map(h => (
                         <TableHead key={h} className={`text-[11px] font-medium text-muted-foreground uppercase tracking-wider py-2 px-3 ${h === "Actions" ? "text-right" : ""}`}>{h}</TableHead>
                       ))}
                     </TableRow>
@@ -154,12 +154,16 @@ const AdminBookings = () => {
                           <span className="font-medium">{b.userId?.name || "N/A"}</span>
                           {b.userId?.email && <span className="text-muted-foreground ml-1">({b.userId.email})</span>}
                         </TableCell>
-                        <TableCell className="py-1.5 px-3"><Badge variant="outline" className="text-[10px] px-1.5 py-0">{b.type || "Seat"}</Badge></TableCell>
+                        <TableCell className="py-1.5 px-3"><Badge variant="outline" className="text-[10px] px-1.5 py-0">{b.seatCategory || "—"}</Badge></TableCell>
                         <TableCell className="py-1.5 px-3 text-xs">
                           {b.roomNumber || (b.cabinId?.name && b.seatId?.number ? `${b.cabinId.name} / S${b.seatId.number}` : "-")}
                         </TableCell>
+                        <TableCell className="py-1.5 px-3 text-xs whitespace-nowrap">{b.slotName || "-"}</TableCell>
                         <TableCell className="py-1.5 px-3 text-xs whitespace-nowrap">{fmtDateTime(b.createdAt)}</TableCell>
-                        <TableCell className="py-1.5 px-3 text-xs whitespace-nowrap">{fmtRange(b.startDate, b.endDate)}</TableCell>
+                        <TableCell className="py-1.5 px-3 text-xs whitespace-nowrap">
+                          <div>{fmtRange(b.startDate, b.endDate)}</div>
+                          {b.bookingDuration && <div className="text-[10px] text-muted-foreground capitalize">{b.durationCount ? `${b.durationCount} ` : ''}{b.bookingDuration}</div>}
+                        </TableCell>
                         <TableCell className="py-1.5 px-3 text-xs font-semibold">₹{b.totalPrice}</TableCell>
                         <TableCell className="py-1.5 px-3">
                           <span className={`inline-flex items-center rounded-full px-1.5 py-0 text-[10px] font-medium capitalize ${badgeCls(b.status || "pending")}`}>{b.status || "pending"}</span>
