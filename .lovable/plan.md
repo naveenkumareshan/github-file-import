@@ -1,71 +1,47 @@
 
 
-## Hostel Booking: Future Dates, Advance Duration Control, and Flow Reset on Sharing Change
+## Fix: Calendar Auto-Close, Remove Gender Restriction, and Ensure Proper Booking/Receipt Flow
 
-### 1. Future Check-in Date Selection
+### Changes
 
-**Problem**: Currently check-in is always "today". Users should be able to pick a future date, controlled by a configurable max days setting.
+**1. Calendar closes immediately on date selection**
 
-**Database Change**: Add two new columns to the `hostels` table:
-- `max_advance_booking_days` (integer, default 30) -- how many days in advance a student can book
-- `allowed_durations` (jsonb, default `["daily","weekly","monthly"]`) -- which duration types are offered
-- `advance_applicable_durations` (jsonb, default `["daily","weekly","monthly"]`) -- which durations allow advance (partial) payment
+In `src/pages/HostelRoomDetails.tsx`, the date picker Popover needs controlled open/close state. Add a `calendarOpen` state and close it inside `handleCheckInDateChange` when a date is picked.
 
-**UI Change in Step 2 (HostelRoomDetails.tsx)**:
-- Replace the hardcoded "Today" check-in with a date picker
-- Default to today, allow selecting up to `hostel.max_advance_booking_days` days into the future
-- When a future date is picked, all date calculations (endDate, availability query, booking data) use that date instead of `new Date()`
-- Check-out auto-updates based on selected check-in + duration
+```text
+const [calendarOpen, setCalendarOpen] = useState(false);
 
-**Admin/Partner Control**:
-- Add `max_advance_booking_days` field to the hostel editor form (partner side) so they can control how far ahead students can book (e.g., 7, 15, 30, 60 days)
+handleCheckInDateChange = (date) => {
+  if (date) { setCheckInDate(date); setSelectedBed(null); setCalendarOpen(false); }
+};
 
-### 2. Advance Payment Duration Applicability
+<Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+```
 
-**Problem**: Advance payment option should only appear for duration types the partner has enabled (e.g., only monthly, not daily).
+**2. Remove gender restriction completely**
 
-**How it works** (mirrors reading room `SeatBookingForm` pattern):
-- The `advance_applicable_durations` column on `hostels` stores which durations allow advance payment (e.g., `["monthly"]`)
-- In Step 5, the advance payment checkbox only appears if the current `durationType` is in that list AND `advance_booking_enabled` is true
-- The `allowed_durations` column controls which duration type pills (Daily/Weekly/Monthly) are shown in Step 2
+In `src/api/hostelBookingService.ts` (lines 40-60), delete the entire gender check block that fetches the hostel gender and compares it to the user profile. This allows anyone to book any hostel regardless of gender.
 
-### 3. Reset Flow When Sharing Type Changes
+**3. Ensure proper booking + receipt generation and visibility**
 
-**Problem**: When a student changes sharing type or category filter, the subsequent steps (duration, bed, package, review) should reset.
+The current `createBooking` in `hostelBookingService.ts` sets `payment_status` to `pending` when no razorpay_payment_id is provided at creation time. After Razorpay payment succeeds, the `razorpay-verify-payment` edge function updates the booking to `completed` (or `advance_paid`) and creates a receipt. This flow is already correct.
 
-**Fix**: In the `setSharingFilter` and `setCategoryFilter` handlers, also reset:
-- `setSelectedBed(null)`
-- `setSelectedStayPackage(null)`
-- `setAgreedToTerms(false)`
-- `setUseAdvancePayment(false)`
+However, the booking `status` field stays as `pending` even after payment verification -- the edge function only updates `payment_status`, not `status`. This means "My Bookings" may show bookings as "pending" even after payment.
 
-This forces the student to re-select duration-aware bed, then package, then review -- maintaining the correct flow.
+Fix: Update the `razorpay-verify-payment` edge function to also set `status: 'confirmed'` when payment is verified.
 
 ### Files to Change
 
-| File | Action | Description |
-|---|---|---|
-| Database migration | New | Add `max_advance_booking_days`, `allowed_durations`, `advance_applicable_durations` columns to `hostels` |
-| `src/pages/HostelRoomDetails.tsx` | Edit | Add `checkInDate` state with date picker in Step 2; use it for all date calculations; filter duration pills by `allowed_durations`; gate advance payment by `advance_applicable_durations`; reset state on sharing filter change |
-| Hostel editor (partner form) | Edit | Add fields for `max_advance_booking_days`, `allowed_durations`, `advance_applicable_durations` |
+| File | Change |
+|---|---|
+| `src/pages/HostelRoomDetails.tsx` | Add `calendarOpen` state; pass `open`/`onOpenChange` to Popover; close on date select |
+| `src/api/hostelBookingService.ts` | Remove the gender restriction block (lines 40-60) |
+| `supabase/functions/razorpay-verify-payment/index.ts` | Add `status: 'confirmed'` to the update payload alongside `payment_status` |
 
-### Step 2 Updated Layout
+### Technical Details
 
-```text
-Step 2: Stay Duration
-[Daily] [Weekly] [Monthly]     <- only pills from allowed_durations shown
-
-Check-in: [Date Picker]        <- defaults to today, max = today + max_advance_booking_days
-Duration: [  1  ] month(s)     <- +/- counter
-Check-out: [auto-calculated]   <- check-in + duration
-```
-
-### Technical Notes
-
-- `checkInDate` state (Date) defaults to `new Date()` and replaces all `new Date()` references in endDate calculation, bed map startDate, and booking payload
-- The date picker disables dates before today and after `addDays(today, hostel.max_advance_booking_days || 30)`
-- When `checkInDate` changes, `selectedBed` resets (availability may differ)
-- Advance payment condition becomes: `hostel.advance_booking_enabled && advanceApplicableDurations.includes(durationType) && advanceAmount < totalPrice`
-- Duration pills filtered by: `(hostel.allowed_durations || ['daily','weekly','monthly']).includes(type)`
-- Sharing filter change triggers full reset of bed + package + review state
+- The Popover from Radix supports `open` and `onOpenChange` props for controlled mode
+- Removing gender check is a simple deletion of ~20 lines in `createBooking`
+- The edge function update needs one extra field in the `updateData` object: `status: 'confirmed'`
+- For test mode in the edge function, also add `status: 'confirmed'` to the test mode update
 
