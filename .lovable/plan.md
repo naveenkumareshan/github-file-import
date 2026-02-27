@@ -1,93 +1,74 @@
 
 
-## Redesign Hostel Management to Match Reading Room UI
+## Align Hostel Bookings, Receipts, and Deposits with Reading Room UI
 
 ### Overview
-Replace the current table-based hostel management page with a card-grid layout matching the Reading Room (CabinItem + CabinEditor) pattern. Add activate/deactivate, booking pause, bed map access, and an inline accordion-based hostel editor.
+Three hostel admin pages need to be rewritten to match their reading room counterparts exactly in UI, data fetching, and functionality.
 
-### 1. Database Migration
-Add `is_booking_active` column to the `hostels` table (matches `cabins.is_booking_active`):
-- `is_booking_active` (boolean, default true) -- controls whether students can book
+---
 
-### 2. New Component: HostelItem Card
-Create `src/components/admin/HostelItem.tsx` mirroring `CabinItem.tsx`:
-- Card with hostel logo/image, name, serial number, gender badge, location
-- Status badges: Active/Inactive, Booking On/Off, Approved/Pending
-- Action buttons: Edit, Beds (navigate to bed map), Packages, Activate/Deactivate, Pause/Enable Booking, Delete
-- Same visual style: rounded-xl card, aspect-video image, hover effects, compact action row
+### 1. Hostel Bookings Page (`AdminHostelBookings.tsx`)
 
-### 3. New Component: HostelEditor (Inline Accordion)
-Create `src/components/admin/HostelEditor.tsx` mirroring `CabinEditor.tsx`:
-- Replace the current dialog-based `HostelForm` with a full-page accordion editor
-- Sections (collapsible, one open at a time):
-  1. Basic Information (name, description, gender, stay type, capacity)
-  2. Images (logo + gallery upload)
-  3. Pricing & Deposit (security deposit)
-  4. Booking Configuration (allowed durations, max advance days, advance payment settings, advance applicable durations)
-  5. Amenities (checkbox grid)
-  6. Contact (email, phone)
-  7. Partner Assignment (admin selects partner, partner sees own details)
-  8. Location (address, state/city/area selector, map picker)
-- Sticky footer with Save and Cancel buttons
-- Reuses existing `ImageUpload`, `LocationSelector`, `MapPicker` components
+**Current state**: Basic table with tabs, no pagination, no amount column, different layout from `AdminBookings.tsx`.
 
-### 4. Rewrite HostelManagement Page
-Update `src/pages/hotelManager/HostelManagement.tsx`:
-- Replace table layout with card grid (3 columns on desktop, same as RoomManagement)
-- Add search bar and pagination (same pattern as RoomManagement)
-- Toggle between grid view and inline editor (same `showEditor` state pattern)
-- Wire up toggle handlers:
-  - `handleToggleActive`: update `is_active` on hostels table (+ auto-disable `is_booking_active` when deactivating)
-  - `handleToggleBooking`: update `is_booking_active` on hostels table
-  - `handleManageBeds`: navigate to `/admin/hostels/{id}/rooms` (existing route)
+**Changes** (rewrite to match `AdminBookings.tsx`):
+- Same card layout with breadcrumb header
+- Same columns: Booking ID, Student (name + email), Hostel, Room/Bed, Booked On, Duration (range + type), Amount, Status, Actions (eye icon with tooltip)
+- Pagination at 15 records per page with "Showing X-Y of Z" footer
+- Search by name, email, serial number
+- Status filter dropdown (All, Confirmed, Pending, Cancelled)
+- Keep the Calendar & Occupancy tab
+- View action navigates to `/admin/bookings/{id}/hostel` (already works)
 
-### 5. Hostel Service Updates
-Add to `src/api/hostelService.ts` (or a new `hostelAdminService.ts`):
-- `toggleHostelActive(id, isActive)` -- updates `is_active` (and `is_booking_active` if deactivating)
-- `toggleHostelBooking(id, isBookingActive)` -- updates `is_booking_active`
+### 2. Admin Booking Detail (`AdminBookingDetail.tsx`)
 
-### 6. Types Update
-The migration will auto-update `types.ts` to include `is_booking_active` on the hostels table.
+**Current state**: Already supports `type=hostel` but has critical data mapping bugs:
+- Fetches receipts from `receipts` table instead of `hostel_receipts` for hostel bookings
+- Fetches dues from `dues` table instead of checking hostel-specific data
+- Uses MongoDB-style field names (`booking.userId`, `booking.cabinId`, `booking.seatId`) which don't match Supabase hostel data shape (`booking.profiles`, `booking.hostels`, `booking.hostel_rooms`)
+- Invoice download uses wrong field mapping for hostel bookings
 
-### Files Changed
+**Changes**:
+- When `bookingType === 'hostel'`:
+  - Fetch receipts from `hostel_receipts` table instead of `receipts`
+  - Map data correctly: `booking.profiles?.name` instead of `booking.userId?.name`, `booking.hostels?.name` instead of `booking.cabinId?.name`, `booking.hostel_rooms?.room_number` / `booking.hostel_beds?.bed_number` instead of `booking.seatId?.number`
+  - Show "Hostel" and "Room/Bed" labels instead of "Room" and "Seat"
+  - Payment summary: show Total Price, Advance, Security Deposit, Remaining, Due Collected, Total Collected, Due Remaining
+  - Invoice generation: map hostel fields properly (hostel name, room number, bed number)
+  - Wrap `hostelService.getBookingById` response in `{ success: true, data: ... }` format OR adapt the detail page to handle raw data
+
+### 3. Hostel Receipts Page (`HostelReceipts.tsx`)
+
+**Current state**: Simple table with basic search and type filter. Missing: room filter, date range, summary bar, Txn ID / Notes column, Collected By, Booking ID column, same column layout as `Receipts.tsx`.
+
+**Changes** (rewrite to match `Receipts.tsx`):
+- Summary bar at top: Total amount, Booking Payments total, Due Collections total
+- Filters: Search, Hostel filter dropdown, Type filter, From/To date pickers, Clear button
+- Table columns (same order as `Receipts.tsx`): Receipt #, Student (name + phone + email), Hostel / Room, Amount, Method, Type (badge), Booking ID (serial), Collected By, Txn ID / Notes, Date
+- Fetch related data (profiles, hostels, hostel_rooms, hostel_bookings) and join client-side (same pattern as `Receipts.tsx`)
+
+### 4. Hostel Deposits Page (`HostelDeposits.tsx`)
+
+**Current state**: Simple flat table with search and inline refund button. No tabs for Deposits/Refund Management/Refunded separation.
+
+**Changes** (rewrite to match `DepositAndRestrictionManagement.tsx`):
+- Wrap in Tabs component with 3 tabs: Deposits, Refund Management, Refunded
+- Deposits tab: List all hostel bookings with `security_deposit > 0`, same table columns as reading room deposits (Booking ID, User, Hostel, Room/Bed, Deposit amount, Date, Status)
+- Refund Management tab: Show pending refunds with refund dialog (amount, reason, method, transaction ID, image upload)
+- Refunded tab: Show completed refunds with transaction details
+- Both refund tabs use the same pattern as `RefundManagement.tsx` but query `hostel_bookings` and `hostel_receipts` instead of the backend API
+
+**Note**: The reading room deposits use a backend API (`depositRefundService`) connected to MongoDB. For hostels, we'll query directly from the database since all hostel data is in the cloud database. The refund dialog will create a `hostel_receipts` entry with `receipt_type = 'deposit_refund'` and update the booking's `security_deposit` to 0 (current pattern, but wrapped in the tabbed UI).
+
+---
+
+### Files to Change
 
 | File | Action | Description |
 |---|---|---|
-| Database migration | New | Add `is_booking_active` to `hostels` |
-| `src/components/admin/HostelItem.tsx` | New | Card component matching CabinItem |
-| `src/components/admin/HostelEditor.tsx` | New | Accordion editor matching CabinEditor |
-| `src/pages/hotelManager/HostelManagement.tsx` | Rewrite | Card grid + inline editor, toggle handlers |
-| `src/api/hostelService.ts` | Edit | Add toggleActive, toggleBooking methods |
-
-### Visual Layout (Grid View)
-
-```text
-[Search bar________________________]
-
-[Hostel Card 1]  [Hostel Card 2]  [Hostel Card 3]
-  [image]          [image]          [image]
-  [name]           [name]           [name]
-  [location]       [location]       [location]
-  [price/gender]   [price/gender]   [price/gender]
-  [Edit] [Beds] [Activate] [Pause]  ...
-
-Showing 1-9 of 12   [< Prev] [1] [2] [Next >]
-```
-
-### Visual Layout (Editor View)
-
-```text
-[<- Back to Dashboard]     [Edit Hostel Name]
-
-[1] Basic Information          [v]
-[2] Images                     [>]
-[3] Pricing & Deposit          [>]
-[4] Booking Configuration      [>]
-[5] Amenities                  [>]
-[6] Contact                    [>]
-[7] Partner Assignment         [>]
-[8] Location                   [>]
-
-            [sticky: Cancel] [Save]
-```
+| `src/pages/hotelManager/AdminHostelBookings.tsx` | Rewrite | Match AdminBookings layout with pagination, columns, eye icon actions |
+| `src/pages/AdminBookingDetail.tsx` | Edit | Fix hostel data mapping, fetch from hostel_receipts, correct field names |
+| `src/pages/admin/HostelReceipts.tsx` | Rewrite | Match Receipts.tsx with summary bar, filters, full column set |
+| `src/pages/admin/HostelDeposits.tsx` | Rewrite | Add 3-tab layout matching DepositAndRestrictionManagement, refund dialog |
+| `src/api/hostelService.ts` | Edit | Wrap getBookingById response in `{ success, data }` format for consistency |
 
