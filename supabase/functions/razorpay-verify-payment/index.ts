@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
     if (testMode) {
       const { error: updateError } = await adminClient
         .from(tableName)
-        .update({ payment_status: "completed" })
+        .update({ payment_status: "completed", status: "confirmed" })
         .eq("id", bookingId);
 
       if (updateError) {
@@ -133,6 +133,7 @@ Deno.serve(async (req) => {
     // Update booking in the correct table
     const updateData: Record<string, any> = {
       payment_status: "completed",
+      status: "confirmed",
       razorpay_payment_id,
       razorpay_signature,
     };

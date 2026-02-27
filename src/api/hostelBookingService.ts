@@ -37,27 +37,6 @@ export const hostelBookingService = {
       throw new Error('The selected bed is not available');
     }
 
-    // Check gender restriction
-    const { data: hostel } = await supabase
-      .from('hostels')
-      .select('gender')
-      .eq('id', bookingData.hostel_id)
-      .single();
-
-    if (hostel?.gender && hostel.gender !== 'Co-ed') {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('gender')
-        .eq('id', user.id)
-        .single();
-
-      if (profile?.gender) {
-        const hostelGenderMap: Record<string, string> = { 'Male': 'Male', 'Female': 'Female' };
-        if (hostelGenderMap[hostel.gender] && profile.gender !== hostel.gender) {
-          throw new Error(`This hostel is for ${hostel.gender} students only`);
-        }
-      }
-    }
 
     const paymentStatus = bookingData.advance_amount && bookingData.advance_amount > 0 && bookingData.advance_amount < bookingData.total_price
       ? 'advance_paid'
