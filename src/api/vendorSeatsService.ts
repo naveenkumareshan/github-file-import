@@ -72,6 +72,8 @@ export interface VendorCabin {
   advanceFlatAmount: number | null;
   advanceUseFlat: boolean;
   advanceValidityDays: number;
+  slotsEnabled: boolean;
+  slotsApplicableDurations: string[];
 }
 
 export interface SeatFilters {
@@ -111,6 +113,7 @@ export interface PartnerBookingData {
   isAdvanceBooking?: boolean;
   advancePaid?: number;
   dueDate?: string;
+  slotId?: string;
 }
 
 export interface BlockHistoryEntry {
@@ -229,6 +232,8 @@ export const vendorSeatsService = {
           advanceFlatAmount: (cabin as any).advance_flat_amount ? Number((cabin as any).advance_flat_amount) : null,
           advanceUseFlat: (cabin as any).advance_use_flat ?? false,
           advanceValidityDays: Number((cabin as any).advance_validity_days) || 3,
+          slotsEnabled: cabin.slots_enabled ?? false,
+          slotsApplicableDurations: (cabin.slots_applicable_durations as string[]) || [],
         };
       });
 
@@ -421,6 +426,7 @@ export const vendorSeatsService = {
           collected_by: data.collectedBy || null,
           collected_by_name: data.collectedByName || '',
           transaction_id: data.transactionId || '',
+          slot_id: data.slotId || null,
         })
         .select('id, serial_number')
         .single();
