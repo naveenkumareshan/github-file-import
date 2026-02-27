@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { cabinSlotService, CabinSlot } from '@/api/cabinSlotService';
-import { format, addDays, addMonths } from 'date-fns';
+import { format, addDays, addWeeks, addMonths } from 'date-fns';
 import { getImageUrl } from '@/lib/utils';
 import { downloadInvoice, InvoiceData } from '@/utils/invoiceGenerator';
 import { cn } from '@/lib/utils';
@@ -86,9 +86,7 @@ const VendorSeats: React.FC = () => {
   const [studentQuery, setStudentQuery] = useState('');
   const [studentResults, setStudentResults] = useState<StudentProfile[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<StudentProfile | null>(null);
-  const [bookingPlan, setBookingPlan] = useState<string>('monthly');
-  const [bookingStartDate, setBookingStartDate] = useState<Date>(new Date());
-  const [customDays, setCustomDays] = useState('30');
+  const [selectedDuration, setSelectedDuration] = useState<{ type: 'daily' | 'weekly' | 'monthly'; count: number }>({ type: 'monthly', count: 1 });
   const [bookingPrice, setBookingPrice] = useState('');
   const [creatingBooking, setCreatingBooking] = useState(false);
   const [lockerIncluded, setLockerIncluded] = useState(false);
@@ -207,10 +205,9 @@ const VendorSeats: React.FC = () => {
     setSelectedStudent(null);
     setStudentQuery('');
     setStudentResults([]);
-    setBookingPlan('monthly');
+    setSelectedDuration({ type: 'monthly', count: 1 });
     setBookingStartDate(selectedDate);
     setBookingPrice(String(seat.price));
-    setCustomDays('30');
     setShowNewStudent(false);
     setNewStudentName('');
     setNewStudentEmail('');
@@ -382,10 +379,10 @@ const VendorSeats: React.FC = () => {
 
   // Compute end date
   const computedEndDate = useMemo(() => {
-    if (bookingPlan === 'monthly') return addMonths(bookingStartDate, 1);
-    if (bookingPlan === '15days') return addDays(bookingStartDate, 15);
-    return addDays(bookingStartDate, parseInt(customDays) || 30);
-  }, [bookingPlan, bookingStartDate, customDays]);
+    if (selectedDuration.type === 'monthly') return addMonths(bookingStartDate, selectedDuration.count);
+    if (selectedDuration.type === 'weekly') return addWeeks(bookingStartDate, selectedDuration.count);
+    return addDays(bookingStartDate, selectedDuration.count);
+  }, [selectedDuration, bookingStartDate]);
 
   // Computed total with locker
   const computedTotal = useMemo(() => {
@@ -429,26 +426,27 @@ const VendorSeats: React.FC = () => {
     return { advanceAmount, remainingDue, proportionalDays, dueDate, proportionalEndDate, totalDays };
   }, [isAdvanceBooking, selectedCabinInfo, computedTotal, computedEndDate, bookingStartDate, manualAdvanceAmount, manualDueDate]);
 
-  // Price recalculation when plan/slot/customDays changes
+  // Price recalculation when duration/slot changes
   useEffect(() => {
     if (!selectedSeat) return;
     const basePrice = selectedSlot && selectedSlot.id !== 'full_day' ? selectedSlot.price : selectedSeat.price;
     let calculatedPrice = basePrice;
-    if (bookingPlan === '15days') {
-      calculatedPrice = Math.round(basePrice / 2);
-    } else if (bookingPlan === 'custom') {
-      const days = parseInt(customDays) || 30;
-      calculatedPrice = Math.round((basePrice / 30) * days);
+    if (selectedDuration.type === 'daily') {
+      calculatedPrice = Math.round((basePrice / 30) * selectedDuration.count);
+    } else if (selectedDuration.type === 'weekly') {
+      calculatedPrice = Math.round((basePrice / 4) * selectedDuration.count);
+    } else {
+      calculatedPrice = Math.round(basePrice * selectedDuration.count);
     }
     setBookingPrice(String(calculatedPrice));
-  }, [bookingPlan, customDays, selectedSlot, selectedSeat]);
+  }, [selectedDuration, selectedSlot, selectedSeat]);
 
   // Check if slot selector should show
   const showSlotSelector = useMemo(() => {
     if (!selectedCabinInfo?.slotsEnabled) return false;
     const applicableDurations = selectedCabinInfo.slotsApplicableDurations || [];
-    return applicableDurations.includes(bookingPlan === '15days' ? 'daily' : bookingPlan);
-  }, [selectedCabinInfo, bookingPlan]);
+    return applicableDurations.includes(selectedDuration.type);
+  }, [selectedCabinInfo, selectedDuration.type]);
 
   const handleCreateStudent = async () => {
     if (!newStudentName || !newStudentEmail) {
@@ -492,8 +490,8 @@ const VendorSeats: React.FC = () => {
       startDate: format(bookingStartDate, 'yyyy-MM-dd'),
       endDate: format(computedEndDate, 'yyyy-MM-dd'),
       totalPrice: computedTotal,
-      bookingDuration: bookingPlan === 'monthly' ? 'monthly' : bookingPlan === '15days' ? '15_days' : 'custom',
-      durationCount: bookingPlan === 'custom' ? customDays : bookingPlan === '15days' ? '15' : '1',
+      bookingDuration: selectedDuration.type,
+      durationCount: String(selectedDuration.count),
       seatNumber: selectedSeat.number,
       lockerIncluded,
       lockerPrice: lockerIncluded && selectedCabinInfo ? selectedCabinInfo.lockerPrice : 0,
@@ -1185,23 +1183,37 @@ const VendorSeats: React.FC = () => {
                     </>
                   )}
                   <div>
-                    <Label className="text-[10px] uppercase text-muted-foreground">Plan</Label>
-                    <Select value={bookingPlan} onValueChange={setBookingPlan}>
-                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="monthly" className="text-xs">Monthly (30 days)</SelectItem>
-                        <SelectItem value="15days" className="text-xs">15 Days</SelectItem>
-                        <SelectItem value="custom" className="text-xs">Custom</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {bookingPlan === 'custom' && (
-                    <div>
-                      <Label className="text-[10px] uppercase text-muted-foreground">Days</Label>
-                      <Input className="h-8 text-xs" type="number" value={customDays} onChange={e => setCustomDays(e.target.value)} />
+                    <Label className="text-xs font-medium text-muted-foreground">Duration Type</Label>
+                    <div className="flex gap-1 mt-1">
+                      {(selectedCabinInfo?.allowedDurations || selectedCabinInfo?.allowed_durations || ['daily', 'weekly', 'monthly']).map((dur: string) => (
+                        <button
+                          key={dur}
+                          type="button"
+                          className={cn(
+                            "px-3 py-1.5 rounded-full text-xs font-medium border transition-colors capitalize",
+                            selectedDuration.type === dur
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "bg-background text-foreground border-border hover:bg-accent"
+                          )}
+                          onClick={() => setSelectedDuration(prev => ({ ...prev, type: dur as 'daily' | 'weekly' | 'monthly' }))}
+                        >
+                          {dur}
+                        </button>
+                      ))}
                     </div>
-                  )}
+                  </div>
+                  <div>
+                    <Label className="text-xs font-medium text-muted-foreground">
+                      {selectedDuration.type === 'daily' ? 'Days' : selectedDuration.type === 'weekly' ? 'Weeks' : 'Months'}
+                    </Label>
+                    <Input
+                      className="h-8 text-xs mt-1"
+                      type="number"
+                      min={1}
+                      value={selectedDuration.count}
+                      onChange={e => setSelectedDuration(prev => ({ ...prev, count: Math.max(1, parseInt(e.target.value) || 1) }))}
+                    />
+                  </div>
 
                   {/* Slot Selector */}
                   {showSlotSelector && availableSlots.length > 0 && (
