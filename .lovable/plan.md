@@ -1,53 +1,75 @@
 
 
-## Fix Student Profile Image Upload
+## Enhance BookSeat Page: Image Carousel, Layout, and Conditional Sections
 
-### Problems Found
+### Changes Overview
 
-1. **No file upload UI**: The Camera button on the avatar opens the "Account Info" sheet but there's no file input to actually pick and upload a profile picture.
-2. **Missing storage bucket**: `userProfileService.uploadProfilePicture()` tries to upload to a `profiles` storage bucket, but that bucket doesn't exist. Only `banners` and `cabin-images` buckets are configured.
-3. **No connection between upload and profile save**: Even if an image were uploaded, the profile picture URL isn't being set anywhere in the account section form.
+**1. Move name/address below the image carousel (not overlaid on it)**
+- Remove the name + rating overlay from the hero image section
+- Place them below the image as a standalone section with the reading room name, rating, and address (`full_address` from the cabin data)
+- Add `full_address` to the Cabin interface and populate it from `d.full_address`
 
-### Fix Plan
+**2. Auto-sliding image carousel (every 3 seconds + manual swipe)**
+- Update `CabinImageSlider` to add an `autoPlay` prop (default `false`)
+- When `autoPlay` is true, set up a `setInterval` that advances the carousel every 3 seconds
+- Pause auto-scroll when user manually interacts (touch/swipe), resume after a delay
+- Remove the thumbnail strip on the BookSeat page (keep the dot indicators and slide counter)
 
-#### 1. Create `profiles` storage bucket (database migration)
+**3. Show "Select Seat" step only after plan configuration is done**
+- This already works (line 756 in SeatBookingForm: `showSeatSelection` is true when `startDate` and `selectedDuration.count > 0`)
+- No change needed here
 
-Create a public storage bucket called `profiles` with RLS policies allowing authenticated users to upload/manage their own avatar files.
+**4. Hide hero image/details when a seat is selected, show on scroll up**
+- Add a `selectedSeat` state-driven collapse: when a seat is selected, the hero image section, info chips, and Details/Amenities card collapse with a smooth animation
+- Use CSS transition (max-height + opacity) so the section collapses when seat is selected
+- When user scrolls up past the booking form, the section reappears
 
-```sql
-INSERT INTO storage.buckets (id, name, public) VALUES ('profiles', 'profiles', true);
+### Technical Details
 
-CREATE POLICY "Users can upload own avatar"
-  ON storage.objects FOR INSERT
-  WITH CHECK (bucket_id = 'profiles' AND auth.uid()::text = (storage.foldername(name))[1]);
+#### File: `src/components/CabinImageSlider.tsx`
+- Add `autoPlay?: boolean` and `autoPlayInterval?: number` props
+- Add `useEffect` with `setInterval` to call `api.scrollNext()` every 3 seconds when `autoPlay` is true
+- Clear interval on unmount or when user interacts
+- Hide thumbnails when `autoPlay` is true (BookSeat uses full-width hero style)
 
-CREATE POLICY "Users can update own avatar"
-  ON storage.objects FOR UPDATE
-  USING (bucket_id = 'profiles' AND auth.uid()::text = (storage.foldername(name))[1]);
+#### File: `src/pages/BookSeat.tsx`
+- Add `address` field to the `Cabin` interface
+- Populate it from `d.full_address` in `fetchCabinDetails`
+- Move cabin name, rating, and address from the image overlay to a new section below the image
+- Remove the gradient text overlay from the hero
+- Pass `autoPlay={true}` to `CabinImageSlider`
+- Add a `showDetails` state: `true` by default, set to `false` when `selectedSeat` is set
+- Use `IntersectionObserver` on the booking form ref: when user scrolls the hero back into view, set `showDetails` back to `true`
+- Wrap the hero image, name/address, info chips, and Details/Amenities sections in a collapsible container with CSS transitions
 
-CREATE POLICY "Anyone can view profile images"
-  ON storage.objects FOR SELECT
-  USING (bucket_id = 'profiles');
+#### Layout after changes (top to bottom):
+```text
++----------------------------------+
+| [Auto-sliding images]  [< Back]  |
+| [Category badge]   [1/3 counter] |
++----------------------------------+
+| TRINI STUDY SPACE                |
+| 4.5 stars (12 reviews)           |
+| 123, Main Road, City, State      |
++----------------------------------+
+| [₹900/mo] [16 seats] [2 floors] |
++----------------------------------+
+| Details & Amenities              |
+| Wi-Fi, Desk, Bookshelf           |
++----------------------------------+
+| Configure Your Plan (Step 1)     |
+| ...                              |
+| Select Your Seat (Step 2)        |  <-- appears after config done
+| ...                              |
++----------------------------------+
+
+When seat selected: hero + chips + amenities collapse
+When scrolling up: they reappear
 ```
-
-#### 2. Add profile picture upload UI in ProfileManagement.tsx
-
-- Add a hidden file input triggered by the Camera button on the avatar
-- On file selection, call `userProfileService.uploadProfilePicture(file)`
-- On success, update the local `profile.profile_picture` state with the returned URL
-- Show a loading spinner on the avatar while uploading
-
-#### 3. Fix upload path in userProfileService.ts
-
-Update `uploadProfilePicture` to use a path format that matches the RLS policy:
-- Path: `{user.id}/avatar.{ext}` (so `foldername` returns the user ID)
-- Add cache-busting timestamp to the public URL to avoid stale images
 
 ### Files Changed
 
 | File | Change |
 |------|--------|
-| Database migration | Create `profiles` storage bucket + RLS policies |
-| `src/components/profile/ProfileManagement.tsx` | Add hidden file input on Camera button, handle upload with loading state |
-| `src/api/userProfileService.ts` | Fix upload path to `{userId}/avatar.{ext}` for RLS compatibility, add cache-busting |
-
+| `src/components/CabinImageSlider.tsx` | Add `autoPlay` prop with 3-second interval auto-scroll |
+| `src/pages/BookSeat.tsx` | Move name/address below image, add address field, add collapse behavior on seat selection, pass autoPlay to slider |
