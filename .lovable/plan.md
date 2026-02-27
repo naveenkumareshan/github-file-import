@@ -1,40 +1,32 @@
 
 
-## Remove Visible Scrollbar from Student Pages
+## Fix: Actually Hide Scrollbar on Student Pages
 
 ### Problem
-The custom scrollbar styling in `src/index.css` (`::-webkit-scrollbar` rules) creates a visible scrollbar track and thumb on the right side of every page. On mobile student pages, this looks out of place and is unnecessary since mobile users scroll by touch.
+The `no-scrollbar` class was added to `MobileAppLayout`'s inner `div` and `main`, but the visible scrollbar belongs to the **browser's root scroll container** (`html`/`body`). The global `::-webkit-scrollbar` styles (lines 110-127 in `index.css`) actively style that root scrollbar, and adding `no-scrollbar` to child elements has no effect on it.
 
-### Fix
+### Solution
+Make the `MobileAppLayout` container the actual scroll container instead of the body, so the `no-scrollbar` class works.
 
 **File: `src/components/student/MobileAppLayout.tsx`**
 
-Add a CSS class to the layout wrapper that hides scrollbars on all student pages:
+Change the root div from `min-h-screen` (which lets the body scroll) to `h-screen overflow-hidden`, and make the `main` element the scroll container with `overflow-y-auto`:
 
-- Add a `no-scrollbar` (or `scrollbar-hide`) class to the outer `<div>` so that the main content area hides the scrollbar while still allowing normal scroll behavior.
-
-**File: `src/index.css`**
-
-Add a utility class that hides scrollbars across browsers:
-
-```css
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
+```tsx
+<div className="h-screen flex flex-col bg-background overflow-hidden">
+  <main className="flex-1 overflow-y-auto pb-16 no-scrollbar">
+    <Outlet />
+  </main>
+  <MobileBottomNav />
+</div>
 ```
 
-Then apply this class in `MobileAppLayout` on the root wrapper and/or the `<main>` element so all student routes inherit hidden scrollbars.
-
-### Technical Details
+This way:
+- The `body` no longer scrolls (no root scrollbar)
+- The `main` element scrolls internally, and `no-scrollbar` hides its scrollbar
+- Touch scrolling still works normally
 
 | File | Change |
 |------|--------|
-| `src/index.css` | Add `.no-scrollbar` utility class to hide scrollbars |
-| `src/components/student/MobileAppLayout.tsx` | Apply `no-scrollbar` class to the root div and main element |
+| `src/components/student/MobileAppLayout.tsx` | Use `h-screen overflow-hidden` on root, `overflow-y-auto no-scrollbar` on main |
 
-### Result
-All student-facing pages will scroll normally via touch but will no longer show a visible scrollbar track on the right side. Admin pages remain unaffected.
