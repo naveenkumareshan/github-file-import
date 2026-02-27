@@ -1,101 +1,68 @@
 
 
-## Redesign Hostel Booking Flow to Match Reading Room Pattern
+## Add Stay Duration Type (Daily/Weekly/Monthly) Step
 
-### Current Problem
-The hostel detail page shows sharing options as selectable cards, then packages, then a "Book Now" that navigates away. There's no bed-level selection from the student side -- students just pick a sharing type and go. The admin bed map is read-only.
-
-### New Flow (Matching Reading Room)
-
-**Student Booking Flow (HostelRoomDetails.tsx):**
-1. Hero image slider + hostel info + chips (keep as-is -- already matches BookSeat)
-2. **Step 1: Select Sharing Type** -- Category/sharing filter pills (like seat category filter in reading rooms): "All", "Single", "2-Sharing", "3-Sharing", etc. Also AC/Non-AC filter if room categories exist
-3. **Step 2: Select Your Bed** -- Inline bed map (not in a dialog) showing floor tabs with room sections and clickable beds. Beds filtered by selected sharing type. Non-matching beds shown as disabled (same as reading room category mismatch pattern). Student clicks a bed to select it
-4. **Step 3: Choose Stay Duration** -- StayDurationPackages shown after bed is selected (same as current, but triggered by bed selection instead of sharing option selection)
-5. **Step 4: Review and Pay** -- Sticky bottom bar with selected bed info + "Book Now" button (matching BookSeat's sticky bottom bar)
-6. Hero collapses when bed is selected (same IntersectionObserver pattern)
-
-**Admin/Partner Bed Map Editor:**
-Create a new `HostelBedMapEditor` component (similar to FloorPlanDesigner) where admins can:
-- Add/remove beds visually per room
-- Set bed category (AC/Non-AC) and price per bed
-- Assign sharing type per bed
-- Block/unblock beds
-- View occupancy
+### Overview
+Add a new step between bed selection and package selection that lets students choose their stay duration type: **Daily**, **Weekly**, or **Monthly**. The existing "Choose Stay Duration" step gets renamed to "Choose Package". Packages will be filtered by the selected duration type.
 
 ### Database Changes
 
-**Add columns to `hostel_beds` table:**
-- `category` (text, nullable) -- e.g. "AC", "Non-AC", default null
-- `price_override` (numeric, nullable) -- per-bed price override (if null, uses sharing option price)
+**Add `duration_type` column to `hostel_stay_packages` table:**
+- `duration_type` (text, default `'monthly'`) -- values: `daily`, `weekly`, `monthly`
 
-**New table: `hostel_bed_categories`** (mirrors `seat_categories`)
-- `id` (uuid PK)
-- `hostel_id` (uuid FK -> hostels)
-- `name` (text) -- e.g. "AC", "Non-AC"
-- `price_adjustment` (numeric, default 0) -- price modifier
-- `created_at` (timestamptz)
+This allows admins to create packages specific to each duration type (e.g., daily packages with different pricing, weekly discount packages, monthly long-term packages).
 
-RLS: Admin full, partner own hostels, public read.
+**Migration SQL:**
+```sql
+ALTER TABLE public.hostel_stay_packages 
+  ADD COLUMN duration_type text NOT NULL DEFAULT 'monthly';
+```
 
----
+Update existing packages to default `'monthly'`.
 
-### Files to Change
+### File Changes
 
 | File | Action | Description |
 |---|---|---|
-| DB migration | New | Add `category` and `price_override` to `hostel_beds`; create `hostel_bed_categories` table |
-| `src/api/hostelBedCategoryService.ts` | New | CRUD for bed categories (mirrors seatCategoryService) |
-| `src/components/hostels/HostelBedMapEditor.tsx` | New | Admin visual bed editor: add/edit/block beds with category and price per bed |
-| `src/components/hostels/HostelBedMap.tsx` | Edit | Add `sharingFilter` and `categoryFilter` props to filter beds; make `onBedSelect` work for student selection |
-| `src/components/hostels/HostelFloorView.tsx` | Edit | Support category display on bed markers; show disabled state for filtered-out beds |
-| `src/pages/HostelRoomDetails.tsx` | Rewrite | New stepped flow: sharing filter pills -> inline bed map -> packages -> sticky bottom bar |
-| `src/components/hostels/RoomBedManagement.tsx` | Edit | Replace read-only bed map tab with the new `HostelBedMapEditor` |
-| `src/pages/HostelBooking.tsx` | Edit | Accept selected bed from navigation state; show bed number in summary |
+| DB migration | New | Add `duration_type` to `hostel_stay_packages` |
+| `src/api/hostelStayPackageService.ts` | Edit | Add `duration_type` to interfaces; filter `getPackages` by duration type |
+| `src/components/hostels/StayDurationPackages.tsx` | Edit | Rename heading to "Choose Package"; accept `durationType` prop to filter; adjust price label (/day, /wk, /mo) |
+| `src/pages/HostelRoomDetails.tsx` | Edit | Add new Step 3 with Daily/Weekly/Monthly pill selector; renumber existing Step 3 to Step 4 "Choose Package"; pass selected duration type to StayDurationPackages |
+| `src/components/admin/HostelStayPackageManager.tsx` | Edit | Add `duration_type` dropdown (Daily/Weekly/Monthly) to the create/edit form |
+| `src/pages/HostelBooking.tsx` | Edit | Accept `durationType` from navigation state; use it in price calculations |
 
----
-
-### Student Page Layout (HostelRoomDetails.tsx)
+### Student Flow (Updated)
 
 ```text
-+----------------------------------+
-| [Hero Image Slider]              |  <- collapses on bed select
-| Hostel Name, Rating, Location    |
-| [Info Chips Row]                 |
-| [Details & Amenities]            |
-+----------------------------------+
-| Step 1: Filter                   |
-| [All] [Single] [2-Share] [3-Sh] |  <- sharing type pills
-| [All] [AC] [Non-AC]             |  <- category pills (if categories exist)
-+----------------------------------+
-| Step 2: Select Your Bed          |
-| [Floor 1] [Floor 2] tabs         |
-|  Room 101 [Standard]             |
-|  [B1] [B2] [B3] [B4] ...        |  <- clickable bed grid
-|  Room 201 [Premium]              |
-|  [B1] [B2] [B3] ...             |
-+----------------------------------+
-| Step 3: Stay Duration            |  <- appears after bed selected
-| [Base] [3mo+] [6mo+] [11mo+]    |
-+----------------------------------+
-| [Sticky Bottom Bar]              |
-| Bed #3 | 2-Sharing | Rs8500/mo   |
-|                    [Book Now]     |
-+----------------------------------+
+Step 1: Select Sharing Type (filter pills) -- unchanged
+Step 2: Select Your Bed (inline bed map) -- unchanged
+Step 3: Stay Duration Type [NEW]
+  [Daily] [Weekly] [Monthly]  <-- pill toggle, default Monthly
+Step 4: Choose Package (renamed from "Choose Stay Duration")
+  Packages filtered by selected duration type
+  Price labels adjust: /day, /wk, /mo
 ```
 
-### Admin Bed Map Editor (HostelBedMapEditor.tsx)
+### Admin Changes
 
-- Same floor/room grid layout as HostelBedMap
-- Each bed is editable: click to open a popover/dialog with fields for category, price override, sharing type, block/unblock
-- "Add Bed" button per room to create new beds
-- Bulk operations: "Add X beds to sharing option Y"
-- Category management section at the top (add/edit/delete categories like AC/Non-AC)
+The package create/edit dialog gets a new **Duration Type** dropdown with options: Daily, Weekly, Monthly. This lets hostel owners create separate packages per duration type (e.g., "Weekend Special" as a daily package, "3 Months+" as a monthly package).
+
+### Pricing Logic
+
+- **Daily**: `StayDurationPackages` shows price as `/day` -- base price = bed monthly price / 30
+- **Weekly**: Shows price as `/wk` -- base price = bed monthly price / 4
+- **Monthly**: Shows price as `/mo` -- base price = bed monthly price (unchanged)
+
+The discount percentage from the package is applied to the calculated base price for that duration type.
+
+### Sticky Bottom Bar Update
+
+The bottom bar price label updates to match duration type: "Rs X/day", "Rs X/wk", or "Rs X/mo".
 
 ### Technical Notes
 
-- Bed map is inline on the student page (not in a dialog) -- same as how `DateBasedSeatMap` is inline in `SeatBookingForm`
-- The sharing type filter works like the category filter in reading rooms: non-matching beds are shown but disabled/greyed out
-- `price_override` on a bed takes precedence over the sharing option's `price_monthly` when calculating booking price
-- Stay packages discount is applied to the bed's effective price (override or sharing option price)
-- The `hostel_bed_categories` table is hostel-level (like `seat_categories` is cabin-level)
+- Duration type state is managed in `HostelRoomDetails.tsx` alongside other selection state
+- When duration type changes, the selected package resets (since packages are filtered)
+- The `StayDurationPackages` component re-fetches/re-filters when `durationType` prop changes
+- Navigation state to `HostelBooking` includes `durationType` for correct price calculation
+
