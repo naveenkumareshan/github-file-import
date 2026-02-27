@@ -13,7 +13,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { toast } from '@/hooks/use-toast';
 import { HostelForm } from '@/components/admin/HostelForm';
 import { AddRoomWithSharingForm } from '@/components/admin/AddRoomWithSharingForm';
-import { Plus, Building2, Edit, Trash2, Bed, DoorOpen, Eye, Badge as BadgeIcon } from 'lucide-react';
+import { HostelStayPackageManager } from '@/components/admin/HostelStayPackageManager';
+import { Plus, Building2, Edit, Trash2, Bed, DoorOpen, Eye, Badge as BadgeIcon, Package } from 'lucide-react';
 import ErrorBoundary from '../../components/ErrorBoundary';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -28,6 +29,7 @@ const HostelManagement = () => {
   const [selectedHostel, setSelectedHostel] = useState<any>(null);
   const [isImageGalleryOpen, setIsImageGalleryOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isPackagesOpen, setIsPackagesOpen] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -156,6 +158,9 @@ const HostelManagement = () => {
                             <Button variant="outline" size="sm" onClick={() => handleViewRooms(hostel.id)} className="h-7 text-xs">
                               <Eye className="h-3 w-3 mr-1" /> Rooms
                             </Button>
+                            <Button variant="outline" size="sm" onClick={() => { setSelectedHostel(hostel); setIsPackagesOpen(true); }} className="h-7 text-xs">
+                              <Package className="h-3 w-3 mr-1" /> Packages
+                            </Button>
                             <Button variant="outline" size="sm" onClick={() => handleEditHostel(hostel)} className="h-7 w-7 p-0">
                               <Edit className="h-3 w-3" />
                             </Button>
@@ -235,6 +240,18 @@ const HostelManagement = () => {
                 onSuccess={handleFormSuccess}
                 onClose={() => setIsRoomFormOpen(false)}
               />
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Stay Packages Dialog */}
+        <Dialog open={isPackagesOpen} onOpenChange={setIsPackagesOpen}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Stay Packages - {selectedHostel?.name}</DialogTitle>
+            </DialogHeader>
+            {selectedHostel && (
+              <HostelStayPackageManager hostelId={selectedHostel.id} />
             )}
           </DialogContent>
         </Dialog>

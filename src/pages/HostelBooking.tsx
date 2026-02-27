@@ -29,7 +29,7 @@ const HostelBooking = () => {
   const { toast } = useToast();
   const { user, authChecked, isAuthenticated } = useAuth();
 
-  const { room, hostel, sharingOption } = location.state || {};
+  const { room, hostel, sharingOption, stayPackage } = location.state || {};
 
   const [bookingPeriod, setBookingPeriod] = useState<BookingPeriod>({
     type: 'monthly',
@@ -113,13 +113,16 @@ const HostelBooking = () => {
   };
 
   const calculateTotalPrice = () => {
+    const discountMultiplier = stayPackage?.discount_percentage
+      ? (1 - stayPackage.discount_percentage / 100)
+      : 1;
     if (bookingPeriod.type === 'daily') {
-      return (sharingOption?.price_daily || 0) * bookingPeriod.duration;
+      return Math.round((sharingOption?.price_daily || 0) * bookingPeriod.duration);
     }
     if (bookingPeriod.type === 'weekly') {
-      return (sharingOption?.price_daily || 0) * 7 * bookingPeriod.duration;
+      return Math.round((sharingOption?.price_daily || 0) * 7 * bookingPeriod.duration);
     }
-    return (sharingOption?.price_monthly || 0) * bookingPeriod.duration;
+    return Math.round((sharingOption?.price_monthly || 0) * discountMultiplier * bookingPeriod.duration);
   };
 
   const calculateAdvanceAmount = () => {
@@ -497,6 +500,12 @@ const HostelBooking = () => {
                       <span className="text-muted-foreground">Tax & Service Fee</span>
                       <span>Included</span>
                     </div>
+                    {stayPackage && stayPackage.discount_percentage > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-green-600 font-medium">Package Discount ({stayPackage.name})</span>
+                        <span className="text-green-600 font-medium">-{stayPackage.discount_percentage}%</span>
+                      </div>
+                    )}
                   </div>
                   
                   <Separator />
