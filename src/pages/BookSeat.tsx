@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { cabinsService } from "@/api/cabinsService";
-import { ArrowLeft, Users, IndianRupee, Layers, Armchair, Lock, Star, CheckCircle2, Clock } from "lucide-react";
+import { ArrowLeft, Users, IndianRupee, Layers, Armchair, Lock, Star, CheckCircle2, Clock, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { CabinImageSlider } from "@/components/CabinImageSlider";
@@ -22,10 +22,7 @@ export interface Seat {
   cabinId: string;
   price: number;
   category?: string;
-  position: {
-    x: number;
-    y: number;
-  };
+  position: { x: number; y: number };
   isAvailable: boolean;
   unavailableUntil?: string;
 }
@@ -61,33 +58,25 @@ export interface Cabin {
   workingDays?: string[];
   is24Hours?: boolean;
   slotsEnabled?: boolean;
+  fullAddress?: string;
 }
 
 export interface RoomElement {
   id: string;
   type: string;
-  position: {
-    x: number;
-    y: number;
-  };
+  position: { x: number; y: number };
 }
 
 const BookSeatSkeleton = () => (
   <div className="min-h-screen bg-background pb-24">
     <Skeleton className="w-full aspect-[16/9]" />
+    <div className="px-3 pt-3 space-y-2">
+      <Skeleton className="h-6 w-3/4" />
+      <Skeleton className="h-4 w-1/2" />
+    </div>
     <div className="px-3 pt-3 flex gap-2">
       <Skeleton className="h-8 w-24 rounded-full" />
       <Skeleton className="h-8 w-20 rounded-full" />
-      <Skeleton className="h-8 w-20 rounded-full" />
-    </div>
-    <div className="px-3 pt-3 space-y-2">
-      <Skeleton className="h-4 w-3/4" />
-      <Skeleton className="h-4 w-1/2" />
-      <div className="flex gap-2 mt-3">
-        <Skeleton className="h-6 w-16 rounded-md" />
-        <Skeleton className="h-6 w-20 rounded-md" />
-        <Skeleton className="h-6 w-14 rounded-md" />
-      </div>
     </div>
     <div className="px-3 pt-4">
       <Skeleton className="h-[300px] w-full rounded-xl" />
@@ -100,6 +89,7 @@ const BookSeat = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const bookingFormRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLDivElement>(null);
 
   const [cabin, setCabin] = useState<Cabin | null>(null);
   const [selectedSeat, setSelectedSeat] = useState<Seat | null>(null);
@@ -107,6 +97,7 @@ const BookSeat = () => {
   const [error, setError] = useState<string | null>(null);
   const [roomElements, setRoomElements] = useState<RoomElement[]>([]);
   const [hideSeats, setHideSeats] = useState(false);
+  const [showDetails, setShowDetails] = useState(true);
   
   const [layoutImage, setLayoutImage] = useState<string | null>(null);
   const [roomWidth, setRoomWidth] = useState(800);
@@ -115,6 +106,28 @@ const BookSeat = () => {
   useEffect(() => {
     if (cabinId) fetchCabinDetails();
   }, [cabinId]);
+
+  // Collapse details when seat is selected
+  useEffect(() => {
+    if (selectedSeat) {
+      setShowDetails(false);
+    }
+  }, [selectedSeat]);
+
+  // IntersectionObserver: show details again when hero scrolls into view
+  useEffect(() => {
+    if (!heroRef.current) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !showDetails) {
+          setShowDetails(true);
+        }
+      },
+      { threshold: 0.3 }
+    );
+    observer.observe(heroRef.current);
+    return () => observer.disconnect();
+  }, [showDetails]);
 
   const fetchCabinDetails = async () => {
     try {
@@ -152,6 +165,7 @@ const BookSeat = () => {
           workingDays: Array.isArray((d as any).working_days) ? (d as any).working_days : undefined,
           is24Hours: (d as any).is_24_hours || false,
           slotsEnabled: (d as any).slots_enabled || false,
+          fullAddress: (d as any).full_address || undefined,
         });
         setLayoutImage((d as any).layout_image || null);
         setRoomWidth((d as any).room_width || 800);
@@ -204,99 +218,142 @@ const BookSeat = () => {
         </div>
       ) : cabin && (
         <>
-          {/* Hero Image Section - Taller & Richer */}
-          <div className="relative">
-            <div className="w-full aspect-[16/9] overflow-hidden bg-muted">
-              <CabinImageSlider images={cabinImages} />
+          {/* Collapsible Hero + Details section */}
+          <div
+            ref={heroRef}
+            className="transition-all duration-500 ease-in-out overflow-hidden"
+            style={{
+              maxHeight: showDetails ? '1200px' : '0px',
+              opacity: showDetails ? 1 : 0,
+            }}
+          >
+            {/* Hero Image - Auto-sliding carousel */}
+            <div className="relative">
+              <div className="w-full overflow-hidden bg-muted">
+                <CabinImageSlider images={cabinImages} autoPlay hideThumbnails />
+              </div>
+              {/* Subtle gradient for back button visibility */}
+              <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/40 to-transparent pointer-events-none" />
+              {/* Back button */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleGoBack}
+                className="absolute top-3 left-3 h-9 w-9 rounded-full bg-black/40 backdrop-blur-md text-white hover:bg-black/60 border border-white/10"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              {/* Category badge */}
+              <Badge className={`absolute top-3 right-3 ${getCategoryColor(cabin.category)} border-0 text-xs shadow-lg`}>
+                {cabin.category.charAt(0).toUpperCase() + cabin.category.slice(1)}
+              </Badge>
             </div>
-            {/* Multi-stop gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/5 to-black/30 pointer-events-none" />
-            {/* Frosted back button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleGoBack}
-              className="absolute top-3 left-3 h-9 w-9 rounded-full bg-black/40 backdrop-blur-md text-white hover:bg-black/60 border border-white/10"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            {/* Category badge */}
-            <Badge className={`absolute top-3 right-3 ${getCategoryColor(cabin.category)} border-0 text-xs shadow-lg`}>
-              {cabin.category.charAt(0).toUpperCase() + cabin.category.slice(1)}
-            </Badge>
-            {/* Name + Rating overlay */}
-            <div className="absolute bottom-0 left-0 right-0 p-4">
-              <h1 className="text-white font-bold text-xl leading-tight drop-shadow-lg">{cabin.name}</h1>
+
+            {/* Name, Rating & Address - Below the image */}
+            <div className="px-4 pt-3 pb-2">
+              <h1 className="text-lg font-bold text-foreground leading-tight">{cabin.name}</h1>
               {cabin.averageRating && cabin.averageRating > 0 && (
                 <div className="flex items-center gap-1 mt-1">
-                  <Star className="h-3.5 w-3.5 text-amber-400 fill-amber-400" />
-                  <span className="text-white/90 text-xs font-medium">{cabin.averageRating.toFixed(1)}</span>
+                  <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+                  <span className="text-sm font-medium text-foreground">{cabin.averageRating.toFixed(1)}</span>
                   {cabin.reviewCount && cabin.reviewCount > 0 && (
-                    <span className="text-white/60 text-xs">({cabin.reviewCount} reviews)</span>
+                    <span className="text-xs text-muted-foreground">({cabin.reviewCount} reviews)</span>
                   )}
                 </div>
               )}
-            </div>
-          </div>
-
-          {/* Info Chips - Elevated with accent colors */}
-          <div className="px-3 pt-3">
-            <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs font-semibold whitespace-nowrap shadow-sm border border-emerald-500/20">
-                <IndianRupee className="h-3.5 w-3.5" />
-                ₹{cabin.price}/mo
-              </div>
-              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-500/10 text-blue-700 dark:text-blue-400 text-xs font-semibold whitespace-nowrap shadow-sm border border-blue-500/20">
-                <Users className="h-3.5 w-3.5" />
-                {cabin.capacity} seats
-              </div>
-              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-500/10 text-purple-700 dark:text-purple-400 text-xs font-semibold whitespace-nowrap shadow-sm border border-purple-500/20">
-                <Layers className="h-3.5 w-3.5" />
-                {cabin.floors?.length || 1} floor{(cabin.floors?.length || 1) > 1 ? 's' : ''}
-              </div>
-              {cabin.lockerPrice !== undefined && cabin.lockerPrice > 0 && (
-                <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs font-semibold whitespace-nowrap shadow-sm border border-amber-500/20">
-                  <Lock className="h-3.5 w-3.5" />
-                  Locker ₹{cabin.lockerPrice}
+              {cabin.fullAddress && (
+                <div className="flex items-start gap-1.5 mt-1.5">
+                  <MapPin className="h-3.5 w-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                  <span className="text-xs text-muted-foreground leading-relaxed">{cabin.fullAddress}</span>
                 </div>
               )}
-              {cabin.is24Hours && (
+            </div>
+
+            {/* Info Chips */}
+            <div className="px-3 pt-1 pb-1">
+              <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
                 <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs font-semibold whitespace-nowrap shadow-sm border border-emerald-500/20">
-                  <Clock className="h-3.5 w-3.5" />
-                  Open 24/7
+                  <IndianRupee className="h-3.5 w-3.5" />
+                  ₹{cabin.price}/mo
                 </div>
-              )}
-              {cabin.slotsEnabled && (
-                <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-violet-500/10 text-violet-700 dark:text-violet-400 text-xs font-semibold whitespace-nowrap shadow-sm border border-violet-500/20">
-                  <Clock className="h-3.5 w-3.5" />
-                  Slot Booking
+                <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-500/10 text-blue-700 dark:text-blue-400 text-xs font-semibold whitespace-nowrap shadow-sm border border-blue-500/20">
+                  <Users className="h-3.5 w-3.5" />
+                  {cabin.capacity} seats
                 </div>
-              )}
+                <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-500/10 text-purple-700 dark:text-purple-400 text-xs font-semibold whitespace-nowrap shadow-sm border border-purple-500/20">
+                  <Layers className="h-3.5 w-3.5" />
+                  {cabin.floors?.length || 1} floor{(cabin.floors?.length || 1) > 1 ? 's' : ''}
+                </div>
+                {cabin.lockerPrice !== undefined && cabin.lockerPrice > 0 && (
+                  <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs font-semibold whitespace-nowrap shadow-sm border border-amber-500/20">
+                    <Lock className="h-3.5 w-3.5" />
+                    Locker ₹{cabin.lockerPrice}
+                  </div>
+                )}
+                {cabin.is24Hours && (
+                  <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs font-semibold whitespace-nowrap shadow-sm border border-emerald-500/20">
+                    <Clock className="h-3.5 w-3.5" />
+                    Open 24/7
+                  </div>
+                )}
+                {cabin.slotsEnabled && (
+                  <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-violet-500/10 text-violet-700 dark:text-violet-400 text-xs font-semibold whitespace-nowrap shadow-sm border border-violet-500/20">
+                    <Clock className="h-3.5 w-3.5" />
+                    Slot Booking
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Details & Amenities */}
+            <div className="px-3 pt-2 pb-1">
+              <div className="bg-muted/30 rounded-xl p-3 border border-border/50">
+                <h3 className="text-sm font-semibold text-foreground mb-2">Details & Amenities</h3>
+                {cabin.description && (
+                  <p className="text-xs text-muted-foreground leading-relaxed">{cabin.description}</p>
+                )}
+                {cabin.description && cabin.amenities?.length > 0 && (
+                  <Separator className="my-2.5 opacity-50" />
+                )}
+                {cabin.amenities?.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {cabin.amenities.map((amenity) => (
+                      <span key={amenity} className="inline-flex items-center gap-1 text-xs bg-primary/5 text-foreground border border-primary/10 px-2.5 py-1 rounded-lg">
+                        <CheckCircle2 className="h-3 w-3 text-primary" />
+                        {amenity}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Details & Amenities - Card-like section */}
-          <div className="px-3 pt-3">
-            <div className="bg-muted/30 rounded-xl p-3 border border-border/50">
-              <h3 className="text-sm font-semibold text-foreground mb-2">Details & Amenities</h3>
-              {cabin.description && (
-                <p className="text-xs text-muted-foreground leading-relaxed">{cabin.description}</p>
-              )}
-              {cabin.description && cabin.amenities?.length > 0 && (
-                <Separator className="my-2.5 opacity-50" />
-              )}
-              {cabin.amenities?.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {cabin.amenities.map((amenity) => (
-                    <span key={amenity} className="inline-flex items-center gap-1 text-xs bg-primary/5 text-foreground border border-primary/10 px-2.5 py-1 rounded-lg">
-                      <CheckCircle2 className="h-3 w-3 text-primary" />
-                      {amenity}
-                    </span>
-                  ))}
-                </div>
-              )}
+          {/* Back button visible when hero is collapsed */}
+          {!showDetails && (
+            <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border px-3 py-2 flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleGoBack}
+                className="h-8 w-8 rounded-full"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-sm font-semibold text-foreground truncate">{cabin.name}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-auto text-xs text-primary"
+                onClick={() => {
+                  setShowDetails(true);
+                  heroRef.current?.scrollIntoView({ behavior: 'smooth' });
+                }}
+              >
+                View Details
+              </Button>
             </div>
-          </div>
+          )}
 
           {/* Booking Form */}
           <div className="px-3 pt-3" ref={bookingFormRef}>
@@ -321,7 +378,7 @@ const BookSeat = () => {
             </Suspense>
           </div>
 
-          {/* Sticky Bottom Seat Info Card - Enhanced */}
+          {/* Sticky Bottom Seat Info Card */}
           {selectedSeat && cabin.isBookingActive && (
             <div className="fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-t from-background via-background to-background/95 border-t border-border shadow-[0_-4px_20px_-4px_rgba(0,0,0,0.15)] backdrop-blur-sm">
               <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
