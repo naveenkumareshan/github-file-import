@@ -24,7 +24,7 @@ export const adminBookingsService = {
 
       let query = supabase
         .from('bookings')
-        .select('*, profiles!bookings_user_id_fkey(name, email, phone, profile_picture, serial_number), cabins:cabin_id(name, serial_number), seats:seat_id(number)', { count: 'exact' });
+        .select('*, profiles!bookings_user_id_fkey(name, email, phone, profile_picture, serial_number), cabins:cabin_id(name, serial_number), seats:seat_id(number, category), cabin_slots:slot_id(name)', { count: 'exact' });
 
       // Apply filters
       if (filters?.status && filters.status !== 'all') {
@@ -64,6 +64,7 @@ export const adminBookingsService = {
         const profile = b.profiles as any;
         const cabin = b.cabins as any;
         const seat = b.seats as any;
+        const slot = (b as any).cabin_slots as any;
         return {
           _id: b.id,
           bookingId: b.serial_number || b.id.substring(0, 8),
@@ -87,6 +88,9 @@ export const adminBookingsService = {
           payoutStatus: 'pending',
           originalPrice: undefined,
           appliedCoupon: undefined,
+          seatCategory: seat?.category || '',
+          slotName: slot?.name || (b.slot_id ? '' : 'Full Day'),
+          bookingDuration: b.booking_duration || '',
         };
       });
 
