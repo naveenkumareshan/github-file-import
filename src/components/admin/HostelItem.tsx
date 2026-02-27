@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Edit, FileMinus, FilePlus, Trash2, Bed, Package } from 'lucide-react';
@@ -17,6 +18,7 @@ interface HostelItemProps {
 
 export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePackages, onToggleActive, onToggleBooking }: HostelItemProps) {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const getGenderBadgeStyle = (gender: string) => {
     switch (gender) {
@@ -88,7 +90,7 @@ export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePac
             <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => onEdit(hostel)}>
               <Edit className="h-3 w-3 mr-1" />Edit
             </Button>
-            <Button size="sm" className="h-7 px-2 text-xs" onClick={() => onManageBeds(hostel.id)}>
+            <Button size="sm" className="h-7 px-2 text-xs" onClick={() => navigate(`/admin/hostels/${hostel.id}/beds`)}>
               <Bed className="h-3 w-3 mr-1" />Beds
             </Button>
             <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => onManagePackages(hostel)}>
