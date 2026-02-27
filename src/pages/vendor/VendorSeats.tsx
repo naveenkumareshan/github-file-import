@@ -677,11 +677,13 @@ const VendorSeats: React.FC = () => {
       </div>
 
       {/* ──── Legend ──── */}
-      <div className="flex items-center gap-3 px-1 text-[10px] text-muted-foreground">
+      <div className="flex items-center gap-3 px-1 text-[10px] text-muted-foreground flex-wrap">
         <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-400 inline-block" /> Available</span>
         <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-red-400 inline-block" /> Booked</span>
         <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-amber-400 inline-block" /> Expiring</span>
         <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-muted-foreground/40 inline-block" /> Blocked</span>
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-violet-400 inline-block" /> Morning</span>
+        <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-blue-400 inline-block" /> Evening</span>
         <span className="ml-auto">{filteredSeats.length} seats</span>
       </div>
 
@@ -715,12 +717,27 @@ const VendorSeats: React.FC = () => {
               <div className="flex items-center gap-0.5 mt-0.5">
                 {statusIcon(seat.dateStatus)}
                 <span className="text-[8px]">{statusLabel(seat.dateStatus)}</span>
+                {seat.currentBooking?.slotId && seat.currentBooking?.slotName && (
+                  <Badge 
+                    className={cn(
+                      "text-[7px] px-1 py-0 h-3 ml-0.5 border-0",
+                      seat.currentBooking.slotName.toLowerCase().includes('morning') 
+                        ? "bg-violet-500 text-white" 
+                        : "bg-blue-500 text-white"
+                    )}
+                  >
+                    {seat.currentBooking.slotName.toLowerCase().includes('morning') ? 'AM' : 'PM'}
+                  </Badge>
+                )}
               </div>
               {/* Hover actions: block + details */}
               {canEdit && (
                 <div className="absolute inset-0 bg-background/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1 rounded">
                   <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => openBlockDialog(seat, e)} title={seat.isAvailable ? 'Block' : 'Unblock'}>
                     {seat.isAvailable ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                  </Button>
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => { e.stopPropagation(); setEditingSeatId(seat._id); setEditPrice(String(seat.price)); }} title="Edit Price">
+                    <Edit className="h-3 w-3" />
                   </Button>
                   <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => { e.stopPropagation(); handleSeatClick(seat); }} title="Details">
                     <Info className="h-3 w-3" />
