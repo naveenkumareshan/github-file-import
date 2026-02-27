@@ -7,7 +7,7 @@ import { BookingsList } from '@/components/booking/BookingsList';
 import { useToast } from '@/hooks/use-toast';
 import { bookingsService } from '@/api/bookingsService';
 import { format } from 'date-fns';
-import { Calendar, Building, BookOpen, Plus } from 'lucide-react';
+import { Calendar, Building, BookOpen, Plus, CreditCard, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -16,6 +16,7 @@ interface DueInfo {
   due_amount: number;
   paid_amount: number;
   status: string;
+  due_date: string;
 }
 
 interface Booking {
@@ -47,6 +48,7 @@ const StudentBookings = () => {
   const [pastBookings, setPastBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [duesMap, setDuesMap] = useState<Map<string, number>>(new Map());
+  const [firstDueInfo, setFirstDueInfo] = useState<DueInfo | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -61,17 +63,20 @@ const StudentBookings = () => {
       if (!authUser) return;
       const { data } = await supabase
         .from('dues')
-        .select('booking_id, due_amount, paid_amount, status')
+        .select('booking_id, due_amount, paid_amount, status, due_date')
         .eq('user_id', authUser.id)
-        .in('status', ['pending', 'overdue']);
+        .in('status', ['pending', 'overdue', 'partial']);
       if (data) {
         const map = new Map<string, number>();
-        data.forEach((d: DueInfo) => {
+        (data as DueInfo[]).forEach((d) => {
           if (d.booking_id) {
             map.set(d.booking_id, Number(d.due_amount) - Number(d.paid_amount));
           }
         });
         setDuesMap(map);
+        // Store first due info for header card
+        const firstDue = (data as DueInfo[]).find(d => (Number(d.due_amount) - Number(d.paid_amount)) > 0);
+        setFirstDueInfo(firstDue || null);
       }
     } catch (e) {
       console.error('Error fetching dues:', e);
@@ -163,12 +168,11 @@ const StudentBookings = () => {
   };
 
   const activeCount = Array.isArray(currentBookings)
-    ? currentBookings.filter(b => b.paymentStatus === 'completed').length
+    ? currentBookings.filter(b => ['completed', 'advance_paid'].includes(b.paymentStatus)).length
     : 0;
 
-  const nextPayment = currentBookings.length > 0
-    ? format(new Date(currentBookings[0].endDate), 'PP')
-    : 'N/A';
+  const totalDueAmount = firstDueInfo ? Number(firstDueInfo.due_amount) - Number(firstDueInfo.paid_amount) : 0;
+  const dueDate = firstDueInfo?.due_date ? format(new Date(firstDueInfo.due_date), 'dd MMM') : null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -192,15 +196,31 @@ const StudentBookings = () => {
                 </div>
               </CardContent>
             </Card>
-            <Card className="bg-white/10 border-0 shadow-none">
+            <Card
+              className="bg-white/10 border-0 shadow-none cursor-pointer"
+              onClick={() => {
+                if (firstDueInfo?.booking_id) navigate(`/student/bookings/${firstDueInfo.booking_id}`);
+              }}
+            >
               <CardContent className="p-3">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center">
-                    <Calendar className="h-4 w-4 text-white" />
+                    {totalDueAmount > 0 ? (
+                      <CreditCard className="h-4 w-4 text-white" />
+                    ) : (
+                      <CheckCircle className="h-4 w-4 text-white" />
+                    )}
                   </div>
                   <div>
-                    <p className="text-white/70 text-[10px]">Next Payment</p>
-                    <p className="text-white font-bold text-[12px]">{nextPayment}</p>
+                    <p className="text-white/70 text-[10px]">Due Amount</p>
+                    {totalDueAmount > 0 ? (
+                      <>
+                        <p className="text-white font-bold text-[13px]">₹{totalDueAmount.toLocaleString()}</p>
+                        {dueDate && <p className="text-white/60 text-[9px]">Due: {dueDate}</p>}
+                      </>
+                    ) : (
+                      <p className="text-white font-bold text-[12px]">No Dues ✓</p>
+                    )}
                   </div>
                 </div>
               </CardContent>
