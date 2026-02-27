@@ -49,6 +49,9 @@ export interface HostelData {
   advance_flat_amount?: number;
   advance_use_flat?: boolean;
   cancellation_window_hours?: number;
+  max_advance_booking_days?: number;
+  allowed_durations?: string[];
+  advance_applicable_durations?: string[];
 }
 
 export const HostelForm: React.FC<HostelFormProps> = ({
@@ -79,6 +82,9 @@ export const HostelForm: React.FC<HostelFormProps> = ({
     advance_percentage: 50,
     advance_use_flat: false,
     cancellation_window_hours: 24,
+    max_advance_booking_days: 30,
+    allowed_durations: ['daily', 'weekly', 'monthly'],
+    advance_applicable_durations: ['daily', 'weekly', 'monthly'],
   });
 
   const [loading, setLoading] = useState(false);
@@ -109,6 +115,9 @@ export const HostelForm: React.FC<HostelFormProps> = ({
         advance_flat_amount: initialData.advance_flat_amount,
         advance_use_flat: initialData.advance_use_flat || false,
         cancellation_window_hours: initialData.cancellation_window_hours || 24,
+        max_advance_booking_days: initialData.max_advance_booking_days || 30,
+        allowed_durations: initialData.allowed_durations || ['daily', 'weekly', 'monthly'],
+        advance_applicable_durations: initialData.advance_applicable_durations || ['daily', 'weekly', 'monthly'],
       });
     }
   }, [initialData]);
@@ -280,6 +289,70 @@ export const HostelForm: React.FC<HostelFormProps> = ({
                   <Label className="text-xs">Cancellation Window (hours)</Label>
                   <Input name="cancellation_window_hours" type="number" value={formData.cancellation_window_hours} onChange={handleNumberChange} min="0" />
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* Booking Duration & Advance Controls */}
+          <div className="space-y-3 border rounded-lg p-3">
+            <Label className="text-sm font-semibold">Booking Controls</Label>
+            <div>
+              <Label className="text-xs">Max Advance Booking Days</Label>
+              <Input name="max_advance_booking_days" type="number" value={formData.max_advance_booking_days} onChange={handleNumberChange} min="1" max="365" />
+              <p className="text-xs text-muted-foreground mt-1">How many days in advance students can book</p>
+            </div>
+            <div>
+              <Label className="text-xs">Allowed Duration Types</Label>
+              <div className="flex gap-2 mt-1">
+                {['daily', 'weekly', 'monthly'].map(dur => (
+                  <div key={dur} className="flex items-center space-x-1">
+                    <Checkbox
+                      id={`allowed-${dur}`}
+                      checked={formData.allowed_durations?.includes(dur)}
+                      onCheckedChange={(checked) => {
+                        setFormData(prev => {
+                          const current = prev.allowed_durations || [];
+                          return {
+                            ...prev,
+                            allowed_durations: checked
+                              ? [...current, dur]
+                              : current.filter(d => d !== dur),
+                          };
+                        });
+                      }}
+                    />
+                    <Label htmlFor={`allowed-${dur}`} className="text-xs font-normal cursor-pointer capitalize">{dur}</Label>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Which duration types are shown to students</p>
+            </div>
+            {formData.advance_booking_enabled && (
+              <div>
+                <Label className="text-xs">Advance Payment Applicable For</Label>
+                <div className="flex gap-2 mt-1">
+                  {['daily', 'weekly', 'monthly'].map(dur => (
+                    <div key={dur} className="flex items-center space-x-1">
+                      <Checkbox
+                        id={`adv-applicable-${dur}`}
+                        checked={formData.advance_applicable_durations?.includes(dur)}
+                        onCheckedChange={(checked) => {
+                          setFormData(prev => {
+                            const current = prev.advance_applicable_durations || [];
+                            return {
+                              ...prev,
+                              advance_applicable_durations: checked
+                                ? [...current, dur]
+                                : current.filter(d => d !== dur),
+                            };
+                          });
+                        }}
+                      />
+                      <Label htmlFor={`adv-applicable-${dur}`} className="text-xs font-normal cursor-pointer capitalize">{dur}</Label>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Which durations allow advance (partial) payment</p>
               </div>
             )}
           </div>
