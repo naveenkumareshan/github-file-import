@@ -638,6 +638,466 @@ export type Database = {
           },
         ]
       }
+      hostel_beds: {
+        Row: {
+          bed_number: number
+          block_reason: string | null
+          created_at: string
+          id: string
+          is_available: boolean
+          is_blocked: boolean
+          room_id: string
+          sharing_option_id: string
+        }
+        Insert: {
+          bed_number?: number
+          block_reason?: string | null
+          created_at?: string
+          id?: string
+          is_available?: boolean
+          is_blocked?: boolean
+          room_id: string
+          sharing_option_id: string
+        }
+        Update: {
+          bed_number?: number
+          block_reason?: string | null
+          created_at?: string
+          id?: string
+          is_available?: boolean
+          is_blocked?: boolean
+          room_id?: string
+          sharing_option_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hostel_beds_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "hostel_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hostel_beds_sharing_option_id_fkey"
+            columns: ["sharing_option_id"]
+            isOneToOne: false
+            referencedRelation: "hostel_sharing_options"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hostel_bookings: {
+        Row: {
+          advance_amount: number
+          bed_id: string
+          booking_duration: string
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          collected_by: string | null
+          collected_by_name: string | null
+          created_at: string
+          duration_count: number
+          end_date: string
+          hostel_id: string
+          id: string
+          payment_method: string | null
+          payment_status: string
+          razorpay_order_id: string | null
+          razorpay_payment_id: string | null
+          razorpay_signature: string | null
+          remaining_amount: number
+          room_id: string
+          security_deposit: number
+          serial_number: string | null
+          sharing_option_id: string
+          start_date: string
+          status: string
+          total_price: number
+          transaction_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          advance_amount?: number
+          bed_id: string
+          booking_duration?: string
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          collected_by?: string | null
+          collected_by_name?: string | null
+          created_at?: string
+          duration_count?: number
+          end_date: string
+          hostel_id: string
+          id?: string
+          payment_method?: string | null
+          payment_status?: string
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          razorpay_signature?: string | null
+          remaining_amount?: number
+          room_id: string
+          security_deposit?: number
+          serial_number?: string | null
+          sharing_option_id: string
+          start_date: string
+          status?: string
+          total_price?: number
+          transaction_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          advance_amount?: number
+          bed_id?: string
+          booking_duration?: string
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          collected_by?: string | null
+          collected_by_name?: string | null
+          created_at?: string
+          duration_count?: number
+          end_date?: string
+          hostel_id?: string
+          id?: string
+          payment_method?: string | null
+          payment_status?: string
+          razorpay_order_id?: string | null
+          razorpay_payment_id?: string | null
+          razorpay_signature?: string | null
+          remaining_amount?: number
+          room_id?: string
+          security_deposit?: number
+          serial_number?: string | null
+          sharing_option_id?: string
+          start_date?: string
+          status?: string
+          total_price?: number
+          transaction_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hostel_bookings_bed_id_fkey"
+            columns: ["bed_id"]
+            isOneToOne: false
+            referencedRelation: "hostel_beds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hostel_bookings_hostel_id_fkey"
+            columns: ["hostel_id"]
+            isOneToOne: false
+            referencedRelation: "hostels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hostel_bookings_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "hostel_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hostel_bookings_sharing_option_id_fkey"
+            columns: ["sharing_option_id"]
+            isOneToOne: false
+            referencedRelation: "hostel_sharing_options"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hostel_receipts: {
+        Row: {
+          amount: number
+          booking_id: string | null
+          collected_by: string | null
+          collected_by_name: string | null
+          created_at: string
+          hostel_id: string
+          id: string
+          notes: string | null
+          payment_method: string
+          receipt_type: string
+          serial_number: string | null
+          transaction_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          booking_id?: string | null
+          collected_by?: string | null
+          collected_by_name?: string | null
+          created_at?: string
+          hostel_id: string
+          id?: string
+          notes?: string | null
+          payment_method?: string
+          receipt_type?: string
+          serial_number?: string | null
+          transaction_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          booking_id?: string | null
+          collected_by?: string | null
+          collected_by_name?: string | null
+          created_at?: string
+          hostel_id?: string
+          id?: string
+          notes?: string | null
+          payment_method?: string
+          receipt_type?: string
+          serial_number?: string | null
+          transaction_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hostel_receipts_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "hostel_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hostel_receipts_hostel_id_fkey"
+            columns: ["hostel_id"]
+            isOneToOne: false
+            referencedRelation: "hostels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hostel_rooms: {
+        Row: {
+          amenities: string[] | null
+          category: string
+          created_at: string
+          description: string | null
+          floor: number
+          hostel_id: string
+          id: string
+          image_url: string | null
+          images: string[] | null
+          is_active: boolean
+          room_number: string
+        }
+        Insert: {
+          amenities?: string[] | null
+          category?: string
+          created_at?: string
+          description?: string | null
+          floor?: number
+          hostel_id: string
+          id?: string
+          image_url?: string | null
+          images?: string[] | null
+          is_active?: boolean
+          room_number?: string
+        }
+        Update: {
+          amenities?: string[] | null
+          category?: string
+          created_at?: string
+          description?: string | null
+          floor?: number
+          hostel_id?: string
+          id?: string
+          image_url?: string | null
+          images?: string[] | null
+          is_active?: boolean
+          room_number?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hostel_rooms_hostel_id_fkey"
+            columns: ["hostel_id"]
+            isOneToOne: false
+            referencedRelation: "hostels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hostel_sharing_options: {
+        Row: {
+          capacity: number
+          created_at: string
+          id: string
+          is_active: boolean
+          price_daily: number
+          price_monthly: number
+          room_id: string
+          total_beds: number
+          type: string
+        }
+        Insert: {
+          capacity?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          price_daily?: number
+          price_monthly?: number
+          room_id: string
+          total_beds?: number
+          type?: string
+        }
+        Update: {
+          capacity?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          price_daily?: number
+          price_monthly?: number
+          room_id?: string
+          total_beds?: number
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hostel_sharing_options_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "hostel_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hostels: {
+        Row: {
+          advance_booking_enabled: boolean
+          advance_flat_amount: number | null
+          advance_percentage: number
+          advance_use_flat: boolean
+          amenities: string[] | null
+          area_id: string | null
+          average_rating: number
+          cancellation_window_hours: number
+          city_id: string | null
+          commission_percentage: number
+          contact_email: string | null
+          contact_phone: string | null
+          coordinates_lat: number | null
+          coordinates_lng: number | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          gender: string
+          id: string
+          images: string[] | null
+          is_active: boolean
+          is_approved: boolean
+          locality: string | null
+          location: string | null
+          logo_image: string | null
+          name: string
+          refund_policy: string | null
+          review_count: number
+          security_deposit: number
+          serial_number: string | null
+          state_id: string | null
+          stay_type: string
+          updated_at: string
+          vendor_id: string | null
+        }
+        Insert: {
+          advance_booking_enabled?: boolean
+          advance_flat_amount?: number | null
+          advance_percentage?: number
+          advance_use_flat?: boolean
+          amenities?: string[] | null
+          area_id?: string | null
+          average_rating?: number
+          cancellation_window_hours?: number
+          city_id?: string | null
+          commission_percentage?: number
+          contact_email?: string | null
+          contact_phone?: string | null
+          coordinates_lat?: number | null
+          coordinates_lng?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          gender?: string
+          id?: string
+          images?: string[] | null
+          is_active?: boolean
+          is_approved?: boolean
+          locality?: string | null
+          location?: string | null
+          logo_image?: string | null
+          name: string
+          refund_policy?: string | null
+          review_count?: number
+          security_deposit?: number
+          serial_number?: string | null
+          state_id?: string | null
+          stay_type?: string
+          updated_at?: string
+          vendor_id?: string | null
+        }
+        Update: {
+          advance_booking_enabled?: boolean
+          advance_flat_amount?: number | null
+          advance_percentage?: number
+          advance_use_flat?: boolean
+          amenities?: string[] | null
+          area_id?: string | null
+          average_rating?: number
+          cancellation_window_hours?: number
+          city_id?: string | null
+          commission_percentage?: number
+          contact_email?: string | null
+          contact_phone?: string | null
+          coordinates_lat?: number | null
+          coordinates_lng?: number | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          gender?: string
+          id?: string
+          images?: string[] | null
+          is_active?: boolean
+          is_approved?: boolean
+          locality?: string | null
+          location?: string | null
+          logo_image?: string | null
+          name?: string
+          refund_policy?: string | null
+          review_count?: number
+          security_deposit?: number
+          serial_number?: string | null
+          state_id?: string | null
+          stay_type?: string
+          updated_at?: string
+          vendor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hostels_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hostels_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hostels_state_id_fkey"
+            columns: ["state_id"]
+            isOneToOne: false
+            referencedRelation: "states"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           address: string | null
