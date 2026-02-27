@@ -351,7 +351,8 @@ useEffect(() => {
   };
 
   const handleDateSelectionComplete = () => {
-    if (cabinSlotsEnabled && availableSlots.length > 0) {
+    const slotsApplicable = (selectedCabin as any)?.slots_applicable_durations || ['daily','weekly','monthly'];
+    if (cabinSlotsEnabled && availableSlots.length > 0 && slotsApplicable.includes(bookingDuration)) {
       setStep('select-slot');
     } else {
       setStep('select-seat');

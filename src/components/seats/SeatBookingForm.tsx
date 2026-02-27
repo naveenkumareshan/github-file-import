@@ -612,7 +612,10 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
             <div>
               <Label className="block mb-2 text-xs font-medium text-muted-foreground">Duration Type</Label>
               <div className="flex gap-1.5 bg-muted/50 rounded-xl p-1">
-                {(["daily", "weekly", "monthly"] as const).map((type) => (
+                {(["daily", "weekly", "monthly"] as const).filter((type) => {
+                  const allowed = (cabin as any)?.allowed_durations || (cabin as any)?.allowedDurations || ['daily', 'weekly', 'monthly'];
+                  return allowed.includes(type);
+                }).map((type) => (
                   <button
                     key={type}
                     type="button"
@@ -714,7 +717,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
             )}
 
             {/* Time Slot - compact pills under duration type */}
-            {cabin?.slotsEnabled && availableSlots.length > 0 && (
+            {cabin?.slotsEnabled && availableSlots.length > 0 && ((cabin as any)?.slots_applicable_durations || (cabin as any)?.slotsApplicableDurations || ['daily','weekly','monthly']).includes(selectedDuration.type) && (
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-muted-foreground">Time Slot</Label>
                 <div className="flex gap-1.5 flex-wrap">
