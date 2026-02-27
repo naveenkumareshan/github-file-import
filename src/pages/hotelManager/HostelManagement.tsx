@@ -1,97 +1,49 @@
 import React, { useState, useEffect } from 'react';
-import { hostelService, HostelData as HostelServiceData } from '@/api/hostelService';
-import { getImageUrl } from '@/lib/utils';
+import { hostelService } from '@/api/hostelService';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
   Dialog, 
   DialogContent, 
   DialogHeader, 
-  DialogTitle 
+  DialogTitle,
+  DialogDescription
 } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/hooks/use-toast';
-import { HostelForm, HostelData as HostelFormData } from '@/components/admin/HostelForm';
+import { HostelForm } from '@/components/admin/HostelForm';
 import { AddRoomWithSharingForm } from '@/components/admin/AddRoomWithSharingForm';
-import { Plus, Building2, Edit, Trash2, Bed, DoorOpen, Eye } from 'lucide-react';
+import { Plus, Building2, Edit, Trash2, Bed, DoorOpen, Eye, Badge as BadgeIcon } from 'lucide-react';
 import ErrorBoundary from '../../components/ErrorBoundary';
 import { useNavigate } from 'react-router-dom';
-import { DialogDescription } from '@radix-ui/react-dialog';
 import { useAuth } from '@/contexts/AuthContext';
-
-type HostelData = {
-  _id: string;
-  id: string;
-  name: string;
-  location: string;
-  description: string;
-  city: string;
-  area: string;
-  locality: string;
-  state: string;
-  country: string;
-  maxCapacity: number,
-  contactEmail: string;
-  contactPhone: string;
-  isActive: boolean;
-  logoImage?: string;
-  images : string[],
-  amenities?: string[];
-  hostelCode?:string;
-  coordinates?: {
-    lat: number;
-    lng: number;
-  };
-};
+import { Badge } from '@/components/ui/badge';
 
 const HostelManagement = () => {
-  const [hostels, setHostels] = useState<HostelData[]>([]);
+  const [hostels, setHostels] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isHostelFormOpen, setIsHostelFormOpen] = useState(false);
   const [isRoomFormOpen, setIsRoomFormOpen] = useState(false);
-  const [selectedHostel, setSelectedHostel] = useState<HostelData | null>(null);
+  const [selectedHostel, setSelectedHostel] = useState<any>(null);
   const [isImageGalleryOpen, setIsImageGalleryOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  useEffect(() => {
-    fetchHostels();
-  }, []);
+  useEffect(() => { fetchHostels(); }, []);
 
   const fetchHostels = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await hostelService.getUserHostels();
-      if (response.success) {
-        const transformedHostels = response.data.map((hostel): HostelData => ({
-          _id: hostel._id,
-          id: hostel.id,
-          name: hostel.name,
-          location: hostel.location,
-          description: hostel.description || '',
-          city: hostel.city,
-          area: hostel.area,
-          locality: hostel.locality,
-          state: hostel.state,
-          country: hostel.country,
-          maxCapacity: hostel.maxCapacity,
-          contactEmail: hostel.contactEmail || '',
-          contactPhone: hostel.contactPhone || '',
-          isActive: hostel.isActive,
-          logoImage: hostel.logoImage,
-          images: hostel.images,
-          amenities: hostel.amenities,
-          hostelCode: hostel.hostelCode,
-          coordinates: hostel.coordinates
-        }));
-        setHostels(transformedHostels);
+      let data;
+      if (user?.role === 'admin') {
+        data = await hostelService.getAllHostels();
       } else {
-        setError('No hostels available');
-        console.error('Failed to load hostels');
+        data = await hostelService.getUserHostels();
       }
+      setHostels(data || []);
     } catch (error) {
       console.error('Error fetching hostels:', error);
       setError('Unable to fetch data. Please refresh.');
@@ -100,21 +52,8 @@ const HostelManagement = () => {
     }
   };
 
-  const handleAddHostel = () => {
-    setSelectedHostel(null);
-    setIsHostelFormOpen(true);
-  };
-
-  const handleEditHostel = (hostel: HostelData) => {
-    const completeHostel: HostelData = {
-      ...hostel,
-      description: hostel.description || '',
-      contactEmail: hostel.contactEmail || '',
-      contactPhone: hostel.contactPhone || '',
-    };
-    setSelectedHostel(completeHostel);
-    setIsHostelFormOpen(true);
-  };
+  const handleAddHostel = () => { setSelectedHostel(null); setIsHostelFormOpen(true); };
+  const handleEditHostel = (hostel: any) => { setSelectedHostel(hostel); setIsHostelFormOpen(true); };
 
   const handleDeleteHostel = async (hostelId: string) => {
     try {
@@ -126,43 +65,21 @@ const HostelManagement = () => {
     }
   };
 
-  const handleAddRoom = (hostel: HostelData) => {
-    setSelectedHostel(hostel);
-    setIsRoomFormOpen(true);
-  };
-
-  const handleFormSuccess = () => {
-    setIsHostelFormOpen(false);
-    setIsRoomFormOpen(false);
-    fetchHostels();
-  };
-
-  const handleFormClose = () => setIsRoomFormOpen(false);
-
-  const handleViewRooms = (hostelId: string) => {
-    navigate(`/admin/hostels/${hostelId}/rooms`);
-  };
-
-  const handleOpenImageGallery = (hostel: HostelData, initialImage?: string) => {
-    setSelectedHostel(hostel);
-    setSelectedImage(initialImage || hostel.logoImage);
-    setIsImageGalleryOpen(true);
-  };
+  const handleAddRoom = (hostel: any) => { setSelectedHostel(hostel); setIsRoomFormOpen(true); };
+  const handleFormSuccess = () => { setIsHostelFormOpen(false); setIsRoomFormOpen(false); fetchHostels(); };
+  const handleViewRooms = (hostelId: string) => { navigate(`/admin/hostels/${hostelId}/rooms`); };
 
   return (
     <ErrorBoundary>
       <div className="flex flex-col gap-4">
-        {/* Page Header */}
-        <div>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-lg font-semibold tracking-tight">Manage Hostels</h1>
-              <p className="text-xs text-muted-foreground mt-0.5">View and manage all hostels and their rooms.</p>
-            </div>
-            <Button onClick={handleAddHostel} size="sm" className="flex items-center gap-1.5">
-              <Plus className="h-4 w-4" /> Add Hostel
-            </Button>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-semibold tracking-tight">Manage Hostels</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">View and manage all hostels and their rooms.</p>
           </div>
+          <Button onClick={handleAddHostel} size="sm" className="flex items-center gap-1.5">
+            <Plus className="h-4 w-4" /> Add Hostel
+          </Button>
         </div>
 
         <Card className="border-border/60 shadow-sm">
@@ -176,16 +93,14 @@ const HostelManagement = () => {
                 <Building2 className="h-10 w-10 text-muted-foreground/30 mb-3" />
                 <p className="text-sm font-medium">No Hostels Available</p>
                 <p className="text-xs text-muted-foreground mb-4">Unable to fetch data. Please refresh.</p>
-                <Button onClick={() => fetchHostels()} variant="outline" size="sm">Retry</Button>
+                <Button onClick={fetchHostels} variant="outline" size="sm">Retry</Button>
               </div>
             ) : hostels.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16">
                 <Building2 className="h-10 w-10 text-muted-foreground/30 mb-3" />
                 <p className="text-sm font-medium">No Hostels Found</p>
                 <p className="text-xs text-muted-foreground mb-4">Start by adding your first hostel.</p>
-                <Button onClick={handleAddHostel} size="sm">
-                  <Plus className="h-4 w-4 mr-1" /> Add Hostel
-                </Button>
+                <Button onClick={handleAddHostel} size="sm"><Plus className="h-4 w-4 mr-1" /> Add Hostel</Button>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -194,22 +109,19 @@ const HostelManagement = () => {
                     <TableRow className="bg-muted/30">
                       <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Name</TableHead>
                       <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Location</TableHead>
-                      <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Contact</TableHead>
+                      <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Gender</TableHead>
                       <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Status</TableHead>
                       <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {hostels.map((hostel, idx) => (
-                      <TableRow key={hostel._id} className={idx % 2 === 0 ? "bg-background" : "bg-muted/20"}>
+                      <TableRow key={hostel.id} className={idx % 2 === 0 ? "bg-background" : "bg-muted/20"}>
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2">
-                            <div 
-                              className="h-8 w-8 rounded overflow-hidden cursor-pointer flex-shrink-0"
-                              onClick={() => handleOpenImageGallery(hostel)}
-                            >
-                              {hostel.logoImage ? (
-                                <img src={getImageUrl(hostel.logoImage)} alt={hostel.name} className="h-full w-full object-cover" />
+                            <div className="h-8 w-8 rounded overflow-hidden flex-shrink-0">
+                              {hostel.logo_image ? (
+                                <img src={hostel.logo_image} alt={hostel.name} className="h-full w-full object-cover" />
                               ) : (
                                 <div className="h-full w-full bg-muted flex items-center justify-center">
                                   <Bed className="h-4 w-4 text-muted-foreground" />
@@ -218,34 +130,36 @@ const HostelManagement = () => {
                             </div>
                             <div>
                               <p className="text-sm font-medium">{hostel.name}</p>
-                              {hostel.hostelCode && <p className="text-xs text-muted-foreground">{hostel.hostelCode}</p>}
+                              <p className="text-xs text-muted-foreground">{hostel.serial_number}</p>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-sm">{hostel.location}</TableCell>
-                        <TableCell>
-                          <p className="text-sm">{hostel.contactEmail}</p>
-                          <p className="text-xs text-muted-foreground">{hostel.contactPhone}</p>
+                        <TableCell className="text-sm">
+                          {hostel.location || `${hostel.cities?.name || ''}, ${hostel.states?.name || ''}`}
                         </TableCell>
+                        <TableCell><Badge variant="outline">{hostel.gender}</Badge></TableCell>
                         <TableCell>
-                          {hostel.isActive ? (
-                            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">Active</span>
-                          ) : (
-                            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-red-50 text-red-700 border border-red-200">Inactive</span>
-                          )}
+                          <div className="flex flex-col gap-1">
+                            <Badge variant={hostel.is_active ? 'default' : 'secondary'}>
+                              {hostel.is_active ? 'Active' : 'Inactive'}
+                            </Badge>
+                            {!hostel.is_approved && (
+                              <Badge variant="outline" className="text-amber-600 border-amber-300">Pending Approval</Badge>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1.5">
                             <Button variant="outline" size="sm" onClick={() => handleAddRoom(hostel)} className="h-7 text-xs">
                               <DoorOpen className="h-3 w-3 mr-1" /> Add Room
                             </Button>
-                            <Button variant="outline" size="sm" onClick={() => handleViewRooms(hostel._id)} className="h-7 text-xs">
+                            <Button variant="outline" size="sm" onClick={() => handleViewRooms(hostel.id)} className="h-7 text-xs">
                               <Eye className="h-3 w-3 mr-1" /> Rooms
                             </Button>
                             <Button variant="outline" size="sm" onClick={() => handleEditHostel(hostel)} className="h-7 w-7 p-0">
                               <Edit className="h-3 w-3" />
                             </Button>
-                            <Button variant="outline" size="sm" className="h-7 w-7 p-0 text-red-500 border-red-200 hover:bg-red-50" onClick={() => handleDeleteHostel(hostel._id)}>
+                            <Button variant="outline" size="sm" className="h-7 w-7 p-0 text-destructive" onClick={() => handleDeleteHostel(hostel.id)}>
                               <Trash2 className="h-3 w-3" />
                             </Button>
                           </div>
@@ -267,38 +181,38 @@ const HostelManagement = () => {
             </DialogHeader>
             <HostelForm
               initialData={selectedHostel || undefined}
-              hostelId={selectedHostel?._id}
+              hostelId={selectedHostel?.id}
               onSuccess={handleFormSuccess}
             />
           </DialogContent>
         </Dialog>
-        
+
         {/* Image Gallery Dialog */}
         <Dialog open={isImageGalleryOpen} onOpenChange={setIsImageGalleryOpen}>
           <DialogContent className="max-w-4xl">
             <DialogHeader>
-              <DialogTitle>Room Images</DialogTitle>
+              <DialogTitle>Hostel Images</DialogTitle>
             </DialogHeader>
             {selectedHostel && (
               <div className="space-y-6">
                 <div className="w-full aspect-video bg-muted rounded-lg overflow-hidden">
                   {selectedImage ? (
-                    <img src={getImageUrl(selectedImage)} alt={selectedHostel.name} className="w-full h-full object-contain" />
+                    <img src={selectedImage} alt={selectedHostel.name} className="w-full h-full object-contain" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <Bed className="h-16 w-16 text-muted-foreground" />
                     </div>
                   )}
                 </div>
-                {selectedHostel.images && selectedHostel.images.length > 0 && (
+                {selectedHostel.images?.length > 0 && (
                   <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
-                    {selectedHostel.images.map((img, index) => (
+                    {selectedHostel.images.map((img: string, index: number) => (
                       <div 
                         key={index} 
                         onClick={() => setSelectedImage(img)}
                         className={`aspect-square rounded-md overflow-hidden cursor-pointer ${selectedImage === img ? 'ring-2 ring-primary' : ''}`}
                       >
-                        <img src={getImageUrl(img)} alt={`Room image ${index + 1}`} className="w-full h-full object-cover" />
+                        <img src={img} alt={`Image ${index + 1}`} className="w-full h-full object-cover" />
                       </div>
                     ))}
                   </div>
@@ -313,15 +227,13 @@ const HostelManagement = () => {
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Add Room to {selectedHostel?.name}</DialogTitle>
-              <DialogDescription>
-                Fill in the room details and sharing options for this hostel.
-              </DialogDescription>
+              <DialogDescription>Fill in the room details and sharing options for this hostel.</DialogDescription>
             </DialogHeader>
             {selectedHostel && (
               <AddRoomWithSharingForm
-                hostelId={selectedHostel._id}
+                hostelId={selectedHostel.id}
                 onSuccess={handleFormSuccess}
-                onClose={handleFormClose}
+                onClose={() => setIsRoomFormOpen(false)}
               />
             )}
           </DialogContent>

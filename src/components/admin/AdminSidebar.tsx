@@ -186,49 +186,61 @@ export function AdminSidebar() {
     });
   }
 
-  if ((user?.role === 'admin' || hasPermission('view_reading_rooms') && import.meta.env.VITE_HOSTEL_MODULE)) {
+  if (user?.role === 'admin' || hasPermission('view_reading_rooms')) {
+    const hostelSubItems: MenuItem[] = [
+      {
+        title: 'Manage Hostels',
+        url: '/admin/hostels',
+        icon: HomeIcon,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+        permissions: ['view_reading_rooms']
+      },
+      {
+        title: 'Hostel Bookings',
+        url: '/admin/hostel-bookings',
+        icon: Calendar,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+        permissions: ['view_reading_rooms']
+      },
+      {
+        title: 'Hostel Receipts',
+        url: '/admin/hostel-receipts',
+        icon: CreditCard,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+        permissions: ['view_reading_rooms']
+      },
+      {
+        title: 'Hostel Deposits',
+        url: '/admin/hostel-deposits',
+        icon: Wallet,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+        permissions: ['view_reading_rooms']
+      },
+      {
+        title: 'Reviews',
+        url: '/admin/reviews?module=Hostel',
+        icon: Star,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+        permissions: ['manage_reviews']
+      }
+    ];
+
+    // Admin-only: Hostel Approvals
+    if (user?.role === 'admin') {
+      hostelSubItems.splice(1, 0, {
+        title: 'Approvals',
+        url: '/admin/hostel-approvals',
+        icon: UserCheck,
+        roles: ['admin'],
+      });
+    }
+
     menuItems.push({
       title: 'Hostels',
       icon: Hotel,
       roles: ['admin', 'vendor', 'vendor_employee'],
       permissions: ['view_reading_rooms'],
-      subItems: [
-        {
-          title: 'Manage Hostels',
-          url: '/admin/hostels',
-          icon: HomeIcon,
-          roles: ['admin', 'vendor', 'vendor_employee'],
-          permissions: ['view_reading_rooms']
-        },
-        {
-          title: 'Hostel Bookings',
-          url: '/admin/hostel-bookings',
-          icon: Calendar,
-          roles: ['admin', 'vendor', 'vendor_employee'],
-          permissions: ['view_reading_rooms']
-        },
-        {
-          title: 'Hostel Receipts',
-          url: '/admin/hostel-receipts',
-          icon: CreditCard,
-          roles: ['admin', 'vendor', 'vendor_employee'],
-          permissions: ['view_reading_rooms']
-        },
-        {
-          title: 'Hostel Deposits',
-          url: '/admin/hostel-deposits',
-          icon: Wallet,
-          roles: ['admin', 'vendor', 'vendor_employee'],
-          permissions: ['view_reading_rooms']
-        },
-        {
-          title: 'Reviews',
-          url: '/admin/reviews?module=Hostel',
-          icon: Star,
-          roles: ['admin', 'vendor', 'vendor_employee'],
-          permissions: ['manage_reviews']
-        }
-      ],
+      subItems: hostelSubItems,
     });
   }
 

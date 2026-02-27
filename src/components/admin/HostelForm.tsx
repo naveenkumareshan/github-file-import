@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "@/hooks/use-toast";
-import { hostelService } from "@/api/hostelService";
+import { hostelService, HostelData as HostelServiceData } from "@/api/hostelService";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,35 +19,36 @@ import MapPicker from "./MapPicker";
 import { LocationSelector } from "../forms/LocationSelector";
 
 interface HostelFormProps {
-  initialData?: HostelData;
+  initialData?: any;
   onSuccess: () => void;
   hostelId?: string;
 }
 
 export interface HostelData {
-  _id?: string;
   id?: string;
   name: string;
   location: string;
   description?: string;
-  city: any;
-  area: any;
-  locality: string;
-  state: any;
-  country: string;
-  contactEmail?: string;
-  contactPhone?: string;
-  isActive: boolean;
-  logoImage?: string;
-  // New fields
-  stayType?: "Short-term" | "Long-term" | "Both";
+  locality?: string;
+  state_id?: string;
+  city_id?: string;
+  area_id?: string;
+  contact_email?: string;
+  contact_phone?: string;
+  is_active: boolean;
+  logo_image?: string;
+  stay_type?: "Short-term" | "Long-term" | "Both";
   gender?: "Male" | "Female" | "Co-ed";
   amenities?: string[];
   images?: string[];
-  coordinates?: {
-    lat: number;
-    lng: number;
-  };
+  coordinates_lat?: number;
+  coordinates_lng?: number;
+  security_deposit?: number;
+  advance_booking_enabled?: boolean;
+  advance_percentage?: number;
+  advance_flat_amount?: number;
+  advance_use_flat?: boolean;
+  cancellation_window_hours?: number;
 }
 
 export const HostelForm: React.FC<HostelFormProps> = ({
@@ -59,23 +60,25 @@ export const HostelForm: React.FC<HostelFormProps> = ({
     name: "",
     location: "",
     description: "",
-    contactEmail: "",
-    contactPhone: "",
-    isActive: true,
-    logoImage: "",
-    stayType: "Both",
+    contact_email: "",
+    contact_phone: "",
+    is_active: true,
+    logo_image: "",
+    stay_type: "Both",
     gender: "Co-ed",
-    city: "",
-    area: "",
     locality: "",
-    state: "",
-    country: "684063018f9d4f4736616a42",
+    state_id: "",
+    city_id: "",
+    area_id: "",
     amenities: [],
     images: [],
-    coordinates: {
-      lat: 0,
-      lng: 0,
-    },
+    coordinates_lat: 0,
+    coordinates_lng: 0,
+    security_deposit: 0,
+    advance_booking_enabled: false,
+    advance_percentage: 50,
+    advance_use_flat: false,
+    cancellation_window_hours: 24,
   });
 
   const [loading, setLoading] = useState(false);
@@ -83,30 +86,41 @@ export const HostelForm: React.FC<HostelFormProps> = ({
   useEffect(() => {
     if (initialData) {
       setFormData({
-        ...initialData,
-        stayType: initialData.stayType || "Both",
+        name: initialData.name || "",
+        location: initialData.location || "",
+        description: initialData.description || "",
+        contact_email: initialData.contact_email || "",
+        contact_phone: initialData.contact_phone || "",
+        is_active: initialData.is_active ?? true,
+        logo_image: initialData.logo_image || "",
+        stay_type: initialData.stay_type || "Both",
         gender: initialData.gender || "Co-ed",
         locality: initialData.locality || "",
-        area: initialData.area || "",
-        city: initialData.city || "",
-        state: initialData?.state || "",
-        country: initialData?.country || "India",
+        state_id: initialData.state_id || "",
+        city_id: initialData.city_id || "",
+        area_id: initialData.area_id || "",
         amenities: initialData.amenities || [],
         images: initialData.images || [],
-        coordinates: initialData.coordinates || { lat: 0, lng: 0 },
+        coordinates_lat: initialData.coordinates_lat || 0,
+        coordinates_lng: initialData.coordinates_lng || 0,
+        security_deposit: initialData.security_deposit || 0,
+        advance_booking_enabled: initialData.advance_booking_enabled || false,
+        advance_percentage: initialData.advance_percentage || 50,
+        advance_flat_amount: initialData.advance_flat_amount,
+        advance_use_flat: initialData.advance_use_flat || false,
+        cancellation_window_hours: initialData.cancellation_window_hours || 24,
       });
     }
   }, [initialData]);
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSwitchChange = (checked: boolean) => {
-    setFormData((prev) => ({ ...prev, isActive: checked }));
+  const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: parseFloat(value) || 0 }));
   };
 
   const handleSelectChange = (name: string, value: string) => {
@@ -115,63 +129,53 @@ export const HostelForm: React.FC<HostelFormProps> = ({
 
   const handleAmenityToggle = (amenity: string) => {
     setFormData((prev) => {
-      const currentAmenities = prev.amenities || [];
-      if (currentAmenities.includes(amenity)) {
-        return {
-          ...prev,
-          amenities: currentAmenities.filter((a) => a !== amenity),
-        };
-      } else {
-        return { ...prev, amenities: [...currentAmenities, amenity] };
-      }
+      const current = prev.amenities || [];
+      return {
+        ...prev,
+        amenities: current.includes(amenity)
+          ? current.filter((a) => a !== amenity)
+          : [...current, amenity],
+      };
     });
   };
 
-  const handleImageUpload = (url: string) => {
+  const handleImageUpload = async (url: string) => {
     const updatedImages = [...(formData.images || []), url];
-    setFormData((prev) => ({ ...prev, logoImage: url, images: updatedImages }));
+    setFormData((prev) => ({ ...prev, logo_image: url, images: updatedImages }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    console.log(formData);
     try {
-      let response;
-
       if (hostelId) {
-        response = await hostelService.updateHostel(hostelId, formData);
+        await hostelService.updateHostel(hostelId, formData);
       } else {
-        response = await hostelService.createHostel(formData);
+        await hostelService.createHostel(formData);
       }
-
-      if (response.success) {
-        toast({
-          title: "Success",
-          description: hostelId
-            ? "Hostel updated successfully"
-            : "Hostel created successfully",
-        });
-        onSuccess();
-      } else {
-        throw new Error(response.message || "Failed to save hostel");
-      }
-    } catch (error) {
+      toast({
+        title: "Success",
+        description: hostelId ? "Hostel updated successfully" : "Hostel created successfully",
+      });
+      onSuccess();
+    } catch (error: any) {
       console.error("Error saving hostel:", error);
       toast({
         title: "Error",
-        description: `Failed to ${hostelId ? "update" : "create"} hostel`,
+        description: error.message || `Failed to ${hostelId ? "update" : "create"} hostel`,
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
   };
-  const handleMapLocationChange = (coordinates: {
-    lat: number;
-    lng: number;
-  }) => {
-    setFormData((prev) => ({ ...prev, coordinates: coordinates }));
+
+  const handleMapLocationChange = (coordinates: { lat: number; lng: number }) => {
+    setFormData((prev) => ({
+      ...prev,
+      coordinates_lat: coordinates.lat,
+      coordinates_lng: coordinates.lng,
+    }));
   };
 
   const amenityOptions = [
@@ -190,99 +194,29 @@ export const HostelForm: React.FC<HostelFormProps> = ({
   ];
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6  h-[500px] overflow-y-auto">
+    <form onSubmit={handleSubmit} className="space-y-6 h-[500px] overflow-y-auto">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-4">
           <div>
             <Label htmlFor="name">Hostel Name</Label>
-            <Input
-              id="name"
-              name="name"
-              value={formData.name}
-              onChange={handleInputChange}
-              required
-            />
+            <Input id="name" name="name" value={formData.name} onChange={handleInputChange} required />
           </div>
-
           <div>
             <Label htmlFor="location">Location Address</Label>
-            <Input
-              id="location"
-              name="location"
-              value={formData.location}
-              onChange={handleInputChange}
-              required
-            />
+            <Input id="location" name="location" value={formData.location} onChange={handleInputChange} required />
           </div>
-           <div>
-      <Label htmlFor="locality">Locality/Area</Label>
-      <Input
-        id="locality"
-        name="locality"
-        value={formData.locality}
-        onChange={handleInputChange}
-        required
-        placeholder="e.g., Gachibowli, Madhapur"
-      />
-    </div>
-{/*
-    <div>
-      <Label htmlFor="city">City</Label>
-      <Input
-        id="city"
-        name="city"
-        value={formData.city}
-        onChange={handleInputChange}
-        required
-        placeholder="e.g., Hyderabad, Bangalore"
-      />
-    </div>
-
-
-        <div className="space-y-2">
-          <Label htmlFor="state">State</Label>
-          <Input
-            id="state"
-            name="state"
-            value={formData.state}
-            onChange={handleInputChange}
-            required
-            placeholder="e.g., Telangana" />
-        </div>
-
-
-        <div className="space-y-2">
-          <Label htmlFor="country">Country</Label>
-          <Input
-            id="country"
-            name="country"
-            onChange={handleInputChange}
-            value={formData.country}
-            required
-            defaultValue="India" />
-        </div> */}
-
+          <div>
+            <Label htmlFor="locality">Locality/Area</Label>
+            <Input id="locality" name="locality" value={formData.locality} onChange={handleInputChange} placeholder="e.g., Gachibowli, Madhapur" />
+          </div>
           <div>
             <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              name="description"
-              value={formData.description}
-              onChange={handleInputChange}
-              rows={3}
-              required
-            />
+            <Textarea id="description" name="description" value={formData.description} onChange={handleInputChange} rows={3} />
           </div>
-
           <div>
-            <Label htmlFor="stayType">Stay Type</Label>
-            <Select
-              value={formData.stayType}
-              onValueChange={(value) => handleSelectChange("stayType", value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select stay type" />
-              </SelectTrigger>
+            <Label htmlFor="stay_type">Stay Type</Label>
+            <Select value={formData.stay_type} onValueChange={(value) => handleSelectChange("stay_type", value)}>
+              <SelectTrigger><SelectValue placeholder="Select stay type" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="Short-term">Short-term</SelectItem>
                 <SelectItem value="Long-term">Long-term</SelectItem>
@@ -290,49 +224,64 @@ export const HostelForm: React.FC<HostelFormProps> = ({
               </SelectContent>
             </Select>
           </div>
-
           <div>
             <Label htmlFor="gender">Gender</Label>
-            <Select
-              value={formData.gender}
-              onValueChange={(value) => handleSelectChange("gender", value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select gender" />
-              </SelectTrigger>
+            <Select value={formData.gender} onValueChange={(value) => handleSelectChange("gender", value)}>
+              <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="Male">Male</SelectItem>
-                <SelectItem value="Female">Female</SelectItem>
-                <SelectItem value="Co-ed">Co-ed</SelectItem>
+                <SelectItem value="Male">Male (Boys Only)</SelectItem>
+                <SelectItem value="Female">Female (Girls Only)</SelectItem>
+                <SelectItem value="Co-ed">Co-ed (Both)</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div>
+            <Label htmlFor="security_deposit">Security Deposit (₹)</Label>
+            <Input id="security_deposit" name="security_deposit" type="number" value={formData.security_deposit} onChange={handleNumberChange} min="0" />
           </div>
         </div>
 
         <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="contactEmail">Email</Label>
-              <Input
-                id="contactEmail"
-                name="contactEmail"
-                type="email"
-                value={formData.contactEmail}
-                onChange={handleInputChange}
-                required
-              />
+              <Label htmlFor="contact_email">Email</Label>
+              <Input id="contact_email" name="contact_email" type="email" value={formData.contact_email} onChange={handleInputChange} />
             </div>
+            <div>
+              <Label htmlFor="contact_phone">Phone</Label>
+              <Input id="contact_phone" name="contact_phone" value={formData.contact_phone} onChange={handleInputChange} />
+            </div>
+          </div>
 
-            <div>
-              <Label htmlFor="contactPhone">Phone</Label>
-              <Input
-                id="contactPhone"
-                name="contactPhone"
-                value={formData.contactPhone}
-                onChange={handleInputChange}
-                required
-              />
+          {/* Advance payment settings */}
+          <div className="space-y-3 border rounded-lg p-3">
+            <div className="flex items-center justify-between">
+              <Label>Advance Payment</Label>
+              <Switch checked={formData.advance_booking_enabled} onCheckedChange={(checked) => setFormData(prev => ({ ...prev, advance_booking_enabled: checked }))} />
             </div>
+            {formData.advance_booking_enabled && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Switch checked={formData.advance_use_flat} onCheckedChange={(checked) => setFormData(prev => ({ ...prev, advance_use_flat: checked }))} />
+                  <Label className="text-sm">{formData.advance_use_flat ? 'Flat Amount' : 'Percentage'}</Label>
+                </div>
+                {formData.advance_use_flat ? (
+                  <div>
+                    <Label className="text-xs">Flat Amount (₹)</Label>
+                    <Input name="advance_flat_amount" type="number" value={formData.advance_flat_amount || ''} onChange={handleNumberChange} min="0" />
+                  </div>
+                ) : (
+                  <div>
+                    <Label className="text-xs">Percentage (%)</Label>
+                    <Input name="advance_percentage" type="number" value={formData.advance_percentage} onChange={handleNumberChange} min="0" max="100" />
+                  </div>
+                )}
+                <div>
+                  <Label className="text-xs">Cancellation Window (hours)</Label>
+                  <Input name="cancellation_window_hours" type="number" value={formData.cancellation_window_hours} onChange={handleNumberChange} min="0" />
+                </div>
+              </div>
+            )}
           </div>
 
           <div>
@@ -345,34 +294,25 @@ export const HostelForm: React.FC<HostelFormProps> = ({
                     checked={formData.amenities?.includes(amenity.id)}
                     onCheckedChange={() => handleAmenityToggle(amenity.id)}
                   />
-                  <Label
-                    htmlFor={`amenity-${amenity.id}`}
-                    className="text-sm font-normal cursor-pointer"
-                  >
-                    {amenity.label}
-                  </Label>
+                  <Label htmlFor={`amenity-${amenity.id}`} className="text-sm font-normal cursor-pointer">{amenity.label}</Label>
                 </div>
               ))}
             </div>
           </div>
 
           <div className="flex items-center space-x-2">
-            <Switch
-              id="isActive"
-              checked={formData.isActive}
-              onCheckedChange={handleSwitchChange}
-            />
-            <Label htmlFor="isActive">Active</Label>
+            <Switch id="is_active" checked={formData.is_active} onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_active: checked }))} />
+            <Label htmlFor="is_active">Active</Label>
           </div>
 
           <div>
-            <Label htmlFor="logoImage">Hostel Logo</Label>
+            <Label>Hostel Images</Label>
             <div className="mt-1">
               <ImageUpload
                 onUpload={handleImageUpload}
                 existingImages={[
-                  ...(formData.logoImage ? [formData.logoImage] : []), // single logo
-                  ...(formData.images || []),                          // multiple images
+                  ...(formData.logo_image ? [formData.logo_image] : []),
+                  ...(formData.images || []),
                 ]}
                 maxCount={5}
               />
@@ -381,47 +321,22 @@ export const HostelForm: React.FC<HostelFormProps> = ({
         </div>
       </div>
 
-      <div>
-        <MapPicker
-          initialLocation={
-            formData.coordinates ? formData.coordinates : undefined
-          }
-          name={formData.name}
-          onLocationSelect={handleMapLocationChange}
-        />
-      </div>
-      <div>
-        <div>
-          <LocationSelector
-            selectedCountry={"684063018f9d4f4736616a42"}
-            selectedState={
-              formData?.state?._id ? formData?.state?._id : formData?.state
-            }
-            selectedCity={
-              formData.city?._id ? formData.city?._id : formData.city
-            }
-            selectedArea={
-              formData.area?._id ? formData.area?._id : formData.area
-            }
-            onStateChange={(state) => {
-              if (state) {
-                setFormData((prev) => ({ ...prev, state, city: "", area: "" }));
-              }
-            }}
-            onCityChange={(city) => {
-              if (city) {
-                setFormData((prev) => ({ ...prev, city, area: "" }));
-              }
-            }}
-            onAreaChange={(area) => {
-              if (area) {
-                setFormData((prev) => ({ ...prev, area }));
-              }
-            }}
-            showCountry={false}
-          />
-        </div>
-      </div>
+      <MapPicker
+        initialLocation={formData.coordinates_lat && formData.coordinates_lng ? { lat: formData.coordinates_lat, lng: formData.coordinates_lng } : undefined}
+        name={formData.name}
+        onLocationSelect={handleMapLocationChange}
+      />
+
+      <LocationSelector
+        selectedState={formData.state_id || ''}
+        selectedCity={formData.city_id || ''}
+        selectedArea={formData.area_id || ''}
+        onStateChange={(state) => setFormData(prev => ({ ...prev, state_id: state, city_id: '', area_id: '' }))}
+        onCityChange={(city) => setFormData(prev => ({ ...prev, city_id: city, area_id: '' }))}
+        onAreaChange={(area) => setFormData(prev => ({ ...prev, area_id: area }))}
+        showCountry={false}
+      />
+
       <div className="flex justify-end">
         <Button type="submit" disabled={loading}>
           {loading ? "Saving..." : hostelId ? "Update Hostel" : "Create Hostel"}

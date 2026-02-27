@@ -6,60 +6,72 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { hostelService } from '@/api/hostelService';
 import { Search, MapPin, Hotel } from 'lucide-react';
-import { getImageUrl } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function Hostels() {
   const [hostels, setHostels] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [locationFilter, setLocationFilter] = useState('');
-  const [cityFilter, setCityFilter] = useState('');
   const [genderFilter, setGenderFilter] = useState('');
   const [nearbyLoading, setNearbyLoading] = useState(false);
+  const [cities, setCities] = useState<any[]>([]);
+  const [cityFilter, setCityFilter] = useState('');
   const navigate = useNavigate();
   const { toast } = useToast();
   const location = useLocation();
 
   useEffect(() => {
+    // Load cities for filter pills
+    supabase.from('cities').select('id, name').eq('is_active', true).order('name').then(({ data }) => {
+      setCities(data || []);
+    });
+  }, []);
+
+  useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
-    const cityParam = queryParams.get('city');
+    const cityParam = queryParams.get('city_id');
     if (cityParam) setCityFilter(cityParam);
-    fetchHostels(cityParam || '');
+    fetchHostels({ city_id: cityParam || undefined });
   }, [location.search]);
 
-  const fetchHostels = async (city: string = '') => {
+  const fetchHostels = async (filters?: any) => {
     try {
       setLoading(true);
-      const filters = city ? { city } : {};
-      const response = await hostelService.getAllHostels(filters);
-      setHostels(response.data || []);
+      setError(null);
+      const data = await hostelService.getAllHostels(filters);
+      setHostels(data || []);
     } catch (err: any) {
       setError('No hostels available at the moment.');
       console.error('Error fetching hostels:', err);
     } finally { setLoading(false); }
   };
 
-  const handleCityChange = (city: string) => {
-    setCityFilter(city === cityFilter ? '' : city);
-    if (city === cityFilter) { navigate('/hostels'); fetchHostels(''); }
-    else { navigate(`/hostels?city=${city}`); fetchHostels(city); }
+  const handleCityChange = (cityId: string) => {
+    if (cityId === cityFilter) {
+      setCityFilter('');
+      navigate('/hostels');
+      fetchHostels();
+    } else {
+      setCityFilter(cityId);
+      navigate(`/hostels?city_id=${cityId}`);
+      fetchHostels({ city_id: cityId });
+    }
   };
 
   const handleFindNearby = () => {
     if (!navigator.geolocation) {
-      toast({ title: 'Not Supported', description: 'Geolocation is not supported by your browser', variant: 'destructive' });
+      toast({ title: 'Not Supported', description: 'Geolocation is not supported', variant: 'destructive' });
       return;
     }
     setNearbyLoading(true);
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         try {
-          const { latitude, longitude } = pos.coords;
-          const response = await hostelService.getNearbyHostels(latitude, longitude);
-          setHostels(response.data || []);
-          setLocationFilter(''); setCityFilter('');
+          const data = await hostelService.getNearbyHostels(pos.coords.latitude, pos.coords.longitude);
+          setHostels(data || []);
+          setCityFilter('');
           toast({ title: 'Location Found', description: 'Showing hostels near you' });
         } catch {
           toast({ title: 'Error', description: 'Failed to find nearby hostels', variant: 'destructive' });
@@ -73,15 +85,12 @@ export default function Hostels() {
   };
 
   const filteredHostels = hostels.filter(hostel => {
-    const matchesSearch = hostel.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (hostel.locality && hostel.locality.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (hostel.city && hostel.city.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesLocation = !locationFilter || (hostel.locality && hostel.locality.toLowerCase() === locationFilter.toLowerCase());
-    const matchesGender = !genderFilter || (hostel.gender && hostel.gender === genderFilter);
-    return matchesSearch && matchesLocation && matchesGender;
+    const matchesSearch = !searchQuery || 
+      hostel.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (hostel.locality && hostel.locality.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesGender = !genderFilter || hostel.gender === genderFilter;
+    return matchesSearch && matchesGender;
   });
-
-  const popularCityList = ['Hyderabad', 'Bangalore', 'Mumbai', 'Delhi', 'Pune', 'Chennai'];
 
   return (
     <div className="min-h-screen bg-background">
@@ -121,31 +130,21 @@ export default function Hostels() {
                 {g}
               </button>
             ))}
-            {popularCityList.map((city) => (
+            {cities.slice(0, 6).map((city) => (
               <button
-                key={city}
-                onClick={() => handleCityChange(city)}
+                key={city.id}
+                onClick={() => handleCityChange(city.id)}
                 className={`flex-shrink-0 flex items-center gap-1 px-3 py-1 rounded-xl border text-[11px] font-medium transition-colors h-8 ${
-                  cityFilter === city
+                  cityFilter === city.id
                     ? 'bg-primary text-primary-foreground border-primary'
                     : 'bg-card text-foreground border-border hover:bg-muted'
                 }`}
               >
                 <Hotel className="h-3 w-3" />
-                {city}
+                {city.name}
               </button>
             ))}
           </div>
-
-          {cityFilter && (
-            <div className="flex items-center gap-1.5 mt-1.5">
-              <span className="text-[11px] text-muted-foreground">City:</span>
-              <Badge variant="outline" className="text-[11px] flex items-center gap-1">
-                {cityFilter}
-                <button onClick={() => { setCityFilter(''); navigate('/hostels'); fetchHostels(); }}>×</button>
-              </Badge>
-            </div>
-          )}
         </div>
       </div>
 
@@ -167,13 +166,13 @@ export default function Hostels() {
         ) : error ? (
           <div className="text-center py-12">
             <p className="text-[14px] font-medium text-foreground mb-1">No Hostels Available</p>
-            <p className="text-[12px] text-muted-foreground">Unable to fetch data. Please refresh.</p>
+            <p className="text-[12px] text-muted-foreground">Check back later for new listings.</p>
           </div>
         ) : filteredHostels.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-[14px] font-medium text-foreground mb-1">No hostels found</p>
             <p className="text-[12px] text-muted-foreground">
-              {searchQuery || locationFilter || genderFilter || cityFilter ? 'Try adjusting your search' : 'No hostels available'}
+              {searchQuery || genderFilter || cityFilter ? 'Try adjusting your search' : 'No hostels available'}
             </p>
           </div>
         ) : (
@@ -181,18 +180,14 @@ export default function Hostels() {
             <p className="text-[11px] text-muted-foreground">{filteredHostels.length} hostels found</p>
             {filteredHostels.map((hostel) => (
               <div
-                key={hostel._id}
-                onClick={() => navigate(`/hostels/${hostel._id}`)}
+                key={hostel.id}
+                onClick={() => navigate(`/hostels/${hostel.id}`)}
                 className="flex gap-3 p-3 bg-card rounded-2xl border border-border hover:border-primary/30 hover:shadow-sm transition-all active:scale-[0.99] cursor-pointer"
               >
                 {/* Thumbnail */}
                 <div className="relative flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden bg-muted">
-                  {hostel.logoImage ? (
-                    <img
-                      src={getImageUrl(hostel.logoImage)}
-                      alt={hostel.name}
-                      className="w-full h-full object-cover"
-                    />
+                  {hostel.logo_image ? (
+                    <img src={hostel.logo_image} alt={hostel.name} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <Hotel className="h-6 w-6 text-muted-foreground" />
@@ -209,11 +204,11 @@ export default function Hostels() {
                 <div className="flex-1 min-w-0 flex flex-col justify-between">
                   <div>
                     <h3 className="text-[13px] font-semibold text-foreground leading-tight truncate">{hostel.name}</h3>
-                    {(hostel.area?.name || hostel.city?.name) && (
+                    {(hostel.areas?.name || hostel.cities?.name) && (
                       <div className="flex items-center gap-0.5 mt-0.5">
                         <MapPin className="h-3 w-3 text-muted-foreground flex-shrink-0" />
                         <span className="text-[11px] text-muted-foreground truncate">
-                          {hostel.area?.name ? hostel.area.name + ', ' : ''}{hostel.city?.name}
+                          {hostel.areas?.name ? hostel.areas.name + ', ' : ''}{hostel.cities?.name || ''}
                         </span>
                       </div>
                     )}
