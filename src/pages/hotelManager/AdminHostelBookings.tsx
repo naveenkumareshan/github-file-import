@@ -71,6 +71,7 @@ export default function AdminHostelBookings() {
         .select('*, hostels(name), hostel_rooms(room_number), hostel_beds(bed_number), profiles:user_id(name, email, phone)', { count: 'exact' })
         .order('created_at', { ascending: false });
 
+
       if (status) query = query.eq('status', status);
 
       if (searchQuery) {
@@ -93,7 +94,35 @@ export default function AdminHostelBookings() {
         );
       }
 
-      setBookings(filtered);
+      // Fetch hostel dues for these bookings
+      const ids = filtered.map(b => b.id);
+      let duesMap: Record<string, any> = {};
+      if (ids.length > 0) {
+        const { data: duesData } = await supabase
+          .from('hostel_dues')
+          .select('booking_id, advance_paid, paid_amount, due_amount')
+          .in('booking_id', ids);
+        if (duesData) {
+          for (const d of duesData) {
+            if (d.booking_id) duesMap[d.booking_id] = d;
+          }
+        }
+      }
+
+      const enriched = filtered.map(b => {
+        const due = duesMap[b.id];
+        return {
+          ...b,
+          totalPaid: due
+            ? (Number(due.advance_paid) || 0) + (Number(due.paid_amount) || 0)
+            : (b.advance_amount || 0),
+          duePending: due
+            ? (Number(due.due_amount) || 0) - (Number(due.paid_amount) || 0)
+            : (b.remaining_amount || 0),
+        };
+      });
+
+      setBookings(enriched);
       setTotalCount(count || 0);
     } catch (error: any) {
       toast({ title: 'Error', description: error.message || 'Failed to fetch bookings', variant: 'destructive' });
@@ -200,6 +229,8 @@ export default function AdminHostelBookings() {
                               {(b.security_deposit || 0) > 0 && (
                                 <div className="text-muted-foreground">Deposit: ₹{(b.security_deposit || 0).toLocaleString()}</div>
                               )}
+                              <div className="text-[10px] text-emerald-600">Paid: ₹{(b.totalPaid || 0).toLocaleString()}</div>
+                              <div className="text-[10px] text-amber-600">Due: ₹{(b.duePending || 0).toLocaleString()}</div>
                             </TableCell>
                             <TableCell className="py-1.5 px-3">
                               <span className={`inline-flex items-center rounded-full px-1.5 py-0 text-[10px] font-medium capitalize ${badgeCls(b.status || 'pending')}`}>{b.status || 'pending'}</span>

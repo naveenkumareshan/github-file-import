@@ -169,6 +169,8 @@ const AdminBookings = () => {
                           {(b.lockerPrice || 0) > 0 && (
                             <div className="text-[10px] text-muted-foreground">Locker: ₹{(b.lockerPrice || 0).toLocaleString()}</div>
                           )}
+                          <div className="text-[10px] text-emerald-600">Paid: ₹{(b.totalPaid || 0).toLocaleString()}</div>
+                          <div className="text-[10px] text-amber-600">Due: ₹{(b.duePending || 0).toLocaleString()}</div>
                         </TableCell>
                         <TableCell className="py-1.5 px-3">
                           <span className={`inline-flex items-center rounded-full px-1.5 py-0 text-[10px] font-medium capitalize ${badgeCls(b.status || "pending")}`}>{b.status || "pending"}</span>

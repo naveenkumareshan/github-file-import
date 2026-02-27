@@ -24,7 +24,7 @@ export const adminBookingsService = {
 
       let query = supabase
         .from('bookings')
-        .select('*, profiles!bookings_user_id_fkey(name, email, phone, profile_picture, serial_number), cabins:cabin_id(name, serial_number), seats:seat_id(number, category), cabin_slots:slot_id(name)', { count: 'exact' });
+        .select('*, profiles!bookings_user_id_fkey(name, email, phone, profile_picture, serial_number), cabins:cabin_id(name, serial_number), seats:seat_id(number, category), cabin_slots:slot_id(name), dues!dues_booking_id_fkey(advance_paid, paid_amount, due_amount)', { count: 'exact' });
 
       // Apply filters
       if (filters?.status && filters.status !== 'all') {
@@ -92,6 +92,18 @@ export const adminBookingsService = {
           seatCategory: seat?.category || '',
           slotName: slot?.name || (b.slot_id ? '' : 'Full Day'),
           bookingDuration: b.booking_duration || '',
+          totalPaid: (() => {
+            const duesArr = (b as any).dues as any[] | null;
+            const due = Array.isArray(duesArr) ? duesArr[0] : duesArr;
+            if (due) return (Number(due.advance_paid) || 0) + (Number(due.paid_amount) || 0);
+            return b.payment_status === 'completed' ? (Number(b.total_price) || 0) : 0;
+          })(),
+          duePending: (() => {
+            const duesArr = (b as any).dues as any[] | null;
+            const due = Array.isArray(duesArr) ? duesArr[0] : duesArr;
+            if (due) return (Number(due.due_amount) || 0) - (Number(due.paid_amount) || 0);
+            return 0;
+          })(),
         };
       });
 
