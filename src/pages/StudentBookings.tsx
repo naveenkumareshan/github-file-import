@@ -151,7 +151,10 @@ const StudentBookings = () => {
         ...b,
         dueAmount: duesMap.get(b.id) || 0,
       }));
-      setPastBookings(allHistory.filter((b: Booking) => b.endDate < today || b.paymentStatus !== 'completed'));
+      setPastBookings(allHistory.filter((b: Booking) =>
+        (b.endDate < today && !['pending'].includes(b.paymentStatus)) ||
+        ['failed', 'cancelled'].includes(b.paymentStatus)
+      ));
     } catch (error) {
       console.error('Error fetching bookings:', error);
     } finally {
