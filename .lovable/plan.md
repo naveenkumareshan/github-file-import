@@ -1,47 +1,60 @@
 
 
-## Add "Total Paid" and "Due Pending" Lines to All Booking Lists
+## 1. Compact 2x2 Grid Layout for Amount Column
 
-### Overview
-Add two new lines -- "Paid" and "Due" -- below the existing price breakdown in both reading room and hostel booking lists. These lines will always be visible (not conditional).
+Replace the vertical stack in both reading room and hostel booking tables with a CSS grid layout:
 
-### Changes
-
-#### 1. Reading Room Service (`src/api/adminBookingsService.ts`)
-- Update the query (line 27) to join the `dues` table: add `dues:dues!dues_booking_id_fkey(advance_paid, paid_amount, due_amount)` to the select
-- Note: `dues` has `booking_id` column referencing the booking, but no explicit FK. We'll use a separate query or embed reference. Since there's no FK defined, we'll fetch dues separately per booking OR use a left-join approach via `dues!booking_id`
-- Add to mapped output:
-  - `totalPaid`: from dues record (`advance_paid + paid_amount`), fallback to `totalPrice` if payment_status is "completed" and no dues record
-  - `duePending`: from dues record (`due_amount - paid_amount`), fallback to 0
-
-#### 2. Reading Room UI (`src/pages/AdminBookings.tsx`, line 167-172)
-- After the Seat/Locker lines, add two more lines (always shown):
-  - `Paid: ₹{totalPaid}` in green text
-  - `Due: ₹{duePending}` in red/amber text
-
-#### 3. Hostel Bookings Query (`src/pages/hotelManager/AdminHostelBookings.tsx`, line 69-72)
-- Update the select to also join `hostel_dues(advance_paid, paid_amount, due_amount)` via `booking_id`
-- Calculate:
-  - `totalPaid = advance_amount + (hostel_dues?.paid_amount || 0)`
-  - `duePending = remaining_amount - (hostel_dues?.paid_amount || 0)`
-
-#### 4. Hostel Bookings UI (`src/pages/hotelManager/AdminHostelBookings.tsx`, line 198-203)
-- After the Bed/Deposit lines, add two more lines (always shown):
-  - `Paid: ₹{totalPaid}` in green text
-  - `Due: ₹{duePending}` in red/amber text
-
-### Visual Result (Always Shown)
 ```text
-Reading Room:              Hostel:
-Seat: 2,000                Bed: 4,500
-Locker: 300                Deposit: 5,000
-Paid: 2,300                Paid: 4,500
-Due: 0                     Due: 5,000
+Current (vertical):        New (2x2 grid):
+Seat: 2,000               Seat: 2,000  | Locker: 300
+Locker: 300                Paid: 2,300  | Due: 0
+Paid: 2,300
+Due: 0
 ```
 
-### Technical Notes
-- The `dues` table has columns: `advance_paid`, `paid_amount`, `due_amount`, `booking_id`
-- The `hostel_dues` table has columns: `advance_paid`, `paid_amount`, `due_amount`, `booking_id`
-- Since foreign keys may not be explicitly defined for the join, we may need to use `.select('..., dues(...)').eq('dues.booking_id', ...)` or fetch dues in a separate query and merge client-side
-- 3 files modified total
+### Files to change
+
+**`src/pages/AdminBookings.tsx`** (lines 167-174) -- Reading Room Amount cell:
+- Wrap in `grid grid-cols-2 gap-x-3 gap-y-0.5` container
+- Col 1 row 1: Seat price
+- Col 2 row 1: Locker price (show "Locker: -" if 0, to keep grid consistent)
+- Col 1 row 2: Paid (green)
+- Col 2 row 2: Due (amber)
+
+**`src/pages/hotelManager/AdminHostelBookings.tsx`** (lines 227-234) -- Hostel Amount cell:
+- Same 2x2 grid layout
+- Col 1 row 1: Bed price
+- Col 2 row 1: Deposit
+- Col 1 row 2: Paid (green)
+- Col 2 row 2: Due (amber)
+
+---
+
+## 2. Fix Reading Room Paid/Due Calculation
+
+### Current Problem
+In `src/api/adminBookingsService.ts` (lines 95-106), the calculation logic has these issues:
+- When dues record exists: `totalPaid = advance_paid + paid_amount` -- correct
+- When no dues + `completed`: `totalPaid = total_price` -- correct
+- When no dues + `advance_paid`: `totalPaid = 0, duePending = 0` -- **WRONG** (should show what was actually paid)
+- When no dues + other status: `totalPaid = 0, duePending = 0` -- may be wrong
+
+### Fix
+Also fetch receipts total per booking as a fallback. Update the query to also join receipts (aggregated), then:
+
+**Calculation logic:**
+- If dues record exists: `totalPaid = advance_paid + paid_amount`, `duePending = due_amount - paid_amount`
+- If no dues but receipts exist: `totalPaid = receipts total`, `duePending = total_price - receipts total`
+- If no dues, no receipts, `completed`: `totalPaid = total_price`, `duePending = 0`
+- If no dues, no receipts, other: `totalPaid = 0`, `duePending = total_price`
+
+### Implementation
+**`src/api/adminBookingsService.ts`**:
+- After fetching bookings, do a second query to get `SELECT booking_id, SUM(amount) as total_paid FROM receipts WHERE booking_id IN (...) GROUP BY booking_id`
+- Build a receipts map and use it in the fallback calculation when no dues record exists
+
+### Files changed: 3
+- `src/api/adminBookingsService.ts` -- fix paid/due calculation with receipts fallback
+- `src/pages/AdminBookings.tsx` -- 2x2 grid layout for Amount
+- `src/pages/hotelManager/AdminHostelBookings.tsx` -- 2x2 grid layout for Amount
 
