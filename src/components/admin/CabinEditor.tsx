@@ -111,6 +111,7 @@ export function CabinEditor({
     advanceUseFlat: existingCabin?.advanceUseFlat ?? existingCabin?.advance_use_flat ?? false,
     advanceValidityDays: existingCabin?.advanceValidityDays ?? existingCabin?.advance_validity_days ?? 3,
     advanceAutoCancel: existingCabin?.advanceAutoCancel ?? existingCabin?.advance_auto_cancel ?? true,
+    advanceApplicableDurations: existingCabin?.advance_applicable_durations ?? existingCabin?.advanceApplicableDurations ?? ['daily', 'weekly', 'monthly'],
     is24Hours: existingCabin?.is_24_hours ?? existingCabin?.is24Hours ?? false,
     slotsEnabled: existingCabin?.slots_enabled ?? existingCabin?.slotsEnabled ?? false,
     openingTime: existingCabin?.opening_time ?? existingCabin?.openingTime ?? '06:00',
@@ -506,6 +507,32 @@ export function CabinEditor({
                       <div className="flex items-center gap-2 opacity-60">
                         <input type="checkbox" id="advanceAutoCancel" checked={cabin.advanceAutoCancel} onChange={(e) => setCabin(prev => ({ ...prev, advanceAutoCancel: e.target.checked }))} className="h-4 w-4" disabled />
                         <Label htmlFor="advanceAutoCancel" className="text-xs cursor-pointer">Auto-cancel if unpaid <span className="text-muted-foreground">(Coming Soon)</span></Label>
+                      </div>
+
+                      <div>
+                        <Label className="text-xs font-medium mb-2 block">Allow advance payment for</Label>
+                        <div className="flex flex-wrap gap-3">
+                          {['daily', 'weekly', 'monthly'].filter(d => (cabin.allowedDurations as string[]).includes(d)).map(dur => (
+                            <label key={dur} className="flex items-center gap-1.5 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={(cabin.advanceApplicableDurations as string[]).includes(dur)}
+                                onChange={(e) => {
+                                  setCabin(prev => {
+                                    const current = prev.advanceApplicableDurations as string[];
+                                    const updated = e.target.checked
+                                      ? [...current, dur]
+                                      : current.filter((d: string) => d !== dur);
+                                    return { ...prev, advanceApplicableDurations: updated };
+                                  });
+                                }}
+                                className="h-3.5 w-3.5"
+                              />
+                              <span className="text-xs capitalize">{dur}</span>
+                            </label>
+                          ))}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">Students can use advance payment only for selected duration types</p>
                       </div>
                     </div>
                   )}

@@ -106,6 +106,7 @@ export const adminCabinsService = {
         advance_use_flat: data.advanceUseFlat ?? false,
         advance_validity_days: data.advanceValidityDays ?? 3,
         advance_auto_cancel: data.advanceAutoCancel ?? true,
+        advance_applicable_durations: data.advanceApplicableDurations || ['daily','weekly','monthly'],
         opening_time: data.openingTime || '06:00',
         closing_time: data.closingTime || '22:00',
         working_days: data.workingDays || ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
@@ -158,6 +159,7 @@ export const adminCabinsService = {
       if (data.advanceUseFlat !== undefined) (updateData as any).advance_use_flat = data.advanceUseFlat;
       if (data.advanceValidityDays !== undefined) (updateData as any).advance_validity_days = data.advanceValidityDays;
       if (data.advanceAutoCancel !== undefined) (updateData as any).advance_auto_cancel = data.advanceAutoCancel;
+      if (data.advanceApplicableDurations !== undefined) (updateData as any).advance_applicable_durations = data.advanceApplicableDurations;
       if (data.openingTime !== undefined) (updateData as any).opening_time = data.openingTime;
       if (data.closingTime !== undefined) (updateData as any).closing_time = data.closingTime;
       if (data.workingDays !== undefined) (updateData as any).working_days = data.workingDays;
