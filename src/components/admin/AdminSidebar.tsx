@@ -47,7 +47,8 @@ import {
   BarChart2,
   ArrowLeftRight,
   BookOpen,
-  UserCheck
+  UserCheck,
+  ClipboardCheck
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronRight } from 'lucide-react';
@@ -84,6 +85,13 @@ export function AdminSidebar() {
       title: 'Dashboard',
       url: '/admin/dashboard',
       icon: LayoutDashboard,
+      roles: ['admin', 'vendor', 'vendor_employee'],
+      permissions: ['view_dashboard']
+    },
+    {
+      title: 'Operations',
+      url: '/admin/operations',
+      icon: ClipboardCheck,
       roles: ['admin', 'vendor', 'vendor_employee'],
       permissions: ['view_dashboard']
     }
