@@ -127,7 +127,7 @@ const Confirmation = () => {
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="bg-cabin-light/20 p-4 rounded-md">
                   <p className="text-sm text-cabin-dark/60 mb-1">Reading Room</p>
-                  <p className="font-medium text-cabin-dark">{booking?.cabinId.name}</p>
+                  <p className="font-medium text-cabin-dark">{booking?.cabinId?.name || 'Not specified'}</p>
                 </div>
                 <div className="bg-cabin-light/20 p-4 rounded-md">
                   <p className="text-sm text-cabin-dark/60 mb-1">Room Code</p>
