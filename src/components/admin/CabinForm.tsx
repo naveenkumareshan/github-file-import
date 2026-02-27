@@ -43,6 +43,8 @@ const cabinSchema = z.object({
   isActive: z.boolean().default(true),
   is24Hours: z.boolean().default(false),
   slotsEnabled: z.boolean().default(false),
+  allowedDurations: z.array(z.string()).default(['daily', 'weekly', 'monthly']),
+  slotsApplicableDurations: z.array(z.string()).default(['daily', 'weekly', 'monthly']),
   openingTime: z.string().optional(),
   closingTime: z.string().optional(),
   workingDays: z.array(z.string()).optional(),
@@ -101,6 +103,8 @@ export function CabinForm({ initialData, onSuccess, cabinId }: CabinFormProps) {
     isActive: true,
     is24Hours: false,
     slotsEnabled: false,
+    allowedDurations: ['daily', 'weekly', 'monthly'],
+    slotsApplicableDurations: ['daily', 'weekly', 'monthly'],
     openingTime: '06:00',
     closingTime: '22:00',
     workingDays: ALL_DAYS,
@@ -112,6 +116,8 @@ export function CabinForm({ initialData, onSuccess, cabinId }: CabinFormProps) {
     amenities: Array.isArray(initialData.amenities) ? initialData.amenities.join(', ') : '',
     is24Hours: initialData.is24Hours ?? initialData.is_24_hours ?? false,
     slotsEnabled: initialData.slotsEnabled ?? initialData.slots_enabled ?? false,
+    allowedDurations: initialData.allowedDurations || initialData.allowed_durations || ['daily', 'weekly', 'monthly'],
+    slotsApplicableDurations: initialData.slotsApplicableDurations || initialData.slots_applicable_durations || ['daily', 'weekly', 'monthly'],
     openingTime: initialData.openingTime || initialData.opening_time || '06:00',
     closingTime: initialData.closingTime || initialData.closing_time || '22:00',
     workingDays: initialData.workingDays || (Array.isArray(initialData.working_days) ? initialData.working_days : ALL_DAYS),
@@ -140,10 +146,12 @@ export function CabinForm({ initialData, onSuccess, cabinId }: CabinFormProps) {
         isActive: values.isActive,
         is24Hours: values.is24Hours,
         slotsEnabled: values.slotsEnabled,
+        allowedDurations: values.allowedDurations,
+        slotsApplicableDurations: values.slotsApplicableDurations,
         openingTime: values.is24Hours ? '00:00' : values.openingTime,
         closingTime: values.is24Hours ? '23:59' : values.closingTime,
         workingDays: values.is24Hours ? ALL_DAYS : values.workingDays,
-      };
+      } as any;
       
       if (values.imageSrc) cabinData.imageSrc = values.imageSrc;
       if (values.serialNumber) cabinData.serialNumber = values.serialNumber;
@@ -356,6 +364,72 @@ export function CabinForm({ initialData, onSuccess, cabinId }: CabinFormProps) {
               <span className="text-xs text-amber-700 dark:text-amber-400 font-medium">
                 Save the room first, then you can manage time slots
               </span>
+            </div>
+          )}
+
+          {/* Allowed Booking Durations */}
+          <div className="space-y-2">
+            <Label className="text-xs font-medium">Offer bookings for</Label>
+            <p className="text-xs text-muted-foreground">Choose which duration types students can book</p>
+            <div className="flex flex-wrap gap-2">
+              {(['daily', 'weekly', 'monthly'] as const).map((dur) => {
+                const allowedDurations = form.watch('allowedDurations') || ['daily', 'weekly', 'monthly'];
+                const isSelected = allowedDurations.includes(dur);
+                return (
+                  <button
+                    key={dur}
+                    type="button"
+                    className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
+                      isSelected
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-muted text-muted-foreground border-border hover:bg-accent'
+                    }`}
+                    onClick={() => {
+                      if (isSelected && allowedDurations.length <= 1) return;
+                      const updated = isSelected ? allowedDurations.filter((d: string) => d !== dur) : [...allowedDurations, dur];
+                      form.setValue('allowedDurations', updated);
+                      // Also remove from slotsApplicableDurations if unchecked
+                      if (isSelected) {
+                        const slotsDur = form.watch('slotsApplicableDurations') || [];
+                        form.setValue('slotsApplicableDurations', slotsDur.filter((d: string) => d !== dur));
+                      }
+                    }}
+                  >
+                    {dur.charAt(0).toUpperCase() + dur.slice(1)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Slots Applicable Durations - only when slots enabled */}
+          {slotsEnabled && (
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Apply slots to</Label>
+              <p className="text-xs text-muted-foreground">Which duration types require time slot selection</p>
+              <div className="flex flex-wrap gap-2">
+                {(form.watch('allowedDurations') || ['daily', 'weekly', 'monthly']).map((dur: string) => {
+                  const slotsDur = form.watch('slotsApplicableDurations') || ['daily', 'weekly', 'monthly'];
+                  const isSelected = slotsDur.includes(dur);
+                  return (
+                    <button
+                      key={dur}
+                      type="button"
+                      className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
+                        isSelected
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-muted text-muted-foreground border-border hover:bg-accent'
+                      }`}
+                      onClick={() => {
+                        const updated = isSelected ? slotsDur.filter((d: string) => d !== dur) : [...slotsDur, dur];
+                        form.setValue('slotsApplicableDurations', updated);
+                      }}
+                    >
+                      {dur.charAt(0).toUpperCase() + dur.slice(1)}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>

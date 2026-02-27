@@ -277,6 +277,7 @@ export type Database = {
           advance_percentage: number
           advance_use_flat: boolean
           advance_validity_days: number
+          allowed_durations: Json
           amenities: string[] | null
           area: string | null
           capacity: number | null
@@ -307,6 +308,7 @@ export type Database = {
           room_width: number
           sections: Json
           serial_number: string | null
+          slots_applicable_durations: Json
           slots_enabled: boolean
           state: string | null
           working_days: Json
@@ -318,6 +320,7 @@ export type Database = {
           advance_percentage?: number
           advance_use_flat?: boolean
           advance_validity_days?: number
+          allowed_durations?: Json
           amenities?: string[] | null
           area?: string | null
           capacity?: number | null
@@ -348,6 +351,7 @@ export type Database = {
           room_width?: number
           sections?: Json
           serial_number?: string | null
+          slots_applicable_durations?: Json
           slots_enabled?: boolean
           state?: string | null
           working_days?: Json
@@ -359,6 +363,7 @@ export type Database = {
           advance_percentage?: number
           advance_use_flat?: boolean
           advance_validity_days?: number
+          allowed_durations?: Json
           amenities?: string[] | null
           area?: string | null
           capacity?: number | null
@@ -389,6 +394,7 @@ export type Database = {
           room_width?: number
           sections?: Json
           serial_number?: string | null
+          slots_applicable_durations?: Json
           slots_enabled?: boolean
           state?: string | null
           working_days?: Json
