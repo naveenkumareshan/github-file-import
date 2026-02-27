@@ -189,6 +189,13 @@ export function AdminSidebar() {
   if (user?.role === 'admin' || hasPermission('view_reading_rooms')) {
     const hostelSubItems: MenuItem[] = [
       {
+        title: 'Bed Map',
+        url: '/admin/hostel-bed-map',
+        icon: Bed,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+        permissions: ['view_reading_rooms']
+      },
+      {
         title: 'Manage Hostels',
         url: '/admin/hostels',
         icon: HomeIcon,
