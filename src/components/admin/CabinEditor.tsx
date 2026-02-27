@@ -28,6 +28,8 @@ import {
 
 import { LocationSelector } from "../forms/LocationSelector";
 import MapPicker from "./MapPicker";
+import { SlotManagement } from "./SlotManagement";
+import { Switch } from "@/components/ui/switch";
 
 import { getImageUrl } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -89,6 +91,11 @@ export function CabinEditor({
     advanceUseFlat: existingCabin?.advanceUseFlat ?? existingCabin?.advance_use_flat ?? false,
     advanceValidityDays: existingCabin?.advanceValidityDays ?? existingCabin?.advance_validity_days ?? 3,
     advanceAutoCancel: existingCabin?.advanceAutoCancel ?? existingCabin?.advance_auto_cancel ?? true,
+    is24Hours: existingCabin?.is_24_hours ?? existingCabin?.is24Hours ?? false,
+    slotsEnabled: existingCabin?.slots_enabled ?? existingCabin?.slotsEnabled ?? false,
+    openingTime: existingCabin?.opening_time ?? existingCabin?.openingTime ?? '06:00',
+    closingTime: existingCabin?.closing_time ?? existingCabin?.closingTime ?? '22:00',
+    workingDays: existingCabin?.working_days ?? existingCabin?.workingDays ?? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
   });
 
   // Partner details state
@@ -648,6 +655,104 @@ export function CabinEditor({
                     This is the starting base price shown to students. Actual seat prices are set via categories.
                   </p>
                 </div>
+                {/* Room Timings Section */}
+                <div className="border rounded-lg p-4 space-y-3">
+                  <Label className="text-lg font-medium">Room Timings</Label>
+                  
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label htmlFor="is24Hours" className="text-sm font-medium">Open 24/7</Label>
+                      <p className="text-xs text-muted-foreground">Room is accessible round the clock</p>
+                    </div>
+                    <Switch
+                      id="is24Hours"
+                      checked={cabin.is24Hours}
+                      onCheckedChange={(checked) => setCabin(prev => ({ ...prev, is24Hours: checked }))}
+                    />
+                  </div>
+
+                  {!cabin.is24Hours && (
+                    <div className="space-y-3 pl-2 border-l-2 border-primary/20 ml-2">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label htmlFor="openingTime" className="text-sm">Opening Time</Label>
+                          <Input
+                            id="openingTime"
+                            type="time"
+                            value={cabin.openingTime}
+                            onChange={(e) => setCabin(prev => ({ ...prev, openingTime: e.target.value }))}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="closingTime" className="text-sm">Closing Time</Label>
+                          <Input
+                            id="closingTime"
+                            type="time"
+                            value={cabin.closingTime}
+                            onChange={(e) => setCabin(prev => ({ ...prev, closingTime: e.target.value }))}
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label className="text-sm font-medium mb-2 block">Working Days</Label>
+                        <div className="flex flex-wrap gap-2">
+                          {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => {
+                            const isSelected = (cabin.workingDays || []).includes(day);
+                            return (
+                              <button
+                                key={day}
+                                type="button"
+                                className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                                  isSelected
+                                    ? 'bg-primary text-primary-foreground border-primary'
+                                    : 'bg-muted text-muted-foreground border-border hover:bg-accent'
+                                }`}
+                                onClick={() => {
+                                  const days = cabin.workingDays || [];
+                                  const updated = isSelected
+                                    ? days.filter((d: string) => d !== day)
+                                    : [...days, day];
+                                  setCabin(prev => ({ ...prev, workingDays: updated }));
+                                }}
+                              >
+                                {day}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {cabin.is24Hours && (
+                    <p className="text-sm text-green-600 font-medium">✓ This room is open 24 hours, 7 days a week</p>
+                  )}
+                </div>
+
+                {/* Slot-Based Booking */}
+                <div className="border rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label htmlFor="slotsEnabled" className="text-sm font-medium">Slot-Based Booking</Label>
+                      <p className="text-xs text-muted-foreground">Allow students to book specific time slots</p>
+                    </div>
+                    <Switch
+                      id="slotsEnabled"
+                      checked={cabin.slotsEnabled}
+                      onCheckedChange={(checked) => setCabin(prev => ({ ...prev, slotsEnabled: checked }))}
+                    />
+                  </div>
+
+                  {cabin.slotsEnabled && existingCabin?.id && (
+                    <SlotManagement cabinId={existingCabin.id} />
+                  )}
+
+                  {cabin.slotsEnabled && !existingCabin?.id && (
+                    <p className="text-xs text-muted-foreground">Save the room first, then you can add time slots.</p>
+                  )}
+                </div>
+
                 <div>
                   <Label>Reading Room Images *</Label>
                   <div className="border rounded-md p-4">

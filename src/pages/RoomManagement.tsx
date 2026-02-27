@@ -213,6 +213,11 @@ const RoomManagement = () => {
             ownerPhone: cabinData.ownerPhone,
             ownerEmail: cabinData.ownerEmail,
           },
+          is24Hours: cabinData.is24Hours,
+          slotsEnabled: cabinData.slotsEnabled,
+          openingTime: cabinData.openingTime,
+          closingTime: cabinData.closingTime,
+          workingDays: cabinData.workingDays,
           location: {
             fullAddress: cabinData.fullAddress,
             city: cabinData.city,
