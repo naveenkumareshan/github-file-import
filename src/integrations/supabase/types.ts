@@ -679,6 +679,8 @@ export type Database = {
           id: string
           is_available: boolean
           is_blocked: boolean
+          position_x: number
+          position_y: number
           price_override: number | null
           room_id: string
           sharing_option_id: string
@@ -691,6 +693,8 @@ export type Database = {
           id?: string
           is_available?: boolean
           is_blocked?: boolean
+          position_x?: number
+          position_y?: number
           price_override?: number | null
           room_id: string
           sharing_option_id: string
@@ -703,6 +707,8 @@ export type Database = {
           id?: string
           is_available?: boolean
           is_blocked?: boolean
+          position_x?: number
+          position_y?: number
           price_override?: number | null
           room_id?: string
           sharing_option_id?: string
@@ -935,7 +941,11 @@ export type Database = {
           image_url: string | null
           images: string[] | null
           is_active: boolean
+          layout_image: string | null
+          layout_image_opacity: number
+          room_height: number
           room_number: string
+          room_width: number
         }
         Insert: {
           amenities?: string[] | null
@@ -948,7 +958,11 @@ export type Database = {
           image_url?: string | null
           images?: string[] | null
           is_active?: boolean
+          layout_image?: string | null
+          layout_image_opacity?: number
+          room_height?: number
           room_number?: string
+          room_width?: number
         }
         Update: {
           amenities?: string[] | null
@@ -961,7 +975,11 @@ export type Database = {
           image_url?: string | null
           images?: string[] | null
           is_active?: boolean
+          layout_image?: string | null
+          layout_image_opacity?: number
+          room_height?: number
           room_number?: string
+          room_width?: number
         }
         Relationships: [
           {
