@@ -54,4 +54,11 @@ export function getClosedDaysDisplay(workingDays: string[] | null | undefined): 
   return `Closed on ${closed.map(getFullDayName).join(', ')}`;
 }
 
+/**
+ * Returns display string for 24/7 rooms
+ */
+export function is24HoursDisplay(is24Hours: boolean | undefined): string {
+  return is24Hours ? 'Open 24/7' : '';
+}
+
 export { ALL_DAYS };

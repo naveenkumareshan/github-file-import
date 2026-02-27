@@ -17,7 +17,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { razorpayService } from "@/api/razorpayService";
-import { getTimingDisplay, getClosedDaysDisplay } from "@/utils/timingUtils";
+import { getTimingDisplay, getClosedDaysDisplay, formatTime } from "@/utils/timingUtils";
 
 interface ReceiptItem {
   id: string;
@@ -121,7 +121,7 @@ export default function StudentBookingView() {
       const [bookingRes, receiptsRes, duesRes] = await Promise.all([
         supabase
           .from("bookings")
-          .select("*, cabins(name, opening_time, closing_time, working_days), seats:seat_id(price, number, category)")
+          .select("*, cabins(name, opening_time, closing_time, working_days, is_24_hours, slots_enabled), seats:seat_id(price, number, category), cabin_slots:slot_id(name, start_time, end_time, price)")
           .eq("id", bookingId)
           .single(),
         supabase
@@ -360,6 +360,19 @@ export default function StudentBookingView() {
           <InfoRow label="Check-in" value={safeFmt(booking.start_date, "dd MMM yyyy")} />
           <InfoRow label="Check-out" value={safeFmt(booking.end_date, "dd MMM yyyy")} />
           <InfoRow label="Duration" value={durationLabel} />
+          {booking.cabin_slots ? (
+            <InfoRow
+              label="Time Slot"
+              value={
+                <span className="flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {booking.cabin_slots.name} ({formatTime(booking.cabin_slots.start_time)} – {formatTime(booking.cabin_slots.end_time)})
+                </span>
+              }
+            />
+          ) : cabin?.slots_enabled ? (
+            <InfoRow label="Booking Type" value="Full Day" />
+          ) : null}
           <InfoRow label="Booked On" value={safeFmt(booking.created_at, "dd MMM yyyy")} />
           {booking.cabins?.opening_time && booking.cabins?.closing_time && (
             <InfoRow

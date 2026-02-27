@@ -27,7 +27,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { bookingsService } from "@/api/bookingsService";
 import { RazorpayCheckout } from "@/components/payment/RazorpayCheckout";
 import { BookingDuration } from "@/types/BookingTypes";
-import { CalendarIcon, AlertCircle, X, TicketPercent } from "lucide-react";
+import { CalendarIcon, AlertCircle, X, TicketPercent, Clock } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -42,6 +42,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { seatCategoryService, SeatCategory } from "@/api/seatCategoryService";
 import { couponService } from "@/api/couponService";
+import { cabinSlotService, CabinSlot } from "@/api/cabinSlotService";
+import { formatTime } from "@/utils/timingUtils";
 
 const PaymentTimer = lazy(() =>
   import("@/components/booking/PaymentTimer").then((m) => ({
@@ -79,6 +81,8 @@ interface Cabin {
   advanceUseFlat?: boolean;
   advanceValidityDays?: number;
   advanceAutoCancel?: boolean;
+  slotsEnabled?: boolean;
+  is24Hours?: boolean;
 }
 
 export interface RoomElement {
@@ -172,6 +176,10 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
   // Advance payment state
   const [useAdvancePayment, setUseAdvancePayment] = useState(false);
 
+  // Slot state
+  const [availableSlots, setAvailableSlots] = useState<CabinSlot[]>([]);
+  const [selectedSlot, setSelectedSlot] = useState<CabinSlot | null>(null);
+
   // Category filter state
   const [categories, setCategories] = useState<SeatCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
@@ -184,6 +192,19 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
       });
     }
   }, [cabin?._id, cabin?.id]);
+
+  // Fetch slots when cabin has slots enabled
+  useEffect(() => {
+    const cabinId = cabin?._id || cabin?.id;
+    if (cabinId && cabin?.slotsEnabled) {
+      cabinSlotService.getSlotsByCabin(cabinId).then((res) => {
+        if (res.success) setAvailableSlots(res.data);
+      });
+    } else {
+      setAvailableSlots([]);
+      setSelectedSlot(null);
+    }
+  }, [cabin?._id, cabin?.id, cabin?.slotsEnabled]);
 
   const durations: BookingDuration[] = [
     { type: "monthly", count: 1, price: selectedSeat?.price || 0 },
@@ -417,6 +438,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
         end_date: format(withFixedTime(endDate, CHECK_OUT_HOUR), 'yyyy-MM-dd'),
         booking_duration: selectedDuration.type,
         duration_count: String(selectedDuration.count),
+        slot_id: selectedSlot?.id || undefined,
         total_price: totalPrice,
         payment_status: useAdvancePayment ? "advance_paid" : "pending",
         locker_included: effectiveLockerIncluded,
