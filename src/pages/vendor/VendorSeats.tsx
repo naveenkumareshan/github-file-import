@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { cabinSlotService, CabinSlot } from '@/api/cabinSlotService';
 import { format, addDays, addMonths } from 'date-fns';
 import { getImageUrl } from '@/lib/utils';
 import { downloadInvoice, InvoiceData } from '@/utils/invoiceGenerator';
@@ -95,6 +96,10 @@ const VendorSeats: React.FC = () => {
   const [discountReason, setDiscountReason] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<string>('cash');
   const [transactionId, setTransactionId] = useState('');
+
+  // Slot selection state
+  const [selectedSlot, setSelectedSlot] = useState<CabinSlot | null>(null);
+  const [availableSlots, setAvailableSlots] = useState<CabinSlot[]>([]);
 
   // Two-step booking flow
   const [bookingStep, setBookingStep] = useState<'details' | 'confirm'>('details');
@@ -225,10 +230,18 @@ const VendorSeats: React.FC = () => {
     setBookingStep('details');
     setReceiptDialogOpen(false);
     setReceiptDialogData([]);
+    setSelectedSlot(null);
+    setAvailableSlots([]);
 
     // Set locker default based on cabin
     const cabin = cabins.find(c => c._id === seat.cabinId);
     setLockerIncluded(cabin?.lockerMandatory || false);
+
+    // Fetch slots if cabin has slots enabled
+    if (cabin?.slotsEnabled) {
+      const slotsRes = await cabinSlotService.getSlotsByCabin(seat.cabinId);
+      if (slotsRes.success) setAvailableSlots(slotsRes.data);
+    }
 
     // Fetch block history if blocked
     if (seat.dateStatus === 'blocked') {
@@ -416,7 +429,27 @@ const VendorSeats: React.FC = () => {
     return { advanceAmount, remainingDue, proportionalDays, dueDate, proportionalEndDate, totalDays };
   }, [isAdvanceBooking, selectedCabinInfo, computedTotal, computedEndDate, bookingStartDate, manualAdvanceAmount, manualDueDate]);
 
-  // Create new student
+  // Price recalculation when plan/slot/customDays changes
+  useEffect(() => {
+    if (!selectedSeat) return;
+    const basePrice = selectedSlot && selectedSlot.id !== 'full_day' ? selectedSlot.price : selectedSeat.price;
+    let calculatedPrice = basePrice;
+    if (bookingPlan === '15days') {
+      calculatedPrice = Math.round(basePrice / 2);
+    } else if (bookingPlan === 'custom') {
+      const days = parseInt(customDays) || 30;
+      calculatedPrice = Math.round((basePrice / 30) * days);
+    }
+    setBookingPrice(String(calculatedPrice));
+  }, [bookingPlan, customDays, selectedSlot, selectedSeat]);
+
+  // Check if slot selector should show
+  const showSlotSelector = useMemo(() => {
+    if (!selectedCabinInfo?.slotsEnabled) return false;
+    const applicableDurations = selectedCabinInfo.slotsApplicableDurations || [];
+    return applicableDurations.includes(bookingPlan === '15days' ? 'daily' : bookingPlan);
+  }, [selectedCabinInfo, bookingPlan]);
+
   const handleCreateStudent = async () => {
     if (!newStudentName || !newStudentEmail) {
       toast({ title: 'Name and email are required', variant: 'destructive' });
@@ -473,6 +506,7 @@ const VendorSeats: React.FC = () => {
       isAdvanceBooking: isAdvanceBooking && !!advanceComputed,
       advancePaid: isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : undefined,
       dueDate: isAdvanceBooking && advanceComputed ? format(advanceComputed.proportionalEndDate, 'yyyy-MM-dd') : undefined,
+      slotId: selectedSlot ? selectedSlot.id : undefined,
     };
     const res = await vendorSeatsService.createPartnerBooking(data);
     if (res.success) {
@@ -1162,6 +1196,42 @@ const VendorSeats: React.FC = () => {
                     <div>
                       <Label className="text-[10px] uppercase text-muted-foreground">Days</Label>
                       <Input className="h-8 text-xs" type="number" value={customDays} onChange={e => setCustomDays(e.target.value)} />
+                    </div>
+                  )}
+
+                  {/* Slot Selector */}
+                  {showSlotSelector && availableSlots.length > 0 && (
+                    <div>
+                      <Label className="text-[10px] uppercase text-muted-foreground">Time Slot</Label>
+                      <RadioGroup
+                        value={selectedSlot?.id || 'full_day'}
+                        onValueChange={(val) => {
+                          if (val === 'full_day') {
+                            setSelectedSlot(null);
+                          } else {
+                            const slot = availableSlots.find(s => s.id === val);
+                            setSelectedSlot(slot || null);
+                          }
+                        }}
+                        className="grid grid-cols-1 gap-1 mt-1"
+                      >
+                        <div className="flex items-center space-x-2 border rounded px-2 py-1.5">
+                          <RadioGroupItem value="full_day" id="slot-full-day" />
+                          <Label htmlFor="slot-full-day" className="text-xs cursor-pointer flex-1">
+                            Full Day
+                          </Label>
+                          <span className="text-xs text-muted-foreground">₹{selectedSeat?.price || 0}</span>
+                        </div>
+                        {availableSlots.map(slot => (
+                          <div key={slot.id} className="flex items-center space-x-2 border rounded px-2 py-1.5">
+                            <RadioGroupItem value={slot.id} id={`slot-${slot.id}`} />
+                            <Label htmlFor={`slot-${slot.id}`} className="text-xs cursor-pointer flex-1">
+                              {slot.name} <span className="text-muted-foreground">({slot.start_time}–{slot.end_time})</span>
+                            </Label>
+                            <span className="text-xs text-muted-foreground">₹{slot.price}</span>
+                          </div>
+                        ))}
+                      </RadioGroup>
                     </div>
                   )}
 
