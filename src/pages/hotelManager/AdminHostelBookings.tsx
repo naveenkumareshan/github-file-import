@@ -10,7 +10,8 @@ import { useToast } from '@/hooks/use-toast';
 import { hostelBookingService } from '@/api/hostelBookingService';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
-import { Eye, Search, RefreshCw, Calendar } from 'lucide-react';
+import { Eye, Search, RefreshCw, Calendar, BarChart3 } from 'lucide-react';
+import { HostelBookingCalendarDashboard } from '@/components/admin/HostelBookingCalendarDashboard';
 
 const getStatusBadgeClass = (status: string) => {
   switch (status) {
@@ -31,7 +32,7 @@ export default function AdminHostelBookings() {
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchBookings();
+    if (activeTab !== 'calendar') fetchBookings();
   }, [activeTab]);
 
   const fetchBookings = async () => {
@@ -92,6 +93,9 @@ export default function AdminHostelBookings() {
               <TabsTrigger value="confirmed">Confirmed</TabsTrigger>
               <TabsTrigger value="pending">Pending</TabsTrigger>
               <TabsTrigger value="cancelled">Cancelled</TabsTrigger>
+              <TabsTrigger value="calendar" className="flex items-center gap-1">
+                <BarChart3 className="h-3.5 w-3.5" /> Calendar & Occupancy
+              </TabsTrigger>
             </TabsList>
             
             <div className="flex flex-col md:flex-row gap-3 mb-4 p-3 bg-muted/30 rounded-lg border border-border/40">
@@ -173,6 +177,9 @@ export default function AdminHostelBookings() {
                   </Table>
                 </div>
               )}
+            </TabsContent>
+            <TabsContent value="calendar" className="mt-0">
+              <HostelBookingCalendarDashboard />
             </TabsContent>
           </Tabs>
         </CardContent>
