@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import React, { lazy, Suspense } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 import AdminHostels from "./pages/hotelManager/HostelManagement";
@@ -97,8 +98,11 @@ const StudentSuspense = ({ children }: { children: React.ReactNode }) => (
   </ErrorBoundary>
 );
 
+const queryClient = new QueryClient();
+
 function App() {
   return (
+    <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <LazyWrapper>
         <Router>
@@ -252,6 +256,7 @@ function App() {
         </Router>
       </LazyWrapper>
     </AuthProvider>
+    </QueryClientProvider>
   );
 }
 
