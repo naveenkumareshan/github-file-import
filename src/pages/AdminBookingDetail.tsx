@@ -26,7 +26,7 @@ interface ReceiptRow {
   collected_by_name: string;
   notes: string;
   created_at: string;
-  due_id: string | null;
+  due_id?: string | null;
 }
 
 const AdminBookingDetail = () => {
@@ -47,14 +47,40 @@ const AdminBookingDetail = () => {
   const fetchBookingDetails = async () => {
     try {
       setLoading(true);
-      let response;
+      let bookingData: any = null;
+
       if (bookingType === 'hostel') {
-        response = await hostelService.getBookingById(bookingId);
+        const data = await hostelService.getBookingById(bookingId!);
+        bookingData = data;
       } else {
-        response = await adminBookingsService.getBookingById(bookingId!);
+        const response = await adminBookingsService.getBookingById(bookingId!);
+        if (response.success && response.data) {
+          bookingData = response.data;
+        }
       }
-      if (response.success && response.data) {
-        setBooking(response.data);
+
+      if (!bookingData) {
+        toast({ title: "Error", description: "Failed to fetch booking details", variant: "destructive" });
+        return;
+      }
+
+      setBooking(bookingData);
+
+      if (bookingType === 'hostel') {
+        // Fetch from hostel_receipts
+        const { data: rcpts } = await supabase
+          .from('hostel_receipts')
+          .select('*')
+          .eq('booking_id', bookingId!)
+          .order('created_at', { ascending: false });
+        setReceipts((rcpts || []).map(r => ({
+          ...r,
+          transaction_id: r.transaction_id || '',
+          collected_by_name: r.collected_by_name || '',
+          notes: r.notes || '',
+        })) as ReceiptRow[]);
+        setDueData(null); // Hostel doesn't use dues table
+      } else {
         const { data: rcpts } = await supabase
           .from('receipts')
           .select('*')
@@ -68,8 +94,6 @@ const AdminBookingDetail = () => {
           .limit(1)
           .maybeSingle();
         setDueData(dues);
-      } else {
-        toast({ title: "Error", description: "Failed to fetch booking details", variant: "destructive" });
       }
     } catch (error) {
       console.error("Error fetching booking:", error);
@@ -94,33 +118,102 @@ const AdminBookingDetail = () => {
     }
   };
 
+  // ── Helper to get user/room/hostel fields regardless of booking type ──
+  const getUserField = (field: string) => {
+    if (bookingType === 'hostel') {
+      return booking?.profiles?.[field] || '-';
+    }
+    const user = typeof booking?.userId === 'object' ? booking.userId : {};
+    return user?.[field] || '-';
+  };
+
+  const getPropertyName = () => {
+    if (bookingType === 'hostel') return booking?.hostels?.name || '-';
+    return typeof booking?.cabinId === 'object' ? booking.cabinId?.name : '-';
+  };
+
+  const getSeatLabel = () => {
+    if (bookingType === 'hostel') {
+      return `Room ${booking?.hostel_rooms?.room_number || '-'} / Bed #${booking?.hostel_beds?.bed_number || '-'}`;
+    }
+    return `#${typeof booking?.seatId === 'object' ? booking.seatId?.number : '-'}`;
+  };
+
+  const getBookingId = () => {
+    if (bookingType === 'hostel') return booking?.serial_number || booking?.id;
+    return booking?.bookingId || booking?._id;
+  };
+
+  const getCreatedAt = () => {
+    if (bookingType === 'hostel') return booking?.created_at;
+    return booking?.createdAt;
+  };
+
+  const getStartDate = () => {
+    if (bookingType === 'hostel') return booking?.start_date;
+    return booking?.startDate;
+  };
+
+  const getEndDate = () => {
+    if (bookingType === 'hostel') return booking?.end_date;
+    return booking?.endDate;
+  };
+
   const handleDownloadInvoice = () => {
     if (!booking) return;
-    const user = typeof booking.userId === 'object' ? booking.userId : {};
-    const cabin = typeof booking.cabinId === 'object' ? booking.cabinId : {};
-    const seat = typeof booking.seatId === 'object' ? booking.seatId : {};
-    const invoiceData: InvoiceData = {
-      serialNumber: booking.serialNumber || booking.bookingId || booking._id || '',
-      bookingDate: booking.createdAt || new Date().toISOString(),
-      studentName: user?.name || '-',
-      studentEmail: user?.email || '-',
-      studentPhone: user?.phone || '-',
-      studentSerialNumber: user?.userId || '',
-      cabinName: cabin?.name || '-',
-      seatNumber: seat?.number || booking.seatNumber || 0,
-      startDate: booking.startDate || '',
-      endDate: booking.endDate || '',
-      duration: booking.bookingDuration || booking.duration || '-',
-      seatAmount: booking.seatPrice || 0,
-      discountAmount: booking.discountAmount || 0,
-      discountReason: booking.discountReason || '',
-      lockerIncluded: booking.lockerIncluded || false,
-      lockerPrice: booking.lockerPrice || 0,
-      totalAmount: booking.totalPrice || 0,
-      paymentMethod: booking.paymentMethod || 'cash',
-      transactionId: booking.transactionId || '',
-      collectedByName: booking.collectedByName || '-',
-    };
+
+    let invoiceData: InvoiceData;
+
+    if (bookingType === 'hostel') {
+      invoiceData = {
+        serialNumber: booking.serial_number || booking.id || '',
+        bookingDate: booking.created_at || new Date().toISOString(),
+        studentName: booking.profiles?.name || '-',
+        studentEmail: booking.profiles?.email || '-',
+        studentPhone: booking.profiles?.phone || '-',
+        studentSerialNumber: '',
+        cabinName: `${booking.hostels?.name || '-'} — Room ${booking.hostel_rooms?.room_number || '-'}`,
+        seatNumber: booking.hostel_beds?.bed_number || 0,
+        startDate: booking.start_date || '',
+        endDate: booking.end_date || '',
+        duration: booking.booking_duration || '-',
+        seatAmount: booking.total_price || 0,
+        discountAmount: 0,
+        discountReason: '',
+        lockerIncluded: false,
+        lockerPrice: 0,
+        totalAmount: booking.total_price || 0,
+        paymentMethod: booking.payment_method || 'cash',
+        transactionId: booking.transaction_id || '',
+        collectedByName: booking.collected_by_name || '-',
+      };
+    } else {
+      const user = typeof booking.userId === 'object' ? booking.userId : {};
+      const cabin = typeof booking.cabinId === 'object' ? booking.cabinId : {};
+      const seat = typeof booking.seatId === 'object' ? booking.seatId : {};
+      invoiceData = {
+        serialNumber: booking.serialNumber || booking.bookingId || booking._id || '',
+        bookingDate: booking.createdAt || new Date().toISOString(),
+        studentName: user?.name || '-',
+        studentEmail: user?.email || '-',
+        studentPhone: user?.phone || '-',
+        studentSerialNumber: user?.userId || '',
+        cabinName: cabin?.name || '-',
+        seatNumber: seat?.number || booking.seatNumber || 0,
+        startDate: booking.startDate || '',
+        endDate: booking.endDate || '',
+        duration: booking.bookingDuration || booking.duration || '-',
+        seatAmount: booking.seatPrice || 0,
+        discountAmount: booking.discountAmount || 0,
+        discountReason: booking.discountReason || '',
+        lockerIncluded: booking.lockerIncluded || false,
+        lockerPrice: booking.lockerPrice || 0,
+        totalAmount: booking.totalPrice || 0,
+        paymentMethod: booking.paymentMethod || 'cash',
+        transactionId: booking.transactionId || '',
+        collectedByName: booking.collectedByName || '-',
+      };
+    }
     downloadInvoice(invoiceData);
   };
 
@@ -150,11 +243,17 @@ const AdminBookingDetail = () => {
     );
   }
 
-  const seatPrice = booking.seatPrice || 0;
-  const lockerAmount = booking.lockerPrice || 0;
-  const discountAmount = booking.discountAmount || 0;
-  const totalPrice = booking.totalPrice || 0;
-  const advancePaid = dueData?.advance_paid || 0;
+  // ── Payment calculations ──
+  const totalPrice = bookingType === 'hostel' ? (booking.total_price || 0) : (booking.totalPrice || 0);
+  const securityDeposit = bookingType === 'hostel' ? (booking.security_deposit || 0) : 0;
+  const seatPrice = bookingType === 'hostel' ? totalPrice : (booking.seatPrice || 0);
+  const lockerAmount = bookingType === 'hostel' ? 0 : (booking.lockerPrice || 0);
+  const discountAmount = bookingType === 'hostel' ? 0 : (booking.discountAmount || 0);
+
+  const advancePaid = bookingType === 'hostel'
+    ? (booking.advance_amount || 0)
+    : (dueData?.advance_paid || 0);
+
   const dueCollected = receipts
     .filter(r => r.receipt_type === 'due_collection')
     .reduce((s, r) => s + Number(r.amount), 0);
@@ -163,23 +262,30 @@ const AdminBookingDetail = () => {
   const paymentStatus = totalCollected === 0 ? 'unpaid'
     : dueRemaining <= 0 ? 'fully_paid' : 'partial_paid';
 
+  const advancePaymentMethod = bookingType === 'hostel' ? (booking.payment_method || 'cash') : (booking.paymentMethod || 'cash');
+  const advanceTransactionId = bookingType === 'hostel' ? (booking.transaction_id || '') : (booking.transactionId || '');
+  const advanceCollectedByName = bookingType === 'hostel' ? (booking.collected_by_name || '-') : (booking.collectedByName || '-');
+
   const allRows = [
     ...(advancePaid > 0 ? [{
       id: 'advance-row',
-      serial_number: booking.serialNumber || booking.bookingId || '-',
+      serial_number: getBookingId() || '-',
       amount: advancePaid,
-      payment_method: booking.paymentMethod || 'cash',
+      payment_method: advancePaymentMethod,
       receipt_type: 'booking_payment',
-      transaction_id: booking.transactionId || '',
-      collected_by_name: booking.collectedByName || '-',
+      transaction_id: advanceTransactionId,
+      collected_by_name: advanceCollectedByName,
       notes: '',
-      created_at: booking.createdAt,
+      created_at: getCreatedAt(),
       due_id: null,
       isSynthetic: true,
     }] : []),
     ...receipts.filter(r => r.receipt_type !== 'booking_payment'),
   ];
   const grandTotal = allRows.reduce((s, r) => s + Number(r.amount), 0);
+
+  const propertyLabel = bookingType === 'hostel' ? 'Hostel' : 'Room';
+  const seatLabel = bookingType === 'hostel' ? 'Room / Bed' : 'Seat';
 
   return (
     <div className="container mx-auto py-3">
@@ -192,7 +298,7 @@ const AdminBookingDetail = () => {
           <div>
             <h1 className="text-lg font-bold leading-tight">Booking Details</h1>
             <p className="text-xs text-muted-foreground">
-              {bookingType === 'hostel' ? 'Hostel' : 'Reading Room'} #{booking.bookingId || booking._id}
+              {bookingType === 'hostel' ? 'Hostel' : 'Reading Room'} #{getBookingId()}
             </p>
           </div>
         </div>
@@ -211,18 +317,16 @@ const AdminBookingDetail = () => {
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <p className="text-[11px] text-muted-foreground">Name</p>
-                <p className="text-sm font-medium">{typeof booking.userId === 'object' ? booking.userId?.name : '-'}</p>
+                <p className="text-sm font-medium">{getUserField('name')}</p>
               </div>
               <div>
                 <p className="text-[11px] text-muted-foreground">Email</p>
-                <p className="text-xs">{typeof booking.userId === 'object' ? booking.userId?.email : '-'}</p>
+                <p className="text-xs">{getUserField('email')}</p>
               </div>
-              {typeof booking.userId === 'object' && booking.userId?.userId && (
-                <div>
-                  <p className="text-[11px] text-muted-foreground">Student ID</p>
-                  <p className="text-xs">{booking.userId.userId}</p>
-                </div>
-              )}
+              <div>
+                <p className="text-[11px] text-muted-foreground">Phone</p>
+                <p className="text-xs">{getUserField('phone')}</p>
+              </div>
             </div>
           </div>
 
@@ -234,33 +338,33 @@ const AdminBookingDetail = () => {
             <div className="grid grid-cols-3 gap-3 mb-2">
               <div>
                 <p className="text-[11px] text-muted-foreground">Booking ID</p>
-                <p className="text-xs font-medium">{booking.bookingId || booking._id}</p>
+                <p className="text-xs font-medium">{getBookingId()}</p>
               </div>
               <div>
                 <p className="text-[11px] text-muted-foreground">Status</p>
-                <div>{getStatusBadge(booking.paymentStatus || booking.status || 'pending')}</div>
+                <div>{getStatusBadge(bookingType === 'hostel' ? (booking.status || 'pending') : (booking.paymentStatus || booking.status || 'pending'))}</div>
               </div>
               <div>
                 <p className="text-[11px] text-muted-foreground">Created</p>
-                <p className="text-xs">{booking.createdAt ? format(new Date(booking.createdAt), 'dd MMM yyyy') : '-'}</p>
+                <p className="text-xs">{getCreatedAt() ? format(new Date(getCreatedAt()), 'dd MMM yyyy') : '-'}</p>
               </div>
             </div>
             <div className="grid grid-cols-4 gap-3">
               <div>
                 <p className="text-[11px] text-muted-foreground">Check-in</p>
-                <p className="text-xs">{booking.startDate ? format(new Date(booking.startDate), 'dd MMM yyyy') : '-'}</p>
+                <p className="text-xs">{getStartDate() ? format(new Date(getStartDate()), 'dd MMM yyyy') : '-'}</p>
               </div>
               <div>
                 <p className="text-[11px] text-muted-foreground">Check-out</p>
-                <p className="text-xs">{booking.endDate ? format(new Date(booking.endDate), 'dd MMM yyyy') : '-'}</p>
+                <p className="text-xs">{getEndDate() ? format(new Date(getEndDate()), 'dd MMM yyyy') : '-'}</p>
               </div>
               <div>
-                <p className="text-[11px] text-muted-foreground">Room</p>
-                <p className="text-xs">{typeof booking.cabinId === 'object' ? booking.cabinId?.name : '-'}</p>
+                <p className="text-[11px] text-muted-foreground">{propertyLabel}</p>
+                <p className="text-xs">{getPropertyName()}</p>
               </div>
               <div>
-                <p className="text-[11px] text-muted-foreground">Seat</p>
-                <p className="text-xs">#{typeof booking.seatId === 'object' ? booking.seatId?.number : '-'}</p>
+                <p className="text-[11px] text-muted-foreground">{seatLabel}</p>
+                <p className="text-xs">{getSeatLabel()}</p>
               </div>
             </div>
           </div>
@@ -274,13 +378,20 @@ const AdminBookingDetail = () => {
             </p>
             <div className="grid grid-cols-3 gap-3 mb-2">
               <div>
-                <p className="text-[11px] text-muted-foreground">Seat Price</p>
+                <p className="text-[11px] text-muted-foreground">{bookingType === 'hostel' ? 'Base Price' : 'Seat Price'}</p>
                 <p className="text-sm font-semibold">₹{seatPrice.toLocaleString()}</p>
               </div>
-              <div>
-                <p className="text-[11px] text-muted-foreground">Locker</p>
-                <p className="text-sm font-semibold">₹{lockerAmount.toLocaleString()}</p>
-              </div>
+              {bookingType === 'hostel' ? (
+                <div>
+                  <p className="text-[11px] text-muted-foreground">Security Deposit</p>
+                  <p className="text-sm font-semibold">₹{securityDeposit.toLocaleString()}</p>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-[11px] text-muted-foreground">Locker</p>
+                  <p className="text-sm font-semibold">₹{lockerAmount.toLocaleString()}</p>
+                </div>
+              )}
               <div>
                 <p className="text-[11px] text-muted-foreground">Discount</p>
                 <p className="text-sm font-semibold text-destructive">{discountAmount > 0 ? '-' : ''}₹{discountAmount.toLocaleString()}</p>
@@ -365,6 +476,7 @@ const AdminBookingDetail = () => {
                           <Badge variant="outline" className="text-[9px] px-1 py-0">
                             {r.receipt_type === 'booking_payment' ? 'Advance'
                               : r.receipt_type === 'due_collection' ? 'Due'
+                              : r.receipt_type === 'deposit_refund' ? 'Deposit Refund'
                               : 'Payment'}
                           </Badge>
                         </TableCell>

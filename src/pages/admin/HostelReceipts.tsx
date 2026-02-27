@@ -1,139 +1,268 @@
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import React, { useState, useEffect, useMemo } from 'react';
+import { format } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
+import { CalendarIcon, Search, Receipt, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { format } from 'date-fns';
-import { Search, RefreshCw, Receipt } from 'lucide-react';
+import { formatCurrency } from '@/utils/currency';
 
-export default function HostelReceipts() {
-  const [receipts, setReceipts] = useState<any[]>([]);
+interface ReceiptRow {
+  id: string;
+  serial_number: string | null;
+  booking_id: string | null;
+  user_id: string;
+  hostel_id: string;
+  amount: number;
+  payment_method: string;
+  transaction_id: string | null;
+  collected_by: string | null;
+  collected_by_name: string | null;
+  receipt_type: string;
+  notes: string | null;
+  created_at: string;
+  studentName?: string;
+  studentPhone?: string;
+  studentEmail?: string;
+  hostelName?: string;
+  bookingSerial?: string;
+}
+
+const HostelReceipts: React.FC = () => {
+  const [receipts, setReceipts] = useState<ReceiptRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hostels, setHostels] = useState<{ id: string; name: string }[]>([]);
+  const [filterHostel, setFilterHostel] = useState('all');
+  const [filterType, setFilterType] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [typeFilter, setTypeFilter] = useState('all');
+  const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
+  const [toDate, setToDate] = useState<Date | undefined>(undefined);
   const { toast } = useToast();
 
-  useEffect(() => { fetchReceipts(); }, []);
+  useEffect(() => {
+    fetchHostels();
+    fetchReceipts();
+  }, []);
 
-  const fetchReceipts = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('hostel_receipts')
-        .select('*, hostels(name), hostel_bookings:booking_id(serial_number), profiles:user_id(name, email, phone)')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      setReceipts(data || []);
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message || "Failed to fetch receipts", variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
+  const fetchHostels = async () => {
+    const { data } = await supabase.from('hostels').select('id, name').order('name');
+    setHostels(data || []);
   };
 
-  const filtered = receipts.filter(r => {
-    if (typeFilter !== 'all' && r.receipt_type !== typeFilter) return false;
-    const s = searchTerm.toLowerCase();
-    if (!s) return true;
-    return (
-      r.serial_number?.toLowerCase().includes(s) ||
-      r.profiles?.name?.toLowerCase().includes(s) ||
-      r.profiles?.email?.toLowerCase().includes(s) ||
-      r.hostel_bookings?.serial_number?.toLowerCase().includes(s)
-    );
-  });
+  const fetchReceipts = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('hostel_receipts')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(500);
+      if (error) throw error;
 
-  const typeLabel = (t: string) => {
-    switch (t) {
-      case 'booking_payment': return 'Booking Payment';
-      case 'due_collection': return 'Due Collection';
-      case 'deposit_refund': return 'Deposit Refund';
-      default: return t;
+      const userIds = [...new Set((data || []).map(r => r.user_id))];
+      const hostelIds = [...new Set((data || []).map(r => r.hostel_id))];
+      const bookingIds = [...new Set((data || []).filter(r => r.booking_id).map(r => r.booking_id!))];
+
+      const [profilesRes, hostelsRes, bookingsRes] = await Promise.all([
+        userIds.length > 0 ? supabase.from('profiles').select('id, name, phone, email').in('id', userIds) : { data: [] },
+        hostelIds.length > 0 ? supabase.from('hostels').select('id, name').in('id', hostelIds) : { data: [] },
+        bookingIds.length > 0 ? supabase.from('hostel_bookings').select('id, serial_number').in('id', bookingIds) : { data: [] },
+      ]);
+
+      const profileMap = Object.fromEntries((profilesRes.data || []).map(p => [p.id, p]));
+      const hostelMap = Object.fromEntries((hostelsRes.data || []).map(h => [h.id, h]));
+      const bookingMap = Object.fromEntries((bookingsRes.data || []).map(b => [b.id, b]));
+
+      const mapped: ReceiptRow[] = (data || []).map(r => ({
+        ...r,
+        amount: Number(r.amount),
+        studentName: profileMap[r.user_id]?.name || 'N/A',
+        studentPhone: profileMap[r.user_id]?.phone || '',
+        studentEmail: profileMap[r.user_id]?.email || '',
+        hostelName: hostelMap[r.hostel_id]?.name || '',
+        bookingSerial: r.booking_id ? bookingMap[r.booking_id]?.serial_number || '' : '',
+      }));
+
+      setReceipts(mapped);
+    } catch (err) {
+      toast({ title: 'Error loading receipts', variant: 'destructive' });
+    }
+    setLoading(false);
+  };
+
+  const filtered = useMemo(() => {
+    let result = receipts;
+    if (filterHostel !== 'all') result = result.filter(r => r.hostel_id === filterHostel);
+    if (filterType !== 'all') result = result.filter(r => r.receipt_type === filterType);
+    if (fromDate) {
+      const from = format(fromDate, 'yyyy-MM-dd');
+      result = result.filter(r => r.created_at.slice(0, 10) >= from);
+    }
+    if (toDate) {
+      const to = format(toDate, 'yyyy-MM-dd');
+      result = result.filter(r => r.created_at.slice(0, 10) <= to);
+    }
+    if (searchTerm) {
+      const q = searchTerm.toLowerCase();
+      result = result.filter(r =>
+        (r.studentName || '').toLowerCase().includes(q) ||
+        (r.studentPhone || '').includes(q) ||
+        (r.serial_number || '').toLowerCase().includes(q) ||
+        (r.bookingSerial || '').toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [receipts, filterHostel, filterType, fromDate, toDate, searchTerm]);
+
+  const totalAmount = useMemo(() => filtered.reduce((s, r) => s + r.amount, 0), [filtered]);
+
+  const methodLabel = (m: string) => {
+    switch (m) {
+      case 'cash': return 'Cash';
+      case 'upi': return 'UPI';
+      case 'bank_transfer': return 'Bank';
+      case 'online': return 'Online';
+      default: return m;
     }
   };
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-lg font-semibold tracking-tight">Hostel Receipts</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">All hostel payment receipts</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Receipt className="h-5 w-5 text-primary" />
+          <h1 className="text-lg font-semibold">Hostel Receipts</h1>
+          <Badge variant="secondary" className="text-xs">{filtered.length} receipts</Badge>
         </div>
-        <Button onClick={fetchReceipts} variant="outline" size="sm" className="flex items-center gap-1.5">
-          <RefreshCw className="h-3.5 w-3.5" /> Refresh
+        <Button variant="outline" size="sm" className="h-8 text-xs gap-1" onClick={fetchReceipts}>
+          <RefreshCw className="h-3 w-3" /> Refresh
         </Button>
       </div>
 
-      <Card className="border-border/60 shadow-sm">
-        <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row gap-3 mb-4 p-3 bg-muted/30 rounded-lg border border-border/40">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input placeholder="Search by student or receipt #..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="pl-8 h-8 text-sm" />
-            </div>
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="h-8 text-sm w-full md:w-48"><SelectValue placeholder="Filter by type" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="booking_payment">Booking Payment</SelectItem>
-                <SelectItem value="due_collection">Due Collection</SelectItem>
-                <SelectItem value="deposit_refund">Deposit Refund</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+      {/* Summary */}
+      <div className="border rounded-md p-3 bg-card flex items-center gap-6">
+        <div>
+          <div className="text-[10px] uppercase text-muted-foreground">Total</div>
+          <div className="text-lg font-bold">{formatCurrency(totalAmount)}</div>
+        </div>
+        <div>
+          <div className="text-[10px] uppercase text-muted-foreground">Booking Payments</div>
+          <div className="text-sm font-semibold">{formatCurrency(filtered.filter(r => r.receipt_type === 'booking_payment').reduce((s, r) => s + r.amount, 0))}</div>
+        </div>
+        <div>
+          <div className="text-[10px] uppercase text-muted-foreground">Due Collections</div>
+          <div className="text-sm font-semibold">{formatCurrency(filtered.filter(r => r.receipt_type === 'due_collection').reduce((s, r) => s + r.amount, 0))}</div>
+        </div>
+      </div>
 
-          {loading ? (
-            <div className="flex justify-center py-12"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>
-          ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-12 text-muted-foreground">
-              <Receipt className="h-8 w-8 opacity-20" />
-              <p className="text-sm font-medium">No receipts found</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/30">
-                    <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Receipt #</TableHead>
-                    <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Booking #</TableHead>
-                    <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Student</TableHead>
-                    <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Hostel</TableHead>
-                    <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Amount</TableHead>
-                    <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Method</TableHead>
-                    <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Type</TableHead>
-                    <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Date</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.map((r, idx) => (
-                    <TableRow key={r.id} className={idx % 2 === 0 ? 'bg-background' : 'bg-muted/20'}>
-                      <TableCell className="text-sm font-medium">{r.serial_number || '-'}</TableCell>
-                      <TableCell className="text-sm">{r.hostel_bookings?.serial_number || '-'}</TableCell>
-                      <TableCell>
-                        <p className="text-sm font-medium">{r.profiles?.name || '-'}</p>
-                        {r.profiles?.phone && <p className="text-xs text-muted-foreground">{r.profiles.phone}</p>}
-                      </TableCell>
-                      <TableCell className="text-sm">{r.hostels?.name || '-'}</TableCell>
-                      <TableCell className="text-sm font-medium">₹{r.amount}</TableCell>
-                      <TableCell className="text-sm capitalize">{r.payment_method}</TableCell>
-                      <TableCell>
-                        <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-muted text-muted-foreground border border-border">
-                          {typeLabel(r.receipt_type)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-sm">{format(new Date(r.created_at), 'dd MMM yyyy')}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Filters */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="relative">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+          <Input className="h-8 pl-7 text-xs w-[200px]" placeholder="Search name, phone, receipt#..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+        </div>
+        <Select value={filterHostel} onValueChange={setFilterHostel}>
+          <SelectTrigger className="h-8 w-[160px] text-xs"><SelectValue placeholder="Hostel" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="text-xs">All Hostels</SelectItem>
+            {hostels.map(h => <SelectItem key={h.id} value={h.id} className="text-xs">{h.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={filterType} onValueChange={setFilterType}>
+          <SelectTrigger className="h-8 w-[140px] text-xs"><SelectValue placeholder="Type" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="text-xs">All Types</SelectItem>
+            <SelectItem value="booking_payment" className="text-xs">Booking Payment</SelectItem>
+            <SelectItem value="due_collection" className="text-xs">Due Collection</SelectItem>
+            <SelectItem value="deposit_refund" className="text-xs">Deposit Refund</SelectItem>
+          </SelectContent>
+        </Select>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="h-8 text-xs gap-1">
+              <CalendarIcon className="h-3 w-3" /> {fromDate ? format(fromDate, 'dd MMM') : 'From'}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={fromDate} onSelect={setFromDate} /></PopoverContent>
+        </Popover>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="h-8 text-xs gap-1">
+              <CalendarIcon className="h-3 w-3" /> {toDate ? format(toDate, 'dd MMM') : 'To'}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={toDate} onSelect={setToDate} /></PopoverContent>
+        </Popover>
+        {(fromDate || toDate || filterHostel !== 'all' || filterType !== 'all' || searchTerm) && (
+          <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setFromDate(undefined); setToDate(undefined); setFilterHostel('all'); setFilterType('all'); setSearchTerm(''); }}>
+            Clear
+          </Button>
+        )}
+      </div>
+
+      {/* Table */}
+      <div className="border rounded-md">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="text-xs">Receipt #</TableHead>
+              <TableHead className="text-xs">Student</TableHead>
+              <TableHead className="text-xs">Hostel</TableHead>
+              <TableHead className="text-xs">Amount</TableHead>
+              <TableHead className="text-xs">Method</TableHead>
+              <TableHead className="text-xs">Type</TableHead>
+              <TableHead className="text-xs">Booking ID</TableHead>
+              <TableHead className="text-xs">Collected By</TableHead>
+              <TableHead className="text-xs">Txn ID / Notes</TableHead>
+              <TableHead className="text-xs">Date</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground text-xs">Loading...</TableCell></TableRow>
+            ) : filtered.length === 0 ? (
+              <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground text-xs">No receipts found</TableCell></TableRow>
+            ) : (
+              filtered.map(r => (
+                <TableRow key={r.id}>
+                  <TableCell className="text-xs font-mono">{r.serial_number || '-'}</TableCell>
+                  <TableCell className="text-xs">
+                    <div className="font-medium">{r.studentName}</div>
+                    {r.studentPhone && <div className="text-muted-foreground text-[10px]">{r.studentPhone}</div>}
+                    {r.studentEmail && <div className="text-muted-foreground text-[10px]">{r.studentEmail}</div>}
+                  </TableCell>
+                  <TableCell className="text-xs">{r.hostelName || '-'}</TableCell>
+                  <TableCell className="text-xs font-semibold">{formatCurrency(r.amount)}</TableCell>
+                  <TableCell className="text-xs">{methodLabel(r.payment_method)}</TableCell>
+                  <TableCell className="text-xs">
+                    <Badge variant={r.receipt_type === 'booking_payment' ? 'default' : r.receipt_type === 'deposit_refund' ? 'outline' : 'secondary'} className="text-[10px]">
+                      {r.receipt_type === 'booking_payment' ? 'Booking' : r.receipt_type === 'due_collection' ? 'Due' : 'Refund'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-xs font-mono text-muted-foreground">{r.bookingSerial || '-'}</TableCell>
+                  <TableCell className="text-xs">{r.collected_by_name || '-'}</TableCell>
+                  <TableCell className="text-xs max-w-[150px]">
+                    {r.transaction_id ? <div className="font-mono truncate">{r.transaction_id}</div> : null}
+                    {r.notes ? <div className="text-muted-foreground text-[10px] italic truncate">{r.notes}</div> : null}
+                    {!r.transaction_id && !r.notes ? '-' : null}
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleDateString('en-IN')}</TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
-}
+};
+
+export default HostelReceipts;
