@@ -225,12 +225,12 @@ export default function AdminHostelBookings() {
                               <div className="text-[10px] text-muted-foreground capitalize">{durationLabel(b)}</div>
                             </TableCell>
                             <TableCell className="py-1.5 px-3 text-xs">
-                              <div className="font-semibold">Bed: ₹{(b.total_price || 0).toLocaleString()}</div>
-                              {(b.security_deposit || 0) > 0 && (
-                                <div className="text-muted-foreground">Deposit: ₹{(b.security_deposit || 0).toLocaleString()}</div>
-                              )}
-                              <div className="text-[10px] text-emerald-600">Paid: ₹{(b.totalPaid || 0).toLocaleString()}</div>
-                              <div className="text-[10px] text-amber-600">Due: ₹{(b.duePending || 0).toLocaleString()}</div>
+                              <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
+                                <div className="font-semibold">Bed: ₹{(b.total_price || 0).toLocaleString()}</div>
+                                <div className="text-[10px] text-muted-foreground">Deposit: {(b.security_deposit || 0) > 0 ? `₹${(b.security_deposit || 0).toLocaleString()}` : '-'}</div>
+                                <div className="text-[10px] text-emerald-600">Paid: ₹{(b.totalPaid || 0).toLocaleString()}</div>
+                                <div className="text-[10px] text-amber-600">Due: ₹{(b.duePending || 0).toLocaleString()}</div>
+                              </div>
                             </TableCell>
                             <TableCell className="py-1.5 px-3">
                               <span className={`inline-flex items-center rounded-full px-1.5 py-0 text-[10px] font-medium capitalize ${badgeCls(b.status || 'pending')}`}>{b.status || 'pending'}</span>

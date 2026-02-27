@@ -59,12 +59,51 @@ export const adminBookingsService = {
       const { data, error, count } = await query;
       if (error) throw error;
 
+      // Fetch receipts totals as fallback for paid calculation
+      const bookingIds = (data || []).map(b => b.id);
+      let receiptsMap: Record<string, number> = {};
+      if (bookingIds.length > 0) {
+        const { data: receiptsData } = await supabase
+          .from('receipts')
+          .select('booking_id, amount')
+          .in('booking_id', bookingIds);
+        if (receiptsData) {
+          for (const r of receiptsData) {
+            if (r.booking_id) {
+              receiptsMap[r.booking_id] = (receiptsMap[r.booking_id] || 0) + (Number(r.amount) || 0);
+            }
+          }
+        }
+      }
+
       // Map to legacy format for AdminBookingsList compatibility
       const mapped = (data || []).map(b => {
         const profile = b.profiles as any;
         const cabin = b.cabins as any;
         const seat = b.seats as any;
         const slot = (b as any).cabin_slots as any;
+        const duesArr = (b as any).dues as any[] | null;
+        const due = Array.isArray(duesArr) ? duesArr[0] : duesArr;
+        const receiptTotal = receiptsMap[b.id] || 0;
+        const totalPrice = Number(b.total_price) || 0;
+
+        // Calculate totalPaid & duePending
+        let totalPaid = 0;
+        let duePending = 0;
+        if (due) {
+          totalPaid = (Number(due.advance_paid) || 0) + (Number(due.paid_amount) || 0);
+          duePending = (Number(due.due_amount) || 0) - (Number(due.paid_amount) || 0);
+        } else if (receiptTotal > 0) {
+          totalPaid = receiptTotal;
+          duePending = totalPrice - receiptTotal;
+        } else if (b.payment_status === 'completed') {
+          totalPaid = totalPrice;
+          duePending = 0;
+        } else {
+          totalPaid = 0;
+          duePending = totalPrice;
+        }
+
         return {
           _id: b.id,
           bookingId: b.serial_number || b.id.substring(0, 8),
@@ -79,8 +118,8 @@ export const adminBookingsService = {
           seatId: seat ? { number: seat.number } : undefined,
           startDate: b.start_date,
           endDate: b.end_date,
-          totalPrice: Number(b.total_price) || 0,
-          seatPrice: (Number(b.total_price) || 0) - (Number(b.locker_price) || 0),
+          totalPrice,
+          seatPrice: totalPrice - (Number(b.locker_price) || 0),
           lockerPrice: Number(b.locker_price) || 0,
           paymentStatus: b.payment_status || 'pending',
           status: b.payment_status || 'pending',
@@ -92,18 +131,8 @@ export const adminBookingsService = {
           seatCategory: seat?.category || '',
           slotName: slot?.name || (b.slot_id ? '' : 'Full Day'),
           bookingDuration: b.booking_duration || '',
-          totalPaid: (() => {
-            const duesArr = (b as any).dues as any[] | null;
-            const due = Array.isArray(duesArr) ? duesArr[0] : duesArr;
-            if (due) return (Number(due.advance_paid) || 0) + (Number(due.paid_amount) || 0);
-            return b.payment_status === 'completed' ? (Number(b.total_price) || 0) : 0;
-          })(),
-          duePending: (() => {
-            const duesArr = (b as any).dues as any[] | null;
-            const due = Array.isArray(duesArr) ? duesArr[0] : duesArr;
-            if (due) return (Number(due.due_amount) || 0) - (Number(due.paid_amount) || 0);
-            return 0;
-          })(),
+          totalPaid,
+          duePending: Math.max(duePending, 0),
         };
       });
 
