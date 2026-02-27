@@ -10,6 +10,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Save, ZoomIn, ZoomOut, Maximize, Image, X, MousePointerClick,
 } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
 
 // ── Constants ──────────────────────────────────────────────────────
 const GRID_SNAP = 40;
@@ -129,11 +130,22 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
   }, [pan, zoom]);
 
   // ── Canvas mouse handlers ──
+  // ── Overlap detection ──
+  const isOverlapping = useCallback((pos: { x: number; y: number }, excludeId?: string) =>
+    seats.some(s => s._id !== excludeId &&
+      Math.abs(s.position.x - pos.x) < SEAT_W &&
+      Math.abs(s.position.y - pos.y) < SEAT_H
+    ), [seats]);
+
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
     if (placementMode && onPlaceSeat) {
       const pos = getCanvasPos(e);
       if (pos.x >= 0 && pos.y >= 0 && pos.x <= roomWidth && pos.y <= roomHeight) {
         const clamped = clampPosition(snapToGrid(pos.x), snapToGrid(pos.y), roomWidth, roomHeight);
+        if (isOverlapping(clamped)) {
+          toast({ title: "A seat already exists at this position", variant: "destructive" });
+          return;
+        }
         setPendingSeat(clamped);
       }
       return;
@@ -151,9 +163,12 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
       const rawX = snapToGrid(pos.x - dragOffset.x);
       const rawY = snapToGrid(pos.y - dragOffset.y);
       const { x: newX, y: newY } = clampPosition(rawX, rawY, roomWidth, roomHeight);
-      onSeatsChange(seats.map(s =>
-        s._id === draggingSeatId ? { ...s, position: { x: newX, y: newY } } : s
-      ));
+      // Prevent dropping on another seat
+      if (!isOverlapping({ x: newX, y: newY }, draggingSeatId)) {
+        onSeatsChange(seats.map(s =>
+          s._id === draggingSeatId ? { ...s, position: { x: newX, y: newY } } : s
+        ));
+      }
       return;
     }
     if (isPanning) {

@@ -123,9 +123,11 @@ const SeatManagement = () => {
       );
       setFloors(updatedFloors);
 
-      await adminCabinsService.updateCabinLayout(cabinId, [], roomWidth, roomHeight, 20, [], layoutImage, updatedFloors);
+      await adminCabinsService.updateCabinLayout(cabinId, [], roomWidth, roomHeight, 20, [], undefined, updatedFloors);
       const seatsToUpdate = seats.map(s => ({ _id: s._id, position: s.position }));
       await adminSeatsService.updateSeatPositions(seatsToUpdate);
+      // Update local cabin state with new floors so floor switches use correct data
+      setCabin((prev: any) => prev ? { ...prev, floors: updatedFloors } : prev);
       toast({ title: "Layout saved successfully" });
     } catch (e) {
       toast({ title: "Error saving layout", variant: "destructive" });
@@ -176,6 +178,15 @@ const SeatManagement = () => {
       if (res.success) {
         setSeats(seats.map(s => s._id === seatId ? { ...s, ...updates } : s));
         toast({ title: "Seat updated" });
+
+        // Sync price to category if changed
+        if (updates.price !== undefined && updates.category && cabinId) {
+          const matchingCat = categories.find(c => c.name === updates.category);
+          if (matchingCat && matchingCat.price !== updates.price) {
+            await seatCategoryService.updateCategory(matchingCat.id, { price: updates.price });
+            fetchCategories(cabinId);
+          }
+        }
       }
     } catch (e) {
       toast({ title: "Error updating seat", variant: "destructive" });
