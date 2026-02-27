@@ -83,6 +83,7 @@ export type Database = {
           seat_id: string | null
           seat_number: number | null
           serial_number: string | null
+          slot_id: string | null
           start_date: string | null
           total_price: number | null
           transaction_id: string
@@ -115,6 +116,7 @@ export type Database = {
           seat_id?: string | null
           seat_number?: number | null
           serial_number?: string | null
+          slot_id?: string | null
           start_date?: string | null
           total_price?: number | null
           transaction_id?: string
@@ -147,6 +149,7 @@ export type Database = {
           seat_id?: string | null
           seat_number?: number | null
           serial_number?: string | null
+          slot_id?: string | null
           start_date?: string | null
           total_price?: number | null
           transaction_id?: string
@@ -169,10 +172,58 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "bookings_slot_id_fkey"
+            columns: ["slot_id"]
+            isOneToOne: false
+            referencedRelation: "cabin_slots"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "bookings_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cabin_slots: {
+        Row: {
+          cabin_id: string
+          created_at: string
+          end_time: string
+          id: string
+          is_active: boolean
+          name: string
+          price: number
+          start_time: string
+        }
+        Insert: {
+          cabin_id: string
+          created_at?: string
+          end_time: string
+          id?: string
+          is_active?: boolean
+          name: string
+          price?: number
+          start_time: string
+        }
+        Update: {
+          cabin_id?: string
+          created_at?: string
+          end_time?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          price?: number
+          start_time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cabin_slots_cabin_id_fkey"
+            columns: ["cabin_id"]
+            isOneToOne: false
+            referencedRelation: "cabins"
             referencedColumns: ["id"]
           },
         ]
@@ -200,6 +251,7 @@ export type Database = {
           id: string
           image_url: string | null
           images: string[] | null
+          is_24_hours: boolean
           is_active: boolean | null
           is_booking_active: boolean
           layout_image: string | null
@@ -214,6 +266,7 @@ export type Database = {
           room_width: number
           sections: Json
           serial_number: string | null
+          slots_enabled: boolean
           state: string | null
           working_days: Json
         }
@@ -239,6 +292,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           images?: string[] | null
+          is_24_hours?: boolean
           is_active?: boolean | null
           is_booking_active?: boolean
           layout_image?: string | null
@@ -253,6 +307,7 @@ export type Database = {
           room_width?: number
           sections?: Json
           serial_number?: string | null
+          slots_enabled?: boolean
           state?: string | null
           working_days?: Json
         }
@@ -278,6 +333,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           images?: string[] | null
+          is_24_hours?: boolean
           is_active?: boolean | null
           is_booking_active?: boolean
           layout_image?: string | null
@@ -292,6 +348,7 @@ export type Database = {
           room_width?: number
           sections?: Json
           serial_number?: string | null
+          slots_enabled?: boolean
           state?: string | null
           working_days?: Json
         }

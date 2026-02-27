@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { cabinsService } from "@/api/cabinsService";
-import { ArrowLeft, Users, IndianRupee, Layers, Armchair, Lock, Star, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Users, IndianRupee, Layers, Armchair, Lock, Star, CheckCircle2, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { CabinImageSlider } from "@/components/CabinImageSlider";
@@ -59,6 +59,8 @@ export interface Cabin {
   openingTime?: string;
   closingTime?: string;
   workingDays?: string[];
+  is24Hours?: boolean;
+  slotsEnabled?: boolean;
 }
 
 export interface RoomElement {
@@ -148,6 +150,8 @@ const BookSeat = () => {
           openingTime: (d as any).opening_time || undefined,
           closingTime: (d as any).closing_time || undefined,
           workingDays: Array.isArray((d as any).working_days) ? (d as any).working_days : undefined,
+          is24Hours: (d as any).is_24_hours || false,
+          slotsEnabled: (d as any).slots_enabled || false,
         });
         setLayoutImage((d as any).layout_image || null);
         setRoomWidth((d as any).room_width || 800);
@@ -254,6 +258,18 @@ const BookSeat = () => {
                 <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs font-semibold whitespace-nowrap shadow-sm border border-amber-500/20">
                   <Lock className="h-3.5 w-3.5" />
                   Locker ₹{cabin.lockerPrice}
+                </div>
+              )}
+              {cabin.is24Hours && (
+                <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs font-semibold whitespace-nowrap shadow-sm border border-emerald-500/20">
+                  <Clock className="h-3.5 w-3.5" />
+                  Open 24/7
+                </div>
+              )}
+              {cabin.slotsEnabled && (
+                <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-violet-500/10 text-violet-700 dark:text-violet-400 text-xs font-semibold whitespace-nowrap shadow-sm border border-violet-500/20">
+                  <Clock className="h-3.5 w-3.5" />
+                  Slot Booking
                 </div>
               )}
             </div>

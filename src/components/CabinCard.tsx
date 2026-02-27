@@ -5,11 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { SeatManagementLink } from '@/components/admin/SeatManagementLink';
 import { useAuth } from '@/contexts/AuthContext';
-import { Users, ChevronRight, Star } from 'lucide-react';
+import { Users, ChevronRight, Star, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { getTimingDisplay, getClosedDaysDisplay } from '@/utils/timingUtils';
-import { Clock } from 'lucide-react';
 
 export interface Cabin {
   id: number | string;
@@ -28,6 +27,8 @@ export interface Cabin {
   openingTime?: string;
   closingTime?: string;
   workingDays?: string[];
+  is24Hours?: boolean;
+  slotsEnabled?: boolean;
 }
 
 interface CabinCardProps {
@@ -98,19 +99,31 @@ export const CabinCard = ({ cabin }: CabinCardProps) => {
           <CardTitle className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
             {cabin.name}
           </CardTitle>
-          {(cabin.openingTime && cabin.closingTime) && (
-            <div className="flex flex-col gap-0.5 mt-1">
-              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground font-medium">
-                <Clock className="w-3 h-3" />
-                {getTimingDisplay(cabin.openingTime, cabin.closingTime)}
-              </span>
-              {getClosedDaysDisplay(cabin.workingDays) && (
-                <span className="text-xs text-destructive/80 font-medium">
-                  {getClosedDaysDisplay(cabin.workingDays)}
+          {/* Timing Display */}
+          <div className="flex flex-col gap-0.5 mt-1">
+            {cabin.is24Hours ? (
+              <Badge className="w-fit bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20 text-xs font-semibold">
+                Open 24/7
+              </Badge>
+            ) : (cabin.openingTime && cabin.closingTime) ? (
+              <>
+                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground font-medium">
+                  <Clock className="w-3 h-3" />
+                  {getTimingDisplay(cabin.openingTime, cabin.closingTime)}
                 </span>
-              )}
-            </div>
-          )}
+                {getClosedDaysDisplay(cabin.workingDays) && (
+                  <span className="text-xs text-destructive/80 font-medium">
+                    {getClosedDaysDisplay(cabin.workingDays)}
+                  </span>
+                )}
+              </>
+            ) : null}
+            {cabin.slotsEnabled && (
+              <Badge variant="outline" className="w-fit text-[10px] mt-1 border-primary/30 text-primary">
+                Slot Booking
+              </Badge>
+            )}
+          </div>
           {cabin.cabinCode && (
             <CardDescription className="text-xs text-muted-foreground">
               Room ID: {cabin.cabinCode}

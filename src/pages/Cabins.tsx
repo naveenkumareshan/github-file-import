@@ -24,6 +24,8 @@ interface BackendCabin {
   opening_time?: string;
   closing_time?: string;
   working_days?: string[];
+  is_24_hours?: boolean;
+  slots_enabled?: boolean;
 }
 
 const Cabins = () => {
@@ -59,6 +61,8 @@ const Cabins = () => {
               openingTime: cabin.opening_time || undefined,
               closingTime: cabin.closing_time || undefined,
               workingDays: cabin.working_days || undefined,
+              is24Hours: cabin.is_24_hours || false,
+              slotsEnabled: cabin.slots_enabled || false,
             })) : [];
           
           // Fetch rating stats for all cabins

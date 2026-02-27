@@ -109,6 +109,8 @@ export const adminCabinsService = {
         opening_time: data.openingTime || '06:00',
         closing_time: data.closingTime || '22:00',
         working_days: data.workingDays || ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+        is_24_hours: data.is24Hours ?? false,
+        slots_enabled: data.slotsEnabled ?? false,
       };
 
       const { data: result, error } = await supabase
@@ -157,6 +159,8 @@ export const adminCabinsService = {
       if (data.openingTime !== undefined) (updateData as any).opening_time = data.openingTime;
       if (data.closingTime !== undefined) (updateData as any).closing_time = data.closingTime;
       if (data.workingDays !== undefined) (updateData as any).working_days = data.workingDays;
+      if (data.is24Hours !== undefined) (updateData as any).is_24_hours = data.is24Hours;
+      if (data.slotsEnabled !== undefined) (updateData as any).slots_enabled = data.slotsEnabled;
 
       const { data: result, error } = await supabase
         .from('cabins')
