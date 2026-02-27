@@ -382,7 +382,7 @@ export const ProfileManagement = () => {
         ) : (
           <div className="space-y-2">
             {bookings.map((b) => (
-              <Link key={b.id} to={`/student/bookings/${b.id}/transactions/cabin`}>
+              <Link key={b.id} to={`/student/bookings/${b.id}`}>
                 <Card className="rounded-2xl border-0 shadow-sm bg-card hover:shadow-md transition-shadow">
                   <CardContent className="p-3 flex items-center gap-3">
                     <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center flex-shrink-0">
