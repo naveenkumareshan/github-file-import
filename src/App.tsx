@@ -56,6 +56,7 @@ const HostelReceipts = lazy(() => import("./pages/admin/HostelReceipts"));
 const HostelDeposits = lazy(() => import("./pages/admin/HostelDeposits"));
 const HostelBedManagementPage = lazy(() => import("./pages/admin/HostelBedManagementPage"));
 const HostelBedMap = lazy(() => import("./pages/admin/HostelBedMap"));
+const HostelDueManagement = lazy(() => import("./pages/admin/HostelDueManagement"));
 
 // Student / public pages
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
@@ -156,6 +157,7 @@ function App() {
               <Route path="hostel-deposits" element={<HostelDeposits />} />
               <Route path="hostels/:hostelId/beds" element={<HostelBedManagementPage />} />
               <Route path="hostel-bed-map" element={<HostelBedMap />} />
+              <Route path="hostel-due-management" element={<HostelDueManagement />} />
             </Route>
 
             {/* ── Partner routes (formerly vendor/host) ── */}

@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
 
 export interface CreateHostelBookingData {
   hostel_id: string;
@@ -69,6 +70,25 @@ export const hostelBookingService = {
         transaction_id: bookingData.transaction_id || bookingData.razorpay_payment_id || '',
         receipt_type: 'booking_payment',
       });
+    }
+
+    // Create hostel_dues entry when advance_paid
+    if (paymentStatus === 'advance_paid') {
+      const dueDate = new Date(bookingData.end_date);
+      dueDate.setDate(dueDate.getDate() - 3); // Due 3 days before end
+      const dueAmount = bookingData.total_price - (bookingData.advance_amount || 0);
+      await supabase.from('hostel_dues').insert({
+        user_id: user.id,
+        hostel_id: bookingData.hostel_id,
+        room_id: bookingData.room_id,
+        bed_id: bookingData.bed_id,
+        booking_id: booking.id,
+        total_fee: bookingData.total_price,
+        advance_paid: bookingData.advance_amount || 0,
+        due_amount: dueAmount,
+        due_date: format(dueDate, 'yyyy-MM-dd'),
+        status: 'pending',
+      } as any);
     }
 
     return booking;
