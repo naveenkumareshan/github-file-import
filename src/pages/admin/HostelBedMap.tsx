@@ -552,13 +552,15 @@ const HostelBedMap: React.FC = () => {
     } else {
       defaultAdvance = Math.round(total * 0.5);
     }
-    const advanceAmount = manualAdvanceAmount ? Math.min(parseFloat(manualAdvanceAmount) || 0, total) : defaultAdvance;
-    const remainingDue = total - advanceAmount;
+    const secDepAmt = collectSecurityDeposit ? (parseFloat(securityDepositAmount) || 0) : 0;
+    const grandTotal = total + secDepAmt;
+    const advanceAmount = manualAdvanceAmount ? Math.min(parseFloat(manualAdvanceAmount) || 0, grandTotal) : defaultAdvance;
+    const remainingDue = grandTotal - advanceAmount;
     const defaultDueDate = new Date(bookingStartDate);
     defaultDueDate.setDate(defaultDueDate.getDate() + 3);
     const dueDate = manualDueDate || defaultDueDate;
     return { advanceAmount, remainingDue, dueDate, proportionalEndDate: dueDate };
-  }, [isAdvanceBooking, selectedHostelInfo, computedTotal, bookingStartDate, manualAdvanceAmount, manualDueDate]);
+  }, [isAdvanceBooking, selectedHostelInfo, computedTotal, bookingStartDate, manualAdvanceAmount, manualDueDate, collectSecurityDeposit, securityDepositAmount]);
 
   // Price recalculation when duration changes
   useEffect(() => {
@@ -610,7 +612,9 @@ const HostelBedMap: React.FC = () => {
     const collectedByName = user?.name || user?.email || 'Admin';
     const total = computedTotal;
     const advanceAmt = isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : total;
-    const remaining = total - advanceAmt;
+    const secDepAmt = collectSecurityDeposit ? (parseFloat(securityDepositAmount) || 0) : 0;
+    const grandTotal = total + secDepAmt;
+    const remaining = grandTotal - advanceAmt;
     const hostel = selectedHostelInfo;
 
     const { data: newBooking, error } = await supabase.from('hostel_bookings').insert({
@@ -640,7 +644,6 @@ const HostelBedMap: React.FC = () => {
       await supabase.from('hostel_beds').update({ is_available: false }).eq('id', selectedBed.id);
 
       // Create receipt (include security deposit in receipt amount)
-      const secDepAmt = collectSecurityDeposit ? (parseFloat(securityDepositAmount) || 0) : 0;
       const receiptAmount = advanceAmt + secDepAmt;
       await supabase.from('hostel_receipts').insert({
         hostel_id: selectedBed.hostelId,
@@ -663,7 +666,7 @@ const HostelBedMap: React.FC = () => {
           room_id: selectedBed.room_id,
           bed_id: selectedBed.id,
           booking_id: newBooking.id,
-          total_fee: total,
+          total_fee: grandTotal,
           advance_paid: advanceAmt,
           due_amount: remaining,
           due_date: format(dueDate, 'yyyy-MM-dd'),
