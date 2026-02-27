@@ -638,34 +638,72 @@ export type Database = {
           },
         ]
       }
+      hostel_bed_categories: {
+        Row: {
+          created_at: string
+          hostel_id: string
+          id: string
+          name: string
+          price_adjustment: number
+        }
+        Insert: {
+          created_at?: string
+          hostel_id: string
+          id?: string
+          name: string
+          price_adjustment?: number
+        }
+        Update: {
+          created_at?: string
+          hostel_id?: string
+          id?: string
+          name?: string
+          price_adjustment?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hostel_bed_categories_hostel_id_fkey"
+            columns: ["hostel_id"]
+            isOneToOne: false
+            referencedRelation: "hostels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hostel_beds: {
         Row: {
           bed_number: number
           block_reason: string | null
+          category: string | null
           created_at: string
           id: string
           is_available: boolean
           is_blocked: boolean
+          price_override: number | null
           room_id: string
           sharing_option_id: string
         }
         Insert: {
           bed_number?: number
           block_reason?: string | null
+          category?: string | null
           created_at?: string
           id?: string
           is_available?: boolean
           is_blocked?: boolean
+          price_override?: number | null
           room_id: string
           sharing_option_id: string
         }
         Update: {
           bed_number?: number
           block_reason?: string | null
+          category?: string | null
           created_at?: string
           id?: string
           is_available?: boolean
           is_blocked?: boolean
+          price_override?: number | null
           room_id?: string
           sharing_option_id?: string
         }
