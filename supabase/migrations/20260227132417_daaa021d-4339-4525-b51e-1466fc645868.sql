@@ -1,0 +1,1 @@
+ALTER TABLE public.hostels ADD COLUMN IF NOT EXISTS is_booking_active boolean NOT NULL DEFAULT true;

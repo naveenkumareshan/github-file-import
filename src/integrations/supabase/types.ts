@@ -1099,6 +1099,7 @@ export type Database = {
           images: string[] | null
           is_active: boolean
           is_approved: boolean
+          is_booking_active: boolean
           locality: string | null
           location: string | null
           logo_image: string | null
@@ -1138,6 +1139,7 @@ export type Database = {
           images?: string[] | null
           is_active?: boolean
           is_approved?: boolean
+          is_booking_active?: boolean
           locality?: string | null
           location?: string | null
           logo_image?: string | null
@@ -1177,6 +1179,7 @@ export type Database = {
           images?: string[] | null
           is_active?: boolean
           is_approved?: boolean
+          is_booking_active?: boolean
           locality?: string | null
           location?: string | null
           logo_image?: string | null
