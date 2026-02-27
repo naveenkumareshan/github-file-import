@@ -1,69 +1,42 @@
 
 
-## Fix Three Seat Management Issues
+## Match Duration Module in Vendor Booking/Renewal to Student Booking
 
-### Issue 1: Prevent Seat Overlap During Placement
+### Problem
+1. The "Plan" dropdown in vendor seat booking/renewal uses `monthly / 15days / custom` as a `<Select>`, while the student booking uses a pill-based `daily / weekly / monthly` toggle (filtered by `allowed_durations`) with a count selector (e.g., "2 Months", "3 Days"). These should match.
+2. When "Custom" is selected, the `showSlotSelector` logic checks if `applicableDurations.includes('custom')` which never matches any configured duration, so the Time Slot selector disappears entirely.
 
-**Problem:** When placing seats on the floor plan, one seat can be placed directly on top of another. There is no collision detection.
+### Solution
 
-**Fix in `src/components/seats/FloorPlanDesigner.tsx`:**
-- In `handleCanvasMouseDown` (placement mode branch, ~line 134), after snapping the position to the grid, check if any existing seat already occupies that grid cell (within SEAT_W/SEAT_H distance).
-- If overlap detected, show a toast "A seat already exists at this position" and skip placement (don't open the dialog).
-- Also add overlap detection in the drag handler (`handleCanvasMouseMove`, ~line 148): when dragging a seat to a new position, check if the snapped target position collides with any other seat. If it does, prevent the move (keep the seat at its last valid position).
+**File: `src/pages/vendor/VendorSeats.tsx`**
 
-**Overlap check logic:**
-```text
-const isOverlapping = (pos, excludeId?) => 
-  seats.some(s => s._id !== excludeId && 
-    Math.abs(s.position.x - pos.x) < SEAT_W && 
-    Math.abs(s.position.y - pos.y) < SEAT_H);
-```
+Replace the current Plan `<Select>` + custom days `<Input>` with the same duration module used in the student booking (`SeatBookingForm.tsx`):
 
----
+1. **Replace state variables**:
+   - Remove `bookingPlan` (string: 'monthly'/'15days'/'custom') and `customDays`
+   - Add `selectedDuration` state: `{ type: 'daily' | 'weekly' | 'monthly', count: number }` defaulting to `{ type: 'monthly', count: 1 }`
 
-### Issue 2: Sync Seat Price Between Seat Map Editor and Seat Generator
+2. **Replace Plan UI** (lines 1187-1204) with:
+   - A pill-based toggle showing `Daily / Weekly / Monthly` (filtered by `selectedCabinInfo?.allowedDurations || selectedCabinInfo?.allowed_durations || ['daily','weekly','monthly']`)
+   - A count selector (number input or select) labeled "Days"/"Weeks"/"Months" depending on the type
 
-**Problem:** When the admin changes a seat's price in the FloorPlanDesigner edit dialog, it doesn't update the AutoSeatGenerator's default price, and vice versa. The prices shown in categories vs individual seat edits can become inconsistent.
+3. **Update `computedEndDate`** (line 384-388):
+   - Use `addDays(start, count)` for daily, `addWeeks(start, count)` for weekly, `addMonths(start, count)` for monthly (import `addWeeks` from date-fns)
 
-**Current behavior:** The AutoSeatGenerator has its own local `price` state (defaults to 2000). The FloorPlanDesigner's SeatEditDialog lets you change price per seat. These are independent.
+4. **Update price calculation** (lines 432-444):
+   - `daily`: `basePrice / 30 * count`
+   - `weekly`: `basePrice / 4 * count` (approx)
+   - `monthly`: `basePrice * count`
 
-**Fix in `src/pages/SeatManagement.tsx`:**
-- When a seat's price is updated via `handleSeatUpdate`, if the seat's category matches a category in the categories list and the price differs from the category price, update all other seats of the same category to the new price as well. This keeps category-level pricing consistent.
-- Alternatively (simpler approach): When a seat's price is changed in the edit dialog, also update the corresponding category's price in the database, so both stay in sync. Then all newly generated seats from AutoSeatGenerator (which uses category prices) will use the updated price.
+5. **Fix `showSlotSelector`** (lines 447-451):
+   - Change to check `applicableDurations.includes(selectedDuration.type)` instead of mapping plan names
 
-**Chosen approach:** When editing a seat's price in the SeatEditDialog, if the new price differs from the category price, update the category price in the database too. This ensures the category price is the source of truth.
-
-**Changes:**
-- `src/pages/SeatManagement.tsx` - `handleSeatUpdate`: After updating the seat, check if the seat's category price differs from the new price. If so, update the category price via `seatCategoryService.updateCategory` and refresh categories.
-
----
-
-### Issue 3: Floor 2 Background Image Delete + Save Not Working
-
-**Problem:** When on Floor 2, deleting the background image and saving doesn't work correctly. The `handleSave` function builds `updatedFloors` by setting `layout_image: layoutImage` for the selected floor. When the image is removed, `layoutImage` is set to `null`. However, the `updateCabinLayout` call passes `layoutImage` as a separate parameter too (line 126), and the service function checks `if (layoutImage !== undefined)` which is true for `null`, so it also sets the top-level `layout_image` to `null`, which may interfere.
-
-**Root cause:** The `handleSave` function on line 126 passes the current `layoutImage` state as both: (a) embedded inside the floor's JSONB, and (b) as the top-level `layout_image` column. When deleting the image on floor 2, the top-level `layout_image` also gets set to `null`, which can affect floor 1's fallback.
-
-Additionally, in `useEffect` for floor changes (lines 101-112), when the current floor has no `layout_image`, it falls back to `cabin.layout_image`. But if the previous save wiped `cabin.layout_image`, this fallback breaks.
-
-**Fix:**
-- `src/pages/SeatManagement.tsx` - `handleSave` (line 126): Don't pass the per-floor `layoutImage` as the top-level `layout_image` parameter. Only store it in the floors JSONB. Pass `undefined` for `layoutImage` so the top-level column is untouched.
-- Change line 126 from:
-  ```text
-  await adminCabinsService.updateCabinLayout(cabinId, [], roomWidth, roomHeight, 20, [], layoutImage, updatedFloors);
-  ```
-  to:
-  ```text
-  await adminCabinsService.updateCabinLayout(cabinId, [], roomWidth, roomHeight, 20, [], undefined, updatedFloors);
-  ```
-- Also after save, update local `cabin` state with the new floors so that subsequent floor switches use the correct data.
-
----
+6. **Update booking submission** (where `bookingPlan` is sent to backend):
+   - Map `selectedDuration.type` and `selectedDuration.count` to the existing backend fields (`bookingDuration`, `durationCount`, `months`)
 
 ### Files Modified
 
 | File | Change |
 |------|--------|
-| `src/components/seats/FloorPlanDesigner.tsx` | Add overlap detection for seat placement and drag |
-| `src/pages/SeatManagement.tsx` | Sync seat price changes to category; fix floor image save logic |
+| `src/pages/vendor/VendorSeats.tsx` | Replace Plan select/custom with daily/weekly/monthly pill toggle + count selector; fix slot visibility; update price and end date calculations |
 
