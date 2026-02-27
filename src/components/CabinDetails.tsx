@@ -3,9 +3,10 @@ import { Cabin } from "../pages/BookSeat";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "./ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Star } from "lucide-react";
+import { Star, Clock } from "lucide-react";
 import { ReviewsManager } from "./reviews/ReviewsManager";
 import { CabinImageSlider } from './CabinImageSlider';
+import { getTimingDisplay, getClosedDaysDisplay, ALL_DAYS, getFullDayName } from '@/utils/timingUtils';
 
 
 interface CabinDetailsProps {
@@ -101,6 +102,41 @@ export const CabinDetails: React.FC<CabinDetailsProps> = ({
                 <p className="text-sm sm:text-base text-cabin-dark/70 mb-3 sm:mb-4">
                   {cabin.description}
                 </p>
+
+                {/* Timings */}
+                {cabin.openingTime && cabin.closingTime && (
+                  <div className="mb-3 sm:mb-4 p-3 bg-muted/50 rounded-lg">
+                    <h3 className="text-sm font-medium mb-2 text-foreground flex items-center gap-1.5">
+                      <Clock className="h-4 w-4" />
+                      Timings
+                    </h3>
+                    <p className="text-sm text-foreground/80 mb-2">
+                      {getTimingDisplay(cabin.openingTime, cabin.closingTime)}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {ALL_DAYS.map(day => {
+                        const isOpen = cabin.workingDays?.includes(day) ?? true;
+                        return (
+                          <span
+                            key={day}
+                            className={`text-xs px-2 py-1 rounded-md font-medium ${
+                              isOpen
+                                ? 'bg-primary/10 text-primary'
+                                : 'bg-destructive/10 text-destructive line-through'
+                            }`}
+                          >
+                            {day}
+                          </span>
+                        );
+                      })}
+                    </div>
+                    {getClosedDaysDisplay(cabin.workingDays) && (
+                      <p className="text-xs text-destructive/80 mt-2">
+                        {getClosedDaysDisplay(cabin.workingDays)}
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 <div className="mb-3 sm:mb-4">
                   <h3 className="text-sm sm:text-md font-medium mb-2 text-cabin-dark">

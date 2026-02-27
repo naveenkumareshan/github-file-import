@@ -8,6 +8,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Users, ChevronRight, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { getTimingDisplay, getClosedDaysDisplay } from '@/utils/timingUtils';
+import { Clock } from 'lucide-react';
 
 export interface Cabin {
   id: number | string;
@@ -23,6 +25,9 @@ export interface Cabin {
   isActive?: boolean;
   averageRating?: number;
   reviewCount?: number;
+  openingTime?: string;
+  closingTime?: string;
+  workingDays?: string[];
 }
 
 interface CabinCardProps {
@@ -93,6 +98,19 @@ export const CabinCard = ({ cabin }: CabinCardProps) => {
           <CardTitle className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
             {cabin.name}
           </CardTitle>
+          {(cabin.openingTime && cabin.closingTime) && (
+            <div className="flex flex-col gap-0.5 mt-1">
+              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground font-medium">
+                <Clock className="w-3 h-3" />
+                {getTimingDisplay(cabin.openingTime, cabin.closingTime)}
+              </span>
+              {getClosedDaysDisplay(cabin.workingDays) && (
+                <span className="text-xs text-destructive/80 font-medium">
+                  {getClosedDaysDisplay(cabin.workingDays)}
+                </span>
+              )}
+            </div>
+          )}
           {cabin.cabinCode && (
             <CardDescription className="text-xs text-muted-foreground">
               Room ID: {cabin.cabinCode}

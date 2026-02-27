@@ -12,10 +12,12 @@ import {
   ChevronDown,
   ChevronUp,
   Receipt,
+  Clock,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { razorpayService } from "@/api/razorpayService";
+import { getTimingDisplay, getClosedDaysDisplay } from "@/utils/timingUtils";
 
 interface ReceiptItem {
   id: string;
@@ -119,7 +121,7 @@ export default function StudentBookingView() {
       const [bookingRes, receiptsRes, duesRes] = await Promise.all([
         supabase
           .from("bookings")
-          .select("*, cabins(name), seats:seat_id(price, number, category)")
+          .select("*, cabins(name, opening_time, closing_time, working_days), seats:seat_id(price, number, category)")
           .eq("id", bookingId)
           .single(),
         supabase
@@ -359,6 +361,20 @@ export default function StudentBookingView() {
           <InfoRow label="Check-out" value={safeFmt(booking.end_date, "dd MMM yyyy")} />
           <InfoRow label="Duration" value={durationLabel} />
           <InfoRow label="Booked On" value={safeFmt(booking.created_at, "dd MMM yyyy")} />
+          {booking.cabins?.opening_time && booking.cabins?.closing_time && (
+            <InfoRow
+              label="Timings"
+              value={
+                <span className="flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {getTimingDisplay(booking.cabins.opening_time, booking.cabins.closing_time)}
+                </span>
+              }
+            />
+          )}
+          {booking.cabins?.working_days && getClosedDaysDisplay(booking.cabins.working_days) && (
+            <InfoRow label="Closed Days" value={<span className="text-destructive text-[11px]">{getClosedDaysDisplay(booking.cabins.working_days)}</span>} />
+          )}
         </CollapsibleSection>
 
         {/* Payment Summary */}

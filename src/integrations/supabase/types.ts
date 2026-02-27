@@ -190,6 +190,7 @@ export type Database = {
           capacity: number | null
           category: string | null
           city: string | null
+          closing_time: string
           created_at: string | null
           created_by: string | null
           description: string | null
@@ -206,6 +207,7 @@ export type Database = {
           locker_mandatory: boolean
           locker_price: number
           name: string
+          opening_time: string
           price: number | null
           room_elements: Json | null
           room_height: number
@@ -213,6 +215,7 @@ export type Database = {
           sections: Json
           serial_number: string | null
           state: string | null
+          working_days: Json
         }
         Insert: {
           advance_auto_cancel?: boolean
@@ -226,6 +229,7 @@ export type Database = {
           capacity?: number | null
           category?: string | null
           city?: string | null
+          closing_time?: string
           created_at?: string | null
           created_by?: string | null
           description?: string | null
@@ -242,6 +246,7 @@ export type Database = {
           locker_mandatory?: boolean
           locker_price?: number
           name: string
+          opening_time?: string
           price?: number | null
           room_elements?: Json | null
           room_height?: number
@@ -249,6 +254,7 @@ export type Database = {
           sections?: Json
           serial_number?: string | null
           state?: string | null
+          working_days?: Json
         }
         Update: {
           advance_auto_cancel?: boolean
@@ -262,6 +268,7 @@ export type Database = {
           capacity?: number | null
           category?: string | null
           city?: string | null
+          closing_time?: string
           created_at?: string | null
           created_by?: string | null
           description?: string | null
@@ -278,6 +285,7 @@ export type Database = {
           locker_mandatory?: boolean
           locker_price?: number
           name?: string
+          opening_time?: string
           price?: number | null
           room_elements?: Json | null
           room_height?: number
@@ -285,6 +293,7 @@ export type Database = {
           sections?: Json
           serial_number?: string | null
           state?: string | null
+          working_days?: Json
         }
         Relationships: []
       }
