@@ -27,7 +27,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { bookingsService } from "@/api/bookingsService";
 import { RazorpayCheckout } from "@/components/payment/RazorpayCheckout";
 import { BookingDuration } from "@/types/BookingTypes";
-import { CalendarIcon, AlertCircle, X, TicketPercent, Clock } from "lucide-react";
+import { CalendarIcon, AlertCircle, X, TicketPercent, Clock, ChevronDown } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Select,
   SelectContent,
@@ -811,7 +812,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                   <Separator className="opacity-30" />
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Duration:</span>
-                    <span>{selectedDuration.count} {selectedDuration.type.charAt(0).toUpperCase() + selectedDuration.type.slice(1)}{selectedDuration.count > 1 ? 's' : ''}</span>
+                    <span>{selectedDuration.count} {({ daily: 'Day', weekly: 'Week', monthly: 'Month' }[selectedDuration.type] || selectedDuration.type)}{selectedDuration.count > 1 ? 's' : ''}</span>
                   </div>
                   {startDate && endDate && (
                     <>
@@ -943,9 +944,15 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                 )}
 
                 {/* Reading Room Rules & Terms */}
-                <div className="mt-3">
-                  <ReadingRoomRules />
-                </div>
+                <Collapsible className="mt-3">
+                  <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 rounded-lg bg-muted/50 border border-border/50 text-sm font-medium text-foreground hover:bg-muted transition-colors">
+                    📖 Reading Room Rules
+                    <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <ReadingRoomRules />
+                  </CollapsibleContent>
+                </Collapsible>
                 <div className="flex items-center gap-2 mt-3">
                   <Checkbox
                     id="agree-terms"
