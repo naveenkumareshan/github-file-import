@@ -1,52 +1,69 @@
 
 
-## Fix: Add Missing Foreign Keys to Hostel Tables
+## Add Hostel Booking Calendar View and Occupancy Dashboard
 
-### Problem
+### Overview
 
-Every hostel page shows the error: **"Could not find a relationship between 'hostel_bookings' and 'user_id' in the schema cache"**
+Add a calendar view and occupancy dashboard specifically for hostel bookings, accessible to both admins and partners. This reuses the existing calendar pattern from the reading room `BookingCalendarDashboard` but queries `hostel_bookings` and `hostels` instead.
 
-This happens because the hostel tables were created without foreign key constraints. The database needs explicit foreign keys for join queries (like `profiles:user_id(name, email)`) to work.
+---
 
-### Root Cause
+### 1. Create `HostelBookingCalendarDashboard` Component
 
-The original migration created the hostel tables with the correct columns but did not define `REFERENCES` constraints. Without these, the database cannot resolve relational joins used across all hostel pages.
+**New file**: `src/components/admin/HostelBookingCalendarDashboard.tsx`
 
-### Solution
+A calendar + occupancy component similar to the existing `BookingCalendarDashboard`, but for hostels:
 
-Create a single database migration to add all missing foreign keys across the 4 hostel tables:
+- **Data source**: `hostelBookingService.getAllBookings()` filtered by month range, plus `hostelService.getAllHostels()` (admin) or `hostelService.getUserHostels()` (partner) for the hostel filter dropdown
+- **Calendar grid**: Monthly view showing colored bars per booking, each bar spanning `start_date` to `end_date`
+- **Hostel filter**: Dropdown to filter by specific hostel (using cloud DB fields: `hostel.id`, `hostel.name`)
+- **Legend**: Color-coded by hostel name
+- **Occupancy summary cards** at the top:
+  - Total active bookings this month
+  - Occupancy rate (confirmed bookings / total beds across selected hostels)
+  - Revenue this month (sum of `total_price` for confirmed bookings)
+  - Pending bookings count
+- **Occupancy chart**: Bar chart showing per-hostel bed occupancy percentage using `hostel_beds` counts vs active bookings
+- Field mapping (all cloud DB):
+  - `booking.serial_number` for tooltip
+  - `booking.profiles?.name` for guest name
+  - `booking.hostels?.name` for hostel label
+  - `booking.hostel_rooms?.room_number` and `booking.hostel_beds?.bed_number` for detail
+  - `booking.start_date` / `booking.end_date` for bar span
+  - `booking.status` and `booking.payment_status` for filtering
 
-**`hostel_bookings`** -- add 5 foreign keys:
-- `user_id` -> `profiles(id)`
-- `hostel_id` -> `hostels(id)`
-- `room_id` -> `hostel_rooms(id)`
-- `bed_id` -> `hostel_beds(id)`
-- `sharing_option_id` -> `hostel_sharing_options(id)`
+---
 
-**`hostel_receipts`** -- add 3 foreign keys:
-- `user_id` -> `profiles(id)`
-- `hostel_id` -> `hostels(id)`
-- `booking_id` -> `hostel_bookings(id)`
+### 2. Add Calendar Tab to Admin Hostel Bookings Page
 
-**`hostel_beds`** -- add 2 foreign keys:
-- `room_id` -> `hostel_rooms(id)`
-- `sharing_option_id` -> `hostel_sharing_options(id)`
+**Edit**: `src/pages/hotelManager/AdminHostelBookings.tsx`
 
-**`hostel_rooms`** -- add 1 foreign key:
-- `hostel_id` -> `hostels(id)`
+Add a new tab "Calendar & Occupancy" alongside the existing All/Confirmed/Pending/Cancelled tabs:
+- Import `HostelBookingCalendarDashboard`
+- Add a `TabsTrigger` with value `calendar` and a Calendar icon
+- Add a `TabsContent` rendering `<HostelBookingCalendarDashboard />`
+- The calendar tab won't trigger the list `fetchBookings` call (only the list tabs do)
 
-**`hostel_sharing_options`** -- add 1 foreign key:
-- `room_id` -> `hostel_rooms(id)`
+---
 
-### Impact
+### 3. Add Sidebar Link (optional shortcut)
 
-This fixes the join error on all hostel pages:
-- Hostel Deposits (`/admin/hostel-deposits`)
-- Hostel Receipts (`/admin/hostel-receipts`)
-- Admin Hostel Bookings
-- Hostel Booking Details
-- Student Hostel Bookings
-- Room occupancy views
+**Edit**: `src/components/admin/AdminSidebar.tsx`
 
-No code changes are needed -- only the database migration.
+No new sidebar item needed -- the calendar is accessed via a tab within the existing "Hostel Bookings" page, keeping navigation clean.
+
+---
+
+### Files Changed
+
+| File | Action |
+|---|---|
+| `src/components/admin/HostelBookingCalendarDashboard.tsx` | New -- hostel calendar view + occupancy stats |
+| `src/pages/hotelManager/AdminHostelBookings.tsx` | Edit -- add "Calendar & Occupancy" tab |
+
+### Technical Notes
+
+- The component uses `hostelBookingService.getAllBookings()` which already supports partner-level RLS (partners only see bookings for their own hostels), so no additional filtering is needed
+- Occupancy rate is calculated client-side: fetch total beds from `hostel_beds` table for selected hostels, count confirmed bookings overlapping current month
+- The same component works for both admin and partner roles since the service layer handles access control via RLS policies
 
