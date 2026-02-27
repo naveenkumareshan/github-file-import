@@ -1,68 +1,65 @@
 
 
-## Add Stay Duration Type (Daily/Weekly/Monthly) Step
+## Reorder Hostel Booking Steps: Duration Before Bed Selection
 
-### Overview
-Add a new step between bed selection and package selection that lets students choose their stay duration type: **Daily**, **Weekly**, or **Monthly**. The existing "Choose Stay Duration" step gets renamed to "Choose Package". Packages will be filtered by the selected duration type.
+### Problem
+Currently the flow is: Sharing Filter -> Bed Map -> Duration Type -> Package. The user wants duration selection to come BEFORE the bed map so that bed availability is checked based on the selected duration/dates. Only available beds for that period should be shown.
 
-### Database Changes
-
-**Add `duration_type` column to `hostel_stay_packages` table:**
-- `duration_type` (text, default `'monthly'`) -- values: `daily`, `weekly`, `monthly`
-
-This allows admins to create packages specific to each duration type (e.g., daily packages with different pricing, weekly discount packages, monthly long-term packages).
-
-**Migration SQL:**
-```sql
-ALTER TABLE public.hostel_stay_packages 
-  ADD COLUMN duration_type text NOT NULL DEFAULT 'monthly';
-```
-
-Update existing packages to default `'monthly'`.
-
-### File Changes
-
-| File | Action | Description |
-|---|---|---|
-| DB migration | New | Add `duration_type` to `hostel_stay_packages` |
-| `src/api/hostelStayPackageService.ts` | Edit | Add `duration_type` to interfaces; filter `getPackages` by duration type |
-| `src/components/hostels/StayDurationPackages.tsx` | Edit | Rename heading to "Choose Package"; accept `durationType` prop to filter; adjust price label (/day, /wk, /mo) |
-| `src/pages/HostelRoomDetails.tsx` | Edit | Add new Step 3 with Daily/Weekly/Monthly pill selector; renumber existing Step 3 to Step 4 "Choose Package"; pass selected duration type to StayDurationPackages |
-| `src/components/admin/HostelStayPackageManager.tsx` | Edit | Add `duration_type` dropdown (Daily/Weekly/Monthly) to the create/edit form |
-| `src/pages/HostelBooking.tsx` | Edit | Accept `durationType` from navigation state; use it in price calculations |
-
-### Student Flow (Updated)
+### New Step Order
 
 ```text
-Step 1: Select Sharing Type (filter pills) -- unchanged
-Step 2: Select Your Bed (inline bed map) -- unchanged
-Step 3: Stay Duration Type [NEW]
-  [Daily] [Weekly] [Monthly]  <-- pill toggle, default Monthly
-Step 4: Choose Package (renamed from "Choose Stay Duration")
-  Packages filtered by selected duration type
-  Price labels adjust: /day, /wk, /mo
+Step 1: Select Sharing Type & Category (filter pills) -- unchanged
+Step 2: Stay Duration Type + Count
+  [Daily] [Weekly] [Monthly]  pills
+  Duration count input (e.g., "3 months", "5 days", "2 weeks")
+  -> Auto-calculates start_date (today) and end_date
+Step 3: Select Your Bed (inline bed map)
+  -> Bed map now checks availability for the date range from Step 2
+  -> Only beds without overlapping bookings are shown as available
+Step 4: Choose Package (after bed selected)
+  -> Book Now in sticky bottom bar
 ```
 
-### Admin Changes
+### Changes
 
-The package create/edit dialog gets a new **Duration Type** dropdown with options: Daily, Weekly, Monthly. This lets hostel owners create separate packages per duration type (e.g., "Weekend Special" as a daily package, "3 Months+" as a monthly package).
+**`src/pages/HostelRoomDetails.tsx`** (Edit)
+- Move the duration type selector (Daily/Weekly/Monthly pills) from after bed selection to Step 2
+- Add a duration count input (number field: "How many days/weeks/months?")
+- Compute `startDate` (today) and `endDate` based on duration type + count
+- Show duration type + count BEFORE bed map; both are always visible (no longer gated behind `selectedBed`)
+- Pass `startDate` and `endDate` to `HostelBedMap` as new props
+- Step 3 becomes the bed map; Step 4 becomes packages (only after bed selected)
+- Update sticky bottom bar price label to include duration count (e.g., "3 months")
 
-### Pricing Logic
+**`src/components/hostels/HostelBedMap.tsx`** (Edit)
+- Accept optional `startDate` and `endDate` props
+- When provided, query `hostel_bookings` filtered by date overlap: bookings where `start_date <= endDate AND end_date >= startDate` with status `confirmed` or `pending`
+- Mark beds with overlapping bookings as unavailable (override `is_available` to false)
+- This replaces the current simple "any active booking" check with date-range-aware availability
 
-- **Daily**: `StayDurationPackages` shows price as `/day` -- base price = bed monthly price / 30
-- **Weekly**: Shows price as `/wk` -- base price = bed monthly price / 4
-- **Monthly**: Shows price as `/mo` -- base price = bed monthly price (unchanged)
+**`src/components/hostels/HostelFloorView.tsx`** (No change needed -- it already respects `is_available` from the bed data passed by HostelBedMap)
 
-The discount percentage from the package is applied to the calculated base price for that duration type.
+### UI Details for Step 2
 
-### Sticky Bottom Bar Update
+```text
+Step 2: Stay Duration
+[Daily] [Weekly] [Monthly]     <- pill toggle (default: Monthly)
 
-The bottom bar price label updates to match duration type: "Rs X/day", "Rs X/wk", or "Rs X/mo".
+Duration: [  1  ] month(s)     <- number input with +/- buttons
+Check-in: Today (27 Feb 2026)  <- auto-calculated, shown as info text
+Check-out: 27 Mar 2026         <- auto-calculated based on count
+```
+
+- Duration count defaults to 1
+- The start date is always today
+- End date = today + (count * unit), where unit is 1 day / 7 days / 30 days
+- When duration type or count changes, bed map re-fetches availability
+- Selected bed resets when duration changes (since availability may change)
 
 ### Technical Notes
 
-- Duration type state is managed in `HostelRoomDetails.tsx` alongside other selection state
-- When duration type changes, the selected package resets (since packages are filtered)
-- The `StayDurationPackages` component re-fetches/re-filters when `durationType` prop changes
-- Navigation state to `HostelBooking` includes `durationType` for correct price calculation
+- The `HostelBedMap` component will add `startDate`/`endDate` to its `useEffect` dependency array to re-fetch when dates change
+- The booking overlap query uses the same logic as `hostelBookingService.getAvailableBeds`: `lte('start_date', endDate).gte('end_date', startDate)`
+- The duration count and type are passed through to the booking page via navigation state
+- No database changes needed -- this is purely a UI reorder + query enhancement
 
