@@ -142,29 +142,29 @@ const AdminBookings = () => {
                   <TableHeader>
                     <TableRow className="bg-muted/30">
                       {["Booking ID", "Student", "Category", "Room / Seat", "Slot", "Booked On", "Duration", "Amount", "Status", "Actions"].map(h => (
-                        <TableHead key={h} className={`text-[11px] font-medium text-muted-foreground uppercase tracking-wider py-2 px-3 ${h === "Actions" ? "text-right" : ""}`}>{h}</TableHead>
+                        <TableHead key={h} className={`text-[11px] font-medium text-muted-foreground uppercase tracking-wider py-2 px-2 ${h === "Actions" ? "text-right" : ""}`}>{h}</TableHead>
                       ))}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {bookings.map((b, idx) => (
                       <TableRow key={b._id} className={idx % 2 === 0 ? "bg-background" : "bg-muted/20"}>
-                        <TableCell className="py-1 px-3 font-mono text-[11px]">{b.bookingId || b._id}</TableCell>
-                        <TableCell className="py-1 px-3 text-[11px] whitespace-nowrap">
+                        <TableCell className="py-1 px-2 font-mono text-[10px]">{b.bookingId || b._id}</TableCell>
+                        <TableCell className="py-1 px-2 text-[11px] whitespace-nowrap">
                           <span className="font-medium">{b.userId?.name || "N/A"}</span>
-                          {b.userId?.email && <span className="text-muted-foreground ml-1 max-w-[180px] truncate inline-block align-bottom">({b.userId.email})</span>}
+                          {b.userId?.email && <span className="text-muted-foreground ml-1 max-w-[140px] truncate inline-block align-bottom">({b.userId.email})</span>}
                         </TableCell>
-                        <TableCell className="py-1 px-3"><Badge variant="outline" className="text-[10px] px-1.5 py-0 leading-none">{b.seatCategory || "—"}</Badge></TableCell>
-                        <TableCell className="py-1 px-3 text-[11px] whitespace-nowrap">
+                        <TableCell className="py-1 px-2"><Badge variant="outline" className="text-[10px] px-1.5 py-0 leading-none">{b.seatCategory || "—"}</Badge></TableCell>
+                        <TableCell className="py-1 px-2 text-[10px] whitespace-nowrap">
                           {b.roomNumber || (b.cabinId?.name && b.seatId?.number ? `${b.cabinId.name} / S${b.seatId.number}` : "-")}
                         </TableCell>
-                        <TableCell className="py-1 px-3 text-[11px] whitespace-nowrap">{b.slotName || "-"}</TableCell>
-                        <TableCell className="py-1 px-3 text-[11px] whitespace-nowrap">{fmtDateTime(b.createdAt)}</TableCell>
-                        <TableCell className="py-1 px-3 text-[11px] whitespace-nowrap">
+                        <TableCell className="py-1 px-2 text-[11px] whitespace-nowrap">{b.slotName || "-"}</TableCell>
+                        <TableCell className="py-1 px-2 text-[11px] whitespace-nowrap">{fmtDateTime(b.createdAt)}</TableCell>
+                        <TableCell className="py-1 px-2 text-[11px] whitespace-nowrap">
                           <div>{fmtRange(b.startDate, b.endDate)}</div>
                           {b.bookingDuration && <div className="text-[10px] text-muted-foreground capitalize">{b.durationCount ? `${b.durationCount} ` : ''}{b.bookingDuration}</div>}
                         </TableCell>
-                        <TableCell className="py-1 px-3 text-[11px]">
+                        <TableCell className="py-1 px-2 text-[11px]">
                           <div className="grid grid-cols-2 gap-x-4 gap-y-0 min-w-[140px]">
                             <div className="font-semibold whitespace-nowrap">Seat: ₹{((b.totalPrice || 0) - (b.lockerPrice || 0)).toLocaleString()}</div>
                             <div className="text-[10px] text-muted-foreground whitespace-nowrap">Locker: {(b.lockerPrice || 0) > 0 ? `₹${(b.lockerPrice || 0).toLocaleString()}` : '-'}</div>
@@ -172,10 +172,10 @@ const AdminBookings = () => {
                             <div className="text-[10px] text-amber-600 whitespace-nowrap">Due: ₹{(b.duePending || 0).toLocaleString()}</div>
                           </div>
                         </TableCell>
-                        <TableCell className="py-1 px-3">
+                        <TableCell className="py-1 px-2">
                           <span className={`inline-flex items-center rounded-full px-1.5 py-0 text-[10px] font-medium capitalize ${badgeCls(b.status || "pending")}`}>{b.status || "pending"}</span>
                         </TableCell>
-                        <TableCell className="py-1 px-3 text-right">
+                        <TableCell className="py-1 px-2 text-right">
                           <Tooltip><TooltipTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => navigate(`/admin/bookings/${b._id}/cabin`)}>
                               <Eye className="h-3.5 w-3.5" />
