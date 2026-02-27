@@ -203,28 +203,28 @@ export default function AdminHostelBookings() {
                       <TableHeader>
                         <TableRow className="bg-muted/30">
                           {['Booking ID', 'Student', 'Hostel', 'Room / Bed', 'Booked On', 'Duration', 'Amount', 'Status', 'Actions'].map(h => (
-                            <TableHead key={h} className={`text-[11px] font-medium text-muted-foreground uppercase tracking-wider py-2 px-3 ${h === 'Actions' ? 'text-right' : ''}`}>{h}</TableHead>
+                            <TableHead key={h} className={`text-[11px] font-medium text-muted-foreground uppercase tracking-wider py-2 px-2 ${h === 'Actions' ? 'text-right' : ''}`}>{h}</TableHead>
                           ))}
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {bookings.map((b, idx) => (
                           <TableRow key={b.id} className={idx % 2 === 0 ? 'bg-background' : 'bg-muted/20'}>
-                            <TableCell className="py-1 px-3 font-mono text-[11px]">{b.serial_number || '-'}</TableCell>
-                            <TableCell className="py-1 px-3 text-[11px] whitespace-nowrap">
+                            <TableCell className="py-1 px-2 font-mono text-[10px]">{b.serial_number || '-'}</TableCell>
+                            <TableCell className="py-1 px-2 text-[11px] whitespace-nowrap">
                               <span className="font-medium">{b.profiles?.name || 'N/A'}</span>
-                              {b.profiles?.email && <span className="text-muted-foreground ml-1 max-w-[180px] truncate inline-block align-bottom">({b.profiles.email})</span>}
+                              {b.profiles?.email && <span className="text-muted-foreground ml-1 max-w-[140px] truncate inline-block align-bottom">({b.profiles.email})</span>}
                             </TableCell>
-                            <TableCell className="py-1 px-3 text-[11px]">{b.hostels?.name || '-'}</TableCell>
-                            <TableCell className="py-1 px-3 text-[11px] whitespace-nowrap">
+                            <TableCell className="py-1 px-2 text-[11px]">{b.hostels?.name || '-'}</TableCell>
+                            <TableCell className="py-1 px-2 text-[10px] whitespace-nowrap">
                               Room {b.hostel_rooms?.room_number || '-'} / Bed #{b.hostel_beds?.bed_number || '-'}
                             </TableCell>
-                            <TableCell className="py-1 px-3 text-[11px] whitespace-nowrap">{fmtDateTime(b.created_at)}</TableCell>
-                            <TableCell className="py-1 px-3 text-[11px] whitespace-nowrap">
+                            <TableCell className="py-1 px-2 text-[11px] whitespace-nowrap">{fmtDateTime(b.created_at)}</TableCell>
+                            <TableCell className="py-1 px-2 text-[11px] whitespace-nowrap">
                               <div>{fmtDate(b.start_date)} – {fmtDate(b.end_date)}</div>
                               <div className="text-[10px] text-muted-foreground capitalize">{durationLabel(b)}</div>
                             </TableCell>
-                            <TableCell className="py-1 px-3 text-[11px]">
+                            <TableCell className="py-1 px-2 text-[11px]">
                               <div className="grid grid-cols-2 gap-x-4 gap-y-0 min-w-[140px]">
                                 <div className="font-semibold whitespace-nowrap">Bed: ₹{(b.total_price || 0).toLocaleString()}</div>
                                 <div className="text-[10px] text-muted-foreground whitespace-nowrap">Deposit: {(b.security_deposit || 0) > 0 ? `₹${(b.security_deposit || 0).toLocaleString()}` : '-'}</div>
@@ -232,10 +232,10 @@ export default function AdminHostelBookings() {
                                 <div className="text-[10px] text-amber-600 whitespace-nowrap">Due: ₹{(b.duePending || 0).toLocaleString()}</div>
                               </div>
                             </TableCell>
-                            <TableCell className="py-1 px-3">
+                            <TableCell className="py-1 px-2">
                               <span className={`inline-flex items-center rounded-full px-1.5 py-0 text-[10px] font-medium capitalize ${badgeCls(b.status || 'pending')}`}>{b.status || 'pending'}</span>
                             </TableCell>
-                            <TableCell className="py-1 px-3 text-right">
+                            <TableCell className="py-1 px-2 text-right">
                               <Tooltip><TooltipTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => navigate(`/admin/bookings/${b.id}/hostel`)}>
                                   <Eye className="h-3.5 w-3.5" />
