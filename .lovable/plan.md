@@ -1,75 +1,50 @@
 
 
-## Enhance BookSeat Page: Image Carousel, Layout, and Conditional Sections
+## Compact Spacing for Booking Screen
 
-### Changes Overview
+Tighten vertical spacing across the entire SeatBookingForm and the BookSeat page wrapper without changing the layout structure.
 
-**1. Move name/address below the image carousel (not overlaid on it)**
-- Remove the name + rating overlay from the hero image section
-- Place them below the image as a standalone section with the reading room name, rating, and address (`full_address` from the cabin data)
-- Add `full_address` to the Cabin interface and populate it from `d.full_address`
+### Changes
 
-**2. Auto-sliding image carousel (every 3 seconds + manual swipe)**
-- Update `CabinImageSlider` to add an `autoPlay` prop (default `false`)
-- When `autoPlay` is true, set up a `setInterval` that advances the carousel every 3 seconds
-- Pause auto-scroll when user manually interacts (touch/swipe), resume after a delay
-- Remove the thumbnail strip on the BookSeat page (keep the dot indicators and slide counter)
+#### File: `src/components/seats/SeatBookingForm.tsx`
 
-**3. Show "Select Seat" step only after plan configuration is done**
-- This already works (line 756 in SeatBookingForm: `showSeatSelection` is true when `startDate` and `selectedDuration.count > 0`)
-- No change needed here
-
-**4. Hide hero image/details when a seat is selected, show on scroll up**
-- Add a `selectedSeat` state-driven collapse: when a seat is selected, the hero image section, info chips, and Details/Amenities card collapse with a smooth animation
-- Use CSS transition (max-height + opacity) so the section collapses when seat is selected
-- When user scrolls up past the booking form, the section reappears
-
-### Technical Details
-
-#### File: `src/components/CabinImageSlider.tsx`
-- Add `autoPlay?: boolean` and `autoPlayInterval?: number` props
-- Add `useEffect` with `setInterval` to call `api.scrollNext()` every 3 seconds when `autoPlay` is true
-- Clear interval on unmount or when user interacts
-- Hide thumbnails when `autoPlay` is true (BookSeat uses full-width hero style)
+| Area | Current | New |
+|------|---------|-----|
+| Main content `space-y` | `space-y-5` (20px) | `space-y-3` (12px) |
+| CardHeader padding | `py-3 px-4` | `py-2 px-3` |
+| CardContent padding | `px-4 pt-3` | `px-3 pt-2` |
+| Duration/date row padding | `p-3` | `p-2.5` |
+| Label margin-bottom | `mb-2` | `mb-1` |
+| End date badge top gap | inherited from space-y-5 | stays in flow with space-y-3 |
+| Step 2 section | `space-y-4` | `space-y-2.5` |
+| Summary card padding | `p-4 space-y-2.5` | `p-3 space-y-2` |
+| Summary total `pt-1` | `pt-1` | `pt-0.5` |
+| Separator before Step 2/3 | standard `<Separator />` | add `className="my-0"` (spacing handled by parent) |
+| Rules collapsible | `mt-3` | `mt-2` |
+| Terms checkbox | `mt-3` | `mt-2` |
+| Pay button height | `h-11` | `h-10` |
+| Advance payment card | `p-3 space-y-2` | `p-2.5 space-y-1.5` |
+| Booking created section | `space-y-3` | `space-y-2` |
 
 #### File: `src/pages/BookSeat.tsx`
-- Add `address` field to the `Cabin` interface
-- Populate it from `d.full_address` in `fetchCabinDetails`
-- Move cabin name, rating, and address from the image overlay to a new section below the image
-- Remove the gradient text overlay from the hero
-- Pass `autoPlay={true}` to `CabinImageSlider`
-- Add a `showDetails` state: `true` by default, set to `false` when `selectedSeat` is set
-- Use `IntersectionObserver` on the booking form ref: when user scrolls the hero back into view, set `showDetails` back to `true`
-- Wrap the hero image, name/address, info chips, and Details/Amenities sections in a collapsible container with CSS transitions
 
-#### Layout after changes (top to bottom):
-```text
-+----------------------------------+
-| [Auto-sliding images]  [< Back]  |
-| [Category badge]   [1/3 counter] |
-+----------------------------------+
-| TRINI STUDY SPACE                |
-| 4.5 stars (12 reviews)           |
-| 123, Main Road, City, State      |
-+----------------------------------+
-| [₹900/mo] [16 seats] [2 floors] |
-+----------------------------------+
-| Details & Amenities              |
-| Wi-Fi, Desk, Bookshelf           |
-+----------------------------------+
-| Configure Your Plan (Step 1)     |
-| ...                              |
-| Select Your Seat (Step 2)        |  <-- appears after config done
-| ...                              |
-+----------------------------------+
+| Area | Current | New |
+|------|---------|-----|
+| Info chips section padding | `px-3 pt-1 pb-1` | `px-3 pt-0.5 pb-0.5` |
+| Details/Amenities section | `px-3 pt-2 pb-1`, inner `p-3` | `px-3 pt-1 pb-0.5`, inner `p-2.5` |
+| Name/address section | `px-4 pt-3 pb-2` | `px-3 pt-2 pb-1` |
+| Booking form wrapper | `px-3 pt-3` | `px-3 pt-2` |
+| Chip gap | `gap-2` | `gap-1.5` |
+| Amenity tag gap | `gap-1.5` | `gap-1` |
 
-When seat selected: hero + chips + amenities collapse
-When scrolling up: they reappear
-```
+### Result
+
+All gaps reduced to an 8-12-16px system. Line heights and font sizes stay the same. Structure and order untouched. The form will feel noticeably tighter and more app-like on mobile.
 
 ### Files Changed
 
 | File | Change |
 |------|--------|
-| `src/components/CabinImageSlider.tsx` | Add `autoPlay` prop with 3-second interval auto-scroll |
-| `src/pages/BookSeat.tsx` | Move name/address below image, add address field, add collapse behavior on seat selection, pass autoPlay to slider |
+| `src/components/seats/SeatBookingForm.tsx` | Reduce padding, margins, gaps, and space-y values throughout |
+| `src/pages/BookSeat.tsx` | Tighten spacing in hero details, chips, amenities, and form wrapper |
+
