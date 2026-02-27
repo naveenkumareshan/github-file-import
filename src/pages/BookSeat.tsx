@@ -250,7 +250,7 @@ const BookSeat = () => {
             </div>
 
             {/* Name, Rating & Address - Below the image */}
-            <div className="px-4 pt-3 pb-2">
+            <div className="px-3 pt-2 pb-1">
               <h1 className="text-lg font-bold text-foreground leading-tight">{cabin.name}</h1>
               {cabin.averageRating && cabin.averageRating > 0 && (
                 <div className="flex items-center gap-1 mt-1">
@@ -270,8 +270,8 @@ const BookSeat = () => {
             </div>
 
             {/* Info Chips */}
-            <div className="px-3 pt-1 pb-1">
-              <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+            <div className="px-3 pt-0.5 pb-0.5">
+              <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
                 <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs font-semibold whitespace-nowrap shadow-sm border border-emerald-500/20">
                   <IndianRupee className="h-3.5 w-3.5" />
                   ₹{cabin.price}/mo
@@ -306,8 +306,8 @@ const BookSeat = () => {
             </div>
 
             {/* Details & Amenities */}
-            <div className="px-3 pt-2 pb-1">
-              <div className="bg-muted/30 rounded-xl p-3 border border-border/50">
+            <div className="px-3 pt-1 pb-0.5">
+              <div className="bg-muted/30 rounded-xl p-2.5 border border-border/50">
                 <h3 className="text-sm font-semibold text-foreground mb-2">Details & Amenities</h3>
                 {cabin.description && (
                   <p className="text-xs text-muted-foreground leading-relaxed">{cabin.description}</p>
@@ -316,7 +316,7 @@ const BookSeat = () => {
                   <Separator className="my-2.5 opacity-50" />
                 )}
                 {cabin.amenities?.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap gap-1">
                     {cabin.amenities.map((amenity) => (
                       <span key={amenity} className="inline-flex items-center gap-1 text-xs bg-primary/5 text-foreground border border-primary/10 px-2.5 py-1 rounded-lg">
                         <CheckCircle2 className="h-3 w-3 text-primary" />
@@ -356,7 +356,7 @@ const BookSeat = () => {
           )}
 
           {/* Booking Form */}
-          <div className="px-3 pt-3" ref={bookingFormRef}>
+          <div className="px-3 pt-2" ref={bookingFormRef}>
             <Suspense fallback={
               <div className="space-y-3 p-4">
                 <Skeleton className="h-6 w-1/3" />
