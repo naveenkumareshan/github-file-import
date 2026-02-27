@@ -568,7 +568,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
       <CardHeader className="py-3 px-4 bg-muted/20">
         <div className="flex items-center gap-2">
           <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">1</div>
-          <h3 className="text-sm font-semibold text-foreground">Booking Details</h3>
+          <h3 className="text-sm font-semibold text-foreground">Configure Your Plan</h3>
         </div>
       </CardHeader>
       <CardContent className="px-4 pt-3">
