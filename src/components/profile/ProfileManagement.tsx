@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from '@/hooks/use-toast';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { User, MailIcon, GraduationCap, Shield, AlertTriangle, Pencil, X, Check, LogOut, FileText, Lock, BookMarked, ChevronRight, ChevronDown, Info, MessageSquareWarning, Headphones, Phone, Camera } from 'lucide-react';
+import { User, MailIcon, GraduationCap, Shield, AlertTriangle, Pencil, X, Check, LogOut, FileText, Lock, BookMarked, ChevronRight, ChevronDown, Info, MessageSquareWarning, Headphones, Phone, Camera, Loader2 } from 'lucide-react';
 import { userProfileService } from '@/api/userProfileService';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
@@ -82,6 +82,41 @@ export const ProfileManagement = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isUploadingPicture, setIsUploadingPicture] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Error', description: 'Please select an image file', variant: 'destructive' });
+      return;
+    }
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: 'Error', description: 'Image must be less than 5MB', variant: 'destructive' });
+      return;
+    }
+
+    setIsUploadingPicture(true);
+    try {
+      const result = await userProfileService.uploadProfilePicture(file);
+      if (result.success && result.data?.url) {
+        setProfile(prev => ({ ...prev, profile_picture: result.data!.url }));
+        toast({ title: 'Success', description: 'Profile picture updated!' });
+      } else {
+        toast({ title: 'Error', description: 'Failed to upload picture', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Error', description: 'Failed to upload picture', variant: 'destructive' });
+    } finally {
+      setIsUploadingPicture(false);
+      // Reset input so same file can be re-selected
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   useEffect(() => {
     loadProfile();
@@ -302,11 +337,27 @@ export const ProfileManagement = () => {
         <div className="flex items-center gap-4 p-4">
           <div className="relative flex-shrink-0">
             <Avatar className="h-16 w-16">
-              <AvatarImage src={profile.profile_picture} alt={profile.name} />
-              <AvatarFallback className="text-xl bg-primary text-primary-foreground">{initials}</AvatarFallback>
+              {isUploadingPicture ? (
+                <AvatarFallback className="bg-muted">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </AvatarFallback>
+              ) : (
+                <>
+                  <AvatarImage src={profile.profile_picture} alt={profile.name} />
+                  <AvatarFallback className="text-xl bg-primary text-primary-foreground">{initials}</AvatarFallback>
+                </>
+              )}
             </Avatar>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleProfilePictureUpload}
+            />
             <button
-              onClick={() => openSectionSheet('account')}
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploadingPicture}
               className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md"
             >
               <Camera className="h-3 w-3" />
