@@ -217,7 +217,7 @@ export const seatsService = {
         .gte('end_date', startDate);
 
       const conflicting = (bookings || []).filter(b => {
-        if (slotId) return b.slot_id === slotId;
+        if (slotId) return b.slot_id === slotId || b.slot_id === null;
         return true;
       });
 
@@ -261,7 +261,7 @@ export const seatsService = {
 
       // Filter by slot if provided — same seat can be booked in different slots
       const conflicting = (bookings || []).filter(b => {
-        if (slotId) return b.slot_id === slotId;
+        if (slotId) return b.slot_id === slotId || b.slot_id === null;
         return true;
       });
 

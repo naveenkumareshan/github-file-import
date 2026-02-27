@@ -213,19 +213,19 @@ const DateBasedSeatMapComponent: React.FC<DateBasedSeatMapProps> = ({
   };
 
   // Transform seats to show availability status
-  const transformedSeats = availableSeats
-    .map((seat) => {
-      const availabilityInfo = seatAvailability.find(
-        (info) => info.seatId === seat._id
-      );
-      return {
-        ...seat,
-        isAvailable: availabilityInfo?.isAvailable ?? seat.isAvailable,
-        conflictingBookings: availabilityInfo?.conflictingBookings || [],
-        isDateFiltered: true,
-      };
-    })
-    .filter((seat) => !categoryFilter || seat.category === categoryFilter);
+  const transformedSeats = availableSeats.map((seat) => {
+    const availabilityInfo = seatAvailability.find(
+      (info) => info.seatId === seat._id
+    );
+    const categoryMismatch = categoryFilter && seat.category !== categoryFilter;
+    return {
+      ...seat,
+      isAvailable: categoryMismatch ? false : (availabilityInfo?.isAvailable ?? seat.isAvailable),
+      isCategoryMismatch: !!categoryMismatch,
+      conflictingBookings: availabilityInfo?.conflictingBookings || [],
+      isDateFiltered: true,
+    };
+  });
 
   const availableCount = transformedSeats.filter(
     (seat) => seat.isAvailable
@@ -366,7 +366,10 @@ const DateBasedSeatMapComponent: React.FC<DateBasedSeatMapProps> = ({
                 sections={sections}
                 roomWidth={roomWidth}
                 roomHeight={roomHeight}
-                onSeatSelect={onSeatSelect}
+                onSeatSelect={(seat: any) => {
+                  if (seat?.isCategoryMismatch) return;
+                  onSeatSelect?.(seat);
+                }}
                 selectedSeat={selectedSeat}
                 dateRange={{ start: startDate, end: endDate }}
                 layoutImage={(() => {
@@ -420,7 +423,10 @@ const DateBasedSeatMapComponent: React.FC<DateBasedSeatMapProps> = ({
               sections={sections}
               roomWidth={roomWidth}
               roomHeight={roomHeight}
-              onSeatSelect={onSeatSelect}
+              onSeatSelect={(seat: any) => {
+                if (seat?.isCategoryMismatch) return;
+                onSeatSelect?.(seat);
+              }}
               selectedSeat={selectedSeat}
               dateRange={{ start: startDate, end: endDate }}
               layoutImage={(() => {
