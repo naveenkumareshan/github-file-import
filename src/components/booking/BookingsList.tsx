@@ -90,8 +90,13 @@ export const BookingsList = ({
     return isNotExpired && booking.bookingType === 'cabin' && booking.status !== 'cancelled';
   };
 
-  const handlePaymentExpiry = (bookingId: string) => {
-    toast({ title: "Payment Expired", description: "The payment window has expired. Please create a new booking.", variant: "destructive" });
+  const handlePaymentExpiry = async (bookingId: string) => {
+    try {
+      await bookingsService.cancelBooking(bookingId);
+    } catch (e) {
+      console.error('Failed to cancel expired booking:', e);
+    }
+    toast({ title: "Payment Expired", description: "The payment window has expired. Booking has been cancelled.", variant: "destructive" });
     if (onBookingCancelled) onBookingCancelled();
   };
 
