@@ -1,35 +1,22 @@
 
 
-## Show Booking End Date for Booked Seats
+## Reorganize Booking Configuration Section in Room Editor
 
-### Problem
-In the seat detail panel (right-side sheet), the status line shows "Booked for 27 Feb 2026" where "27 Feb 2026" is just the currently selected calendar date, not the actual booking end date. It should show "Booked till [end date]" so the admin/partner knows when the booking expires.
+### Changes
 
-### Fix
+**File: `src/components/admin/CabinEditor.tsx`**
 
-**File: `src/pages/vendor/VendorSeats.tsx` (line 911)**
+1. **Rename Section 5** from "Slot-Based Booking" to "Booking Configuration" with description "Configure booking durations and time slots" -- since "Offer bookings for" applies to all bookings, not just slot-based ones.
 
-Change the status info display so that:
-- When the seat is **booked** or **expiring_soon** and has a `currentBooking`, show: `"till [booking end date]"`
-- Otherwise (available/blocked), show: `"for [selected date]"` as it currently does
+2. **Reorder content** so "Offer bookings for" (allowed durations) appears first, before the "Enable Slots" toggle. Current order vs new order:
+   - Current: Enable Slots → Offer bookings for → Apply slots to → Time Slots
+   - New: **Offer bookings for → Enable Slots → Apply slots to → Time Slots**
 
-Current code:
-```
-<span className="text-muted-foreground ml-auto">for {format(selectedDate, 'dd MMM yyyy')}</span>
-```
-
-Updated logic:
-```
-<span className="text-muted-foreground ml-auto">
-  {(selectedSeat.dateStatus === 'booked' || selectedSeat.dateStatus === 'expiring_soon') && selectedSeat.currentBooking
-    ? `till ${format(new Date(selectedSeat.currentBooking.endDate), 'dd MMM yyyy')}`
-    : `for ${format(selectedDate, 'dd MMM yyyy')}`}
-</span>
-```
+3. **Auto-disable slots when no applicable durations selected**: When user deselects all items in "Apply slots to", automatically turn off the `slotsEnabled` toggle. This means time slots section hides when nothing is selected in "Apply slots to".
 
 ### Files Modified
 
 | File | Change |
 |------|--------|
-| `src/pages/vendor/VendorSeats.tsx` | Show booking end date ("till X") for booked/expiring seats instead of calendar date |
+| `src/components/admin/CabinEditor.tsx` | Rename section title; move "Offer bookings for" above "Enable Slots"; auto-disable slots when Apply slots to is empty |
 
