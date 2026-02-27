@@ -679,39 +679,71 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
               </Alert>
             )}
 
-            {/* Slot Selection - shown when slotsEnabled */}
-            {cabin?.slotsEnabled && availableSlots.length > 0 && showSeatSelection && (
-              <div className="space-y-2">
-                <Separator />
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-primary" />
-                  <Label className="text-sm font-semibold text-foreground">Select Time Slot</Label>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {/* Time Slot - compact pills under duration type */}
+            {cabin?.slotsEnabled && availableSlots.length > 0 && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground">Time Slot</Label>
+                <div className="flex gap-1.5 flex-wrap">
                   {availableSlots.map((slot) => (
                     <button
                       key={slot.id}
                       type="button"
                       onClick={() => setSelectedSlot(slot)}
                       className={cn(
-                        "p-3 rounded-xl border text-left transition-all",
+                        "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all",
                         selectedSlot?.id === slot.id
-                          ? "border-primary bg-primary/10 shadow-sm"
-                          : "border-border hover:border-primary/50"
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "bg-muted text-muted-foreground hover:text-foreground"
                       )}
                     >
-                      <div className="font-medium text-sm">{slot.name}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5">
-                        {formatTime(slot.start_time)} – {formatTime(slot.end_time)}
-                      </div>
-                      <div className="text-xs font-semibold text-primary mt-1">₹{slot.price}/mo</div>
+                      {slot.name}
+                    </button>
+                  ))}
+                </div>
+                {selectedSlot && (
+                  <p className="text-[11px] text-muted-foreground">
+                    {formatTime(selectedSlot.start_time)} – {formatTime(selectedSlot.end_time)}
+                    {selectedSlot.id !== 'full_day' && <span className="ml-1.5 font-medium text-primary">₹{selectedSlot.price}/mo</span>}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Seat Type - compact pills */}
+            {categories.length > 0 && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground">Seat Type</Label>
+                <div className="flex gap-1.5 flex-wrap">
+                  <button
+                    onClick={() => setSelectedCategory("all")}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all",
+                      selectedCategory === "all"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    All
+                  </button>
+                  {categories.map((cat) => (
+                    <button
+                      key={cat.id}
+                      onClick={() => setSelectedCategory(cat.name)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all",
+                        selectedCategory === cat.name
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "bg-muted text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {cat.name} • ₹{cat.price}
                     </button>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Step 2: Seat Selection - block if slots enabled but no slot selected */}
+            {/* Step 2: Seat Selection */}
             {showSeatSelection && cabin && (!cabin.slotsEnabled || selectedSlot) && !hasPendingDues && (
               <div className="space-y-4">
                 <Separator />
@@ -719,41 +751,6 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                   <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">2</div>
                   <Label className="text-sm font-semibold text-foreground">Select Your Seat</Label>
                 </div>
-
-                  {/* Category Filter Chips */}
-                  {categories.length > 0 && (
-                    <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-                      <button
-                        onClick={() => setSelectedCategory("all")}
-                        className={cn(
-                          "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all",
-                          selectedCategory === "all"
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-muted-foreground hover:text-foreground"
-                        )}
-                      >
-                        All
-                      </button>
-                  {categories.map((cat, index) => (
-                        <button
-                          key={cat.id}
-                          onClick={() => setSelectedCategory(cat.name)}
-                          className={cn(
-                            "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all flex items-center gap-1.5",
-                            selectedCategory === cat.name
-                              ? "bg-primary text-primary-foreground shadow-sm"
-                              : "bg-muted text-muted-foreground hover:text-foreground"
-                          )}
-                        >
-                          <span className={cn(
-                            "h-2 w-2 rounded-full",
-                            index % 3 === 0 ? "bg-emerald-400" : index % 3 === 1 ? "bg-purple-400" : "bg-amber-400"
-                          )} />
-                          {cat.name} • ₹{cat.price}
-                        </button>
-                      ))}
-                    </div>
-                  )}
 
                   <Suspense fallback={<div className="p-3 text-sm text-muted-foreground">Loading seat map...</div>}>
                     <DateBasedSeatMap 
@@ -769,7 +766,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                       roomWidth={roomWidth}
                       roomHeight={roomHeight}
                       categoryFilter={selectedCategory === "all" ? undefined : selectedCategory}
-                      slotId={selectedSlot?.id}
+                      slotId={selectedSlot?.id === 'full_day' ? undefined : selectedSlot?.id}
                     />
                   </Suspense>
               </div>
