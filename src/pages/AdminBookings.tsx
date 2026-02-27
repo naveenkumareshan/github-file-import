@@ -149,33 +149,33 @@ const AdminBookings = () => {
                   <TableBody>
                     {bookings.map((b, idx) => (
                       <TableRow key={b._id} className={idx % 2 === 0 ? "bg-background" : "bg-muted/20"}>
-                        <TableCell className="py-1.5 px-3 font-mono text-xs">{b.bookingId || b._id}</TableCell>
-                        <TableCell className="py-1.5 px-3 text-xs">
+                        <TableCell className="py-1 px-3 font-mono text-[11px]">{b.bookingId || b._id}</TableCell>
+                        <TableCell className="py-1 px-3 text-[11px] whitespace-nowrap">
                           <span className="font-medium">{b.userId?.name || "N/A"}</span>
-                          {b.userId?.email && <span className="text-muted-foreground ml-1">({b.userId.email})</span>}
+                          {b.userId?.email && <span className="text-muted-foreground ml-1 max-w-[180px] truncate inline-block align-bottom">({b.userId.email})</span>}
                         </TableCell>
-                        <TableCell className="py-1.5 px-3"><Badge variant="outline" className="text-[10px] px-1.5 py-0">{b.seatCategory || "—"}</Badge></TableCell>
-                        <TableCell className="py-1.5 px-3 text-xs">
+                        <TableCell className="py-1 px-3"><Badge variant="outline" className="text-[10px] px-1.5 py-0 leading-none">{b.seatCategory || "—"}</Badge></TableCell>
+                        <TableCell className="py-1 px-3 text-[11px] whitespace-nowrap">
                           {b.roomNumber || (b.cabinId?.name && b.seatId?.number ? `${b.cabinId.name} / S${b.seatId.number}` : "-")}
                         </TableCell>
-                        <TableCell className="py-1.5 px-3 text-xs whitespace-nowrap">{b.slotName || "-"}</TableCell>
-                        <TableCell className="py-1.5 px-3 text-xs whitespace-nowrap">{fmtDateTime(b.createdAt)}</TableCell>
-                        <TableCell className="py-1.5 px-3 text-xs whitespace-nowrap">
+                        <TableCell className="py-1 px-3 text-[11px] whitespace-nowrap">{b.slotName || "-"}</TableCell>
+                        <TableCell className="py-1 px-3 text-[11px] whitespace-nowrap">{fmtDateTime(b.createdAt)}</TableCell>
+                        <TableCell className="py-1 px-3 text-[11px] whitespace-nowrap">
                           <div>{fmtRange(b.startDate, b.endDate)}</div>
                           {b.bookingDuration && <div className="text-[10px] text-muted-foreground capitalize">{b.durationCount ? `${b.durationCount} ` : ''}{b.bookingDuration}</div>}
                         </TableCell>
-                        <TableCell className="py-1.5 px-3 text-xs">
-                          <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 min-w-[140px]">
+                        <TableCell className="py-1 px-3 text-[11px]">
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-0 min-w-[140px]">
                             <div className="font-semibold whitespace-nowrap">Seat: ₹{((b.totalPrice || 0) - (b.lockerPrice || 0)).toLocaleString()}</div>
                             <div className="text-[10px] text-muted-foreground whitespace-nowrap">Locker: {(b.lockerPrice || 0) > 0 ? `₹${(b.lockerPrice || 0).toLocaleString()}` : '-'}</div>
                             <div className="text-[10px] text-emerald-600 whitespace-nowrap">Paid: ₹{(b.totalPaid || 0).toLocaleString()}</div>
                             <div className="text-[10px] text-amber-600 whitespace-nowrap">Due: ₹{(b.duePending || 0).toLocaleString()}</div>
                           </div>
                         </TableCell>
-                        <TableCell className="py-1.5 px-3">
+                        <TableCell className="py-1 px-3">
                           <span className={`inline-flex items-center rounded-full px-1.5 py-0 text-[10px] font-medium capitalize ${badgeCls(b.status || "pending")}`}>{b.status || "pending"}</span>
                         </TableCell>
-                        <TableCell className="py-1.5 px-3 text-right">
+                        <TableCell className="py-1 px-3 text-right">
                           <Tooltip><TooltipTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => navigate(`/admin/bookings/${b._id}/cabin`)}>
                               <Eye className="h-3.5 w-3.5" />
