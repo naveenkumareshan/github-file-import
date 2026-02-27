@@ -79,11 +79,15 @@ const SupportPage = lazy(() => import("./components/profile/SupportPage"));
 
 import ScrollToTop from "./components/ScrollToTop";
 import { LazyWrapper } from './components/LazyWrapper';
+import ErrorBoundary from './components/ErrorBoundary';
+import { Loader2 } from 'lucide-react';
 
 const StudentSuspense = ({ children }: { children: React.ReactNode }) => (
-  <Suspense fallback={<div className="p-6 text-center text-muted-foreground">Loading...</div>}>
-    {children}
-  </Suspense>
+  <ErrorBoundary>
+    <Suspense fallback={<div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}>
+      {children}
+    </Suspense>
+  </ErrorBoundary>
 );
 
 function App() {
