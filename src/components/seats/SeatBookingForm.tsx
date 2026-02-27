@@ -569,15 +569,15 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
 
   return (
     <Card className="border-t-2 border-t-primary shadow-md overflow-hidden">
-      <CardHeader className="py-3 px-4 bg-muted/20">
+      <CardHeader className="py-2 px-3 bg-muted/20">
         <div className="flex items-center gap-2">
           <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">1</div>
           <h3 className="text-sm font-semibold text-foreground">Configure Your Plan</h3>
         </div>
       </CardHeader>
-      <CardContent className="px-4 pt-3">
+      <CardContent className="px-3 pt-2">
         {(
-          <div className="space-y-5">
+          <div className="space-y-3">
             {/* Seat Type - compact pills */}
             {categories.length > 0 && (
               <div className="space-y-1.5">
@@ -614,7 +614,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
 
             {/* Duration Type as horizontal pills */}
             <div>
-              <Label className="block mb-2 text-xs font-medium text-muted-foreground">Duration Type</Label>
+              <Label className="block mb-1 text-xs font-medium text-muted-foreground">Duration Type</Label>
               <div className="flex gap-1.5 bg-muted/50 rounded-xl p-1">
                 {(["daily", "weekly", "monthly"] as const).filter((type) => {
                   const allowed = (cabin as any)?.allowed_durations || (cabin as any)?.allowedDurations || ['daily', 'weekly', 'monthly'];
@@ -638,7 +638,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
             </div>
 
             {/* Duration count + Start date in a styled row */}
-            <div className="flex items-end gap-2 bg-muted/20 rounded-xl p-3 border border-border/50">
+            <div className="flex items-end gap-2 bg-muted/20 rounded-xl p-2.5 border border-border/50">
               <div className="w-28">
                 <Label htmlFor="durationCount" className="block mb-1 text-xs text-muted-foreground">
                   {selectedDuration.type === "daily"
@@ -754,8 +754,8 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
 
             {/* Step 2: Seat Selection */}
             {showSeatSelection && cabin && (!cabin.slotsEnabled || selectedSlot) && !hasPendingDues && (
-              <div className="space-y-4">
-                <Separator />
+              <div className="space-y-2.5">
+                <Separator className="my-0" />
                 <div className="flex items-center gap-2">
                   <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">2</div>
                   <Label className="text-sm font-semibold text-foreground">Select Your Seat</Label>
@@ -784,7 +784,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
             {/* Step 3: Coupon & Summary */}
             {selectedSeat && cabin.isBookingActive && (
               <>
-                <Separator />
+                <Separator className="my-0" />
                 <div className="flex items-center gap-2">
                   <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">3</div>
                   <Label className="text-sm font-semibold text-foreground">Review & Pay</Label>
@@ -795,9 +795,9 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
             {/* Step 4: Booking Summary and Confirmation */}
             {selectedSeat && cabin.isBookingActive ? (
               <>
-                <Separator />
+                <Separator className="my-0" />
 
-                <div className="bg-gradient-to-b from-muted/20 to-muted/40 rounded-xl p-4 space-y-2.5">
+                <div className="bg-gradient-to-b from-muted/20 to-muted/40 rounded-xl p-3 space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-muted-foreground">Selected Seat:</span>
                     <div className="flex items-center gap-2">
@@ -875,7 +875,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                     </>
                   )}
                   <Separator />
-                  <div className="flex justify-between items-center pt-1">
+                  <div className="flex justify-between items-center pt-0.5">
                     <span className="font-semibold text-base">Total Amount:</span>
                     <span className="font-bold text-lg text-primary">₹{totalPrice.toFixed(2)}</span>
                   </div>
@@ -914,7 +914,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
 
                 {/* Advance Payment Option */}
                 {advanceEnabled && (
-                  <div className="bg-muted/20 rounded-xl p-3 border border-border/50 space-y-2">
+                  <div className="bg-muted/20 rounded-xl p-2.5 border border-border/50 space-y-1.5">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
@@ -944,7 +944,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                 )}
 
                 {/* Reading Room Rules & Terms */}
-                <Collapsible className="mt-3">
+                <Collapsible className="mt-2">
                   <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-2 rounded-lg bg-muted/50 border border-border/50 text-sm font-medium text-foreground hover:bg-muted transition-colors">
                     📖 Reading Room Rules
                     <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
@@ -953,7 +953,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                     <ReadingRoomRules />
                   </CollapsibleContent>
                 </Collapsible>
-                <div className="flex items-center gap-2 mt-3">
+                <div className="flex items-center gap-2 mt-2">
                   <Checkbox
                     id="agree-terms"
                     checked={agree}
@@ -965,7 +965,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                 {/* Pay / Create Booking Button */}
                 {!bookingCreated ? (
                   <Button
-                    className="w-full h-11 rounded-xl shadow-md text-sm font-semibold"
+                    className="w-full h-10 rounded-xl shadow-md text-sm font-semibold"
                     onClick={handleCreateBooking}
                     disabled={isSubmitting || !selectedSeat || !agree}
                   >
@@ -979,7 +979,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                     )}
                   </Button>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <div className="rounded-lg p-3 bg-green-50 border border-green-200 text-green-800 text-sm">
                       <p className="font-medium">Booking created! Complete payment to confirm.</p>
                     </div>
