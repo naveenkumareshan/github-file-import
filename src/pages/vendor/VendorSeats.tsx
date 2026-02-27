@@ -908,7 +908,11 @@ const VendorSeats: React.FC = () => {
                     <div className="flex items-center gap-1.5">
                       {statusIcon(selectedSeat.dateStatus)}
                       <span className="font-medium">{statusLabel(selectedSeat.dateStatus)}</span>
-                      <span className="text-muted-foreground ml-auto">for {format(selectedDate, 'dd MMM yyyy')}</span>
+                      <span className="text-muted-foreground ml-auto">
+                        {(selectedSeat.dateStatus === 'booked' || selectedSeat.dateStatus === 'expiring_soon') && selectedSeat.currentBooking
+                          ? `till ${format(new Date(selectedSeat.currentBooking.endDate), 'dd MMM yyyy')}`
+                          : `for ${format(selectedDate, 'dd MMM yyyy')}`}
+                      </span>
                     </div>
                   </div>
                 </>
