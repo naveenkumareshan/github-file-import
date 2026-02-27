@@ -400,18 +400,30 @@ export const vendorSeatsService = {
 
   createPartnerBooking: async (data: PartnerBookingData) => {
     try {
+      // Overlap check: include pending bookings and handle slot-aware conflicts
       const { data: existing, error: checkError } = await supabase
         .from('bookings')
-        .select('id')
+        .select('id, slot_id')
         .eq('seat_id', data.seatId)
-        .in('payment_status', ['completed', 'advance_paid'])
+        .in('payment_status', ['completed', 'advance_paid', 'pending'])
         .lte('start_date', data.endDate)
-        .gte('end_date', data.startDate)
-        .limit(1);
+        .gte('end_date', data.startDate);
 
       if (checkError) throw checkError;
+
       if (existing && existing.length > 0) {
-        return { success: false, error: 'Seat already has a booking for the selected dates' };
+        const slotId = data.slotId === 'full_day' ? null : (data.slotId || null);
+        const hasConflict = existing.some(b => {
+          // New booking is full-day (no slot) -> conflicts with everything
+          if (!slotId) return true;
+          // Existing booking is full-day (no slot) -> conflicts with everything
+          if (!b.slot_id) return true;
+          // Same slot = conflict
+          return b.slot_id === slotId;
+        });
+        if (hasConflict) {
+          return { success: false, error: 'Seat already has a booking for the selected dates/slot' };
+        }
       }
 
       const { data: serialData } = await supabase.rpc('generate_serial_number', { p_entity_type: 'booking' });
