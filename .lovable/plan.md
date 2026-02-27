@@ -1,27 +1,29 @@
 
 
-## Compress Booking Table Row Height
+## Reduce Column Spacing and Sizes in Booking Tables
 
-Reduce vertical space across all booking table rows by tightening fonts, padding, badges, and text wrapping in both Reading Room and Hostel booking tables.
+### Problem
+From the screenshot, the table rows are still tall because:
+- The Student column (name + email) takes too much width, pushing other columns
+- The Booking ID wraps to 3 lines due to insufficient width
+- Cell horizontal padding (`px-3`) adds unnecessary space between columns
 
-### Changes (2 files)
+### Solution
+Reduce horizontal padding and tighten column widths in both Reading Room and Hostel tables.
 
-#### `src/pages/AdminBookings.tsx` (Reading Room)
+### Changes
 
-1. **Student cell** (line 153-156): Reduce to `text-[11px]`, put name+email on one line with `whitespace-nowrap`, truncate email with `max-w-[180px] truncate inline-block align-bottom`
-2. **Category badge** (line 157): Already `text-[10px]` -- add `leading-none` and keep `py-0` to flatten it further
-3. **Room/Seat cell** (line 158-160): Add `whitespace-nowrap` to prevent text wrapping across multiple lines
-4. **Row padding**: Change all `py-1.5` to `py-1` across every TableCell for tighter rows
-5. **Amount grid** (line 168): Reduce `gap-y-0.5` to `gap-y-0`, keep `gap-x-4`
+#### 1. `src/pages/AdminBookings.tsx`
+- Reduce all TableHead and TableCell horizontal padding from `px-3` to `px-2`
+- Truncate student email with a smaller max-width (`max-w-[140px]` instead of `max-w-[180px]`)
+- Reduce font size on Booking ID to `text-[10px]` to prevent wrapping
+- Reduce Room/Seat font to `text-[10px]`
 
-#### `src/pages/hotelManager/AdminHostelBookings.tsx` (Hostel)
+#### 2. `src/pages/hotelManager/AdminHostelBookings.tsx`
+- Same padding reduction: `px-3` to `px-2` on all cells
+- Same email truncation and font size reductions
 
-Same set of changes:
-1. **Student cell** (line 214-216): `text-[11px]`, `whitespace-nowrap`, truncated email
-2. **Row padding**: All `py-1.5` to `py-1`
-3. **Room/Bed cell** (line 219-221): Add `whitespace-nowrap`
-4. **Amount grid** (line 228): `gap-y-0` instead of `gap-y-0.5`
-
-### Expected Result
-Row height drops from ~80px to ~40-44px, matching the premium SaaS density target. No content is lost -- just tighter spacing and prevented wrapping.
+### Files modified: 2
+- `src/pages/AdminBookings.tsx`
+- `src/pages/hotelManager/AdminHostelBookings.tsx`
 
