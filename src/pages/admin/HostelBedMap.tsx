@@ -125,6 +125,8 @@ const HostelBedMap: React.FC = () => {
   const [discountReason, setDiscountReason] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<string>('cash');
   const [transactionId, setTransactionId] = useState('');
+  const [collectSecurityDeposit, setCollectSecurityDeposit] = useState(true);
+  const [securityDepositAmount, setSecurityDepositAmount] = useState('');
 
   // Two-step booking flow
   const [bookingStep, setBookingStep] = useState<'details' | 'confirm'>('details');
@@ -368,6 +370,9 @@ const HostelBedMap: React.FC = () => {
     setDiscountReason('');
     setPaymentMethod('cash');
     setTransactionId('');
+    setCollectSecurityDeposit(true);
+    const hostelInfo = hostels.find(h => h.id === bed.hostelId);
+    setSecurityDepositAmount(String(hostelInfo?.security_deposit || 0));
     setBookingSuccess(false);
     setLastBookingInfo(null);
     setShowFutureBooking(false);
@@ -619,7 +624,7 @@ const HostelBedMap: React.FC = () => {
       total_price: total,
       advance_amount: advanceAmt,
       remaining_amount: remaining,
-      security_deposit: hostel?.security_deposit || 0,
+      security_deposit: collectSecurityDeposit ? (parseFloat(securityDepositAmount) || 0) : 0,
       booking_duration: selectedDuration.type,
       duration_count: selectedDuration.count,
       payment_status: remaining <= 0 ? 'completed' : 'partial',
@@ -634,12 +639,14 @@ const HostelBedMap: React.FC = () => {
       // Update bed availability
       await supabase.from('hostel_beds').update({ is_available: false }).eq('id', selectedBed.id);
 
-      // Create receipt
+      // Create receipt (include security deposit in receipt amount)
+      const secDepAmt = collectSecurityDeposit ? (parseFloat(securityDepositAmount) || 0) : 0;
+      const receiptAmount = advanceAmt + secDepAmt;
       await supabase.from('hostel_receipts').insert({
         hostel_id: selectedBed.hostelId,
         booking_id: newBooking.id,
         user_id: selectedStudent.id,
-        amount: advanceAmt,
+        amount: receiptAmount,
         payment_method: paymentMethod,
         transaction_id: transactionId,
         receipt_type: 'booking_payment',
@@ -672,6 +679,7 @@ const HostelBedMap: React.FC = () => {
         hostelName: selectedBed.hostelName,
         bedNumber: selectedBed.bed_number,
         roomNumber: selectedBed.roomNumber,
+        sharingType: selectedBed.sharingType,
         startDate: format(bookingStartDate, 'yyyy-MM-dd'),
         endDate: format(computedEndDate, 'yyyy-MM-dd'),
         duration: `${selectedDuration.count} ${selectedDuration.type}`,
@@ -679,6 +687,7 @@ const HostelBedMap: React.FC = () => {
         discountAmount: parseFloat(discountAmount) || 0,
         discountReason,
         totalAmount: total,
+        securityDeposit: secDepAmt,
         paymentMethod,
         transactionId,
         collectedByName,
@@ -1003,6 +1012,7 @@ const HostelBedMap: React.FC = () => {
                     <SheetTitle className="text-sm flex items-center gap-2">
                       Room {selectedBed.roomNumber} - Bed #{selectedBed.bed_number}
                       <Badge variant="outline" className="text-[10px]">{selectedBed.category || selectedBed.roomCategory}</Badge>
+                      {selectedBed.sharingType && <Badge variant="secondary" className="text-[10px]">{selectedBed.sharingType}</Badge>}
                       <span className="text-xs text-muted-foreground ml-auto">₹{selectedBed.price}/mo</span>
                     </SheetTitle>
                   </SheetHeader>
@@ -1109,6 +1119,7 @@ const HostelBedMap: React.FC = () => {
                       <div><span className="text-muted-foreground">Phone:</span></div><div>{lastBookingInfo.studentPhone}</div>
                       <div><span className="text-muted-foreground">Hostel:</span></div><div className="font-medium">{lastBookingInfo.hostelName}</div>
                       <div><span className="text-muted-foreground">Bed:</span></div><div>#{lastBookingInfo.bedNumber} (Room {lastBookingInfo.roomNumber})</div>
+                      {lastBookingInfo.sharingType && <><div><span className="text-muted-foreground">Sharing:</span></div><div>{lastBookingInfo.sharingType}</div></>}
                       <div><span className="text-muted-foreground">Period:</span></div><div>{lastBookingInfo.duration}</div>
                       <div><span className="text-muted-foreground">Start:</span></div><div>{new Date(lastBookingInfo.startDate).toLocaleDateString('en-IN')}</div>
                       <div><span className="text-muted-foreground">End:</span></div><div>{new Date(lastBookingInfo.endDate).toLocaleDateString('en-IN')}</div>
@@ -1121,6 +1132,13 @@ const HostelBedMap: React.FC = () => {
                       )}
                       <Separator />
                       <div className="flex justify-between font-semibold text-xs"><span>Total</span><span>₹{lastBookingInfo.totalAmount}</span></div>
+                      {lastBookingInfo.securityDeposit > 0 && (
+                        <>
+                          <div className="flex justify-between"><span>Security Deposit</span><span>₹{lastBookingInfo.securityDeposit}</span></div>
+                          <Separator />
+                          <div className="flex justify-between font-bold text-xs"><span>Grand Total</span><span>₹{lastBookingInfo.totalAmount + lastBookingInfo.securityDeposit}</span></div>
+                        </>
+                      )}
                       {lastBookingInfo.remainingDue > 0 && (
                         <>
                           <div className="flex justify-between text-amber-600"><span>Advance Paid</span><span>₹{lastBookingInfo.advanceAmount}</span></div>
@@ -1282,6 +1300,20 @@ const HostelBedMap: React.FC = () => {
                     <div className="flex justify-between font-semibold text-xs"><span>Total</span><span>₹{computedTotal}</span></div>
                   </div>
 
+                  {/* Security Deposit Toggle */}
+                  <div className="border rounded p-2 space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <Checkbox id="collectSecurityDeposit" checked={collectSecurityDeposit} onCheckedChange={(v) => setCollectSecurityDeposit(v === true)} />
+                      <Label htmlFor="collectSecurityDeposit" className="text-xs cursor-pointer flex-1">Collect Security Deposit</Label>
+                    </div>
+                    {collectSecurityDeposit && (
+                      <div>
+                        <Label className="text-[10px] uppercase text-muted-foreground">Deposit Amount (₹)</Label>
+                        <Input className="h-7 text-xs" type="number" value={securityDepositAmount} onChange={e => setSecurityDepositAmount(e.target.value)} />
+                      </div>
+                    )}
+                  </div>
+
                   {/* Partial Payment Toggle */}
                   {selectedHostelInfo && (
                     <div className="flex items-center gap-2 border rounded p-2 bg-amber-50/50 dark:bg-amber-950/20">
@@ -1322,6 +1354,7 @@ const HostelBedMap: React.FC = () => {
                         <div className="flex justify-between"><span className="text-muted-foreground">Phone</span><span>{selectedStudent?.phone || '-'}</span></div>
                         <Separator />
                         <div className="flex justify-between"><span className="text-muted-foreground">Bed</span><span>#{selectedBed.bed_number} · Room {selectedBed.roomNumber} · {selectedBed.hostelName}</span></div>
+                        {selectedBed.sharingType && <div className="flex justify-between"><span className="text-muted-foreground">Sharing Type</span><span>{selectedBed.sharingType}</span></div>}
                         <div className="flex justify-between"><span className="text-muted-foreground">Period</span><span>{format(bookingStartDate, 'dd MMM')} → {format(computedEndDate, 'dd MMM yyyy')}</span></div>
                         <Separator />
                         <div className="flex justify-between"><span>Bed Amount</span><span>₹{parseFloat(bookingPrice) || 0}</span></div>
@@ -1330,6 +1363,15 @@ const HostelBedMap: React.FC = () => {
                         )}
                         <Separator />
                         <div className="flex justify-between font-semibold text-xs"><span>Total</span><span>₹{computedTotal}</span></div>
+                        {collectSecurityDeposit && (parseFloat(securityDepositAmount) || 0) > 0 && (
+                          <div className="flex justify-between"><span>Security Deposit</span><span>₹{parseFloat(securityDepositAmount) || 0}</span></div>
+                        )}
+                        {collectSecurityDeposit && (parseFloat(securityDepositAmount) || 0) > 0 && (
+                          <>
+                            <Separator />
+                            <div className="flex justify-between font-bold text-xs"><span>Grand Total</span><span>₹{computedTotal + (parseFloat(securityDepositAmount) || 0)}</span></div>
+                          </>
+                        )}
                         {isAdvanceBooking && advanceComputed && (
                           <>
                             <Separator />
@@ -1374,7 +1416,7 @@ const HostelBedMap: React.FC = () => {
                         <Button className="flex-1 h-9 text-xs"
                           disabled={creatingBooking || ((paymentMethod === 'upi' || paymentMethod === 'bank_transfer') && !transactionId.trim())}
                           onClick={handleCreateBooking}>
-                          {creatingBooking ? 'Creating...' : `Confirm · ₹${isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : computedTotal}`}
+                          {creatingBooking ? 'Creating...' : `Confirm · ₹${(() => { const collectAmt = isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : computedTotal; const secDep = collectSecurityDeposit ? (parseFloat(securityDepositAmount) || 0) : 0; return collectAmt + secDep; })()}`}
                         </Button>
                       </div>
                     </div>
