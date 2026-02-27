@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Clock, AlertTriangle, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,7 @@ export const PaymentTimer = ({
 }: PaymentTimerProps) => {
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [isExpired, setIsExpired] = useState(false);
+  const hasExpiredRef = useRef(false);
 
   useEffect(() => {
    const calculateTimeLeft = () => {
@@ -32,15 +33,16 @@ export const PaymentTimer = ({
       const expiryTime = createdTime + expiryTimeInMinutes * 60 * 1000;
       const now = Date.now();
 
-      const remainingMs = Math.max(expiryTime - now, 0); // clamp at 0
+      const remainingMs = Math.max(expiryTime - now, 0);
       const remainingSeconds = Math.floor(remainingMs / 1000);
 
       if (remainingMs === 0) {
         setTimeLeft(0);
         setIsExpired(true);
 
-        if (onExpiry) {
-          onExpiry(); // make sure this is not called repeatedly (see note below)
+        if (onExpiry && !hasExpiredRef.current) {
+          hasExpiredRef.current = true;
+          onExpiry();
         }
       }
 

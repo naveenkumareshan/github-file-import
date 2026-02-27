@@ -92,7 +92,7 @@ export const bookingsService = {
         .select('*, cabins(name, category, image_url, city, area, full_address, locker_available, locker_price)')
         .eq('user_id', user.id)
         .gte('end_date', today)
-        .eq('payment_status', 'completed')
+        .in('payment_status', ['completed', 'advance_paid'])
         .order('created_at', { ascending: false });
 
       return { success: !error, data: data || [] };
