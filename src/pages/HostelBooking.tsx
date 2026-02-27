@@ -29,12 +29,18 @@ const HostelBooking = () => {
   const { toast } = useToast();
   const { user, authChecked, isAuthenticated } = useAuth();
 
-  const { room, hostel, sharingOption, stayPackage, selectedBed: preSelectedBed, durationType: navDurationType } = location.state || {};
+  const { room, hostel, sharingOption, stayPackage, selectedBed: preSelectedBed, durationType: navDurationType, durationCount: navDurationCount } = location.state || {};
 
   const [bookingPeriod, setBookingPeriod] = useState<BookingPeriod>({
     type: navDurationType || 'monthly',
-    duration: 1,
-    label: navDurationType === 'daily' ? '1 Day' : navDurationType === 'weekly' ? '1 Week' : '1 Month'
+    duration: navDurationCount || 1,
+    label: (() => {
+      const t = navDurationType || 'monthly';
+      const c = navDurationCount || 1;
+      if (t === 'daily') return `${c} ${c === 1 ? 'Day' : 'Days'}`;
+      if (t === 'weekly') return `${c} ${c === 1 ? 'Week' : 'Weeks'}`;
+      return `${c} ${c === 1 ? 'Month' : 'Months'}`;
+    })()
   });
   
   const [isProcessing, setIsProcessing] = useState(false);

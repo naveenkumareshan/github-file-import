@@ -12,6 +12,8 @@ interface HostelBedMapProps {
   readOnly?: boolean;
   sharingFilter?: string;
   categoryFilter?: string;
+  startDate?: string;
+  endDate?: string;
 }
 
 export const HostelBedMap: React.FC<HostelBedMapProps> = ({
@@ -21,6 +23,8 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
   readOnly = true,
   sharingFilter,
   categoryFilter,
+  startDate,
+  endDate,
 }) => {
   const [loading, setLoading] = useState(true);
   const [floorData, setFloorData] = useState<Record<number, any[]>>({});
@@ -51,11 +55,20 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
           .in('room_id', roomIds)
           .order('bed_number');
 
-        const { data: bookings } = await supabase
+        // Date-aware booking overlap query
+        let bookingQuery = supabase
           .from('hostel_bookings')
           .select('bed_id, profiles:user_id(name)')
           .eq('hostel_id', hostelId)
           .in('status', ['confirmed', 'pending']);
+
+        if (startDate && endDate) {
+          bookingQuery = bookingQuery
+            .lte('start_date', endDate)
+            .gte('end_date', startDate);
+        }
+
+        const { data: bookings } = await bookingQuery;
 
         const bookingMap = new Map<string, string>();
         bookings?.forEach((b: any) => {
@@ -100,7 +113,7 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
     };
 
     fetchData();
-  }, [hostelId]);
+  }, [hostelId, startDate, endDate]);
 
   const floors = Object.keys(floorData).map(Number).sort();
 
