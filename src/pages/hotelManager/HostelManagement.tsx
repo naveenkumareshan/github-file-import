@@ -1,35 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { hostelService } from '@/api/hostelService';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle,
-  DialogDescription
-} from '@/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
-import { HostelForm } from '@/components/admin/HostelForm';
+import { HostelItem } from '@/components/admin/HostelItem';
+import { HostelEditor } from '@/components/admin/HostelEditor';
 import { AddRoomWithSharingForm } from '@/components/admin/AddRoomWithSharingForm';
 import { HostelStayPackageManager } from '@/components/admin/HostelStayPackageManager';
-import { Plus, Building2, Edit, Trash2, Bed, DoorOpen, Eye, Badge as BadgeIcon, Package } from 'lucide-react';
+import { Plus, Building2, Search } from 'lucide-react';
 import ErrorBoundary from '../../components/ErrorBoundary';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+
+const ITEMS_PER_PAGE = 9;
 
 const HostelManagement = () => {
   const [hostels, setHostels] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isHostelFormOpen, setIsHostelFormOpen] = useState(false);
-  const [isRoomFormOpen, setIsRoomFormOpen] = useState(false);
+  const [showEditor, setShowEditor] = useState(false);
   const [selectedHostel, setSelectedHostel] = useState<any>(null);
-  const [isImageGalleryOpen, setIsImageGalleryOpen] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isRoomFormOpen, setIsRoomFormOpen] = useState(false);
   const [isPackagesOpen, setIsPackagesOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -54,8 +49,8 @@ const HostelManagement = () => {
     }
   };
 
-  const handleAddHostel = () => { setSelectedHostel(null); setIsHostelFormOpen(true); };
-  const handleEditHostel = (hostel: any) => { setSelectedHostel(hostel); setIsHostelFormOpen(true); };
+  const handleAddHostel = () => { setSelectedHostel(null); setShowEditor(true); };
+  const handleEditHostel = (hostel: any) => { setSelectedHostel(hostel); setShowEditor(true); };
 
   const handleDeleteHostel = async (hostelId: string) => {
     try {
@@ -67,9 +62,70 @@ const HostelManagement = () => {
     }
   };
 
-  const handleAddRoom = (hostel: any) => { setSelectedHostel(hostel); setIsRoomFormOpen(true); };
-  const handleFormSuccess = () => { setIsHostelFormOpen(false); setIsRoomFormOpen(false); fetchHostels(); };
-  const handleViewRooms = (hostelId: string) => { navigate(`/admin/hostels/${hostelId}/rooms`); };
+  const handleToggleActive = async (hostelId: string, isActive: boolean) => {
+    try {
+      await hostelService.toggleHostelActive(hostelId, isActive);
+      toast({ title: "Success", description: `Hostel ${isActive ? 'activated' : 'deactivated'} successfully` });
+      if (!isActive) {
+        toast({ title: "Note", description: "Booking has been automatically paused" });
+      }
+      fetchHostels();
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to update status", variant: "destructive" });
+    }
+  };
+
+  const handleToggleBooking = async (hostelId: string, isBookingActive: boolean) => {
+    try {
+      await hostelService.toggleHostelBooking(hostelId, isBookingActive);
+      toast({ title: "Success", description: `Booking ${isBookingActive ? 'enabled' : 'paused'} successfully` });
+      fetchHostels();
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to update booking status", variant: "destructive" });
+    }
+  };
+
+  const handleManageBeds = (hostelId: string) => { navigate(`/admin/hostels/${hostelId}/rooms`); };
+
+  const handleManagePackages = (hostel: any) => { setSelectedHostel(hostel); setIsPackagesOpen(true); };
+
+  const handleEditorSave = async (hostelData: any) => {
+    try {
+      if (selectedHostel?.id) {
+        await hostelService.updateHostel(selectedHostel.id, hostelData);
+      } else {
+        await hostelService.createHostel(hostelData);
+      }
+      setShowEditor(false);
+      fetchHostels();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || "Failed to save hostel", variant: "destructive" });
+    }
+  };
+
+  const handleFormSuccess = () => { setIsRoomFormOpen(false); fetchHostels(); };
+
+  // Filter & paginate
+  const filtered = hostels.filter(h => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return h.name?.toLowerCase().includes(q) || h.serial_number?.toLowerCase().includes(q) || h.locality?.toLowerCase().includes(q);
+  });
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const paginated = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+  if (showEditor) {
+    return (
+      <ErrorBoundary>
+        <HostelEditor
+          existingHostel={selectedHostel}
+          onSave={handleEditorSave}
+          onCancel={() => setShowEditor(false)}
+          isAdmin={user?.role === 'admin'}
+        />
+      </ErrorBoundary>
+    );
+  }
 
   return (
     <ErrorBoundary>
@@ -84,165 +140,68 @@ const HostelManagement = () => {
           </Button>
         </div>
 
-        <Card className="border-border/60 shadow-sm">
-          <CardContent className="p-0">
-            {loading ? (
-              <div className="flex justify-center py-12">
-                <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
-              </div>
-            ) : error ? (
-              <div className="flex flex-col items-center justify-center py-16">
-                <Building2 className="h-10 w-10 text-muted-foreground/30 mb-3" />
-                <p className="text-sm font-medium">No Hostels Available</p>
-                <p className="text-xs text-muted-foreground mb-4">Unable to fetch data. Please refresh.</p>
-                <Button onClick={fetchHostels} variant="outline" size="sm">Retry</Button>
-              </div>
-            ) : hostels.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16">
-                <Building2 className="h-10 w-10 text-muted-foreground/30 mb-3" />
-                <p className="text-sm font-medium">No Hostels Found</p>
-                <p className="text-xs text-muted-foreground mb-4">Start by adding your first hostel.</p>
-                <Button onClick={handleAddHostel} size="sm"><Plus className="h-4 w-4 mr-1" /> Add Hostel</Button>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/30">
-                      <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Name</TableHead>
-                      <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Location</TableHead>
-                      <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Gender</TableHead>
-                      <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Status</TableHead>
-                      <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {hostels.map((hostel, idx) => (
-                      <TableRow key={hostel.id} className={idx % 2 === 0 ? "bg-background" : "bg-muted/20"}>
-                        <TableCell className="font-medium">
-                          <div className="flex items-center gap-2">
-                            <div className="h-8 w-8 rounded overflow-hidden flex-shrink-0">
-                              {hostel.logo_image ? (
-                                <img src={hostel.logo_image} alt={hostel.name} className="h-full w-full object-cover" />
-                              ) : (
-                                <div className="h-full w-full bg-muted flex items-center justify-center">
-                                  <Bed className="h-4 w-4 text-muted-foreground" />
-                                </div>
-                              )}
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium">{hostel.name}</p>
-                              <p className="text-xs text-muted-foreground">{hostel.serial_number}</p>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {hostel.location || `${hostel.cities?.name || ''}, ${hostel.states?.name || ''}`}
-                        </TableCell>
-                        <TableCell><Badge variant="outline">{hostel.gender}</Badge></TableCell>
-                        <TableCell>
-                          <div className="flex flex-col gap-1">
-                            <Badge variant={hostel.is_active ? 'default' : 'secondary'}>
-                              {hostel.is_active ? 'Active' : 'Inactive'}
-                            </Badge>
-                            {!hostel.is_approved && (
-                              <Badge variant="outline" className="text-amber-600 border-amber-300">Pending Approval</Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1.5">
-                            <Button variant="outline" size="sm" onClick={() => handleAddRoom(hostel)} className="h-7 text-xs">
-                              <DoorOpen className="h-3 w-3 mr-1" /> Add Room
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={() => handleViewRooms(hostel.id)} className="h-7 text-xs">
-                              <Eye className="h-3 w-3 mr-1" /> Rooms
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={() => { setSelectedHostel(hostel); setIsPackagesOpen(true); }} className="h-7 text-xs">
-                              <Package className="h-3 w-3 mr-1" /> Packages
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={() => handleEditHostel(hostel)} className="h-7 w-7 p-0">
-                              <Edit className="h-3 w-3" />
-                            </Button>
-                            <Button variant="outline" size="sm" className="h-7 w-7 p-0 text-destructive" onClick={() => handleDeleteHostel(hostel.id)}>
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-        
-        {/* Hostel Form Dialog */}
-        <Dialog open={isHostelFormOpen} onOpenChange={setIsHostelFormOpen}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>{selectedHostel ? 'Edit Hostel' : 'Add New Hostel'}</DialogTitle>
-            </DialogHeader>
-            <HostelForm
-              initialData={selectedHostel || undefined}
-              hostelId={selectedHostel?.id}
-              onSuccess={handleFormSuccess}
-            />
-          </DialogContent>
-        </Dialog>
+        {/* Search */}
+        <div className="relative max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search hostels..."
+            value={searchQuery}
+            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+            className="pl-9 h-9"
+          />
+        </div>
 
-        {/* Image Gallery Dialog */}
-        <Dialog open={isImageGalleryOpen} onOpenChange={setIsImageGalleryOpen}>
-          <DialogContent className="max-w-4xl">
-            <DialogHeader>
-              <DialogTitle>Hostel Images</DialogTitle>
-            </DialogHeader>
-            {selectedHostel && (
-              <div className="space-y-6">
-                <div className="w-full aspect-video bg-muted rounded-lg overflow-hidden">
-                  {selectedImage ? (
-                    <img src={selectedImage} alt={selectedHostel.name} className="w-full h-full object-contain" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Bed className="h-16 w-16 text-muted-foreground" />
-                    </div>
-                  )}
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <Building2 className="h-10 w-10 text-muted-foreground/30 mb-3" />
+            <p className="text-sm font-medium">Unable to load hostels</p>
+            <Button onClick={fetchHostels} variant="outline" size="sm" className="mt-4">Retry</Button>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <Building2 className="h-10 w-10 text-muted-foreground/30 mb-3" />
+            <p className="text-sm font-medium">{searchQuery ? 'No hostels match your search' : 'No Hostels Found'}</p>
+            <p className="text-xs text-muted-foreground mb-4">{searchQuery ? 'Try a different search term' : 'Start by adding your first hostel.'}</p>
+            {!searchQuery && <Button onClick={handleAddHostel} size="sm"><Plus className="h-4 w-4 mr-1" /> Add Hostel</Button>}
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {paginated.map((hostel) => (
+                <HostelItem
+                  key={hostel.id}
+                  hostel={hostel}
+                  onEdit={handleEditHostel}
+                  onDelete={handleDeleteHostel}
+                  onManageBeds={handleManageBeds}
+                  onManagePackages={handleManagePackages}
+                  onToggleActive={handleToggleActive}
+                  onToggleBooking={handleToggleBooking}
+                />
+              ))}
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between pt-2">
+                <p className="text-xs text-muted-foreground">
+                  Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)} of {filtered.length}
+                </p>
+                <div className="flex gap-1">
+                  <Button size="sm" variant="outline" className="h-7 text-xs" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>Prev</Button>
+                  {Array.from({ length: totalPages }, (_, i) => (
+                    <Button key={i + 1} size="sm" variant={currentPage === i + 1 ? "default" : "outline"} className="h-7 w-7 p-0 text-xs" onClick={() => setCurrentPage(i + 1)}>{i + 1}</Button>
+                  ))}
+                  <Button size="sm" variant="outline" className="h-7 text-xs" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>Next</Button>
                 </div>
-                {selectedHostel.images?.length > 0 && (
-                  <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
-                    {selectedHostel.images.map((img: string, index: number) => (
-                      <div 
-                        key={index} 
-                        onClick={() => setSelectedImage(img)}
-                        className={`aspect-square rounded-md overflow-hidden cursor-pointer ${selectedImage === img ? 'ring-2 ring-primary' : ''}`}
-                      >
-                        <img src={img} alt={`Image ${index + 1}`} className="w-full h-full object-cover" />
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
             )}
-          </DialogContent>
-        </Dialog>
-
-        {/* Add Room Form Dialog */}
-        <Dialog open={isRoomFormOpen} onOpenChange={setIsRoomFormOpen}>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Add Room to {selectedHostel?.name}</DialogTitle>
-              <DialogDescription>Fill in the room details and sharing options for this hostel.</DialogDescription>
-            </DialogHeader>
-            {selectedHostel && (
-              <AddRoomWithSharingForm
-                hostelId={selectedHostel.id}
-                onSuccess={handleFormSuccess}
-                onClose={() => setIsRoomFormOpen(false)}
-              />
-            )}
-          </DialogContent>
-        </Dialog>
+          </>
+        )}
 
         {/* Stay Packages Dialog */}
         <Dialog open={isPackagesOpen} onOpenChange={setIsPackagesOpen}>
@@ -250,9 +209,7 @@ const HostelManagement = () => {
             <DialogHeader>
               <DialogTitle>Stay Packages - {selectedHostel?.name}</DialogTitle>
             </DialogHeader>
-            {selectedHostel && (
-              <HostelStayPackageManager hostelId={selectedHostel.id} />
-            )}
+            {selectedHostel && <HostelStayPackageManager hostelId={selectedHostel.id} />}
           </DialogContent>
         </Dialog>
       </div>

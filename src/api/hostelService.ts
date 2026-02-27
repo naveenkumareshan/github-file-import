@@ -254,4 +254,28 @@ export const hostelService = {
     if (error) throw error;
     return data;
   },
+
+  toggleHostelActive: async (hostelId: string, isActive: boolean) => {
+    const updateData: any = { is_active: isActive };
+    if (!isActive) updateData.is_booking_active = false;
+    const { data, error } = await supabase
+      .from('hostels')
+      .update(updateData)
+      .eq('id', hostelId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  toggleHostelBooking: async (hostelId: string, isBookingActive: boolean) => {
+    const { data, error } = await supabase
+      .from('hostels')
+      .update({ is_booking_active: isBookingActive })
+      .eq('id', hostelId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
 };
