@@ -40,6 +40,7 @@ Deno.serve(async (req) => {
       razorpay_order_id,
       razorpay_signature,
       bookingId,
+      bookingType,
       testMode,
     } = await req.json();
 
@@ -48,10 +49,13 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    const isHostel = bookingType === "hostel";
+    const tableName = isHostel ? "hostel_bookings" : "bookings";
+
     // Test mode: skip signature verification, directly confirm booking
     if (testMode) {
       const { error: updateError } = await adminClient
-        .from("bookings")
+        .from(tableName)
         .update({ payment_status: "completed" })
         .eq("id", bookingId);
 
@@ -61,6 +65,27 @@ Deno.serve(async (req) => {
           JSON.stringify({ error: "Failed to update booking status" }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
+      }
+
+      // Create hostel receipt in test mode
+      if (isHostel) {
+        const { data: booking } = await adminClient
+          .from("hostel_bookings")
+          .select("hostel_id, user_id, advance_amount, total_price")
+          .eq("id", bookingId)
+          .single();
+
+        if (booking) {
+          await adminClient.from("hostel_receipts").insert({
+            booking_id: bookingId,
+            user_id: booking.user_id,
+            hostel_id: booking.hostel_id,
+            amount: booking.advance_amount > 0 ? booking.advance_amount : booking.total_price,
+            payment_method: "online",
+            transaction_id: `test_pay_${Date.now()}`,
+            receipt_type: "booking_payment",
+          });
+        }
       }
 
       return new Response(
@@ -105,13 +130,29 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Update booking in the correct table
+    const updateData: Record<string, any> = {
+      payment_status: "completed",
+      razorpay_payment_id,
+      razorpay_signature,
+    };
+
+    // For hostel bookings with advance, check if it's advance_paid
+    if (isHostel) {
+      const { data: booking } = await adminClient
+        .from("hostel_bookings")
+        .select("advance_amount, total_price")
+        .eq("id", bookingId)
+        .single();
+
+      if (booking && booking.advance_amount > 0 && booking.advance_amount < booking.total_price) {
+        updateData.payment_status = "advance_paid";
+      }
+    }
+
     const { error: updateError } = await adminClient
-      .from("bookings")
-      .update({
-        payment_status: "completed",
-        razorpay_payment_id,
-        razorpay_signature,
-      })
+      .from(tableName)
+      .update(updateData)
       .eq("id", bookingId)
       .eq("razorpay_order_id", razorpay_order_id);
 
@@ -121,6 +162,27 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: "Failed to update booking status" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Create hostel receipt on successful payment
+    if (isHostel) {
+      const { data: booking } = await adminClient
+        .from("hostel_bookings")
+        .select("hostel_id, user_id, advance_amount, total_price")
+        .eq("id", bookingId)
+        .single();
+
+      if (booking) {
+        await adminClient.from("hostel_receipts").insert({
+          booking_id: bookingId,
+          user_id: booking.user_id,
+          hostel_id: booking.hostel_id,
+          amount: booking.advance_amount > 0 ? booking.advance_amount : booking.total_price,
+          payment_method: "online",
+          transaction_id: razorpay_payment_id,
+          receipt_type: "booking_payment",
+        });
+      }
     }
 
     return new Response(

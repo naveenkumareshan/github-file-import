@@ -10,41 +10,40 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { hostelService } from "@/api/hostelService";
+import { hostelRoomService } from "@/api/hostelRoomService";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import {
   Bed,
   Building,
   CreditCard,
-  Calendar,
   Info,
   CheckCircle,
-  Hotel,
   ImageIcon,
 } from "lucide-react";
 import { CabinImageSlider } from "@/components/CabinImageSlider";
 import { getImageUrl } from "@/lib/utils";
+import { formatCurrency } from "@/utils/currency";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog";
 
 const HostelRoomDetails = () => {
-  const { roomId } = useParams<{ roomId: string }>();
+  const { roomId: hostelId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const [room, setRoom] = useState<any>(null);
+  const [rooms, setRooms] = useState<any[]>([]);
   const [hostel, setHostel] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedSharingOption, setSelectedSharingOption] = useState<any>(null);
+  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const fetchedRef = useRef(false);
   const [selectedRoom, setSelectedRoom] = useState<any | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -52,26 +51,26 @@ const HostelRoomDetails = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!roomId || fetchedRef.current) return;
+      if (!hostelId || fetchedRef.current) return;
 
       try {
         fetchedRef.current = true;
         setLoading(true);
         setError(null);
 
-        const roomResponse = await hostelService.getHostelById(roomId);
-        if (roomResponse.success) {
-          setRoom(roomResponse.data);
-          setHostel(roomResponse.data);
-        } else {
-          setError("Failed to load room details");
-        }
+        const [hostelData, roomsData] = await Promise.all([
+          hostelService.getHostelById(hostelId),
+          hostelRoomService.getHostelRooms(hostelId),
+        ]);
+
+        setHostel(hostelData);
+        setRooms(roomsData || []);
       } catch (error) {
-        console.error("Error fetching room details:", error);
-        setError("Failed to load room details");
+        console.error("Error fetching hostel details:", error);
+        setError("Failed to load hostel details");
         toast({
           title: "Error",
-          description: "Failed to load room details",
+          description: "Failed to load hostel details",
           variant: "destructive",
         });
       } finally {
@@ -80,14 +79,23 @@ const HostelRoomDetails = () => {
     };
 
     fetchData();
-  }, [roomId]);
+  }, [hostelId]);
 
-  const handleSelectSharingOption = (option: any) => {
+  const handleSelectSharingOption = (option: any, roomId: string) => {
     setSelectedSharingOption(option);
+    setSelectedRoomId(roomId);
   };
 
-  const handleBookNow = (room) => {
-    if (!selectedSharingOption) {
+  const getAvailableCount = (option: any) => {
+    return option.hostel_beds?.filter((b: any) => b.is_available && !b.is_blocked).length || 0;
+  };
+
+  const getTotalBedCount = (option: any) => {
+    return option.total_beds || 0;
+  };
+
+  const handleBookNow = (room: any) => {
+    if (!selectedSharingOption || selectedRoomId !== room.id) {
       toast({
         title: "Selection Required",
         description: "Please select a sharing option first",
@@ -96,8 +104,7 @@ const HostelRoomDetails = () => {
       return;
     }
 
-    // Navigate to booking page with room and sharing option details
-    navigate(`/hostel-booking/${room.hostelId}/${room._id}`, {
+    navigate(`/hostel-booking/${hostel.id}/${room.id}`, {
       state: {
         room,
         hostel,
@@ -106,21 +113,9 @@ const HostelRoomDetails = () => {
     });
   };
 
-  const getCategoryBadge = (category: string) => {
-    switch (category) {
-      case "luxury":
-        return <Badge className="bg-purple-500">Luxury</Badge>;
-      case "premium":
-        return <Badge className="bg-blue-500">Premium</Badge>;
-      default:
-        return <Badge className="bg-green-500">Standard</Badge>;
-    }
-  };
-
   const handleOpenImageGallery = (room: any, initialImage?: string) => {
-    console.log(room);
     setSelectedRoom(room);
-    setSelectedImage(initialImage || room.imageSrc);
+    setSelectedImage(initialImage || room.image_url);
     setIsImageGalleryOpen(true);
   };
 
@@ -132,7 +127,7 @@ const HostelRoomDetails = () => {
     );
   }
 
-  if (error || !room) {
+  if (error || !hostel) {
     return (
       <div className="px-3 py-4">
         <Card>
@@ -140,7 +135,7 @@ const HostelRoomDetails = () => {
             <CardTitle className="text-[15px]">Error</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-destructive text-[13px]">{error || "Room not found"}</p>
+            <p className="text-destructive text-[13px]">{error || "Hostel not found"}</p>
           </CardContent>
           <CardFooter>
             <Button onClick={() => navigate(-1)} size="sm">Go Back</Button>
@@ -153,322 +148,256 @@ const HostelRoomDetails = () => {
   return (
     <ErrorBoundary>
       <div className="flex flex-col min-h-screen">
-
         <div className="flex-grow px-3 py-3 max-w-lg mx-auto w-full">
           <div className="flex flex-col gap-6">
-            {/* Breadcrumb navigation */}
+            {/* Breadcrumb */}
             <div className="flex items-center text-sm text-muted-foreground">
-              <button
-                onClick={() => navigate("/hostels")}
-                className="hover:text-primary"
-              >
+              <button onClick={() => navigate("/hostels")} className="hover:text-primary">
                 Hostels
               </button>
               <span className="mx-2">/</span>
-              {hostel && (
-                <>
-                  <button
-                    onClick={() => navigate(`/hostels/${hostel._id}`)}
-                    className="hover:text-primary"
-                  >
-                    {hostel.name}
-                  </button>
-                  <span className="mx-2">/</span>
-                </>
-              )}
-              <span className="text-primary">{room.name}</span>
+              <span className="text-primary">{hostel.name}</span>
             </div>
 
-            {/* Main content - single column on mobile */}
             <div className="flex flex-col gap-3">
-              {/* Left column - Room details */}
-              <div className="space-y-3">
-                <Card>
-                  {/* Hostel images slider if available */}
-                  {hostel.images && hostel.images.length > 0 && (
-                    <div className="mb-3">
-                      <CabinImageSlider images={hostel.images} />
-                    </div>
-                  )}
-                </Card>
-
-                {hostel && (
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-[14px] font-semibold">
-                        About the Hostel
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2 pt-0">
-                      <div className="flex items-center gap-4">
-                        {hostel.logoImage ? (
-                          <img
-                            src={
-                              getImageUrl(hostel.logoImage)
-                            }
-                            alt={hostel.name}
-                            className="h-16 w-16 object-cover rounded-md"
-                          />
-                        ) : (
-                          <div className="h-16 w-16 bg-muted rounded-md flex items-center justify-center">
-                            <Building className="h-8 w-8 text-muted-foreground" />
-                          </div>
-                        )}
-                        <div>
-                          <h3 className="text-lg font-medium">{hostel.name}</h3>
-                          <p className="text-muted-foreground">
-                            {hostel.location}
-                          </p>
-                        </div>
-                      </div>
-
-                      {hostel.description && (
-                        <div>
-                          <p className="text-muted-foreground">
-                            {hostel.description}
-                          </p>
-                        </div>
-                      )}
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {hostel.contactEmail && (
-                          <div className="flex flex-col">
-                            <span className="text-sm text-muted-foreground">
-                              Contact Email
-                            </span>
-                            <span className="font-medium">
-                              {hostel.contactEmail}
-                            </span>
-                          </div>
-                        )}
-                        {hostel.contactPhone && (
-                          <div className="flex flex-col">
-                            <span className="text-sm text-muted-foreground">
-                              Contact Phone
-                            </span>
-                            <span className="font-medium">
-                              {hostel.contactPhone}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
+              {/* Hostel images */}
+              <Card>
+                {hostel.images && hostel.images.length > 0 && (
+                  <div className="mb-3">
+                    <CabinImageSlider images={hostel.images} />
+                  </div>
                 )}
-              </div>
+              </Card>
 
-              {/* Right column - Booking panel */}
+              {/* Hostel info */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-[14px] font-semibold">
+                    About the Hostel
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 pt-0">
+                  <div className="flex items-center gap-4">
+                    {hostel.logo_image ? (
+                      <img
+                        src={getImageUrl(hostel.logo_image)}
+                        alt={hostel.name}
+                        className="h-16 w-16 object-cover rounded-md"
+                      />
+                    ) : (
+                      <div className="h-16 w-16 bg-muted rounded-md flex items-center justify-center">
+                        <Building className="h-8 w-8 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div>
+                      <h3 className="text-lg font-medium">{hostel.name}</h3>
+                      <p className="text-muted-foreground">{hostel.location}</p>
+                    </div>
+                  </div>
+
+                  {hostel.description && (
+                    <p className="text-muted-foreground">{hostel.description}</p>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {hostel.contact_email && (
+                      <div className="flex flex-col">
+                        <span className="text-sm text-muted-foreground">Contact Email</span>
+                        <span className="font-medium">{hostel.contact_email}</span>
+                      </div>
+                    )}
+                    {hostel.contact_phone && (
+                      <div className="flex flex-col">
+                        <span className="text-sm text-muted-foreground">Contact Phone</span>
+                        <span className="font-medium">{hostel.contact_phone}</span>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Rooms & Booking */}
               <div className="space-y-6">
                 <Card className="sticky top-6">
                   <CardHeader>
-                    <CardTitle className="text-xl">Book This Room</CardTitle>
-                    <CardDescription>
-                      Select your preferred sharing option
-                    </CardDescription>
+                    <CardTitle className="text-xl">Rooms & Pricing</CardTitle>
+                    <CardDescription>Select your preferred sharing option</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {hostel.rooms?.map((room, index) => (
-                      <div
-                        key={index}
-                        className="border rounded-lg p-4 cursor-pointer transition-colors"
-                      >
-                      <div>
-  {/* Room Details Header */}
-  <h3 className="text-[13px] font-semibold mb-2">Room Details</h3>
+                    {rooms.length === 0 ? (
+                      <div className="text-center py-6">
+                        <Info className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+                        <p className="text-muted-foreground">No rooms available</p>
+                      </div>
+                    ) : (
+                      rooms.map((room) => (
+                        <div key={room.id} className="border rounded-lg p-4 cursor-pointer transition-colors">
+                          {/* Room Details Header */}
+                          <h3 className="text-[13px] font-semibold mb-2">Room Details</h3>
+                          <div className="flex gap-6 items-start">
+                            <div
+                              className="relative h-40 w-40 rounded overflow-hidden cursor-pointer"
+                              onClick={() => handleOpenImageGallery(room)}
+                            >
+                              {room.image_url ? (
+                                <img src={getImageUrl(room.image_url)} alt={`Room ${room.room_number}`} className="h-full w-full object-cover" />
+                              ) : (
+                                <div className="h-full w-full bg-muted flex items-center justify-center">
+                                  <Bed className="h-6 w-6 text-muted-foreground" />
+                                </div>
+                              )}
+                              {room.images && room.images.length > 1 && (
+                                <div className="absolute bottom-1 right-1 bg-black/60 text-white text-xs px-2 py-0.5 rounded-full flex items-center gap-1">
+                                  <ImageIcon className="h-3 w-3" />
+                                  {room.images.length}
+                                </div>
+                              )}
+                            </div>
 
-  <div className="flex gap-6 items-start">
-    {/* Image + count */}
-    <div
-      className="relative h-40 w-40 rounded overflow-hidden cursor-pointer"
-      onClick={() => handleOpenImageGallery(room)}
-    >
-      {room.imageSrc ? (
-        <img
-          src={getImageUrl(room.imageSrc)}
-          alt={room.name}
-          className="h-full w-full object-cover"
-        />
-      ) : (
-        <div className="h-full w-full bg-muted flex items-center justify-center">
-          <Bed className="h-6 w-6 text-muted-foreground" />
-        </div>
-      )}
+                            <div className="grid grid-cols-2 sm:grid-cols-2 gap-4 flex-1">
+                              <div className="flex flex-col">
+                                <span className="text-sm text-muted-foreground">Room Number</span>
+                                <span className="font-medium">{room.room_number}</span>
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-sm text-muted-foreground">Floor</span>
+                                <span className="font-medium">{room.floor}</span>
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-sm text-muted-foreground">Category</span>
+                                <span className="font-medium">
+                                  {room.category?.charAt(0).toUpperCase() + room.category?.slice(1)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
 
-      {/* Show image count overlay */}
-      {room.images && room.images.length > 1 && (
-        <div className="absolute bottom-1 right-1 bg-black/60 text-white text-xs px-2 py-0.5 rounded-full flex items-center gap-1">
-          <ImageIcon className="h-3 w-3" />
-          {room.images.length}
-        </div>
-      )}
-    </div>
+                          <div className="mt-4"><Separator /></div>
 
-    {/* Room details */}
-    <div className="grid grid-cols-2 sm:grid-cols-2 gap-4 flex-1">
-      <div className="flex flex-col">
-        <span className="text-sm text-muted-foreground">Room Number</span>
-        <span className="font-medium">{room.roomNumber}</span>
-      </div>
-      <div className="flex flex-col">
-        <span className="text-sm text-muted-foreground">Floor</span>
-        <span className="font-medium">{room.floor}</span>
-      </div>
-      <div className="flex flex-col">
-        <span className="text-sm text-muted-foreground">Category</span>
-        <span className="font-medium">
-          {room.category?.charAt(0).toUpperCase() + room.category?.slice(1)}
-        </span>
-      </div>
-    </div>
-  </div>
-
-  {/* Separator full width */}
-  <div className="mt-4">
-    <Separator />
-  </div>
-</div>
-
-                        <div>
-                        {room.amenities && room.amenities.length > 0 && (
-                          <>
-                            <Separator />
-                            <div>
-                              <h3 className="text-lg font-medium mb-3">
-                                Amenities
-                              </h3>
-                              <div className="flex flex-wrap gap-2">
-                                {room.amenities.map(
-                                  (amenity: string, index: number) => (
+                          {/* Amenities */}
+                          {room.amenities && room.amenities.length > 0 && (
+                            <>
+                              <Separator />
+                              <div>
+                                <h3 className="text-lg font-medium mb-3">Amenities</h3>
+                                <div className="flex flex-wrap gap-2">
+                                  {room.amenities.map((amenity: string, index: number) => (
                                     <Badge key={index} variant="secondary">
                                       <CheckCircle className="h-3 w-3 mr-1" />
                                       {amenity}
                                     </Badge>
-                                  )
-                                )}
+                                  ))}
+                                </div>
                               </div>
-                            </div>
-                          </>
-                        )}
-                        </div>
-                        <div>
-                        <br></br>
-                        {room.sharingOptions &&
-                        room.sharingOptions.length > 0 ? (
-                          <div className="space-y-4">
-                            {room.sharingOptions.map(
-                              (option: any, optionIndex: number) => (
-                                <div
-                                  key={optionIndex}
-                                  onClick={() =>
-                                    handleSelectSharingOption(option)
-                                  }
-                                  className={`relative border rounded-xl p-4 cursor-pointer transition-all shadow-sm hover:shadow-md ${
-                                    selectedSharingOption === option
-                                      ? "border-primary bg-primary/5 ring-2 ring-primary/20"
-                                      : "hover:border-primary/50"
-                                  }`}
-                                >
-                                  {/* Header */}
-                                  <div className="flex justify-between items-center mb-2">
-                                    <h4 className="text-base font-semibold">
-                                      {option.type}
-                                    </h4>
-                                    <Badge
-                                      variant={
-                                        option.available > 0
-                                          ? "default"
-                                          : "outline"
-                                      }
-                                      className={`${
-                                        option.available > 0
-                                          ? "bg-green-500 text-white"
-                                          : "border text-muted-foreground"
+                            </>
+                          )}
+
+                          {/* Sharing Options */}
+                          <div>
+                            <br />
+                            {room.hostel_sharing_options && room.hostel_sharing_options.length > 0 ? (
+                              <div className="space-y-4">
+                                {room.hostel_sharing_options.map((option: any, optionIndex: number) => {
+                                  const available = getAvailableCount(option);
+                                  const totalBeds = getTotalBedCount(option);
+
+                                  return (
+                                    <div
+                                      key={optionIndex}
+                                      onClick={() => handleSelectSharingOption(option, room.id)}
+                                      className={`relative border rounded-xl p-4 cursor-pointer transition-all shadow-sm hover:shadow-md ${
+                                        selectedSharingOption?.id === option.id && selectedRoomId === room.id
+                                          ? "border-primary bg-primary/5 ring-2 ring-primary/20"
+                                          : "hover:border-primary/50"
                                       }`}
                                     >
-                                      {option.available > 0
-                                        ? "Available"
-                                        : "Full"}
-                                    </Badge>
-                                  </div>
+                                      <div className="flex justify-between items-center mb-2">
+                                        <h4 className="text-base font-semibold">{option.type}</h4>
+                                        <Badge
+                                          variant={available > 0 ? "default" : "outline"}
+                                          className={`${
+                                            available > 0
+                                              ? "bg-green-500 text-white"
+                                              : "border text-muted-foreground"
+                                          }`}
+                                        >
+                                          {available > 0 ? "Available" : "Full"}
+                                        </Badge>
+                                      </div>
 
-                                  {/* Capacity */}
-                                  <div className="text-sm text-muted-foreground">
-                                    {option.capacity} persons per unit
-                                  </div>
+                                      <div className="text-sm text-muted-foreground">
+                                        {option.capacity} persons per unit
+                                      </div>
 
-                                  {/* Availability Bar */}
-                                  <div className="mt-3">
-                                    <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                                      <span>Available: {option.available}</span>
-                                      <span>
-                                        Total: {option.count * option.capacity}
-                                      </span>
+                                      <div className="mt-3">
+                                        <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                                          <span>Available: {available}</span>
+                                          <span>Total: {totalBeds}</span>
+                                        </div>
+                                        <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                                          <div
+                                            className={`h-2 rounded-full ${
+                                              available > 0 ? "bg-green-500" : "bg-gray-400"
+                                            }`}
+                                            style={{
+                                              width: `${totalBeds > 0 ? (available / totalBeds) * 100 : 0}%`,
+                                            }}
+                                          />
+                                        </div>
+                                      </div>
+
+                                      <div className="mt-4">
+                                        <span className="text-lg font-bold text-foreground">
+                                          {formatCurrency(option.price_monthly)}
+                                        </span>
+                                        <span className="ml-1 text-sm text-muted-foreground">
+                                          per month
+                                        </span>
+                                        {option.price_daily > 0 && (
+                                          <span className="ml-2 text-sm text-muted-foreground">
+                                            ({formatCurrency(option.price_daily)}/day)
+                                          </span>
+                                        )}
+                                      </div>
                                     </div>
-                                    <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                                      <div
-                                        className={`h-2 rounded-full ${
-                                          option.available > 0
-                                            ? "bg-green-500"
-                                            : "bg-gray-400"
-                                        }`}
-                                        style={{
-                                          width: `${
-                                            (option.available /
-                                              (option.count *
-                                                option.capacity)) *
-                                            100
-                                          }%`,
-                                        }}
-                                      />
-                                    </div>
-                                  </div>
+                                  );
+                                })}
 
-                                  {/* Price */}
-                                  <div className="mt-4">
-                                    <span className="text-lg font-bold text-foreground">
-                                      ₹{option.price}
-                                    </span>
-                                    <span className="ml-1 text-sm text-muted-foreground">
-                                      per day
-                                    </span>
-                                  </div>
-                                </div>
-                              )
+                                <Button
+                                  className="w-full"
+                                  disabled={
+                                    !selectedSharingOption ||
+                                    selectedRoomId !== room.id ||
+                                    getAvailableCount(selectedSharingOption) <= 0
+                                  }
+                                  onClick={() => handleBookNow(room)}
+                                >
+                                  <CreditCard className="mr-2 h-5 w-5" />
+                                  Book Now
+                                </Button>
+
+                                {(!selectedSharingOption || selectedRoomId !== room.id) ? (
+                                  <p className="text-sm text-center text-muted-foreground">
+                                    Please select a sharing option above
+                                  </p>
+                                ) : getAvailableCount(selectedSharingOption) <= 0 ? (
+                                  <p className="text-sm text-center text-muted-foreground">
+                                    This option is currently full
+                                  </p>
+                                ) : null}
+                              </div>
+                            ) : (
+                              <div className="text-center py-6">
+                                <Info className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+                                <p className="text-muted-foreground">
+                                  No sharing options available for this room
+                                </p>
+                              </div>
                             )}
-
-                            <Button
-                              className="w-full"
-                              disabled={
-                                !selectedSharingOption ||
-                                selectedSharingOption?.available <= 0
-                              }
-                              onClick={() => handleBookNow(room)}
-                            >
-                              <CreditCard className="mr-2 h-5 w-5" />
-                              Book Now
-                            </Button>
-
-                            {!selectedSharingOption ? (
-                              <p className="text-sm text-center text-muted-foreground">
-                                Please select a sharing option above
-                              </p>
-                            ) : selectedSharingOption.available <= 0 ? (
-                              <p className="text-sm text-center text-muted-foreground">
-                                This option is currently full
-                              </p>
-                            ) : null}
                           </div>
-                        ) : (
-                          <div className="text-center py-6">
-                            <Info className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
-                            <p className="text-muted-foreground">
-                              No sharing options available for this room
-                            </p>
-                          </div>
-                        )}
                         </div>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -481,17 +410,16 @@ const HostelRoomDetails = () => {
           <DialogContent className="max-w-4xl">
             <DialogHeader>
               <DialogTitle>
-                Room Number : {selectedRoom?.roomNumber}
+                Room Number : {selectedRoom?.room_number}
               </DialogTitle>
             </DialogHeader>
             {selectedRoom && (
               <div className="space-y-6">
-                {/* Main Selected Image */}
                 <div className="w-full aspect-video bg-muted rounded-lg overflow-hidden">
                   {selectedImage ? (
                     <img
                       src={getImageUrl(selectedImage)}
-                      alt={selectedRoom.name}
+                      alt={`Room ${selectedRoom.room_number}`}
                       className="w-full h-full object-contain"
                     />
                   ) : (
@@ -500,11 +428,9 @@ const HostelRoomDetails = () => {
                     </div>
                   )}
                 </div>
-
-                {/* Thumbnails */}
                 {selectedRoom.images && selectedRoom.images.length > 0 && (
                   <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
-                    {selectedRoom.images.map((img, index) => (
+                    {selectedRoom.images.map((img: string, index: number) => (
                       <div
                         key={index}
                         onClick={() => setSelectedImage(img)}
@@ -525,8 +451,6 @@ const HostelRoomDetails = () => {
             )}
           </DialogContent>
         </Dialog>
-
-        
       </div>
     </ErrorBoundary>
   );

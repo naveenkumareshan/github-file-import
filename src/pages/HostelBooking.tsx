@@ -7,13 +7,14 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { hostelService } from '@/api/hostelService';
+import { hostelBookingService } from '@/api/hostelBookingService';
 import { razorpayService } from '@/api/razorpayService';
 import { useAuth } from '@/hooks/use-auth';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import { Bed, Building, CreditCard, Calendar, ArrowRight, ChevronLeft } from 'lucide-react';
+import { Bed, Building, CreditCard, ChevronLeft, AlertCircle } from 'lucide-react';
 import { format, addMonths, addWeeks, addDays } from 'date-fns';
 import { getImageUrl } from '@/lib/utils';
+import { formatCurrency } from '@/utils/currency';
 
 interface BookingPeriod {
   type: 'daily' | 'weekly' | 'monthly';
@@ -28,7 +29,6 @@ const HostelBooking = () => {
   const { toast } = useToast();
   const { user, authChecked, isAuthenticated } = useAuth();
 
-  // Get room and sharing option data from location state
   const { room, hostel, sharingOption } = location.state || {};
 
   const [bookingPeriod, setBookingPeriod] = useState<BookingPeriod>({
@@ -38,17 +38,16 @@ const HostelBooking = () => {
   });
   
   const [isProcessing, setIsProcessing] = useState(false);
-  const [reservationId, setReservationId] = useState<string | null>(null);
   const [startDate] = useState<Date>(new Date());
-  
+  const [availableBed, setAvailableBed] = useState<any>(null);
+  const [loadingBeds, setLoadingBeds] = useState(false);
 
-   const loadRazorpayScript = (): Promise<boolean> => {
+  const loadRazorpayScript = (): Promise<boolean> => {
     return new Promise((resolve) => {
       if ((window as any).Razorpay) {
         resolve(true);
         return;
       }
-  
       const script = document.createElement('script');
       script.src = 'https://checkout.razorpay.com/v1/checkout.js';
       script.onload = () => resolve(true);
@@ -56,6 +55,7 @@ const HostelBooking = () => {
       document.body.appendChild(script);
     });
   };
+
   // Redirect if no room or sharing option
   useEffect(() => {
     if (!room || !sharingOption) {
@@ -64,9 +64,9 @@ const HostelBooking = () => {
         description: "Room or sharing option details are missing",
         variant: "destructive"
       });
-      navigate(`/rooms/${roomId}`);
+      navigate('/hostels');
     }
-  }, [room, sharingOption, roomId, navigate, toast]);
+  }, [room, sharingOption]);
   
   // Redirect if not logged in
   useEffect(() => {
@@ -78,195 +78,202 @@ const HostelBooking = () => {
       });
       navigate('/student/login', { state: { from: location.pathname } });
     }
-  }, [isAuthenticated, location.pathname, navigate, toast]);
+  }, [isAuthenticated, authChecked]);
+
+  // Fetch available beds
+  useEffect(() => {
+    const fetchBeds = async () => {
+      if (!room?.id || !sharingOption?.id) return;
+      setLoadingBeds(true);
+      try {
+        const endDate = calculateEndDate();
+        const beds = await hostelBookingService.getAvailableBeds(
+          room.id,
+          startDate.toISOString().split('T')[0],
+          endDate.toISOString().split('T')[0]
+        );
+        // Find first available bed for the selected sharing option
+        const bed = beds?.find(
+          (b: any) => b.sharing_option_id === sharingOption.id && b.is_available && !b.is_blocked
+        );
+        setAvailableBed(bed || null);
+      } catch (error) {
+        console.error('Error fetching beds:', error);
+      } finally {
+        setLoadingBeds(false);
+      }
+    };
+    fetchBeds();
+  }, [room?.id, sharingOption?.id, bookingPeriod]);
   
-  // Calculate end date based on booking period
   const calculateEndDate = () => {
-    if (bookingPeriod.type === 'daily') {
-      return addDays(startDate, bookingPeriod.duration);
-    } else if (bookingPeriod.type === 'weekly') {
-      return addWeeks(startDate, bookingPeriod.duration);
-    } else {
-      return addMonths(startDate, bookingPeriod.duration);
-    }
+    if (bookingPeriod.type === 'daily') return addDays(startDate, bookingPeriod.duration);
+    if (bookingPeriod.type === 'weekly') return addWeeks(startDate, bookingPeriod.duration);
+    return addMonths(startDate, bookingPeriod.duration);
   };
 
-  // Calculate total price
   const calculateTotalPrice = () => {
-    let multiplier = 1;
-    if (bookingPeriod.type === 'weekly') {
-      multiplier = 7 * bookingPeriod.duration;
-    } else if (bookingPeriod.type === 'monthly') {
-      multiplier = 30 * bookingPeriod.duration;
-    } else {
-      multiplier = bookingPeriod.duration;
+    if (bookingPeriod.type === 'daily') {
+      return (sharingOption?.price_daily || 0) * bookingPeriod.duration;
     }
-    
-    return sharingOption.price * multiplier;
+    if (bookingPeriod.type === 'weekly') {
+      return (sharingOption?.price_daily || 0) * 7 * bookingPeriod.duration;
+    }
+    return (sharingOption?.price_monthly || 0) * bookingPeriod.duration;
+  };
+
+  const calculateAdvanceAmount = () => {
+    if (!hostel?.advance_booking_enabled) return null;
+    const totalPrice = calculateTotalPrice();
+    if (hostel.advance_use_flat && hostel.advance_flat_amount) {
+      return Math.min(hostel.advance_flat_amount, totalPrice);
+    }
+    return Math.round(totalPrice * (hostel.advance_percentage / 100));
+  };
+
+  const getPayableAmount = () => {
+    const advance = calculateAdvanceAmount();
+    return advance !== null ? advance : calculateTotalPrice();
   };
 
   const handleBookingPeriodChange = (type: 'daily' | 'weekly' | 'monthly', duration: number) => {
     let label = '';
-    
-    if (type === 'daily') {
-      label = `${duration} ${duration === 1 ? 'Day' : 'Days'}`;
-    } else if (type === 'weekly') {
-      label = `${duration} ${duration === 1 ? 'Week' : 'Weeks'}`;
-    } else {
-      label = `${duration} ${duration === 1 ? 'Month' : 'Months'}`;
-    }
-    
+    if (type === 'daily') label = `${duration} ${duration === 1 ? 'Day' : 'Days'}`;
+    else if (type === 'weekly') label = `${duration} ${duration === 1 ? 'Week' : 'Weeks'}`;
+    else label = `${duration} ${duration === 1 ? 'Month' : 'Months'}`;
     setBookingPeriod({ type, duration, label });
   };
 
   const handleProceedToPayment = async () => {
     if (!isAuthenticated || !user) {
-      toast({
-        title: "Login Required",
-        description: "Please log in to complete the booking",
-        variant: "destructive"
-      });
+      toast({ title: "Login Required", description: "Please log in to complete the booking", variant: "destructive" });
+      return;
+    }
+
+    if (!availableBed) {
+      toast({ title: "No Beds Available", description: "No beds are available for the selected option and dates", variant: "destructive" });
       return;
     }
 
     try {
-
-          const isScriptLoaded = await loadRazorpayScript();
+      const isScriptLoaded = await loadRazorpayScript();
       if (!isScriptLoaded) {
-        toast({
-          title: "Payment Failed",
-          description: "Unable to load Razorpay SDK. Please try again later.",
-          variant: "destructive"
-        });
+        toast({ title: "Payment Failed", description: "Unable to load payment SDK. Please try again.", variant: "destructive" });
         return;
       }
       setIsProcessing(true);
       
-      // Calculate total price and dates
       const totalPrice = calculateTotalPrice();
+      const advanceAmount = calculateAdvanceAmount();
+      const payableAmount = getPayableAmount();
       const endDate = calculateEndDate();
       
-      // Create reservation
+      // Create booking
       const bookingData = {
-        hostelId: hostel._id,
-        roomId: room._id,
-        sharingType: sharingOption.type,
-        sharingOptionId: sharingOption._id,
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        totalPrice,
-        bookingDuration: bookingPeriod.type,
-        durationCount: bookingPeriod.duration
+        hostel_id: hostel.id,
+        room_id: room.id,
+        bed_id: availableBed.id,
+        sharing_option_id: sharingOption.id,
+        start_date: startDate.toISOString().split('T')[0],
+        end_date: endDate.toISOString().split('T')[0],
+        booking_duration: bookingPeriod.type as 'daily' | 'weekly' | 'monthly',
+        duration_count: bookingPeriod.duration,
+        total_price: totalPrice,
+        advance_amount: advanceAmount || 0,
+        remaining_amount: advanceAmount ? totalPrice - advanceAmount : 0,
+        security_deposit: hostel.security_deposit || 0,
+        payment_method: 'online',
       };
       
-      const reserveResponse = await hostelService.bookSharedRoom(bookingData);
-      if (reserveResponse.success && reserveResponse.data) {
-        setReservationId(reserveResponse.data._id);
+      const booking = await hostelBookingService.createBooking(bookingData);
 
-        // Create Razorpay order
-        const orderData = {
-          amount: totalPrice,
-          currency: 'INR',
-          bookingId: reserveResponse.data._id,
-          bookingType: 'hostel' as const,
-          bookingDuration: bookingPeriod.type,
-          durationCount: bookingPeriod.duration,
-          notes: {
-            hostelId: hostel._id,
-            roomId: room._id,
-            sharingType: sharingOption.type,
-          }
-        };
-        
-        const orderResponse = await razorpayService.createOrder(orderData);
+      // Create Razorpay order
+      const orderResponse = await razorpayService.createOrder({
+        amount: payableAmount,
+        currency: 'INR',
+        bookingId: booking.id,
+        bookingType: 'hostel',
+        bookingDuration: bookingPeriod.type,
+        durationCount: bookingPeriod.duration,
+        notes: {
+          hostelId: hostel.id,
+          roomId: room.id,
+          sharingType: sharingOption.type,
+        }
+      });
 
-         if (!orderResponse.success || !orderResponse.data) {
-            throw new Error(orderResponse.error?.message || 'Failed to create order');
-          }
-          
-          const order = orderResponse.data;
-    
-          // Update transaction with Razorpay order ID
-        await hostelService.bookSharedRoomUpdateTransactioId(reserveResponse.data._id,{
-          razorpay_order_id: order.id
+      if (!orderResponse.success || !orderResponse.data) {
+        throw new Error(orderResponse.error?.message || 'Failed to create order');
+      }
+      
+      const order = orderResponse.data;
+
+      if (order.testMode) {
+        // Test mode - directly verify
+        const verifyResponse = await razorpayService.verifyPayment({
+          razorpay_payment_id: `test_pay_${Date.now()}`,
+          razorpay_order_id: order.id,
+          razorpay_signature: 'test_signature',
+          bookingId: booking.id,
+          bookingType: 'hostel',
         });
         
-        if (orderResponse.success && orderResponse.data.id) {
-          // Initialize Razorpay payment
-          const razorpayOptions = {
-            key: order.KEY_ID,
-            amount: totalPrice * 100,
-            currency: 'INR',
-            name: hostel.name,
-            description: `${room.name} - ${sharingOption.type}`,
-            order_id: orderResponse.data.id,
-            prefill: {
-              name: user.name,
-              email: user.email,
-              contact: user.phone || '',
-            },
-            handler: function(response: any) {
-              // Verify payment
-              handlePaymentSuccess(response);
-            },
-          };
-          
-          const rzp = new (window as any).Razorpay(razorpayOptions);
-          rzp.open();
+        if (verifyResponse.success) {
+          toast({ title: "Booking Confirmed!", description: "Your hostel booking has been confirmed (Test Mode)" });
+          navigate(`/hostel-confirmation/${booking.id}`);
         } else {
-          throw new Error(orderResponse.error?.message || 'Failed to create payment order');
+          throw new Error('Test payment verification failed');
         }
-      } else {
-        throw new Error(reserveResponse.message || 'Failed to create reservation');
+        return;
       }
-    } catch (error) {
+
+      // Real Razorpay checkout
+      const razorpayOptions = {
+        key: order.KEY_ID,
+        amount: payableAmount * 100,
+        currency: 'INR',
+        name: hostel.name,
+        description: `Room ${room.room_number} - ${sharingOption.type}`,
+        order_id: order.id,
+        prefill: {
+          name: user.name,
+          email: user.email,
+          contact: user.phone || '',
+        },
+        handler: async (response: any) => {
+          try {
+            const verifyResponse = await razorpayService.verifyPayment({
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_signature: response.razorpay_signature,
+              bookingId: booking.id,
+              bookingType: 'hostel',
+            });
+            
+            if (verifyResponse.success) {
+              toast({ title: "Payment Successful", description: "Your booking has been confirmed!" });
+              navigate(`/hostel-confirmation/${booking.id}`);
+            } else {
+              throw new Error('Payment verification failed');
+            }
+          } catch (err) {
+            console.error('Payment verification error:', err);
+            toast({ title: "Payment Verification Failed", description: "Please contact support", variant: "destructive" });
+          }
+        },
+      };
+      
+      const rzp = new (window as any).Razorpay(razorpayOptions);
+      rzp.open();
+    } catch (error: any) {
       console.error('Error processing booking:', error);
       toast({
         title: "Booking Failed",
-        description: error instanceof Error ? error.message : 'An error occurred during booking',
+        description: error.message || 'An error occurred during booking',
         variant: "destructive"
       });
     } finally {
       setIsProcessing(false);
-    }
-  };
-
-  const handlePaymentSuccess = async (response: any) => {
-    try {
-      // if (!reservationId) return;
-      
-      const verifyData = {
-        razorpay_payment_id: response.razorpay_payment_id,
-        razorpay_order_id: response.razorpay_order_id,
-        razorpay_signature: response.razorpay_signature,
-        bookingId: reservationId,
-        bookingType: 'hostel',
-      };
-      
-      const verifyResponse = await razorpayService.verifyPayment(verifyData);
-      
-      if (verifyResponse.success) {
-        toast({
-          title: "Payment Successful",
-          description: "Your booking has been confirmed!",
-        });
-        
-        // Navigate to booking confirmation page
-        navigate(`/booking-confirmation/${verifyResponse.data?.bookingId}`, { 
-          state: { 
-            bookingId: verifyResponse.data?.bookingId || reservationId
-          } 
-        });
-      } else {
-        throw new Error(verifyResponse.error?.message || 'Payment verification failed');
-      }
-    } catch (error) {
-      console.error('Error verifying payment:', error);
-      toast({
-        title: "Payment Verification Failed",
-        description: error instanceof Error ? error.message : 'Failed to verify payment',
-        variant: "destructive"
-      });
     }
   };
 
@@ -285,6 +292,10 @@ const HostelBooking = () => {
       </div>
     );
   }
+
+  const totalPrice = calculateTotalPrice();
+  const advanceAmount = calculateAdvanceAmount();
+  const payableAmount = getPayableAmount();
 
   return (
     <ErrorBoundary>
@@ -307,8 +318,8 @@ const HostelBooking = () => {
                 <CardContent className="space-y-6">
                   <div className="flex items-center gap-4">
                     <div className="h-20 w-20 rounded overflow-hidden bg-muted flex-shrink-0">
-                      {room.imageSrc ? (
-                        <img src={getImageUrl(room.imageSrc)} alt={room.name} className="h-full w-full object-cover" />
+                      {room.image_url ? (
+                        <img src={getImageUrl(room.image_url)} alt={`Room ${room.room_number}`} className="h-full w-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
                           <Bed className="h-10 w-10 text-muted-foreground" />
@@ -316,8 +327,8 @@ const HostelBooking = () => {
                       )}
                     </div>
                     <div>
-                      <h3 className="font-medium">{room.name}</h3>
-                      <p className="text-muted-foreground text-sm">Room #{room.roomNumber}, {room.floor} Floor</p>
+                      <h3 className="font-medium">Room {room.room_number}</h3>
+                      <p className="text-muted-foreground text-sm">Floor {room.floor}, {room.category}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <Building className="h-4 w-4 text-muted-foreground" />
                         <span className="text-sm">{hostel.name}, {hostel.location}</span>
@@ -335,8 +346,26 @@ const HostelBooking = () => {
                     </div>
                     <div>
                       <Label>Price</Label>
-                      <div className="mt-1 font-medium">₹{sharingOption.price} per day</div>
+                      <div className="mt-1 font-medium">{formatCurrency(sharingOption.price_monthly)} per month</div>
+                      {sharingOption.price_daily > 0 && (
+                        <div className="text-sm text-muted-foreground mt-1">{formatCurrency(sharingOption.price_daily)} per day</div>
+                      )}
                     </div>
+                  </div>
+
+                  {/* Bed assignment */}
+                  <div className="p-3 rounded-md border">
+                    <Label>Assigned Bed</Label>
+                    {loadingBeds ? (
+                      <p className="text-sm text-muted-foreground mt-1">Finding available bed...</p>
+                    ) : availableBed ? (
+                      <p className="mt-1 font-medium">Bed #{availableBed.bed_number}</p>
+                    ) : (
+                      <div className="flex items-center gap-2 mt-1 text-destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <span className="text-sm">No beds available for selected dates</span>
+                      </div>
+                    )}
                   </div>
                   
                   <div>
@@ -408,11 +437,6 @@ const HostelBooking = () => {
                       <div className="mt-1 font-medium">{format(calculateEndDate(), 'PPP')}</div>
                     </div>
                   </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="text-lg font-medium">Total Amount</div>
-                    <div className="text-2xl font-bold text-primary">₹{calculateTotalPrice()}</div>
-                  </div>
                 </CardContent>
               </Card>
               
@@ -464,12 +488,9 @@ const HostelBooking = () => {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Room Charges</span>
                       <span>
-                        ₹{sharingOption.price} ×{" "}
-                        {bookingPeriod.type === "daily" && `${bookingPeriod.duration} days`}
-                        {bookingPeriod.type === "weekly" &&
-                          `${bookingPeriod.duration} weeks (${bookingPeriod.duration * 7} days)`}
-                        {bookingPeriod.type === "monthly" &&
-                          `${bookingPeriod.duration} months (${bookingPeriod.duration * 30} days)`}
+                        {bookingPeriod.type === 'daily' && `${formatCurrency(sharingOption.price_daily)} × ${bookingPeriod.duration} days`}
+                        {bookingPeriod.type === 'weekly' && `${formatCurrency(sharingOption.price_daily)} × ${bookingPeriod.duration * 7} days`}
+                        {bookingPeriod.type === 'monthly' && `${formatCurrency(sharingOption.price_monthly)} × ${bookingPeriod.duration} months`}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -482,28 +503,63 @@ const HostelBooking = () => {
                   
                   <div className="flex justify-between items-center font-medium">
                     <span>Total Amount</span>
-                    <span className="text-xl font-bold">₹{calculateTotalPrice()}</span>
+                    <span className="text-xl font-bold">{formatCurrency(totalPrice)}</span>
+                  </div>
+
+                  {/* Security Deposit */}
+                  {hostel.security_deposit > 0 && (
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground">Security Deposit (at check-in)</span>
+                      <span>{formatCurrency(hostel.security_deposit)}</span>
+                    </div>
+                  )}
+
+                  {/* Advance Payment Breakdown */}
+                  {advanceAmount !== null && (
+                    <>
+                      <Separator />
+                      <div className="space-y-2 p-3 bg-primary/5 rounded-md">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium">Advance Payment</span>
+                          <span className="font-bold text-primary">{formatCurrency(advanceAmount)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm text-muted-foreground">
+                          <span>Remaining (pay later)</span>
+                          <span>{formatCurrency(totalPrice - advanceAmount)}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {hostel.advance_use_flat
+                            ? `Flat advance of ${formatCurrency(hostel.advance_flat_amount)}`
+                            : `${hostel.advance_percentage}% advance payment`}
+                        </p>
+                      </div>
+                    </>
+                  )}
+
+                  <Separator />
+
+                  <div className="flex justify-between items-center font-medium">
+                    <span>Pay Now</span>
+                    <span className="text-xl font-bold text-primary">{formatCurrency(payableAmount)}</span>
                   </div>
                   
                   <Button 
                     className="w-full" 
-                    disabled={isProcessing}
+                    disabled={isProcessing || !availableBed || loadingBeds}
                     onClick={handleProceedToPayment}
                   >
                     <CreditCard className="mr-2 h-5 w-5" />
-                    {isProcessing ? 'Processing...' : 'Proceed to Payment'}
+                    {isProcessing ? 'Processing...' : `Pay ${formatCurrency(payableAmount)}`}
                   </Button>
                   
                   <div className="text-xs text-center text-muted-foreground">
                     By proceeding, you agree to our terms and conditions.
-                    <br />Your card will be charged only after confirmation.
                   </div>
                 </CardContent>
               </Card>
             </div>
           </div>
         </div>
-        
       </div>
     </ErrorBoundary>
   );

@@ -99,8 +99,10 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    // Route to correct table based on bookingType
+    const tableName = bookingType === "hostel" ? "hostel_bookings" : "bookings";
     await adminClient
-      .from("bookings")
+      .from(tableName)
       .update({ razorpay_order_id: order.id })
       .eq("id", bookingId);
 
