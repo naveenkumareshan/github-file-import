@@ -195,7 +195,12 @@ export default function AdminHostelBookings() {
                               <div>{fmtDate(b.start_date)} – {fmtDate(b.end_date)}</div>
                               <div className="text-[10px] text-muted-foreground capitalize">{durationLabel(b)}</div>
                             </TableCell>
-                            <TableCell className="py-1.5 px-3 text-xs font-semibold">₹{b.total_price}</TableCell>
+                            <TableCell className="py-1.5 px-3 text-xs">
+                              <div className="font-semibold">Bed: ₹{(b.total_price || 0).toLocaleString()}</div>
+                              {(b.security_deposit || 0) > 0 && (
+                                <div className="text-muted-foreground">Deposit: ₹{(b.security_deposit || 0).toLocaleString()}</div>
+                              )}
+                            </TableCell>
                             <TableCell className="py-1.5 px-3">
                               <span className={`inline-flex items-center rounded-full px-1.5 py-0 text-[10px] font-medium capitalize ${badgeCls(b.status || 'pending')}`}>{b.status || 'pending'}</span>
                             </TableCell>
