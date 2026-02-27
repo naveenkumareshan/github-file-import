@@ -87,6 +87,7 @@ const VendorSeats: React.FC = () => {
   const [studentResults, setStudentResults] = useState<StudentProfile[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<StudentProfile | null>(null);
   const [selectedDuration, setSelectedDuration] = useState<{ type: 'daily' | 'weekly' | 'monthly'; count: number }>({ type: 'monthly', count: 1 });
+  const [bookingStartDate, setBookingStartDate] = useState<Date>(new Date());
   const [bookingPrice, setBookingPrice] = useState('');
   const [creatingBooking, setCreatingBooking] = useState(false);
   const [lockerIncluded, setLockerIncluded] = useState(false);
