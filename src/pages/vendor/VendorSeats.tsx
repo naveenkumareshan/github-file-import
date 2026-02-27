@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/dialog';
 import {
   LayoutGrid, List, CalendarIcon, Search, Ban, Lock, Unlock,
-  Edit, Save, X, IndianRupee, Users, CheckCircle, Clock, AlertTriangle, RefreshCw, UserPlus, Info, ChevronDown, CreditCard, Banknote, Smartphone, Building2, Send, Download, ArrowLeft, ArrowRightLeft, RotateCcw, Wallet,
+  Edit, Save, X, IndianRupee, Users, CheckCircle, Clock, AlertTriangle, RefreshCw, UserPlus, Info, ChevronDown, CreditCard, Banknote, Smartphone, Building2, Download, ArrowLeft, ArrowRightLeft, RotateCcw, Wallet,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -483,7 +483,7 @@ const VendorSeats: React.FC = () => {
       return;
     }
     setCreatingBooking(true);
-    const collectedByName = paymentMethod === 'send_link' ? 'InhaleStays' : (user?.name || user?.email || 'Partner');
+    const collectedByName = user?.name || user?.email || 'Partner';
     const data: PartnerBookingData = {
       seatId: selectedSeat._id,
       cabinId: selectedSeat.cabinId,
@@ -499,7 +499,7 @@ const VendorSeats: React.FC = () => {
       discountAmount: parseFloat(discountAmount) || 0,
       discountReason: discountReason,
       paymentMethod: paymentMethod,
-      collectedBy: paymentMethod !== 'send_link' ? user?.id : undefined,
+      collectedBy: user?.id,
       collectedByName: collectedByName,
       transactionId: transactionId,
       isAdvanceBooking: isAdvanceBooking && !!advanceComputed,
@@ -1459,13 +1459,7 @@ const VendorSeats: React.FC = () => {
                       {/* Payment Method */}
                       <div className="space-y-1.5">
                         <Label className="text-[10px] uppercase text-muted-foreground">Payment Method</Label>
-                        <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="grid grid-cols-2 gap-1.5">
-                          <div className="flex items-center gap-1.5 border rounded p-1.5 cursor-pointer hover:bg-muted/50">
-                            <RadioGroupItem value="send_link" id="pm_link" className="h-3 w-3" />
-                            <Label htmlFor="pm_link" className="text-[10px] cursor-pointer flex items-center gap-1">
-                              <Send className="h-3 w-3" /> Send Link
-                            </Label>
-                          </div>
+                        <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="grid grid-cols-3 gap-1.5">
                           <div className="flex items-center gap-1.5 border rounded p-1.5 cursor-pointer hover:bg-muted/50">
                             <RadioGroupItem value="cash" id="pm_cash" className="h-3 w-3" />
                             <Label htmlFor="pm_cash" className="text-[10px] cursor-pointer flex items-center gap-1">
@@ -1475,7 +1469,7 @@ const VendorSeats: React.FC = () => {
                           <div className="flex items-center gap-1.5 border rounded p-1.5 cursor-pointer hover:bg-muted/50">
                             <RadioGroupItem value="upi" id="pm_upi" className="h-3 w-3" />
                             <Label htmlFor="pm_upi" className="text-[10px] cursor-pointer flex items-center gap-1">
-                              <Smartphone className="h-3 w-3" /> PhonePe / UPI
+                              <Smartphone className="h-3 w-3" /> UPI
                             </Label>
                           </div>
                           <div className="flex items-center gap-1.5 border rounded p-1.5 cursor-pointer hover:bg-muted/50">
@@ -1497,7 +1491,7 @@ const VendorSeats: React.FC = () => {
 
                       {/* Collected by */}
                       <div className="text-muted-foreground text-[10px] px-1">
-                        Collected by: {paymentMethod === 'send_link' ? 'InhaleStays' : (user?.name || user?.email || 'Partner')}
+                        Collected by: {user?.name || user?.email || 'Partner'}
                       </div>
 
                       <div className="flex gap-2">
@@ -1513,9 +1507,7 @@ const VendorSeats: React.FC = () => {
                           disabled={creatingBooking || ((paymentMethod === 'upi' || paymentMethod === 'bank_transfer') && !transactionId.trim())}
                           onClick={handleCreateBooking}
                         >
-                          {creatingBooking ? 'Creating...' : paymentMethod === 'send_link' 
-                            ? `Send Link · ₹${isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : computedTotal}` 
-                            : `Confirm · ₹${isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : computedTotal}`}
+                          {creatingBooking ? 'Creating...' : `Confirm · ₹${isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : computedTotal}`}
                         </Button>
                       </div>
                     </div>
@@ -1582,6 +1574,10 @@ const VendorSeats: React.FC = () => {
                             {new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()}
                             {b.durationCount && b.bookingDuration && ` · ${b.durationCount} ${b.bookingDuration}`}
                           </div>
+                          <div className="flex flex-wrap gap-1 mt-0.5">
+                            {b.seatCategory && <Badge variant="outline" className="text-[9px] px-1 py-0">{b.seatCategory}</Badge>}
+                            {b.slotName && <Badge variant="secondary" className="text-[9px] px-1 py-0">{b.slotName}</Badge>}
+                          </div>
                           <div className="flex justify-between">
                             <span>₹{b.totalPrice}{b.lockerIncluded ? ` (incl. locker ₹${b.lockerPrice})` : ''}</span>
                             <span className="text-muted-foreground">{b.studentPhone}</span>
@@ -1595,7 +1591,7 @@ const VendorSeats: React.FC = () => {
                             <div className="text-emerald-600">Discount: ₹{b.discountAmount}{b.discountReason ? ` (${b.discountReason})` : ''}</div>
                           )}
                           {b.paymentMethod && b.paymentMethod !== 'online' && (
-                            <div className="text-muted-foreground">Payment: {b.paymentMethod === 'send_link' ? 'Payment Link' : b.paymentMethod === 'upi' ? 'UPI' : b.paymentMethod === 'bank_transfer' ? 'Bank Transfer' : 'Cash'}</div>
+                            <div className="text-muted-foreground">Payment: {b.paymentMethod === 'upi' ? 'UPI' : b.paymentMethod === 'bank_transfer' ? 'Bank Transfer' : 'Cash'}</div>
                           )}
                           {b.collectedByName && <div className="text-muted-foreground">Collected by: {b.collectedByName}</div>}
                           {b.transactionId && <div className="text-muted-foreground">Txn ID: {b.transactionId}</div>}

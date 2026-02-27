@@ -30,6 +30,9 @@ export interface SeatBookingDetail {
   paymentMethod?: string;
   collectedByName?: string;
   transactionId?: string;
+  slotId?: string | null;
+  slotName?: string;
+  seatCategory?: string;
 }
 
 export interface VendorSeat {
@@ -168,7 +171,7 @@ function computeDateStatus(
   return 'available';
 }
 
-function mapBookingToDetail(b: any): SeatBookingDetail {
+function mapBookingToDetail(b: any, slotNameMap?: Record<string, string>, seatCategory?: string): SeatBookingDetail {
   const profile = b.profiles as any;
   return {
     bookingId: b.id,
@@ -199,6 +202,9 @@ function mapBookingToDetail(b: any): SeatBookingDetail {
     paymentMethod: b.payment_method || 'online',
     collectedByName: b.collected_by_name || '',
     transactionId: b.transaction_id || '',
+    slotId: b.slot_id || null,
+    slotName: b.slot_id && slotNameMap ? (slotNameMap[b.slot_id] || '') : '',
+    seatCategory: seatCategory || '',
   };
 }
 
@@ -345,7 +351,7 @@ export const vendorSeatsService = {
           slotName: currentBookingRaw.slot_id ? (slotNameMap[currentBookingRaw.slot_id] || null) : null,
         } : undefined;
 
-        const mappedBookings: SeatBookingDetail[] = seatBookings.map(mapBookingToDetail);
+        const mappedBookings: SeatBookingDetail[] = seatBookings.map(b => mapBookingToDetail(b, slotNameMap, seat.category));
 
         return {
           _id: seat.id,
@@ -428,7 +434,7 @@ export const vendorSeatsService = {
 
       const { data: serialData } = await supabase.rpc('generate_serial_number', { p_entity_type: 'booking' });
 
-      let paymentStatus = data.paymentMethod === 'send_link' ? 'pending' : 'completed';
+      let paymentStatus = 'completed';
       if (data.isAdvanceBooking) {
         paymentStatus = 'advance_paid';
       }

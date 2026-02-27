@@ -19,6 +19,7 @@ interface ReceiptRow {
   collected_by_name: string;
   notes: string;
   created_at: string;
+  transaction_id: string;
 }
 
 interface BookingTransactionViewProps {
@@ -229,6 +230,7 @@ export const BookingTransactionView = ({ bookingId, bookingType, booking }: Book
                   <span>{format(new Date(r.created_at), 'dd MMM yyyy, HH:mm')}</span>
                   {r.collected_by_name && <span>by {r.collected_by_name}</span>}
                 </div>
+                {r.transaction_id && <div className="text-[10px] text-muted-foreground">ID: {r.transaction_id}</div>}
                 {r.notes && <div className="text-[10px] text-muted-foreground italic">{r.notes}</div>}
               </div>
             ))}

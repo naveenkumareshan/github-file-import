@@ -28,7 +28,6 @@ const paymentMethodLabel = (method: string) => {
     case 'cash': return 'Cash';
     case 'upi': return 'PhonePe / UPI';
     case 'bank_transfer': return 'Bank Transfer';
-    case 'send_link': return 'Payment Link';
     case 'online': return 'Online';
     default: return method;
   }
