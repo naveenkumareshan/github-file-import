@@ -1,171 +1,74 @@
 
 
-## Hostel System: Sample Data, Bed Map, Zolo-Style Booking UI, and Admin Configuration
+## Redesign Hostel Details Page to Match Reading Room (BookSeat) Pattern
 
-This plan covers four major areas: seeding sample hostel data, building a visual bed map (floor-wise like reading rooms), creating a Zolo Stays-inspired student booking experience with stay duration packages, and adding admin configuration for these features.
+### Problem
+The current hostel detail page (`HostelRoomDetails.tsx`) uses generic Card components with poor layout, inconsistent spacing, and doesn't match the InhaleStays mobile-first design language used in the reading room BookSeat page.
 
----
-
-### 1. Seed Sample Hostel Data
-
-Insert example hostels, rooms, sharing options, beds, bookings, and receipts into the database using the data insert tool.
-
-**Data to insert:**
-
-- **3 Hostels** in Visakhapatnam (city already exists):
-  - "Inhale Stays Men's PG" (Male, Long-term)
-  - "Inhale Stays Women's PG" (Female, Both)
-  - "Inhale Stays Co-Living" (Co-ed, Short-term)
-  - Each with amenities, security deposit, advance booking config, and linked to admin user as `created_by`
-
-- **6 Rooms** (2 per hostel): with floor numbers, categories, amenities
-
-- **12 Sharing Options**: Mix of Single, 2-Sharing, 3-Sharing, 4-Sharing per room with daily and monthly prices
-
-- **~40 Beds**: Distributed across sharing options
-
-- **5 Sample Bookings**: Linked to existing student profiles, with confirmed/pending statuses
-
-- **5 Sample Receipts**: Corresponding to the bookings
-
-- **3 Sample Deposit entries**: Via hostel_bookings with security_deposit > 0
+### Design Approach
+Replicate the exact pattern from `BookSeat.tsx`: full-width hero image slider at top, then name/rating/address, info chips, details/amenities section, followed by rooms with sharing options. No Card wrappers -- use the clean mobile-first layout.
 
 ---
 
-### 2. New Database Table: `hostel_stay_packages`
+### Changes to `src/pages/HostelRoomDetails.tsx` (Complete Rewrite)
 
-Create a new table to support the Zolo Stays-style stay duration packages (as shown in the reference image: Base Package, 3 Months+, 6 Months+, 11 Months+).
+**Layout structure (top to bottom):**
 
-**Schema:**
-| Column | Type | Description |
-|---|---|---|
-| id | uuid (PK) | Auto-generated |
-| hostel_id | uuid (FK -> hostels) | Which hostel this package belongs to |
-| name | text | e.g. "Base Package", "3 Months or more" |
-| min_months | integer | Minimum stay duration |
-| discount_percentage | numeric | e.g. 0, 10, 15, 21 |
-| deposit_months | numeric | e.g. 1, 1, 1.5, 2 |
-| lock_in_months | integer | e.g. 0, 3, 6, 11 |
-| notice_months | integer | e.g. 1 |
-| description | text | Short summary shown on card |
-| is_active | boolean | Default true |
-| display_order | integer | Ordering |
-| created_at | timestamptz | Default now() |
+1. **Hero Image Slider** (full-width, auto-playing)
+   - Uses `CabinImageSlider` with `autoPlay` and `hideThumbnails` (same as BookSeat)
+   - Back button overlay (top-left, rounded, blurred bg)
+   - Gender badge (top-right, color-coded: blue=Male, pink=Female, purple=Co-ed)
+   - Gradient overlay at top for button visibility
 
-**RLS policies:**
-- Admins: full access
-- Partners: manage own hostel packages (via hostels.created_by join)
-- Public: view active packages (SELECT where is_active = true)
+2. **Name, Rating and Location**
+   - Hostel name as `text-lg font-bold`
+   - Star rating + review count (if available)
+   - Location with MapPin icon
 
----
+3. **Info Chips** (horizontal scrollable row)
+   - Starting price (green chip: "From Rs X/mo")
+   - Gender (blue chip)
+   - Stay type (purple chip: "Long-term" / "Short-term" / "Both")
+   - Security deposit if configured (amber chip)
+   - Total rooms count
 
-### 3. Hostel Bed Map (Floor-Wise Visual Map)
+4. **Details and Amenities** (collapsible section)
+   - Description text
+   - Separator
+   - Amenity pills with CheckCircle2 icons (same style as BookSeat)
 
-Create a visual bed map similar to the reading room seat map, showing beds on a floor-by-floor basis.
+5. **Rooms and Pricing Section**
+   - Section header: "Rooms and Pricing" with subtitle
+   - Each room as a bordered section (not a Card):
+     - Room image thumbnail + room number, floor, category
+     - Room amenities as small badges
+     - Sharing options as selectable cards (keep existing design -- it works well)
+     - Stay duration packages (shown when a sharing option is selected)
+     - Book Now button + contact info for short stays
 
-**New files:**
+6. **Bed Map Dialog** and **Image Gallery Dialog** -- keep as-is
 
-#### `src/components/hostels/HostelBedMap.tsx`
-A visual floor-wise bed map component that:
-- Groups beds by floor (from hostel_rooms.floor)
-- Shows floor tabs (Floor 1, Floor 2, etc.)
-- Renders beds as clickable markers on a grid layout (similar to FloorPlanViewer)
-- Color-coded: green = available, blue = occupied, gray = blocked
-- Tooltip on hover shows bed number, sharing type, price, current occupant (if occupied)
-- Used in both student booking flow and admin management
-
-#### `src/components/hostels/HostelFloorView.tsx`
-Individual floor renderer that:
-- Shows rooms as bordered sections within the floor
-- Beds arranged in a grid within each room section
-- Room labels with room number and sharing type
-- Occupancy progress bar per room
-
-#### Updates to `src/pages/HostelRoomDetails.tsx`
-- Add a "View Bed Map" button that opens a dialog/section showing the floor-wise bed map
-- Students can see bed availability visually before selecting a sharing option
-
-#### Updates to `src/components/hostels/RoomBedManagement.tsx`
-- Replace the existing basic bed list with the new visual bed map
-- Add floor filter tabs
-- Show occupancy stats per floor
+7. **Collapsible hero behavior** (same as BookSeat)
+   - Hero + details collapse when user scrolls to rooms
+   - Sticky header appears with back button + hostel name + "View Details" link
+   - Hero reappears when scrolled back to top (IntersectionObserver)
 
 ---
 
-### 4. Zolo Stays-Style Student Booking UI
+### Technical Details
 
-Redesign the student hostel booking flow to match the reference image pattern.
+- Remove all `Card`, `CardHeader`, `CardContent`, `CardFooter` wrappers from the main layout
+- Use `min-h-screen bg-background pb-24` as root container
+- Add skeleton loader matching BookSeat pattern
+- Keep all existing state, data fetching, and booking logic unchanged
+- Keep `StayDurationPackages`, `HostelBedMap`, and dialog components unchanged
+- Use same spacing system: `px-3`, `pt-2`, `gap-1.5`, `text-xs`/`text-sm` typography
+- Info chips use same colored bg/text/border pattern as BookSeat (emerald, blue, purple, amber)
 
-#### `src/components/hostels/StayDurationPackages.tsx`
-A new component displaying stay duration packages as selectable cards:
-- Each card shows: package name, price per month, description (deposit, lock-in, notice period)
-- "View Details" expandable section
-- "SAVE Rs X/MONTH" badge for discounted packages
-- Radio-style selection (one package at a time)
-- Calculates discounted price based on sharing option's monthly price and package discount percentage
-
-#### Updates to `src/pages/HostelRoomDetails.tsx`
-- After selecting a sharing option, show the stay duration packages
-- Add "Schedule a Visit" button (opens contact info) and "Confirm Details" button
-- Bottom banner: "To book for less than 30 days, Contact [phone]"
-- Mobile-optimized card layout matching the reference design
-
-#### Updates to `src/pages/HostelBooking.tsx`
-- Accept the selected package from navigation state
-- Calculate pricing using package discount
-- Show deposit amount based on package's deposit_months setting
-- Display lock-in period and notice period in the booking summary
-
----
-
-### 5. Admin Configuration for Stay Packages
-
-#### `src/components/admin/HostelStayPackageManager.tsx`
-Admin/partner component to configure stay duration packages per hostel:
-- Table listing existing packages with edit/delete
-- Form to add new packages: name, min months, discount %, deposit months, lock-in, notice period
-- Toggle active/inactive
-- Drag to reorder (display_order)
-
-#### Integration into Hostel Management
-- Add a "Stay Packages" tab in the hostel room detail/management view
-- Partners can configure packages for their own hostels
-- Admins can manage packages for any hostel
-
----
-
-### 6. API Service Layer
-
-#### `src/api/hostelStayPackageService.ts`
-New service file for CRUD operations on `hostel_stay_packages`:
-- `getPackages(hostelId)` - get active packages for a hostel
-- `createPackage(data)` - create new package
-- `updatePackage(id, data)` - update existing
-- `deletePackage(id)` - remove package
-- `reorderPackages(hostelId, orderedIds)` - update display order
-
----
-
-### Files Summary
+### Files Changed
 
 | File | Action |
 |---|---|
-| Database: `hostel_stay_packages` table | New migration |
-| Database: Sample data insert | Insert via tool |
-| `src/api/hostelStayPackageService.ts` | New |
-| `src/components/hostels/HostelBedMap.tsx` | New -- floor-wise visual bed map |
-| `src/components/hostels/HostelFloorView.tsx` | New -- individual floor renderer |
-| `src/components/hostels/StayDurationPackages.tsx` | New -- Zolo-style package selector |
-| `src/components/admin/HostelStayPackageManager.tsx` | New -- admin package config |
-| `src/pages/HostelRoomDetails.tsx` | Edit -- add bed map + packages UI |
-| `src/pages/HostelBooking.tsx` | Edit -- integrate package pricing |
-| `src/components/hostels/RoomBedManagement.tsx` | Edit -- use visual bed map |
+| `src/pages/HostelRoomDetails.tsx` | Rewrite -- match BookSeat layout pattern |
 
-### Technical Notes
-
-- The bed map reuses the zoom/pan pattern from `FloorPlanViewer` but adapted for hostel beds grouped by room sections within each floor
-- Stay packages are hostel-level (not room-level) since discount policies apply uniformly across all sharing options in a hostel
-- Package pricing: `effective_price = sharing_option.price_monthly * (1 - package.discount_percentage / 100)`
-- Sample data uses the existing admin user ID (`8a0ee35f-90a4-4657-bda3-d53f07eebb03`) as `created_by` and Visakhapatnam city
-- All new tables include proper RLS policies matching the existing hostel access pattern (admin full, partner own, public read)
-
+No new files needed. All existing imports and logic are preserved; only the JSX template and styling change.
