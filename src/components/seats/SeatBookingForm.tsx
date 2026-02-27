@@ -431,7 +431,10 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
   };
 
   // Advance payment computed values
-  const advanceEnabled = cabin?.advanceBookingEnabled === true;
+  const advanceApplicableDurations: string[] = (cabin as any)?.advance_applicable_durations || 
+    (cabin as any)?.advanceApplicableDurations || ['daily','weekly','monthly'];
+  const advanceEnabled = cabin?.advanceBookingEnabled === true && 
+    advanceApplicableDurations.includes(selectedDuration.type);
   const advanceAmount = (() => {
     if (!useAdvancePayment || !advanceEnabled) return totalPrice;
     if (cabin?.advanceUseFlat && cabin?.advanceFlatAmount) {
@@ -805,6 +808,28 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                       )}
                     </div>
                   </div>
+                  <Separator className="opacity-30" />
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Duration:</span>
+                    <span>{selectedDuration.count} {selectedDuration.type.charAt(0).toUpperCase() + selectedDuration.type.slice(1)}{selectedDuration.count > 1 ? 's' : ''}</span>
+                  </div>
+                  {startDate && endDate && (
+                    <>
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>Period:</span>
+                        <span>{format(startDate, 'dd MMM yyyy')} – {format(endDate, 'dd MMM yyyy')}</span>
+                      </div>
+                    </>
+                  )}
+                  {cabin.slotsEnabled && selectedSlot && (
+                    <>
+                      <Separator className="opacity-30" />
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Time Slot:</span>
+                        <span>{selectedSlot.name} ({formatTime(selectedSlot.start_time)} – {formatTime(selectedSlot.end_time)})</span>
+                      </div>
+                    </>
+                  )}
                   <Separator className="opacity-30" />
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Seat Price:</span>

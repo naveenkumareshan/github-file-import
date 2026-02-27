@@ -271,6 +271,7 @@ export type Database = {
       }
       cabins: {
         Row: {
+          advance_applicable_durations: Json
           advance_auto_cancel: boolean
           advance_booking_enabled: boolean
           advance_flat_amount: number | null
@@ -314,6 +315,7 @@ export type Database = {
           working_days: Json
         }
         Insert: {
+          advance_applicable_durations?: Json
           advance_auto_cancel?: boolean
           advance_booking_enabled?: boolean
           advance_flat_amount?: number | null
@@ -357,6 +359,7 @@ export type Database = {
           working_days?: Json
         }
         Update: {
+          advance_applicable_durations?: Json
           advance_auto_cancel?: boolean
           advance_booking_enabled?: boolean
           advance_flat_amount?: number | null
