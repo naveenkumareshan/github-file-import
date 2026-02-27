@@ -1,97 +1,157 @@
 
 
-## Reading Room Timing System
+## 24/7 and Slot-Based Booking System
 
 ### Overview
-Add a timing configuration system to Reading Rooms (cabins) that lets Admin/Partner set opening hours and working days. Display these timings across all student-facing and partner-facing pages.
+Add a flexible timing model to Reading Rooms: partners/admins can configure rooms as either "24/7" (always open) or "scheduled" (with specific hours and working days). On top of that, introduce an optional slot-based booking model where rooms can define named time slots (e.g., "Morning Batch", "Evening Batch") with individual pricing, and students book a specific slot rather than the full day.
 
 ---
 
-### 1. Database Migration
+### 1. Database Changes
 
-Add 3 new columns to the `cabins` table:
+**a) Add `is_24_hours` and `slots_enabled` columns to `cabins` table:**
 
 | Column | Type | Default | Description |
 |--------|------|---------|-------------|
-| `opening_time` | `time` | `'06:00'` | Daily opening time |
-| `closing_time` | `time` | `'22:00'` | Daily closing time |
-| `working_days` | `jsonb` | `["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]` | Array of active day abbreviations |
+| `is_24_hours` | boolean | false | If true, room is open 24/7; timing fields hidden |
+| `slots_enabled` | boolean | false | If true, slot-based booking is active for this room |
 
-Using simple time + working days covers the majority use case. Multiple slots can be added later as an enhancement.
+**b) Create `cabin_slots` table:**
 
----
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | uuid (PK) | Auto-generated |
+| `cabin_id` | uuid (FK to cabins) | Which reading room |
+| `name` | text | Slot name (e.g., "Morning Batch") |
+| `start_time` | time | Slot start (e.g., 06:00) |
+| `end_time` | time | Slot end (e.g., 12:00) |
+| `price` | numeric | Price for this slot per month |
+| `is_active` | boolean | Whether slot is bookable |
+| `created_at` | timestamptz | Auto |
 
-### 2. Admin/Partner Form -- CabinForm.tsx
+RLS policies:
+- Admins: full access
+- Partners: full access on own cabin's slots (via cabins.created_by)
+- Anyone: SELECT on active slots (for students to see)
 
-Add a new "Timings" section to `src/components/admin/CabinForm.tsx`:
+**c) Add `slot_id` column to `bookings` table:**
 
-- **Opening Time**: `<Input type="time">` (required)
-- **Closing Time**: `<Input type="time">` (required, must be after opening)
-- **Working Days**: 7 checkboxes (Mon-Sun), at least 1 required
-- Add `openingTime`, `closingTime`, `workingDays` to the Zod schema with validation
-- Pass these fields through to `adminCabinsService.createCabin()` / `updateCabin()`
-
----
-
-### 3. Service Layer -- adminCabinsService.ts
-
-Update `createCabin` and `updateCabin` to map:
-- `openingTime` to `opening_time`
-- `closingTime` to `closing_time`  
-- `workingDays` to `working_days`
-
----
-
-### 4. Display Timings on Student Pages
-
-**a) Cabin interface (BookSeat.tsx, line 33)**
-Add `openingTime`, `closingTime`, `workingDays` to the `Cabin` type.
-
-**b) Cabins listing (Cabins.tsx)**
-Map `opening_time`/`closing_time`/`working_days` from backend in the transform. Also update `cabinsService.getAllCabins` to select these fields.
-
-**c) CabinCard.tsx**
-Below the room name, show a compact timing line:
-```
-Open: 6:00 AM - 10:00 PM
-```
-If not open all 7 days, show: `Closed on Sunday` (or relevant days).
-
-**d) CabinDetails.tsx / BookSeat.tsx hero section**
-Show timings in the details tab -- opening/closing time and working days with day pills.
-
-**e) Student Booking View (students/StudentBookingView.tsx)**
-Show the room's timings in the booking details card.
+| Column | Type | Default | Description |
+|--------|------|---------|-------------|
+| `slot_id` | uuid (nullable) | null | References cabin_slots.id; null = full-day booking |
 
 ---
 
-### 5. Partner Dashboard
+### 2. Admin/Partner CabinForm Updates (`CabinForm.tsx`)
 
-In the partner's room overview (cabin list/management), show the configured timings inline so partners can see at a glance.
+- Add **"24/7 Open"** toggle (Switch component) at the top of the Timings section
+- When `is_24_hours` is ON:
+  - Hide opening time, closing time, and working days fields
+  - Show "This room is open 24 hours, 7 days a week" info text
+- When OFF:
+  - Show current timing fields (opening/closing time, working days) as-is
+- Add **"Enable Slot-Based Booking"** toggle below the timing section
+  - Only visible when the room is NOT 24/7 (slots make sense for scheduled rooms), OR also for 24/7 rooms if the partner wants to split the day into paid batches
+- Update Zod schema: make `openingTime`/`closingTime`/`workingDays` conditionally required (only when `is_24_hours` is false)
+- Map `is_24_hours` and `slots_enabled` through `adminCabinsService`
 
 ---
 
-### 6. Utility Helper
+### 3. Slot Management Module (New Component)
 
-Create a small helper `src/utils/timingUtils.ts`:
-- `formatTime(time: string)` -- converts "06:00" to "6:00 AM"
-- `getClosedDays(workingDays: string[])` -- returns days not in the array
-- `getTimingDisplay(opening, closing, workingDays)` -- returns formatted string
+**New file: `src/components/admin/SlotManagement.tsx`**
+
+- Displayed inside the cabin editor (when `slots_enabled` is true)
+- CRUD interface for slots:
+  - Add Slot: name, start time, end time, price
+  - Edit inline
+  - Delete with confirmation
+  - Toggle active/inactive
+- Uses a new `src/api/cabinSlotService.ts` for all Supabase operations on `cabin_slots`
 
 ---
 
-### Files to Create
-- `src/utils/timingUtils.ts`
+### 4. Booking Flow Updates (`SeatBookingForm.tsx`)
 
-### Files to Modify
-- Database migration (new columns on `cabins`)
-- `src/components/admin/CabinForm.tsx` -- add timing fields
-- `src/api/adminCabinsService.ts` -- map timing fields
-- `src/api/cabinsService.ts` -- include timing fields in queries
-- `src/pages/BookSeat.tsx` -- extend Cabin interface
-- `src/pages/Cabins.tsx` -- map timing fields in transform
-- `src/components/CabinCard.tsx` -- display timings
-- `src/components/CabinDetails.tsx` -- display timings in details tab
-- `src/pages/students/StudentBookingView.tsx` -- show timings
-- `src/components/cabins/CabinsGrid.tsx` -- pass timing data through (if needed)
+- After duration selection (Step 1), if `cabin.slots_enabled` is true and slots exist:
+  - Show a **"Select Slot"** step with slot cards (name, time range, price)
+  - Student must pick a slot before seeing the seat map
+  - Seat price is overridden by the slot price
+  - Selected slot is stored and passed to `bookingsService.createBooking` as `slot_id`
+- If `slots_enabled` is false: current flow unchanged (full-day model)
+- Seat availability check: when slot-based, query bookings that match the same `slot_id` + date range to determine conflicts (a seat booked for "Morning" slot is still available for "Evening" slot)
+
+---
+
+### 5. Seat Availability Logic Updates (`seatsService.ts`)
+
+- Update `getAvailableSeatsForDateRange` to accept an optional `slotId` parameter
+- When `slotId` is provided, only check for conflicting bookings with the same `slot_id`
+- When `slotId` is null/undefined, check all bookings (full-day model, as currently works)
+- Similarly update `checkSeatAvailability` and `checkSeatsAvailabilityBulk`
+
+---
+
+### 6. Display Updates
+
+**a) CabinCard.tsx (Student Listing)**
+- If `is_24_hours`: show badge "Open 24/7" (green accent) instead of timing line
+- If not 24/7: show current timing display as-is
+- If `slots_enabled`: show small "Slot Booking" badge
+
+**b) BookSeat.tsx (Room Detail Page)**
+- Add "Open 24/7" chip in the info chips row if applicable
+- If slots enabled, show available slots in the details section
+
+**c) StudentBookingView.tsx (Booking Details)**
+- If booking has a `slot_id`, fetch and display slot name + times
+- Show "Full Day" if no slot
+
+**d) Partner Dashboard**
+- Show 24/7 badge or timing info on room cards
+- Show slot count if slots are enabled
+
+---
+
+### 7. Service Layer
+
+**New file: `src/api/cabinSlotService.ts`**
+- `getSlotsByCabin(cabinId)` -- fetch active slots for a cabin
+- `getAllSlotsByCabin(cabinId)` -- fetch all slots (admin view)
+- `createSlot(data)` -- insert new slot
+- `updateSlot(id, data)` -- update slot
+- `deleteSlot(id)` -- delete slot
+- `toggleSlotActive(id, isActive)` -- enable/disable
+
+**Update: `src/api/adminCabinsService.ts`**
+- Map `is24Hours` to `is_24_hours` and `slotsEnabled` to `slots_enabled` in create/update
+
+**Update: `src/api/cabinsService.ts`**
+- Include new fields in queries
+
+**Update: `src/api/bookingsService.ts`**
+- Accept optional `slot_id` in `createBooking`
+- Include slot info in booking queries
+
+---
+
+### 8. Files Summary
+
+**New files:**
+- `src/api/cabinSlotService.ts`
+- `src/components/admin/SlotManagement.tsx`
+
+**Modified files:**
+- Database migration (add columns + new table)
+- `src/components/admin/CabinForm.tsx` -- 24/7 toggle, slots toggle, conditional timing fields
+- `src/api/adminCabinsService.ts` -- map new fields
+- `src/api/cabinsService.ts` -- include new fields
+- `src/api/bookingsService.ts` -- slot_id support
+- `src/api/seatsService.ts` -- slot-aware availability
+- `src/components/seats/SeatBookingForm.tsx` -- slot selection step
+- `src/components/CabinCard.tsx` -- 24/7 badge, slot badge
+- `src/pages/BookSeat.tsx` -- extend Cabin interface, display 24/7 chip
+- `src/pages/students/StudentBookingView.tsx` -- show slot info
+- `src/utils/timingUtils.ts` -- add `is24HoursDisplay()` helper
+- `src/integrations/supabase/types.ts` -- auto-updated after migration
 
