@@ -103,6 +103,7 @@ const HostelRoomDetails = () => {
 
   // Check-in date state
   const [checkInDate, setCheckInDate] = useState<Date>(new Date());
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   // Step 5: Review & Pay state
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -199,7 +200,8 @@ const HostelRoomDetails = () => {
   const handleCheckInDateChange = (date: Date | undefined) => {
     if (date) {
       setCheckInDate(date);
-      setSelectedBed(null); // availability may differ for new date
+      setSelectedBed(null);
+      setCalendarOpen(false);
     }
   };
 
@@ -592,7 +594,7 @@ const HostelRoomDetails = () => {
               {/* Check-in date picker */}
               <div className="flex items-center gap-3 mb-3">
                 <span className="text-sm text-muted-foreground">Check-in:</span>
-                <Popover>
+                <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
