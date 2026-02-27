@@ -1,101 +1,129 @@
 
 
-## Hostel Bed Map -- Mirror of Seat Map (VendorSeats)
+## Create Hostel Due Management -- Same as Reading Room Due Management
 
-### Problem
-The current hostel bed management page (`HostelBedManagementPage.tsx`) uses a tabbed layout with floor plan designer, which is completely different from the Seat Map page. You want an identical UI to the Seat Map screenshot -- stats bar, filters, color-coded bed grid, table view toggle, and a right-side sheet with booking/block/transfer/renew actions.
+### Overview
+Build a hostel due management page identical to the reading room `DueManagement.tsx`, with the same summary cards, filters, table columns, collect payment drawer, receipts dialog, and payment history.
 
-### What Will Be Built
+### Database Changes
 
-A new page `src/pages/admin/HostelBedMap.tsx` that mirrors `VendorSeats.tsx` exactly, adapted for hostel data.
+Since hostel bookings track `advance_amount` and `remaining_amount` but lack a dedicated dues tracking system (no proportional end date, no due date, no partial payment tracking), we need two new tables:
 
-### Layout (identical to Seat Map)
+**`hostel_dues` table** (mirrors `dues` table):
+- `id` (uuid, PK)
+- `user_id` (uuid, NOT NULL)
+- `hostel_id` (uuid, NOT NULL)
+- `room_id` (uuid, nullable)
+- `bed_id` (uuid, nullable)
+- `booking_id` (uuid, nullable)
+- `total_fee` (numeric, default 0)
+- `advance_paid` (numeric, default 0)
+- `due_amount` (numeric, default 0)
+- `paid_amount` (numeric, default 0)
+- `due_date` (date, NOT NULL)
+- `proportional_end_date` (date, nullable)
+- `status` (text, default 'pending') -- pending, partially_paid, paid
+- `serial_number` (text, nullable) -- auto-generated with 'HDUES' prefix
+- `created_at`, `updated_at` (timestamps)
 
-```text
-Stats Bar:  [TOTAL] | [BOOKED] | [AVAILABLE] | [EXPIRING] | [BLOCKED] | [REVENUE]
+**`hostel_due_payments` table** (mirrors `due_payments` table):
+- `id` (uuid, PK)
+- `due_id` (uuid, NOT NULL)
+- `amount` (numeric, default 0)
+- `payment_method` (text, default 'cash')
+- `transaction_id` (text, default '')
+- `collected_by` (uuid, nullable)
+- `collected_by_name` (text, default '')
+- `notes` (text, default '')
+- `created_at` (timestamp)
 
-Filters:    [All Hostels v]  [27 Feb 2026]  [All Status v]  [Search bed...]  [Grid|Table]  [Refresh]
+**RLS Policies** (same pattern as `dues` / `due_payments`):
+- Admins can manage all
+- Students can view own (by user_id)
+- Partners can manage for own hostels (via hostels.created_by join)
 
-Legend:     * Available  * Booked  * Expiring  * Blocked                        XX beds
+**Serial number trigger**: Add `set_serial_hostel_dues` function + trigger using 'HDUES' prefix.
 
-Grid:       [B1]  [B2]  [B3]  [B4]  [B5]  [B6]  [B7]  [B8]  [B9]  [B10]
-            Cat   Cat   Cat   Cat   Cat   Cat   Cat   Cat   Cat   Cat
-            P     P     P     P     P     P     P     P     P     P
-            Avl   Bkd   Avl   Avl   Bkd   Avl   Blkd  Avl   Avl   Avl
-            (hover: Lock/Edit/Info icons)
+### New Page: `src/pages/admin/HostelDueManagement.tsx`
 
-Sheet (right side on bed click):
-  - Bed #X header with category badge and price
-  - Status bar (color-coded)
-  - If Booked: Student info card + Renew / Book Future / Transfer Bed / Block buttons
-  - If Available: Booking form (student search, duration, price, discount, payment method, 2-step confirm)
-  - If Blocked: Block history + Unblock button
-  - Current & Future bookings list with paid/due info, receipts, due collection
-  - Booking success view with invoice download
-```
+Mirrors `DueManagement.tsx` exactly with hostel data:
+
+**Summary Cards** (4 cards, same layout):
+- Total Due (red wallet icon)
+- Overdue (red triangle icon)
+- Due Today (amber calendar icon)
+- Collected This Month (green rupee icon)
+
+**Filters**:
+- Hostel dropdown (replaces "All Rooms") -- queries `hostels` table
+- Status filter (All, Pending, Partially Paid, Paid)
+- Search by student name/phone
+- Search button
+
+**Table Columns** (same as reading room):
+| Column | Data Source |
+|--------|-----------|
+| Student (name, phone, email) | `profiles:user_id` join |
+| Hostel / Bed | `hostels:hostel_id(name)` + `hostel_beds:bed_id(bed_number)` |
+| Booking | `hostel_bookings:booking_id(serial_number)` |
+| Total (right-aligned) | `total_fee` |
+| Paid (right-aligned, green) | `advance_paid + paid_amount` |
+| Due (right-aligned, red) | `due_amount - paid_amount` |
+| Due Date + days info | `due_date` with overdue/today/days-left logic |
+| Bed Valid | `proportional_end_date` |
+| Status badge | pending/partial/paid/overdue |
+| Actions | Collect button + Receipts button |
+
+**Collect Payment Drawer** (right sheet, same layout):
+- Student info card with name, phone
+- Financial summary: Total Fee, Advance Paid, Collected So Far, Remaining Due
+- Amount input
+- Payment method radio (Cash, UPI, Bank, Online)
+- Transaction ID (conditional)
+- Notes textarea
+- Confirm Collection button
+- Payment History component below
+
+**Receipts Dialog** (same format):
+- Shows all `hostel_receipts` for the booking
+- Each receipt card: serial number, type badge, amount, method, date, collected by, txn ID, notes
 
 ### Data Flow
 
-Since hostel data lives in the cloud database (not MongoDB like reading rooms), the page will query directly:
+All queries go directly to the database (same pattern as reading room dues):
 
-- **Hostels list**: `hostels` table (for the hostel dropdown filter)
-- **Beds for date**: `hostel_beds` joined with `hostel_sharing_options` and `hostel_rooms`, plus `hostel_bookings` filtered by date overlap to compute `dateStatus` (available/booked/expiring/blocked)
-- **Booking actions**: Direct inserts/updates on `hostel_bookings`, `hostel_beds`, `hostel_receipts`
-- **Student search**: Query `profiles` table
-- **Block/Unblock**: Update `hostel_beds.is_blocked` + `block_reason`
-- **Transfer**: Update `hostel_bookings.bed_id` + toggle `is_available` on old/new beds
-- **Due collection**: Query/create entries in `hostel_receipts`
+1. **Fetch dues**: Query `hostel_dues` with joins to `profiles`, `hostels`, `hostel_beds`, `hostel_bookings`
+2. **Summary**: Aggregate from `hostel_dues` (total due, overdue, due today) + `hostel_due_payments` (collected this month)
+3. **Collect payment**: Insert into `hostel_due_payments`, update `hostel_dues` (paid_amount, status, proportional_end_date), create `hostel_receipts` entry with `receipt_type = 'due_collection'`, update `hostel_bookings.payment_status` if fully paid
+4. **Proportional end date logic**: Same as reading room -- calculates how many days of the booking period are covered by total payments so far
 
-### Key Differences from Seat Map
+### Due Creation
 
-| Feature | Seat Map (VendorSeats) | Hostel Bed Map |
-|---|---|---|
-| Data source | MongoDB via `vendorSeatsService` | Cloud DB via direct queries |
-| Property selector | "All Reading Rooms" dropdown | "All Hostels" dropdown |
-| Unit label | "S1, S2..." | "B1, B2..." |
-| Locker system | Yes (locker toggle in booking) | No (no locker for hostels) |
-| Slot system | Yes (morning/evening slots) | No (no slots for hostels) |
-| Category source | `seat_categories` table | `hostel_bed_categories` table |
-| Price source | `seats.price` | `hostel_sharing_options.price_monthly` + `hostel_beds.price_override` |
-| Expiring logic | Booking end_date within 5 days | Same logic |
-| Advance booking | Uses cabin advance settings | Uses hostel advance settings |
-| Receipts | `receipts` table | `hostel_receipts` table |
+When a hostel booking is created with `payment_status = 'advance_paid'`, a corresponding `hostel_dues` entry should be created. This will be handled:
+- In the Bed Map booking flow (HostelBedMap.tsx) -- after creating a booking with advance payment, also insert into `hostel_dues`
+- In `hostelBookingService.createBooking` -- add due creation when payment_status is 'advance_paid'
 
-### Sidebar Navigation
+### Payment History Component
 
-Add "Bed Map" link under the Hostels section in AdminSidebar, pointing to `/admin/hostel-bed-map`.
+Create `HostelDuePaymentHistory.tsx` (mirrors `DuePaymentHistory.tsx`) that queries `hostel_due_payments` for a given due_id and displays payment entries in a collapsible list.
+
+### Navigation
+
+Add "Due Management" link under the Hostels section in AdminSidebar, positioned after "Bed Map" (same position as reading room's due management).
 
 ### Route
 
-Add `/admin/hostel-bed-map` route in `App.tsx`.
+Add `/admin/hostel-due-management` route in `App.tsx`.
 
 ### Files to Create/Modify
 
 | File | Action | Description |
 |---|---|---|
-| `src/pages/admin/HostelBedMap.tsx` | **New** | Full page mirroring VendorSeats.tsx (~1800 lines) with hostel data |
-| `src/components/admin/AdminSidebar.tsx` | **Edit** | Add "Bed Map" link under Hostels section |
-| `src/App.tsx` | **Edit** | Add route for `/admin/hostel-bed-map` |
-
-### Features Included (same as Seat Map)
-
-1. Stats bar (Total, Booked, Available, Expiring, Blocked, Revenue)
-2. Hostel filter dropdown + Date picker + Status filter + Search + Grid/Table toggle
-3. Color-coded bed cards (green=available, red=booked, amber=expiring, grey=blocked)
-4. Hover actions on each bed (Lock/Unlock, Edit Price, View Details)
-5. Right-side Sheet with:
-   - Bed info header with status
-   - Current student info card (when booked)
-   - Action buttons: Renew, Book Future, Transfer Bed, Block
-   - Full booking form with student search/create, duration selector, price, discount, payment method
-   - Two-step booking confirmation
-   - Advance booking mode with due date
-   - Booking success view with invoice download
-   - Inline due collection for partial-paid bookings
-   - Current/Future/Past bookings list
-   - Receipts dialog
-6. Price edit dialog
-7. Block/Unblock dialog with reason and date range
-8. Transfer bed dialog
-9. Table view with sortable columns
+| Database migration | New | Create `hostel_dues` and `hostel_due_payments` tables with RLS + serial trigger |
+| `src/pages/admin/HostelDueManagement.tsx` | New | Full page mirroring DueManagement.tsx with hostel data |
+| `src/components/booking/HostelDuePaymentHistory.tsx` | New | Payment history component for hostel dues |
+| `src/components/admin/AdminSidebar.tsx` | Edit | Add "Due Management" link under Hostels section |
+| `src/App.tsx` | Edit | Add route for `/admin/hostel-due-management` |
+| `src/pages/admin/HostelBedMap.tsx` | Edit | Create hostel_dues entry when booking with advance payment |
+| `src/api/hostelBookingService.ts` | Edit | Create hostel_dues entry in createBooking when advance_paid |
 
