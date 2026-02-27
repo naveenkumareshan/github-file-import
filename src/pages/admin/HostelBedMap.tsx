@@ -848,7 +848,7 @@ const HostelBedMap: React.FC = () => {
                 statusColors(bed.dateStatus)
               )}
             >
-              <span className="text-xs font-bold leading-none">B{bed.bed_number}</span>
+              <span className="text-xs font-bold leading-none">R{bed.roomNumber}-B{bed.bed_number}</span>
               <span className="text-[9px] text-muted-foreground leading-tight truncate w-full">{bed.category || bed.roomCategory}</span>
               <div className="flex items-center gap-0.5">
                 <span className="text-[9px] font-medium leading-tight">₹{bed.price}</span>
@@ -973,7 +973,7 @@ const HostelBedMap: React.FC = () => {
         <DialogContent className="max-w-xs">
           <DialogHeader>
             <DialogTitle className="text-sm">
-              {blockBed?.is_blocked ? 'Unblock' : 'Block'} Bed #{blockBed?.bed_number}
+              {blockBed?.is_blocked ? 'Unblock' : 'Block'} R{blockBed?.roomNumber}-B{blockBed?.bed_number}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
@@ -1001,7 +1001,7 @@ const HostelBedMap: React.FC = () => {
                 <>
                   <SheetHeader className="pb-2">
                     <SheetTitle className="text-sm flex items-center gap-2">
-                      Bed #{selectedBed.bed_number}
+                      Room {selectedBed.roomNumber} - Bed #{selectedBed.bed_number}
                       <Badge variant="outline" className="text-[10px]">{selectedBed.category || selectedBed.roomCategory}</Badge>
                       <span className="text-xs text-muted-foreground ml-auto">₹{selectedBed.price}/mo</span>
                     </SheetTitle>
