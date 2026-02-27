@@ -1,140 +1,101 @@
 
 
-## Create Hostel Bed Map -- Same as Seat Map with All Admin Features
+## Hostel Bed Map -- Mirror of Seat Map (VendorSeats)
 
-### Overview
-Build a comprehensive hostel bed management page mirroring the reading room seat management system. This includes both the box grid layout and the visual floor plan (thread-line) layout, plus all admin operations: book future, block/unblock, edit, transfer bed, and view details.
+### Problem
+The current hostel bed management page (`HostelBedManagementPage.tsx`) uses a tabbed layout with floor plan designer, which is completely different from the Seat Map page. You want an identical UI to the Seat Map screenshot -- stats bar, filters, color-coded bed grid, table view toggle, and a right-side sheet with booking/block/transfer/renew actions.
 
-### Database Migration
+### What Will Be Built
 
-Add position and layout columns to support the visual floor plan view:
+A new page `src/pages/admin/HostelBedMap.tsx` that mirrors `VendorSeats.tsx` exactly, adapted for hostel data.
 
-**`hostel_beds` table** -- add:
-- `position_x` (numeric, default 0) -- x coordinate on room layout
-- `position_y` (numeric, default 0) -- y coordinate on room layout
-
-**`hostel_rooms` table** -- add:
-- `room_width` (integer, default 800) -- canvas width for visual layout
-- `room_height` (integer, default 600) -- canvas height for visual layout
-- `layout_image` (text, nullable) -- background image for room layout
-- `layout_image_opacity` (integer, default 30) -- opacity of background image
-
-### New Components
-
-#### 1. `HostelBedPlanDesigner.tsx` (mirrors `FloorPlanDesigner.tsx`)
-- Visual canvas where admin clicks to place bed markers on a room layout
-- Drag to reposition beds, snap to 40px grid, collision detection
-- Toolbar: upload layout image, opacity slider, place beds mode, zoom, save
-- Click a bed marker to open edit dialog (category, price override, block/unblock)
-- Delete bed via hover X button
-- Same zoom/pan/minimap controls as FloorPlanDesigner
-
-#### 2. `HostelBedPlanViewer.tsx` (mirrors `FloorPlanViewer.tsx`)
-- Read-only viewer showing bed markers on the room layout
-- Color-coded: emerald=available, blue=occupied, red=blocked, primary=selected
-- Tooltip on hover with bed details (number, sharing type, category, price, occupant)
-- Zoom/pan controls and minimap
-- Used in the date-based bed map and student-facing views
-
-#### 3. `DateBasedBedMap.tsx` (mirrors `DateBasedSeatMap.tsx`)
-- Date range picker (start/end) to check bed availability for specific periods
-- Queries `hostel_bookings` for overlapping confirmed/pending bookings
-- Shows available/unavailable counts with badges
-- Floor selector pills (same style as reading room)
-- Room selector within each floor
-- Renders `HostelBedPlanViewer` with availability data overlaid
-- Export CSV button for availability data
-- Shows conflicting booking details when a bed is selected
-
-#### 4. `HostelBedDetailsDialog.tsx` (mirrors `SeatDetailsDialog.tsx`)
-- Dialog showing all booking details for a specific bed
-- Table: Guest name, contact, booking dates, price, status
-- Shows booking history
-- Export data button
-
-#### 5. `HostelBedTransferManagement.tsx` (mirrors `SeatTransferManagement.tsx`)
-- Lists all confirmed hostel bookings with bed assignments
-- Search, filter by hostel, sort, pagination
-- Transfer dialog: select target hostel, room, and available bed
-- Updates booking's `bed_id`, `room_id` (and `hostel_id` if cross-hostel)
-- Export CSV/Excel
-
-### Updated Page: `HostelBedManagementPage.tsx`
-
-New page at route `/admin/hostels/:hostelId/beds` (mirrors `SeatManagement` at `/admin/cabins/:cabinId/seats`).
+### Layout (identical to Seat Map)
 
 ```text
-[< Back]  Hostel Name  |  Gender  |  Capacity
+Stats Bar:  [TOTAL] | [BOOKED] | [AVAILABLE] | [EXPIRING] | [BLOCKED] | [REVENUE]
 
-[Categories]                    |  [Rooms/Floors]
-  AC +500  [Edit] [Delete]      |  Floor 1  Floor 2  Floor 3
-  Non-AC +0 [Edit] [Delete]     |
-  [+ Add]                       |
+Filters:    [All Hostels v]  [27 Feb 2026]  [All Status v]  [Search bed...]  [Grid|Table]  [Refresh]
 
-[View Toggle: Box Grid | Floor Plan]
+Legend:     * Available  * Booked  * Expiring  * Blocked                        XX beds
 
---- Box Grid View (enhanced existing HostelBedMapEditor) ---
-Room 101 [Standard]        3/6 available
-[===---] progress bar
-[Bed 1] [Bed 2] [Bed 3] [Bed 4] [Bed 5] [Bed 6]
-  Click any bed -> opens action menu:
-  - Edit (category, price override)
-  - Block/Unblock
-  - View Details (booking history)
-  - Book Future (opens manual booking)
-  - Transfer (if occupied)
+Grid:       [B1]  [B2]  [B3]  [B4]  [B5]  [B6]  [B7]  [B8]  [B9]  [B10]
+            Cat   Cat   Cat   Cat   Cat   Cat   Cat   Cat   Cat   Cat
+            P     P     P     P     P     P     P     P     P     P
+            Avl   Bkd   Avl   Avl   Bkd   Avl   Blkd  Avl   Avl   Avl
+            (hover: Lock/Edit/Info icons)
 
---- Floor Plan View (new visual layout) ---
-Per-room canvas with bed markers positioned via drag-and-drop
-Same FloorPlanDesigner toolbar (upload layout, place beds, zoom)
+Sheet (right side on bed click):
+  - Bed #X header with category badge and price
+  - Status bar (color-coded)
+  - If Booked: Student info card + Renew / Book Future / Transfer Bed / Block buttons
+  - If Available: Booking form (student search, duration, price, discount, payment method, 2-step confirm)
+  - If Blocked: Block history + Unblock button
+  - Current & Future bookings list with paid/due info, receipts, due collection
+  - Booking success view with invoice download
 ```
 
-### Tabs on the Management Page
+### Data Flow
 
-| Tab | Description |
-|---|---|
-| Bed Map | Box grid + Floor plan toggle (default) |
-| Date Availability | DateBasedBedMap with date range picker |
-| Transfer Beds | HostelBedTransferManagement |
+Since hostel data lives in the cloud database (not MongoDB like reading rooms), the page will query directly:
 
-### Admin Action Flows
+- **Hostels list**: `hostels` table (for the hostel dropdown filter)
+- **Beds for date**: `hostel_beds` joined with `hostel_sharing_options` and `hostel_rooms`, plus `hostel_bookings` filtered by date overlap to compute `dateStatus` (available/booked/expiring/blocked)
+- **Booking actions**: Direct inserts/updates on `hostel_bookings`, `hostel_beds`, `hostel_receipts`
+- **Student search**: Query `profiles` table
+- **Block/Unblock**: Update `hostel_beds.is_blocked` + `block_reason`
+- **Transfer**: Update `hostel_bookings.bed_id` + toggle `is_available` on old/new beds
+- **Due collection**: Query/create entries in `hostel_receipts`
 
-**Book Future**: From bed details, admin clicks "Book Future" which navigates to ManualBookingManagement with hostel/room/bed pre-selected (reuse existing manual booking flow with hostel mode).
+### Key Differences from Seat Map
 
-**Block/Unblock**: Same as current HostelBedMapEditor -- toggle `is_blocked` with reason. Enhanced with date-range blocking support.
+| Feature | Seat Map (VendorSeats) | Hostel Bed Map |
+|---|---|---|
+| Data source | MongoDB via `vendorSeatsService` | Cloud DB via direct queries |
+| Property selector | "All Reading Rooms" dropdown | "All Hostels" dropdown |
+| Unit label | "S1, S2..." | "B1, B2..." |
+| Locker system | Yes (locker toggle in booking) | No (no locker for hostels) |
+| Slot system | Yes (morning/evening slots) | No (no slots for hostels) |
+| Category source | `seat_categories` table | `hostel_bed_categories` table |
+| Price source | `seats.price` | `hostel_sharing_options.price_monthly` + `hostel_beds.price_override` |
+| Expiring logic | Booking end_date within 5 days | Same logic |
+| Advance booking | Uses cabin advance settings | Uses hostel advance settings |
+| Receipts | `receipts` table | `hostel_receipts` table |
 
-**Edit**: Dialog to change category, price override, sharing option assignment.
+### Sidebar Navigation
 
-**Transfer Bed**: Dialog to pick target hostel/room/bed. Updates `hostel_bookings.bed_id` and `room_id`. Marks old bed available, new bed occupied.
+Add "Bed Map" link under the Hostels section in AdminSidebar, pointing to `/admin/hostel-bed-map`.
 
-**View Details**: Dialog showing bed info + all booking history (past and current).
+### Route
 
-### Route Changes in `App.tsx`
-
-Add new route under admin:
-```
-<Route path="hostels/:hostelId/beds" element={<HostelBedManagementPage />} />
-```
+Add `/admin/hostel-bed-map` route in `App.tsx`.
 
 ### Files to Create/Modify
 
 | File | Action | Description |
 |---|---|---|
-| Database migration | New | Add position columns to hostel_beds, layout columns to hostel_rooms |
-| `src/components/hostels/HostelBedPlanDesigner.tsx` | New | Visual bed layout editor (mirrors FloorPlanDesigner) |
-| `src/components/hostels/HostelBedPlanViewer.tsx` | New | Read-only bed layout viewer (mirrors FloorPlanViewer) |
-| `src/components/hostels/DateBasedBedMap.tsx` | New | Date-aware bed availability map |
-| `src/components/admin/HostelBedDetailsDialog.tsx` | New | Bed booking history dialog |
-| `src/components/admin/HostelBedTransferManagement.tsx` | New | Bed transfer management with filters/pagination |
-| `src/pages/admin/HostelBedManagementPage.tsx` | New | Main page with tabs (Bed Map, Date Availability, Transfer) |
-| `src/components/hostels/HostelBedMapEditor.tsx` | Edit | Add action menu (view details, book future, transfer) to each bed |
-| `src/App.tsx` | Edit | Add route for bed management page |
-| `src/components/admin/HostelItem.tsx` | Edit | Update "Beds" button to navigate to new bed management route |
+| `src/pages/admin/HostelBedMap.tsx` | **New** | Full page mirroring VendorSeats.tsx (~1800 lines) with hostel data |
+| `src/components/admin/AdminSidebar.tsx` | **Edit** | Add "Bed Map" link under Hostels section |
+| `src/App.tsx` | **Edit** | Add route for `/admin/hostel-bed-map` |
 
-### Data Flow
+### Features Included (same as Seat Map)
 
-- All hostel bed data comes from the cloud database (hostel_beds, hostel_rooms, hostel_bookings, hostel_sharing_options tables)
-- No backend API needed -- all queries use the database client directly (same pattern as existing HostelBedMapEditor)
-- Bed transfer updates are direct database operations with RLS policies already in place
-- Position data persisted to hostel_beds for the floor plan view
+1. Stats bar (Total, Booked, Available, Expiring, Blocked, Revenue)
+2. Hostel filter dropdown + Date picker + Status filter + Search + Grid/Table toggle
+3. Color-coded bed cards (green=available, red=booked, amber=expiring, grey=blocked)
+4. Hover actions on each bed (Lock/Unlock, Edit Price, View Details)
+5. Right-side Sheet with:
+   - Bed info header with status
+   - Current student info card (when booked)
+   - Action buttons: Renew, Book Future, Transfer Bed, Block
+   - Full booking form with student search/create, duration selector, price, discount, payment method
+   - Two-step booking confirmation
+   - Advance booking mode with due date
+   - Booking success view with invoice download
+   - Inline due collection for partial-paid bookings
+   - Current/Future/Past bookings list
+   - Receipts dialog
+6. Price edit dialog
+7. Block/Unblock dialog with reason and date range
+8. Transfer bed dialog
+9. Table view with sortable columns
 
