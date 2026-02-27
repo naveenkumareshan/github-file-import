@@ -222,7 +222,21 @@ useEffect(() => {
     if (slotsEnabled) {
       const res = await cabinSlotService.getSlotsByCabin(cId);
       if (res.success) {
-        setAvailableSlots(res.data);
+        // Create virtual "Full Day" slot
+        const fullDaySlot: CabinSlot = {
+          id: 'full_day',
+          cabin_id: cId,
+          name: 'Full Day',
+          start_time: (cabin as any)?.opening_time || '06:00',
+          end_time: (cabin as any)?.closing_time || '22:00',
+          price: cabin.price || 0,
+          is_active: true,
+          created_at: '',
+        };
+        const allSlots = [fullDaySlot, ...res.data];
+        setAvailableSlots(allSlots);
+        // Auto-select Full Day as default
+        setSelectedSlot(fullDaySlot);
       }
     }
     
@@ -346,8 +360,9 @@ useEffect(() => {
 
   const handleSlotSelect = (slot: CabinSlot) => {
     setSelectedSlot(slot);
-    // Update pricing to use slot price
-    setTotalPrice(slot.price * months);
+    // Full Day uses seat/cabin base price; specific slots use slot price
+    const price = slot.id === 'full_day' ? (selectedCabin?.price || 0) : slot.price;
+    setTotalPrice(price * months);
     setStep('select-seat');
   };
 
@@ -385,7 +400,7 @@ useEffect(() => {
       months,
       durationCount,
       bookingDuration,
-      ...(selectedSlot ? { slot_id: selectedSlot.id } : {}),
+      ...(selectedSlot && selectedSlot.id !== 'full_day' ? { slot_id: selectedSlot.id } : {}),
     };
 
     try {
