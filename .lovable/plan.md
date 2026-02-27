@@ -1,67 +1,43 @@
 
 
-## Add Sharing Type Display and Security Deposit Collection to Hostel Bed Map Booking
+## Fix Due Balance Calculation to Include Security Deposit
 
-### Changes to `src/pages/admin/HostelBedMap.tsx`
+### Problem
+When collecting a security deposit alongside a partial payment, the "Due Balance" only considers the bed total minus advance, ignoring the security deposit. For example:
+- Total: 4500, Security Deposit: 5000, Grand Total: 9500
+- Advance Paid: 2250
+- Current Due Balance: 2250 (4500 - 2250) -- WRONG
+- Correct Due Balance: 7250 (9500 - 2250)
 
-### 1. Show Sharing Type in Booking Flow
+### Changes in `src/pages/admin/HostelBedMap.tsx`
 
-The `selectedBed.sharingType` is already available but not displayed. It will be added to:
-
-- **Sheet header** (line ~1005): Show sharing type badge next to category badge
-- **Booking confirmation summary** (line ~1324): Add sharing type row in the confirmation details
-- **Booking success view** (line ~1111): Add sharing type in the confirmed booking summary
-- **Current bookings list**: Show sharing type if available from the booking data
-
-### 2. Security Deposit Collection Option
-
-Currently, security deposit is saved as `hostel?.security_deposit || 0` but the admin cannot see or edit it during booking. Changes:
-
-- **Add state variable**: `securityDeposit` (editable number input, pre-filled from hostel config)
-- **Add toggle + editable input** in the booking form (after the Partial Payment section): "Collect Security Deposit" checkbox with an editable amount field (pre-filled with hostel's `security_deposit` value)
-- **Show in booking summary**: Display security deposit as a separate line item below Total
-- **Show in confirmation step**: Include security deposit amount
-- **Show in success view**: Include security deposit collected
-- **Update booking insert**: Use the edited security deposit value instead of the hostel default
-- **Update receipt amount**: Add security deposit to the receipt amount when collected
-- **Grand total display**: Show "Total + Security Deposit = Grand Total" so admin sees the full collection amount
-
-### Visual Layout (Booking Form)
-
-```text
-Bed Amount                    5000
-Discount          [amt] [reason]
-----
-Total                         5000
-
-[x] Collect Security Deposit
-    Amount: [500]  (editable, pre-filled from hostel config)
-
-[ ] Partial Payment (Collect Less)
-
-[Book Bed]
+**1. `advanceComputed` memo (line ~556)**: Include security deposit in the remaining due calculation:
+```
+remainingDue = (total + securityDeposit) - advanceAmount
 ```
 
-### Visual Layout (Confirmation)
-
-```text
-Student:        John Doe
-Phone:          9876543210
-----
-Bed:            #7 - Room 201 - Inhale Stays
-Sharing Type:   4-Sharing
-Period:         27 Feb -> 27 Mar 2026
-----
-Bed Amount:                   5000
-Total:                        5000
-Security Deposit:              500
-----
-Grand Total:                  5500
+**2. Booking creation (line ~613)**: Fix `remaining` to include security deposit:
+```
+remaining = (total + secDepAmt) - advanceAmt
 ```
 
-### Data Changes
+**3. `remaining_amount` in booking insert (line ~626)**: Use the corrected `remaining` value (already does).
 
-- `security_deposit` in the booking insert will use the edited value
-- Receipt amount will include security deposit when the toggle is on
-- `lastBookingInfo` will include `securityDeposit` and `sharingType` for the success view
+**4. `hostel_dues` insert (line ~666-668)**: Update `total_fee` and `due_amount` to include security deposit so the due management page tracks the full outstanding balance.
 
+**5. `lastBookingInfo.remainingDue` (line ~695)**: Already uses `remaining`, so it will be correct once the calculation is fixed.
+
+### Specific Line Changes
+
+| Location | Current | Fixed |
+|---|---|---|
+| Line 556 (advanceComputed) | `remainingDue = total - advanceAmount` | `remainingDue = total + secDepAmt - advanceAmount` (needs security deposit state access in memo) |
+| Line 613 (booking creation) | `remaining = total - advanceAmt` | `remaining = (total + secDepAmt) - advanceAmt` |
+| Line 666 (dues total_fee) | `total_fee: total` | `total_fee: total + secDepAmt` |
+| Line 668 (dues due_amount) | `due_amount: remaining` | Already uses corrected `remaining` |
+
+Since `advanceComputed` is a `useMemo` that doesn't currently have access to `collectSecurityDeposit` and `securityDepositAmount`, those dependencies will be added to include the security deposit in the due balance shown in the form UI (lines 1333-1334 and 1378-1379).
+
+### Summary
+- 4 calculation fixes in `HostelBedMap.tsx`
+- Due balance will correctly reflect: Grand Total (bed total + security deposit) minus advance paid
