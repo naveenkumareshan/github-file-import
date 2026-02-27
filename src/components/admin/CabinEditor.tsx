@@ -619,7 +619,7 @@ export function CabinEditor({
           </Card>
         </Collapsible>
 
-        {/* ── Section 5: Slot-Based Booking ── */}
+        {/* ── Section 5: Booking Configuration ── */}
         <Collapsible open={openSection === 5} onOpenChange={(isOpen) => setOpenSection(isOpen ? 5 : null)}>
           <Card>
             <CollapsibleTrigger asChild>
@@ -628,8 +628,8 @@ export function CabinEditor({
                   <div className="flex items-center gap-3">
                     <SectionBadge number={5} icon={CalendarClock} />
                     <div>
-                      <CardTitle className="text-base">Slot-Based Booking</CardTitle>
-                      <CardDescription className="text-xs">Allow students to book specific time slots</CardDescription>
+                      <CardTitle className="text-base">Booking Configuration</CardTitle>
+                      <CardDescription className="text-xs">Configure booking durations and time slots</CardDescription>
                     </div>
                   </div>
                   <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
@@ -638,6 +638,47 @@ export function CabinEditor({
             </CollapsibleTrigger>
             <CollapsibleContent>
               <CardContent className="px-4 pb-4 pt-0 space-y-3">
+                {/* Allowed Booking Durations - moved above Enable Slots */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium">Offer bookings for</Label>
+                  <p className="text-xs text-muted-foreground">Choose which duration types students can book</p>
+                  <div className="flex flex-wrap gap-2">
+                    {(['daily', 'weekly', 'monthly'] as const).map((dur) => {
+                      const isSelected = (cabin.allowedDurations || []).includes(dur);
+                      return (
+                        <button
+                          key={dur}
+                          type="button"
+                          className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
+                            isSelected
+                              ? 'bg-primary text-primary-foreground border-primary'
+                              : 'bg-muted text-muted-foreground border-border hover:bg-accent'
+                          }`}
+                          onClick={() => {
+                            const current = cabin.allowedDurations || ['daily', 'weekly', 'monthly'];
+                            if (isSelected && current.length <= 1) return; // At least one must remain
+                            const updated = isSelected ? current.filter((d: string) => d !== dur) : [...current, dur];
+                            // Also remove from slotsApplicableDurations if unchecked
+                            const updatedSlotsDur = isSelected
+                              ? (cabin.slotsApplicableDurations || []).filter((d: string) => d !== dur)
+                              : cabin.slotsApplicableDurations || [];
+                            // Auto-disable slots if no applicable durations remain
+                            const autoDisableSlots = updatedSlotsDur.length === 0;
+                            setCabin(prev => ({
+                              ...prev,
+                              allowedDurations: updated,
+                              slotsApplicableDurations: updatedSlotsDur,
+                              ...(autoDisableSlots ? { slotsEnabled: false } : {}),
+                            }));
+                          }}
+                        >
+                          {dur.charAt(0).toUpperCase() + dur.slice(1)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 <div className="flex items-center justify-between">
                   <div>
                     <Label htmlFor="slotsEnabled" className="text-sm font-medium">Enable Slots</Label>
@@ -666,40 +707,6 @@ export function CabinEditor({
                   }} />
                 </div>
 
-                {/* Allowed Booking Durations */}
-                <div className="space-y-2">
-                  <Label className="text-xs font-medium">Offer bookings for</Label>
-                  <p className="text-xs text-muted-foreground">Choose which duration types students can book</p>
-                  <div className="flex flex-wrap gap-2">
-                    {(['daily', 'weekly', 'monthly'] as const).map((dur) => {
-                      const isSelected = (cabin.allowedDurations || []).includes(dur);
-                      return (
-                        <button
-                          key={dur}
-                          type="button"
-                          className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
-                            isSelected
-                              ? 'bg-primary text-primary-foreground border-primary'
-                              : 'bg-muted text-muted-foreground border-border hover:bg-accent'
-                          }`}
-                          onClick={() => {
-                            const current = cabin.allowedDurations || ['daily', 'weekly', 'monthly'];
-                            if (isSelected && current.length <= 1) return; // At least one must remain
-                            const updated = isSelected ? current.filter((d: string) => d !== dur) : [...current, dur];
-                            // Also remove from slotsApplicableDurations if unchecked
-                            const updatedSlotsDur = isSelected
-                              ? (cabin.slotsApplicableDurations || []).filter((d: string) => d !== dur)
-                              : cabin.slotsApplicableDurations || [];
-                            setCabin(prev => ({ ...prev, allowedDurations: updated, slotsApplicableDurations: updatedSlotsDur }));
-                          }}
-                        >
-                          {dur.charAt(0).toUpperCase() + dur.slice(1)}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
                 {/* Slots Applicable Durations - only when slots enabled */}
                 {cabin.slotsEnabled && (
                   <div className="space-y-2">
@@ -720,7 +727,12 @@ export function CabinEditor({
                             onClick={() => {
                               const current = cabin.slotsApplicableDurations || ['daily', 'weekly', 'monthly'];
                               const updated = isSelected ? current.filter((d: string) => d !== dur) : [...current, dur];
-                              setCabin(prev => ({ ...prev, slotsApplicableDurations: updated }));
+                              // Auto-disable slots toggle if nothing selected
+                              if (updated.length === 0) {
+                                setCabin(prev => ({ ...prev, slotsApplicableDurations: updated, slotsEnabled: false }));
+                              } else {
+                                setCabin(prev => ({ ...prev, slotsApplicableDurations: updated }));
+                              }
                             }}
                           >
                             {dur.charAt(0).toUpperCase() + dur.slice(1)}
