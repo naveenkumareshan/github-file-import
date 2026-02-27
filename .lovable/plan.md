@@ -1,38 +1,44 @@
 
 
-## Show Seat Category, Time Slot, and Duration on Admin Bookings List
+## Fix Blank Pages on Reading Room and Booking Card Click (Student Side)
 
 ### Problem
-The admin bookings table (`/admin/bookings`) doesn't display seat category, time slot, or booking duration. The data exists in the database (`bookings.slot_id`, `bookings.booking_duration`, `bookings.duration_count`, `seats.category`) but isn't fetched or rendered.
+When a student clicks on a reading room card (`/book-seat/:id`) or a booking detail card (`/student/bookings/:id`), the page goes blank. This is caused by lazy-loaded components failing silently without an error boundary to catch and display a fallback UI.
+
+### Root Cause
+In `src/App.tsx`, the student routes use `StudentSuspense` (Suspense with a basic "Loading..." fallback) but have **no ErrorBoundary**. If a lazy-loaded chunk fails to load (network issue, cache invalidation) or the component throws a runtime error, the entire page crashes to blank.
 
 ### Fix
 
-**File: `src/api/adminBookingsService.ts`**
+**File: `src/App.tsx`**
 
-1. Update the `getAllBookings` select query (line 27) to also fetch:
-   - `slot_id` and `booking_duration` and `duration_count` from bookings (already in the row, just not mapped)
-   - `category` from the seats join: change `seats:seat_id(number)` to `seats:seat_id(number, category)`
-   - Join `cabin_slots:slot_id(name)` to get the slot name
+1. Create a `StudentErrorBoundary` wrapper that combines `ErrorBoundary` + `Suspense` for all student/public lazy routes.
+2. Wrap the `StudentSuspense` component with `ErrorBoundary` so that chunk load failures and runtime errors show a user-friendly error screen with a "Retry" button instead of a blank page.
+3. Update the Suspense fallback to show a proper loading skeleton instead of just text.
 
-2. Update the mapping (lines 63-91) to include:
-   - `bookingDuration` from `b.booking_duration`
-   - `durationCount` from `b.duration_count`
-   - `seatCategory` from `seat?.category`
-   - `slotName` from `cabin_slots?.name` (or "Full Day" if `slot_id` is null)
+**Changes:**
+- Import `ErrorBoundary` from `@/components/ErrorBoundary`
+- Update `StudentSuspense` to wrap children in both `ErrorBoundary` and `Suspense`:
 
-**File: `src/pages/AdminBookings.tsx`**
+```tsx
+const StudentSuspense = ({ children }: { children: React.ReactNode }) => (
+  <ErrorBoundary>
+    <Suspense fallback={<div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}>
+      {children}
+    </Suspense>
+  </ErrorBoundary>
+);
+```
 
-1. Add two new columns to the table header: replace `"Type"` with `"Category"` and add `"Slot"` column, or add them alongside existing columns.
-2. In each row, render:
-   - **Category**: badge showing `b.seatCategory` (e.g., "AC", "Non-AC")
-   - **Slot**: text showing `b.slotName` (e.g., "Morning", "Full Day")
-   - **Duration**: already has a "Duration" column showing date range; update it to also show duration type (e.g., "1 Month" instead of just the date range)
-3. Update header array and colSpan for loading/empty states.
+This single change wraps ALL student and public routes with error recovery, preventing blank pages throughout the app.
 
-### Summary
+### Technical Details
 
-| File | Changes |
-|------|---------|
-| `src/api/adminBookingsService.ts` | Fetch `seats.category`, join `cabin_slots` for slot name, map `seatCategory`, `slotName`, `bookingDuration`, `durationCount` |
-| `src/pages/AdminBookings.tsx` | Add Category and Slot columns; show duration type label in Duration column |
+| File | Change |
+|------|--------|
+| `src/App.tsx` | Import `ErrorBoundary` and `Loader2`; update `StudentSuspense` to wrap with ErrorBoundary and use a spinner fallback |
 
+### Result
+- If a lazy chunk fails to load, the error boundary shows "Something went wrong" with a "Try Again" button
+- If a component throws a runtime error, users see the error message instead of a blank page
+- The loading state shows a centered spinner instead of plain text
