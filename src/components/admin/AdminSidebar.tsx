@@ -196,6 +196,13 @@ export function AdminSidebar() {
         permissions: ['view_reading_rooms']
       },
       {
+        title: 'Due Management',
+        url: '/admin/hostel-due-management',
+        icon: Wallet,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+        permissions: ['view_reading_rooms']
+      },
+      {
         title: 'Manage Hostels',
         url: '/admin/hostels',
         icon: HomeIcon,

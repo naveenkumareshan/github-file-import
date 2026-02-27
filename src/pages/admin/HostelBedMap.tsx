@@ -647,6 +647,24 @@ const HostelBedMap: React.FC = () => {
         collected_by_name: collectedByName,
       });
 
+      // Create hostel_dues entry if advance booking (partial payment)
+      if (remaining > 0 && isAdvanceBooking && advanceComputed) {
+        const dueDate = advanceComputed.dueDate;
+        await supabase.from('hostel_dues').insert({
+          user_id: selectedStudent.id,
+          hostel_id: selectedBed.hostelId,
+          room_id: selectedBed.room_id,
+          bed_id: selectedBed.id,
+          booking_id: newBooking.id,
+          total_fee: total,
+          advance_paid: advanceAmt,
+          due_amount: remaining,
+          due_date: format(dueDate, 'yyyy-MM-dd'),
+          proportional_end_date: advanceComputed.proportionalEndDate ? format(advanceComputed.proportionalEndDate, 'yyyy-MM-dd') : null,
+          status: 'pending',
+        } as any);
+      }
+
       setLastBookingInfo({
         serialNumber: newBooking.serial_number || 'N/A',
         studentName: selectedStudent.name,

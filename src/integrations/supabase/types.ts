@@ -859,6 +859,107 @@ export type Database = {
           },
         ]
       }
+      hostel_due_payments: {
+        Row: {
+          amount: number
+          collected_by: string | null
+          collected_by_name: string
+          created_at: string
+          due_id: string
+          id: string
+          notes: string
+          payment_method: string
+          transaction_id: string
+        }
+        Insert: {
+          amount?: number
+          collected_by?: string | null
+          collected_by_name?: string
+          created_at?: string
+          due_id: string
+          id?: string
+          notes?: string
+          payment_method?: string
+          transaction_id?: string
+        }
+        Update: {
+          amount?: number
+          collected_by?: string | null
+          collected_by_name?: string
+          created_at?: string
+          due_id?: string
+          id?: string
+          notes?: string
+          payment_method?: string
+          transaction_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hostel_due_payments_due_id_fkey"
+            columns: ["due_id"]
+            isOneToOne: false
+            referencedRelation: "hostel_dues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hostel_dues: {
+        Row: {
+          advance_paid: number
+          bed_id: string | null
+          booking_id: string | null
+          created_at: string
+          due_amount: number
+          due_date: string
+          hostel_id: string
+          id: string
+          paid_amount: number
+          proportional_end_date: string | null
+          room_id: string | null
+          serial_number: string | null
+          status: string
+          total_fee: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          advance_paid?: number
+          bed_id?: string | null
+          booking_id?: string | null
+          created_at?: string
+          due_amount?: number
+          due_date: string
+          hostel_id: string
+          id?: string
+          paid_amount?: number
+          proportional_end_date?: string | null
+          room_id?: string | null
+          serial_number?: string | null
+          status?: string
+          total_fee?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          advance_paid?: number
+          bed_id?: string | null
+          booking_id?: string | null
+          created_at?: string
+          due_amount?: number
+          due_date?: string
+          hostel_id?: string
+          id?: string
+          paid_amount?: number
+          proportional_end_date?: string | null
+          room_id?: string | null
+          serial_number?: string | null
+          status?: string
+          total_fee?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       hostel_receipts: {
         Row: {
           amount: number
