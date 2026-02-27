@@ -1,54 +1,55 @@
 
-## Remaining Items: Slot Deletion Protection, Manual Booking Slot Support, and Slot Toggle Locking
 
-### 1. SlotManagement.tsx -- Deletion Protection
+## Add "Full Day" Default Slot When Slots Are Enabled
 
-**What changes:** Before deleting a slot, check if any active bookings reference that `slot_id`. If bookings exist, block deletion and show a toast suggesting deactivation instead.
+### Problem
+When a cabin has `slots_enabled = true`, the current UI forces the student to pick a time slot. But there's no "Full Day" option -- if the student wants to use the reading room for the entire operating hours, they have no way to do so. Additionally, if no slot is selected, it should default to "Full Day" behavior instead of blocking the booking.
 
-**Details:**
-- Import `supabase` client
-- In `handleDelete`, before calling `cabinSlotService.deleteSlot()`, query `bookings` table for rows where `slot_id = id` and `payment_status NOT IN ('cancelled', 'failed')`
-- If results exist, show a destructive toast: "This slot has active bookings. Please deactivate it instead of deleting."
-- If no bookings, proceed with deletion as before
+### Solution
+Add a virtual "Full Day" option as the first card in the slot picker. This option uses the cabin's base price (from the seat) rather than a slot-specific price. When "Full Day" is selected (or when no explicit slot is chosen), `slot_id` is sent as `null` in the booking payload, meaning the booking covers the full operating hours.
 
----
+### Changes
 
-### 2. ManualBookingManagement.tsx -- Slot Selection Support
+#### 1. `src/components/seats/SeatBookingForm.tsx`
+- Create a virtual "Full Day" slot object with `id: 'full_day'`, using the cabin's opening/closing time and the seat price
+- Prepend this virtual slot to the `availableSlots` array when rendering slot cards
+- Auto-select "Full Day" as the default when slots load (so slot is never unselected)
+- When `selectedSlot.id === 'full_day'`, send `slot_id: null` in the booking payload (no slot restriction)
+- Pricing: "Full Day" uses seat price; specific slots use slot price (existing logic works since `selectedSlot` will be the virtual full-day object with `price = seat.price`)
+- Remove the hard block "Please select a time slot" since Full Day is pre-selected
+- Update the blocking condition: `cabin.slotsEnabled && !selectedSlot` will no longer trigger because Full Day is auto-selected
 
-**What changes:** Add slot awareness to the manual booking flow. When a selected cabin has `slots_enabled = true`, show a slot selection step between date selection and seat selection.
+#### 2. `src/pages/admin/ManualBookingManagement.tsx`
+- Same approach: add a virtual "Full Day" slot when fetching slots for a cabin
+- Auto-select "Full Day" as default
+- When creating booking, if `selectedSlot.id === 'full_day'`, send `slot_id: null`
 
-**Details:**
-- Add imports: `cabinSlotService` and `CabinSlot`
-- Add state: `selectedSlot`, `availableSlots`, `cabinSlotsEnabled`
-- Update the `Cabin` interface to include `slots_enabled`
-- Fix `_id` references to use `id` (since `adminCabinsService` returns Supabase UUIDs as `id`, not `_id`)
-- In `handleCabinSelect`: check `cabin.slots_enabled`, if true fetch slots via `cabinSlotService.getSlotsByCabin(cabin.id)`
-- Update step flow: when `slotsEnabled`, after date selection go to a new `'select-slot'` step, then proceed to `'select-seat'`
-- New `renderSlotSelection()` function: show slot cards with name, time, price; on select, set `selectedSlot` and update pricing to use slot price
-- Pass `slotId={selectedSlot?.id}` to `DateBasedSeatMap` in `renderSeatSelection`
-- Include `slot_id: selectedSlot?.id` in the booking creation payload (`handleCreateBooking`)
-- Update step indicator to show the slot step when applicable
-- Use slot price for pricing calculations when slots are enabled
+#### 3. `src/api/seatsService.ts` (No change needed)
+- When `slotId` is `undefined`/`null`, availability already checks without slot filtering -- this is the "full day" behavior
 
----
+### Technical Detail
 
-### 3. CabinEditor.tsx -- Slot Toggle Locking
+The virtual Full Day slot object:
+```typescript
+const fullDaySlot: CabinSlot = {
+  id: 'full_day',
+  cabin_id: cabinId,
+  name: 'Full Day',
+  start_time: cabin.openingTime || '06:00',
+  end_time: cabin.closingTime || '22:00',
+  price: selectedSeat?.price || cabin?.price || 0,
+  is_active: true,
+  created_at: '',
+};
+```
 
-**What changes:** Prevent toggling `slots_enabled` OFF when the cabin has active bookings with a `slot_id`.
-
-**Details:**
-- In the Section 5 (Slot-Based Booking) `Switch` `onCheckedChange` handler:
-  - If toggling OFF (`checked = false`) and `existingCabin?.id` exists:
-    - Query `bookings` table for rows where `cabin_id = existingCabin.id`, `slot_id IS NOT NULL`, and `payment_status NOT IN ('cancelled', 'failed')`
-    - If results exist, show a destructive toast: "Cannot disable slots -- active slot-based bookings exist" and do NOT update state
-    - If no results, allow the toggle
-  - If toggling ON, always allow
-
----
+- Auto-selected on load so the flow is never blocked
+- Price updates dynamically when a seat is selected (full day = seat price, specific slot = slot price)
+- `slot_id` in booking payload: `selectedSlot?.id === 'full_day' ? undefined : selectedSlot?.id`
 
 ### Files Modified
 | File | Change |
 |------|--------|
-| `src/components/admin/SlotManagement.tsx` | Add booking check before slot deletion |
-| `src/pages/admin/ManualBookingManagement.tsx` | Add slot selection step, fix `_id` to `id`, slot-aware pricing |
-| `src/components/admin/CabinEditor.tsx` | Add slot toggle lock check |
+| `src/components/seats/SeatBookingForm.tsx` | Add Full Day virtual slot, auto-select it, adjust payload |
+| `src/pages/admin/ManualBookingManagement.tsx` | Add Full Day virtual slot, auto-select it, adjust payload |
+
