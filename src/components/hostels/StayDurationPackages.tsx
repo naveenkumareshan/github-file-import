@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { hostelStayPackageService, StayPackage } from '@/api/hostelStayPackageService';
+import { hostelStayPackageService, StayPackage, DurationType } from '@/api/hostelStayPackageService';
 import { formatCurrency } from '@/utils/currency';
 import { CheckCircle, ChevronDown, ChevronUp, Tag } from 'lucide-react';
 
@@ -11,6 +11,7 @@ interface StayDurationPackagesProps {
   monthlyPrice: number;
   selectedPackage: StayPackage | null;
   onSelectPackage: (pkg: StayPackage) => void;
+  durationType?: DurationType;
 }
 
 export const StayDurationPackages: React.FC<StayDurationPackagesProps> = ({
@@ -18,15 +19,20 @@ export const StayDurationPackages: React.FC<StayDurationPackagesProps> = ({
   monthlyPrice,
   selectedPackage,
   onSelectPackage,
+  durationType = 'monthly',
 }) => {
   const [packages, setPackages] = useState<StayPackage[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  const priceLabel = durationType === 'daily' ? '/day' : durationType === 'weekly' ? '/wk' : '/mo';
+  const basePrice = durationType === 'daily' ? Math.round(monthlyPrice / 30) : durationType === 'weekly' ? Math.round(monthlyPrice / 4) : monthlyPrice;
+
   useEffect(() => {
     const fetchPackages = async () => {
       try {
-        const data = await hostelStayPackageService.getPackages(hostelId);
+        setLoading(true);
+        const data = await hostelStayPackageService.getPackages(hostelId, durationType);
         setPackages(data);
         // Auto-select base package
         if (data.length > 0 && !selectedPackage) {
@@ -39,7 +45,7 @@ export const StayDurationPackages: React.FC<StayDurationPackagesProps> = ({
       }
     };
     fetchPackages();
-  }, [hostelId]);
+  }, [hostelId, durationType]);
 
   if (loading) {
     return (
@@ -54,23 +60,23 @@ export const StayDurationPackages: React.FC<StayDurationPackagesProps> = ({
   if (packages.length === 0) return null;
 
   const getDiscountedPrice = (pkg: StayPackage) => {
-    return Math.round(monthlyPrice * (1 - pkg.discount_percentage / 100));
+    return Math.round(basePrice * (1 - pkg.discount_percentage / 100));
   };
 
-  const getSavingsPerMonth = (pkg: StayPackage) => {
-    return monthlyPrice - getDiscountedPrice(pkg);
+  const getSavingsPerUnit = (pkg: StayPackage) => {
+    return basePrice - getDiscountedPrice(pkg);
   };
 
   return (
     <div className="space-y-3">
       <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-        Choose Your Stay Duration
+        Choose Package
       </h3>
       
       {packages.map((pkg) => {
         const isSelected = selectedPackage?.id === pkg.id;
         const discountedPrice = getDiscountedPrice(pkg);
-        const savings = getSavingsPerMonth(pkg);
+        const savings = getSavingsPerUnit(pkg);
         const isExpanded = expandedId === pkg.id;
 
         return (
@@ -87,7 +93,7 @@ export const StayDurationPackages: React.FC<StayDurationPackagesProps> = ({
             {savings > 0 && (
               <Badge className="absolute -top-2 right-3 bg-green-600 text-white text-[10px] px-2">
                 <Tag className="h-3 w-3 mr-1" />
-                SAVE {formatCurrency(savings)}/MONTH
+                SAVE {formatCurrency(savings)}{priceLabel}
               </Badge>
             )}
 
@@ -109,11 +115,11 @@ export const StayDurationPackages: React.FC<StayDurationPackagesProps> = ({
               <div className="text-right">
                 <p className="font-bold text-base">
                   {formatCurrency(discountedPrice)}
-                  <span className="text-xs font-normal text-muted-foreground">/mo</span>
+                  <span className="text-xs font-normal text-muted-foreground">{priceLabel}</span>
                 </p>
                 {savings > 0 && (
                   <p className="text-xs text-muted-foreground line-through">
-                    {formatCurrency(monthlyPrice)}
+                    {formatCurrency(basePrice)}
                   </p>
                 )}
               </div>

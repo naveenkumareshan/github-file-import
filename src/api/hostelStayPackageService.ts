@@ -1,6 +1,8 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
+export type DurationType = 'daily' | 'weekly' | 'monthly';
+
 export interface StayPackage {
   id: string;
   hostel_id: string;
@@ -13,6 +15,7 @@ export interface StayPackage {
   description: string;
   is_active: boolean;
   display_order: number;
+  duration_type: DurationType;
   created_at: string;
 }
 
@@ -26,16 +29,18 @@ export interface CreateStayPackageData {
   notice_months: number;
   description?: string;
   display_order?: number;
+  duration_type?: DurationType;
 }
 
 export const hostelStayPackageService = {
-  getPackages: async (hostelId: string): Promise<StayPackage[]> => {
-    const { data, error } = await supabase
+  getPackages: async (hostelId: string, durationType?: DurationType): Promise<StayPackage[]> => {
+    let query = supabase
       .from('hostel_stay_packages')
       .select('*')
       .eq('hostel_id', hostelId)
-      .eq('is_active', true)
-      .order('display_order', { ascending: true });
+      .eq('is_active', true);
+    if (durationType) query = query.eq('duration_type', durationType);
+    const { data, error } = await query.order('display_order', { ascending: true });
     if (error) throw error;
     return (data || []) as StayPackage[];
   },

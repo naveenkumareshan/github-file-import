@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/dialog";
 import { HostelBedMap } from "@/components/hostels/HostelBedMap";
 import { StayDurationPackages } from "@/components/hostels/StayDurationPackages";
-import { StayPackage } from "@/api/hostelStayPackageService";
+import { StayPackage, DurationType } from "@/api/hostelStayPackageService";
 
 /* ─── Skeleton ─── */
 const HostelDetailSkeleton = () => (
@@ -91,6 +91,7 @@ const HostelRoomDetails = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [selectedBed, setSelectedBed] = useState<any>(null);
   const [selectedStayPackage, setSelectedStayPackage] = useState<StayPackage | null>(null);
+  const [durationType, setDurationType] = useState<DurationType>('monthly');
   const [showDetails, setShowDetails] = useState(true);
   const [categories, setCategories] = useState<HostelBedCategory[]>([]);
 
@@ -182,6 +183,7 @@ const HostelRoomDetails = () => {
         hostel, 
         sharingOption, 
         stayPackage: selectedStayPackage,
+        durationType,
         selectedBed: {
           id: selectedBed.id,
           bed_number: selectedBed.bed_number,
@@ -210,9 +212,11 @@ const HostelRoomDetails = () => {
   const selectedBedPrice = selectedBed
     ? (selectedBed.price_override ?? selectedBed.price ?? 0)
     : 0;
+  const effectiveBasePrice = durationType === 'daily' ? Math.round(selectedBedPrice / 30) : durationType === 'weekly' ? Math.round(selectedBedPrice / 4) : selectedBedPrice;
   const discountedPrice = selectedStayPackage?.discount_percentage
-    ? Math.round(selectedBedPrice * (1 - selectedStayPackage.discount_percentage / 100))
-    : selectedBedPrice;
+    ? Math.round(effectiveBasePrice * (1 - selectedStayPackage.discount_percentage / 100))
+    : effectiveBasePrice;
+  const priceLabel = durationType === 'daily' ? '/day' : durationType === 'weekly' ? '/wk' : '/mo';
 
   /* ─── Render ─── */
   return (
@@ -443,18 +447,44 @@ const HostelRoomDetails = () => {
               />
             </div>
 
-            {/* ═══ Step 3: Stay Duration (shown after bed selected) ═══ */}
+            {/* ═══ Step 3: Stay Duration Type (shown after bed selected) ═══ */}
             {selectedBed && (
               <div className="px-3 pt-4">
                 <div className="mb-2">
-                  <h2 className="text-base font-bold text-foreground">Step 3: Choose Stay Duration</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">Select a stay package for better pricing</p>
+                  <h2 className="text-base font-bold text-foreground">Step 3: Stay Duration Type</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">Choose your preferred stay duration</p>
+                </div>
+                <div className="flex gap-2">
+                  {(['daily', 'weekly', 'monthly'] as DurationType[]).map(type => (
+                    <button
+                      key={type}
+                      onClick={() => { setDurationType(type); setSelectedStayPackage(null); }}
+                      className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all ${
+                        durationType === type
+                          ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                          : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
+                      }`}
+                    >
+                      {type === 'daily' ? 'Daily' : type === 'weekly' ? 'Weekly' : 'Monthly'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ═══ Step 4: Choose Package (shown after bed selected) ═══ */}
+            {selectedBed && (
+              <div className="px-3 pt-4">
+                <div className="mb-2">
+                  <h2 className="text-base font-bold text-foreground">Step 4: Choose Package</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">Select a package for better pricing</p>
                 </div>
                 <StayDurationPackages
                   hostelId={hostel.id}
                   monthlyPrice={selectedBedPrice}
                   selectedPackage={selectedStayPackage}
                   onSelectPackage={setSelectedStayPackage}
+                  durationType={durationType}
                 />
               </div>
             )}
@@ -482,7 +512,7 @@ const HostelRoomDetails = () => {
                     </div>
                     <div className="flex items-baseline gap-1 mt-0.5">
                       <span className="text-base font-bold text-primary">{formatCurrency(discountedPrice)}</span>
-                      <span className="text-xs text-muted-foreground">/mo</span>
+                      <span className="text-xs text-muted-foreground">{priceLabel}</span>
                       {selectedStayPackage && selectedStayPackage.discount_percentage > 0 && (
                         <span className="text-xs text-muted-foreground line-through ml-1">{formatCurrency(selectedBedPrice)}</span>
                       )}
