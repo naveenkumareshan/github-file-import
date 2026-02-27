@@ -225,11 +225,11 @@ export default function AdminHostelBookings() {
                               <div className="text-[10px] text-muted-foreground capitalize">{durationLabel(b)}</div>
                             </TableCell>
                             <TableCell className="py-1.5 px-3 text-xs">
-                              <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
-                                <div className="font-semibold">Bed: ₹{(b.total_price || 0).toLocaleString()}</div>
-                                <div className="text-[10px] text-muted-foreground">Deposit: {(b.security_deposit || 0) > 0 ? `₹${(b.security_deposit || 0).toLocaleString()}` : '-'}</div>
-                                <div className="text-[10px] text-emerald-600">Paid: ₹{(b.totalPaid || 0).toLocaleString()}</div>
-                                <div className="text-[10px] text-amber-600">Due: ₹{(b.duePending || 0).toLocaleString()}</div>
+                              <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 min-w-[140px]">
+                                <div className="font-semibold whitespace-nowrap">Bed: ₹{(b.total_price || 0).toLocaleString()}</div>
+                                <div className="text-[10px] text-muted-foreground whitespace-nowrap">Deposit: {(b.security_deposit || 0) > 0 ? `₹${(b.security_deposit || 0).toLocaleString()}` : '-'}</div>
+                                <div className="text-[10px] text-emerald-600 whitespace-nowrap">Paid: ₹{(b.totalPaid || 0).toLocaleString()}</div>
+                                <div className="text-[10px] text-amber-600 whitespace-nowrap">Due: ₹{(b.duePending || 0).toLocaleString()}</div>
                               </div>
                             </TableCell>
                             <TableCell className="py-1.5 px-3">
