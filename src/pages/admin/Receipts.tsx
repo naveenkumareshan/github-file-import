@@ -227,14 +227,15 @@ const Receipts: React.FC = () => {
               <TableHead className="text-xs">Type</TableHead>
               <TableHead className="text-xs">Booking ID</TableHead>
               <TableHead className="text-xs">Collected By</TableHead>
+              <TableHead className="text-xs">Txn ID / Notes</TableHead>
               <TableHead className="text-xs">Date</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground text-xs">Loading...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground text-xs">Loading...</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground text-xs">No receipts found</TableCell></TableRow>
+              <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground text-xs">No receipts found</TableCell></TableRow>
             ) : (
               filtered.map(r => (
                 <TableRow key={r.id}>
@@ -256,6 +257,11 @@ const Receipts: React.FC = () => {
                   </TableCell>
                   <TableCell className="text-xs font-mono text-muted-foreground">{r.bookingSerial || '-'}</TableCell>
                   <TableCell className="text-xs">{r.collected_by_name || '-'}</TableCell>
+                  <TableCell className="text-xs max-w-[150px]">
+                    {r.transaction_id ? <div className="font-mono truncate">{r.transaction_id}</div> : null}
+                    {r.notes ? <div className="text-muted-foreground text-[10px] italic truncate">{r.notes}</div> : null}
+                    {!r.transaction_id && !r.notes ? '-' : null}
+                  </TableCell>
                   <TableCell className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleDateString('en-IN')}</TableCell>
                 </TableRow>
               ))
