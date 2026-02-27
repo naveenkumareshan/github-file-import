@@ -7,6 +7,8 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { hostelService } from "@/api/hostelService";
@@ -19,6 +21,7 @@ import {
   ArrowLeft,
   Bed,
   Building,
+  CalendarIcon,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
@@ -29,6 +32,7 @@ import {
   Star,
   Users,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { CabinImageSlider } from "@/components/CabinImageSlider";
 import { getImageUrl } from "@/lib/utils";
 import { formatCurrency } from "@/utils/currency";
@@ -97,6 +101,9 @@ const HostelRoomDetails = () => {
   const [showDetails, setShowDetails] = useState(true);
   const [categories, setCategories] = useState<HostelBedCategory[]>([]);
 
+  // Check-in date state
+  const [checkInDate, setCheckInDate] = useState<Date>(new Date());
+
   // Step 5: Review & Pay state
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [useAdvancePayment, setUseAdvancePayment] = useState(false);
@@ -157,10 +164,47 @@ const HostelRoomDetails = () => {
     return Array.from(types);
   }, [rooms]);
 
+  /* ─── Allowed durations from hostel config ─── */
+  const allowedDurations = useMemo<DurationType[]>(() => {
+    const allowed = hostel?.allowed_durations;
+    if (Array.isArray(allowed) && allowed.length > 0) return allowed as DurationType[];
+    return ['daily', 'weekly', 'monthly'];
+  }, [hostel?.allowed_durations]);
+
+  const advanceApplicableDurations = useMemo<string[]>(() => {
+    const applicable = hostel?.advance_applicable_durations;
+    if (Array.isArray(applicable) && applicable.length > 0) return applicable;
+    return ['daily', 'weekly', 'monthly'];
+  }, [hostel?.advance_applicable_durations]);
+
+  const maxAdvanceBookingDays = hostel?.max_advance_booking_days ?? 30;
+
   /* ─── Handlers ─── */
+  const handleSharingFilterChange = (val: string) => {
+    setSharingFilter(val);
+    setSelectedBed(null);
+    setSelectedStayPackage(null);
+    setAgreedToTerms(false);
+    setUseAdvancePayment(false);
+  };
+
+  const handleCategoryFilterChange = (val: string) => {
+    setCategoryFilter(val);
+    setSelectedBed(null);
+    setSelectedStayPackage(null);
+    setAgreedToTerms(false);
+    setUseAdvancePayment(false);
+  };
+
+  const handleCheckInDateChange = (date: Date | undefined) => {
+    if (date) {
+      setCheckInDate(date);
+      setSelectedBed(null); // availability may differ for new date
+    }
+  };
+
   const handleBedSelect = (bed: any) => {
     setSelectedBed(bed);
-    // Scroll to packages section smoothly
     setTimeout(() => {
       bedMapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }, 100);
@@ -184,9 +228,9 @@ const HostelRoomDetails = () => {
   ) : null;
   const selectedSharingOption = selectedRoom?.hostel_sharing_options?.find((opt: any) => opt.id === selectedBed?.sharing_option_id);
 
-  const endDate = durationType === 'daily' ? addDays(new Date(), durationCount)
-    : durationType === 'weekly' ? addWeeks(new Date(), durationCount)
-    : addMonths(new Date(), durationCount);
+  const endDate = durationType === 'daily' ? addDays(checkInDate, durationCount)
+    : durationType === 'weekly' ? addWeeks(checkInDate, durationCount)
+    : addMonths(checkInDate, durationCount);
 
   /* ─── Payment handler ─── */
   const handleProceedToPayment = async () => {
@@ -210,7 +254,7 @@ const HostelRoomDetails = () => {
         room_id: selectedRoom.id,
         bed_id: selectedBed.id,
         sharing_option_id: selectedSharingOption.id,
-        start_date: format(new Date(), 'yyyy-MM-dd'),
+        start_date: format(checkInDate, 'yyyy-MM-dd'),
         end_date: format(endDate, 'yyyy-MM-dd'),
         booking_duration: durationType as 'daily' | 'weekly' | 'monthly',
         duration_count: durationCount,
@@ -466,7 +510,7 @@ const HostelRoomDetails = () => {
               {/* Sharing type pills */}
               <div className="flex gap-1.5 overflow-x-auto pb-2 no-scrollbar">
                 <button
-                  onClick={() => setSharingFilter('all')}
+                  onClick={() => handleSharingFilterChange('all')}
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all ${
                     sharingFilter === 'all'
                       ? 'bg-primary text-primary-foreground border-primary'
@@ -478,7 +522,7 @@ const HostelRoomDetails = () => {
                 {sharingTypes.map(type => (
                   <button
                     key={type}
-                    onClick={() => setSharingFilter(type)}
+                    onClick={() => handleSharingFilterChange(type)}
                     className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all ${
                       sharingFilter === type
                         ? 'bg-primary text-primary-foreground border-primary'
@@ -494,7 +538,7 @@ const HostelRoomDetails = () => {
               {categories.length > 0 && (
                 <div className="flex gap-1.5 overflow-x-auto pb-2 no-scrollbar">
                   <button
-                    onClick={() => setCategoryFilter('all')}
+                    onClick={() => handleCategoryFilterChange('all')}
                     className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all ${
                       categoryFilter === 'all'
                         ? 'bg-primary text-primary-foreground border-primary'
@@ -506,7 +550,7 @@ const HostelRoomDetails = () => {
                   {categories.map(cat => (
                     <button
                       key={cat.id}
-                      onClick={() => setCategoryFilter(cat.name)}
+                      onClick={() => handleCategoryFilterChange(cat.name)}
                       className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all ${
                         categoryFilter === cat.name
                           ? 'bg-primary text-primary-foreground border-primary'
@@ -528,9 +572,9 @@ const HostelRoomDetails = () => {
                 <p className="text-xs text-muted-foreground mt-0.5">Choose duration type and length of stay</p>
               </div>
 
-              {/* Duration type pills */}
+              {/* Duration type pills - filtered by allowed_durations */}
               <div className="flex gap-2 mb-3">
-                {(['daily', 'weekly', 'monthly'] as DurationType[]).map(type => (
+                {(['daily', 'weekly', 'monthly'] as DurationType[]).filter(type => allowedDurations.includes(type)).map(type => (
                   <button
                     key={type}
                     onClick={() => { setDurationType(type); setDurationCount(1); setSelectedStayPackage(null); setSelectedBed(null); }}
@@ -543,6 +587,38 @@ const HostelRoomDetails = () => {
                     {type === 'daily' ? 'Daily' : type === 'weekly' ? 'Weekly' : 'Monthly'}
                   </button>
                 ))}
+              </div>
+
+              {/* Check-in date picker */}
+              <div className="flex items-center gap-3 mb-3">
+                <span className="text-sm text-muted-foreground">Check-in:</span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-[200px] justify-start text-left font-normal text-sm",
+                        !checkInDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {format(checkInDate, 'dd MMM yyyy')}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={checkInDate}
+                      onSelect={handleCheckInDateChange}
+                      disabled={(date) =>
+                        date < new Date(new Date().setHours(0, 0, 0, 0)) ||
+                        date > addDays(new Date(), maxAdvanceBookingDays)
+                      }
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
 
               {/* Duration count */}
@@ -568,18 +644,11 @@ const HostelRoomDetails = () => {
               <div className="bg-muted/30 rounded-lg p-2.5 border border-border/50 text-xs space-y-1">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Check-in</span>
-                  <span className="font-medium text-foreground">Today ({format(new Date(), 'dd MMM yyyy')})</span>
+                  <span className="font-medium text-foreground">{format(checkInDate, 'dd MMM yyyy')}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Check-out</span>
-                  <span className="font-medium text-foreground">
-                    {format(
-                      durationType === 'daily' ? addDays(new Date(), durationCount)
-                        : durationType === 'weekly' ? addWeeks(new Date(), durationCount)
-                        : addMonths(new Date(), durationCount),
-                      'dd MMM yyyy'
-                    )}
-                  </span>
+                  <span className="font-medium text-foreground">{format(endDate, 'dd MMM yyyy')}</span>
                 </div>
               </div>
             </div>
@@ -602,13 +671,8 @@ const HostelRoomDetails = () => {
                 readOnly={false}
                 sharingFilter={sharingFilter}
                 categoryFilter={categoryFilter}
-                startDate={format(new Date(), 'yyyy-MM-dd')}
-                endDate={format(
-                  durationType === 'daily' ? addDays(new Date(), durationCount)
-                    : durationType === 'weekly' ? addWeeks(new Date(), durationCount)
-                    : addMonths(new Date(), durationCount),
-                  'yyyy-MM-dd'
-                )}
+                startDate={format(checkInDate, 'yyyy-MM-dd')}
+                endDate={format(endDate, 'yyyy-MM-dd')}
               />
             </div>
 
@@ -646,7 +710,7 @@ const HostelRoomDetails = () => {
                     <div className="flex justify-between"><span className="text-muted-foreground">Bed</span><span className="font-medium text-foreground">#{selectedBed.bed_number}</span></div>
                     {selectedBed.sharingType && <div className="flex justify-between"><span className="text-muted-foreground">Sharing</span><span className="font-medium text-foreground">{selectedBed.sharingType}</span></div>}
                     {selectedBed.category && <div className="flex justify-between"><span className="text-muted-foreground">Category</span><span className="font-medium text-foreground">{selectedBed.category}</span></div>}
-                    <div className="flex justify-between"><span className="text-muted-foreground">Check-in</span><span className="font-medium text-foreground">{format(new Date(), 'dd MMM yyyy')}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Check-in</span><span className="font-medium text-foreground">{format(checkInDate, 'dd MMM yyyy')}</span></div>
                     <div className="flex justify-between"><span className="text-muted-foreground">Check-out</span><span className="font-medium text-foreground">{format(endDate, 'dd MMM yyyy')}</span></div>
                     <div className="flex justify-between"><span className="text-muted-foreground">Duration</span><span className="font-medium text-foreground">{durationCount} {durationType === 'daily' ? (durationCount === 1 ? 'day' : 'days') : durationType === 'weekly' ? (durationCount === 1 ? 'week' : 'weeks') : (durationCount === 1 ? 'month' : 'months')}</span></div>
                   </div>
@@ -678,7 +742,7 @@ const HostelRoomDetails = () => {
                   </div>
 
                   {/* Advance Payment Option */}
-                  {hostel.advance_booking_enabled && advanceAmount !== null && advanceAmount < totalPrice && (
+                  {hostel.advance_booking_enabled && advanceApplicableDurations.includes(durationType) && advanceAmount !== null && advanceAmount < totalPrice && (
                     <div className="p-3 space-y-2">
                       <div className="flex items-start gap-2">
                         <Checkbox

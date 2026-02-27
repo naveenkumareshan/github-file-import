@@ -1075,10 +1075,12 @@ export type Database = {
       }
       hostels: {
         Row: {
+          advance_applicable_durations: Json
           advance_booking_enabled: boolean
           advance_flat_amount: number | null
           advance_percentage: number
           advance_use_flat: boolean
+          allowed_durations: Json
           amenities: string[] | null
           area_id: string | null
           average_rating: number
@@ -1100,6 +1102,7 @@ export type Database = {
           locality: string | null
           location: string | null
           logo_image: string | null
+          max_advance_booking_days: number
           name: string
           refund_policy: string | null
           review_count: number
@@ -1111,10 +1114,12 @@ export type Database = {
           vendor_id: string | null
         }
         Insert: {
+          advance_applicable_durations?: Json
           advance_booking_enabled?: boolean
           advance_flat_amount?: number | null
           advance_percentage?: number
           advance_use_flat?: boolean
+          allowed_durations?: Json
           amenities?: string[] | null
           area_id?: string | null
           average_rating?: number
@@ -1136,6 +1141,7 @@ export type Database = {
           locality?: string | null
           location?: string | null
           logo_image?: string | null
+          max_advance_booking_days?: number
           name: string
           refund_policy?: string | null
           review_count?: number
@@ -1147,10 +1153,12 @@ export type Database = {
           vendor_id?: string | null
         }
         Update: {
+          advance_applicable_durations?: Json
           advance_booking_enabled?: boolean
           advance_flat_amount?: number | null
           advance_percentage?: number
           advance_use_flat?: boolean
+          allowed_durations?: Json
           amenities?: string[] | null
           area_id?: string | null
           average_rating?: number
@@ -1172,6 +1180,7 @@ export type Database = {
           locality?: string | null
           location?: string | null
           logo_image?: string | null
+          max_advance_booking_days?: number
           name?: string
           refund_policy?: string | null
           review_count?: number
