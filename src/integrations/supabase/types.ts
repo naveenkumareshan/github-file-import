@@ -979,6 +979,59 @@ export type Database = {
           },
         ]
       }
+      hostel_stay_packages: {
+        Row: {
+          created_at: string
+          deposit_months: number
+          description: string | null
+          discount_percentage: number
+          display_order: number
+          hostel_id: string
+          id: string
+          is_active: boolean
+          lock_in_months: number
+          min_months: number
+          name: string
+          notice_months: number
+        }
+        Insert: {
+          created_at?: string
+          deposit_months?: number
+          description?: string | null
+          discount_percentage?: number
+          display_order?: number
+          hostel_id: string
+          id?: string
+          is_active?: boolean
+          lock_in_months?: number
+          min_months?: number
+          name?: string
+          notice_months?: number
+        }
+        Update: {
+          created_at?: string
+          deposit_months?: number
+          description?: string | null
+          discount_percentage?: number
+          display_order?: number
+          hostel_id?: string
+          id?: string
+          is_active?: boolean
+          lock_in_months?: number
+          min_months?: number
+          name?: string
+          notice_months?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hostel_stay_packages_hostel_id_fkey"
+            columns: ["hostel_id"]
+            isOneToOne: false
+            referencedRelation: "hostels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hostels: {
         Row: {
           advance_booking_enabled: boolean
