@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
-import { hostelService } from "@/api/hostelService";
-
+import { hostelBookingService } from "@/api/hostelBookingService";
+import { formatCurrency } from "@/utils/currency";
 
 const HostelConfirmation = () => {
   const { bookingId } = useParams<{ bookingId: string }>();
   const [booking, setBooking] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (bookingId) {
@@ -16,28 +17,23 @@ const HostelConfirmation = () => {
 
   const fetchBookingDetails = async () => {
     try {
-      // Try to get booking details from localStorage if not in location state
-      if (bookingId) {
-        const response = await hostelService.getBookingById(bookingId);
-
-        if (response.success && response.data) {
-          setBooking(response.data);
-        } else {
-          toast({
-            title: "Error",
-            description: "Failed to load booking details",
-            variant: "destructive",
-          });
-        }
-      }
+      setLoading(true);
+      const data = await hostelBookingService.getBookingById(bookingId!);
+      setBooking(data);
     } catch (error) {
-      console.error("Error fetching cabin details:", error);
+      console.error("Error fetching booking details:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load booking details",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
   const formatDate = (dateString: string) => {
     if (!dateString) return "Not specified";
-
     const options: Intl.DateTimeFormatOptions = {
       weekday: "long",
       year: "numeric",
@@ -47,51 +43,37 @@ const HostelConfirmation = () => {
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
 
-  const getEndDate = (
-    startDate: string | undefined,
-    months: number | undefined
-  ) => {
-    if (!startDate || !months) return "Not specified";
-
-    const date = new Date(startDate);
-    date.setMonth(date.getMonth() + months);
-    return formatDate(date.toISOString());
-  };
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-[50vh]">
+        <div className="animate-spin h-7 w-7 border-4 border-primary border-t-transparent rounded-full"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-accent/30">
-
       <div className="container mx-auto px-4 py-12">
-        <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="max-w-2xl mx-auto bg-background rounded-lg shadow-md overflow-hidden">
           <div
             className={`p-6 text-white text-center ${
-              booking?.paymentStatus === "completed"
+              booking?.payment_status === "completed" || booking?.payment_status === "advance_paid"
                 ? "bg-green-600"
                 : "bg-amber-500"
             }`}
           >
-            {booking?.paymentStatus === "completed" ? (
+            {booking?.payment_status === "completed" || booking?.payment_status === "advance_paid" ? (
               <>
                 <svg
                   className="w-16 h-16 mx-auto mb-4"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  ></path>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <h1 className="text-3xl font-serif font-bold">
-                  Booking  Confirmed!
-                </h1>
-                <p className="mt-2">
-                  Your reading cabin has been successfully reserved.
-                </p>
+                <h1 className="text-3xl font-bold">Booking Confirmed!</h1>
+                <p className="mt-2">Your hostel room has been successfully reserved.</p>
               </>
             ) : (
               <>
@@ -100,191 +82,112 @@ const HostelConfirmation = () => {
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  ></path>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <h1 className="text-3xl font-serif font-bold">
-                  Subscription Pending
-                </h1>
-                <p className="mt-2">
-                  Your payment was not completed. Please try again later.
-                </p>
+                <h1 className="text-3xl font-bold">Booking Pending</h1>
+                <p className="mt-2">Your payment was not completed. Please try again later.</p>
               </>
             )}
           </div>
 
           <div className="p-6">
             <div className="mb-6">
-              <h2 className="text-xl font-serif font-semibold mb-4 text-cabin-dark">
-                Booking Details
-              </h2>
+              <h2 className="text-xl font-semibold mb-4">Booking Details</h2>
 
               <div className="grid md:grid-cols-2 gap-4">
-                <div className="bg-cabin-light/20 p-4 rounded-md">
-                  <p className="text-sm text-cabin-dark/60 mb-1">Cabin</p>
-                  <p className="font-medium text-cabin-dark">{booking?.hostelId.name}</p>
+                <div className="bg-muted/30 p-4 rounded-md">
+                  <p className="text-sm text-muted-foreground mb-1">Hostel</p>
+                  <p className="font-medium">{booking?.hostels?.name || 'N/A'}</p>
                 </div>
-                <div className="bg-cabin-light/20 p-4 rounded-md">
-                  <p className="text-sm text-cabin-dark/60 mb-1">HostelCode</p>
-                  <p className="font-medium text-cabin-dark">{booking?.hostelId.hostelCode}</p>
+                <div className="bg-muted/30 p-4 rounded-md">
+                  <p className="text-sm text-muted-foreground mb-1">Booking ID</p>
+                  <p className="font-medium">{booking?.serial_number || booking?.id}</p>
                 </div>
-                <div className="bg-cabin-light/20 p-4 rounded-md">
-                  <p className="text-sm text-cabin-dark/60 mb-1">Booking Id</p>
-                  <p className="font-medium text-cabin-dark">{booking?.bookingId}</p>
+                <div className="bg-muted/30 p-4 rounded-md">
+                  <p className="text-sm text-muted-foreground mb-1">Room Number</p>
+                  <p className="font-medium">{booking?.hostel_rooms?.room_number || 'N/A'}</p>
                 </div>
-                <div className="bg-cabin-light/20 p-4 rounded-md">
-                  <p className="text-sm text-cabin-dark/60 mb-1">Room Number</p>
-                  <p className="font-medium text-cabin-dark">
-                    {booking?.bedId ? `#${booking?.bedId.roomNumber}` : "Not specified"}
+                <div className="bg-muted/30 p-4 rounded-md">
+                  <p className="text-sm text-muted-foreground mb-1">Bed Number</p>
+                  <p className="font-medium">{booking?.hostel_beds?.bed_number || 'N/A'}</p>
+                </div>
+                <div className="bg-muted/30 p-4 rounded-md">
+                  <p className="text-sm text-muted-foreground mb-1">Sharing Type</p>
+                  <p className="font-medium">{booking?.hostel_sharing_options?.type || 'N/A'}</p>
+                </div>
+                <div className="bg-muted/30 p-4 rounded-md">
+                  <p className="text-sm text-muted-foreground mb-1">Duration</p>
+                  <p className="font-medium">
+                    {booking?.duration_count || 1} {booking?.booking_duration || 'month'}(s)
                   </p>
                 </div>
-                <div className="bg-cabin-light/20 p-4 rounded-md">
-                  <p className="text-sm text-cabin-dark/60 mb-1">Bed Number</p>
-                  <p className="font-medium text-cabin-dark">
-                    {booking?.bedId ? `${booking?.bedId.number}` : "Not specified"}
-                  </p>
+                <div className="bg-muted/30 p-4 rounded-md">
+                  <p className="text-sm text-muted-foreground mb-1">Start Date</p>
+                  <p className="font-medium">{formatDate(booking?.start_date)}</p>
                 </div>
-                <div className="bg-cabin-light/20 p-4 rounded-md">
-                  <p className="text-sm text-cabin-dark/60 mb-1">Bed Type</p>
-                  <p className="font-medium text-cabin-dark">
-                    {booking?.bedId ? `${booking?.bedId.bedType}` : "Not specified"}
-                  </p>
-                </div>
-                <div className="bg-cabin-light/20 p-4 rounded-md">
-                  <p className="text-sm text-cabin-dark/60 mb-1">Bed sharing Type</p>
-                  <p className="font-medium text-cabin-dark">
-                    {booking?.bedId ? `${booking?.bedId.sharingType}` : "Not specified"}
-                  </p>
-                </div>
-                {/* <div className="bg-cabin-light/20 p-4 rounded-md">
-                  <p className="text-sm text-cabin-dark/60 mb-1">
-                    Subscription Plan
-                  </p>
-                  <p className="font-medium text-cabin-dark">
-                    {booking ? booking.bookingDuration : "Monthly"}
-                  </p>
-                </div> */}
-
-                <div className="bg-cabin-light/20 p-4 rounded-md">
-                  <p className="text-sm text-cabin-dark/60 mb-1">Duration</p>
-                  <p className="font-medium text-cabin-dark">
-                    {booking?.durationCount || booking?.durationCount || 1}{" "}
-                    {(booking?.durationCount || booking?.durationCount || 1) === 1
-                      ? "month"
-                      : "months"}
-                  </p>
+                <div className="bg-muted/30 p-4 rounded-md">
+                  <p className="text-sm text-muted-foreground mb-1">End Date</p>
+                  <p className="font-medium">{formatDate(booking?.end_date)}</p>
                 </div>
 
-                <div className="bg-cabin-light/20 p-4 rounded-md">
-                  <p className="text-sm text-cabin-dark/60 mb-1">Start Date</p>
-                  <p className="font-medium text-cabin-dark">
-                    {formatDate(
-                      booking?.startDate || booking?.createdAt || ""
-                    )}
-                  </p>
+                <div className={`p-4 rounded-md ${
+                  booking?.payment_status === "completed" || booking?.payment_status === "advance_paid"
+                    ? "bg-green-100 dark:bg-green-900/30"
+                    : booking?.payment_status === "failed"
+                    ? "bg-red-100 dark:bg-red-900/30"
+                    : "bg-yellow-100 dark:bg-yellow-900/30"
+                }`}>
+                  <p className="text-sm text-muted-foreground mb-1">Payment Status</p>
+                  <p className="font-medium capitalize">{booking?.payment_status || "Pending"}</p>
                 </div>
 
-                <div className="bg-cabin-light/20 p-4 rounded-md">
-                  <p className="text-sm text-cabin-dark/60 mb-1">End Date</p>
-                  <p className="font-medium text-cabin-dark">
-                    {booking?.endDate
-                      ? formatDate(booking.endDate)
-                      : getEndDate(
-                          booking?.date || booking?.startDate,
-                          booking?.months || booking?.durationCount || 1
-                        )}
-                  </p>
-                </div>
-
-                <div
-                  className={`p-4 rounded-md ${
-                    booking?.paymentStatus === "completed"
-                      ? "bg-green-100"
-                      : booking?.paymentStatus === "failed"
-                      ? "bg-red-100"
-                      : "bg-yellow-100"
-                  }`}
-                >
-                  <p className="text-sm text-cabin-dark/60 mb-1">
-                    Payment Status
-                  </p>
-                  <p className="font-medium text-cabin-dark">
-                    {(booking?.paymentStatus &&
-                      booking.paymentStatus.charAt(0).toUpperCase() +
-                        booking.paymentStatus.slice(1)) ||
-                      "Pending"}
-                  </p>
-                </div>
-
-                {(booking?.paymentMethod || booking?.paymentMethod) && (
-                  <div className="bg-cabin-light/20 p-4 rounded-md">
-                    <p className="text-sm text-cabin-dark/60 mb-1">
-                      Payment Method
-                    </p>
-                    <p className="font-medium text-cabin-dark">
-                      {booking?.paymentMethod || booking?.paymentMethod}
-                      {booking?.lastFourDigits &&
-                        ` (**** **** **** ${booking.lastFourDigits})`}
-                    </p>
+                {booking?.total_price > 0 && (
+                  <div className="bg-muted/30 p-4 rounded-md">
+                    <p className="text-sm text-muted-foreground mb-1">Total Amount</p>
+                    <p className="font-medium">{formatCurrency(booking.total_price)}</p>
                   </div>
                 )}
 
-                {(booking?.keyDeposit || booking?.keyDeposit) && (
-                  <div className="bg-cabin-light/20 p-4 rounded-md">
-                    <p className="text-sm text-cabin-dark/60 mb-1">
-                      Key Deposit
-                    </p>
-                    <p className="font-medium text-cabin-dark">
-                      {booking?.keyDeposit || booking?.keyDeposit}
-                    </p>
+                {booking?.advance_amount > 0 && (
+                  <div className="bg-muted/30 p-4 rounded-md">
+                    <p className="text-sm text-muted-foreground mb-1">Advance Paid</p>
+                    <p className="font-medium">{formatCurrency(booking.advance_amount)}</p>
                   </div>
                 )}
-                {(booking?.seatPrice || booking?.seatPrice) && (
-                  <div className="bg-cabin-light/20 p-4 rounded-md">
-                    <p className="text-sm text-cabin-dark/60 mb-1">
-                      Seat Price
-                    </p>
-                    <p className="font-medium text-cabin-dark">
-                      {booking?.seatPrice || booking?.seatPrice}
-                    </p>
+
+                {booking?.remaining_amount > 0 && (
+                  <div className="bg-muted/30 p-4 rounded-md">
+                    <p className="text-sm text-muted-foreground mb-1">Remaining Amount</p>
+                    <p className="font-medium">{formatCurrency(booking.remaining_amount)}</p>
                   </div>
                 )}
-                {(booking?.totalPrice || booking?.totalPrice) && (
-                  <div className="bg-cabin-light/20 p-4 rounded-md">
-                    <p className="text-sm text-cabin-dark/60 mb-1">
-                      Total Amount
-                    </p>
-                    <p className="font-medium text-cabin-dark">
-                      {booking?.totalPrice || booking?.totalPrice}
-                    </p>
+
+                {booking?.security_deposit > 0 && (
+                  <div className="bg-muted/30 p-4 rounded-md">
+                    <p className="text-sm text-muted-foreground mb-1">Security Deposit</p>
+                    <p className="font-medium">{formatCurrency(booking.security_deposit)}</p>
                   </div>
                 )}
               </div>
             </div>
 
-
             <div className="flex flex-col md:flex-row gap-4 justify-center">
               <Link
                 to="/"
-                className="bg-cabin-wood text-white px-6 py-3 rounded-md font-medium hover:bg-cabin-dark transition-colors text-center"
+                className="bg-primary text-primary-foreground px-6 py-3 rounded-md font-medium hover:bg-primary/90 transition-colors text-center"
               >
                 Back to Home
               </Link>
               <Link
                 to="/student/dashboard"
-                className="bg-cabin-dark text-white px-6 py-3 rounded-md font-medium hover:bg-black transition-colors text-center"
+                className="bg-secondary text-secondary-foreground px-6 py-3 rounded-md font-medium hover:bg-secondary/80 transition-colors text-center"
               >
                 Go to Dashboard
               </Link>
               <button
                 onClick={() => window.print()}
-                className="bg-white border border-cabin-wood text-cabin-dark px-6 py-3 rounded-md font-medium hover:bg-cabin-light transition-colors"
+                className="bg-background border border-border px-6 py-3 rounded-md font-medium hover:bg-muted transition-colors"
               >
                 Print Confirmation
               </button>
@@ -292,7 +195,6 @@ const HostelConfirmation = () => {
           </div>
         </div>
       </div>
-
     </div>
   );
 };

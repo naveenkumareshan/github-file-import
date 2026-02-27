@@ -25,9 +25,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ImageUpload } from '@/components/ImageUpload';
 import { Badge, Plus, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { hostelService } from '@/api/hostelService';
+import { hostelRoomService } from '@/api/hostelRoomService';
 import { getImageUrl } from '@/lib/utils';
-import { RoomSharingOption, RoomWithSharingData } from '@/api/types';
 import { Checkbox } from '@/components/ui/checkbox';
 
 const sharingSchema = z.object({
@@ -46,7 +45,7 @@ const roomSchema = z.object({
   basePrice: z.coerce.number().min(1, { message: "basePrice must be at least 1" }),
   category: z.enum(['standard', 'premium', 'luxury']),
   imageSrc: z.string().optional(),
-  images: z.array(z.string()).default([]), // Added support for multiple images
+  images: z.array(z.string()).default([]),
   sharingOptions: z.array(sharingSchema).min(1, { message: "At least one sharing option is required" }),
   isActive: z.boolean().default(true),
   amenities: z.array(z.string()).default([]),
@@ -111,23 +110,28 @@ export function AddRoomWithSharingForm({ hostelId, onSuccess, onClose }: AddRoom
     try {
       setIsSubmitting(true);
       
-      // Explicitly cast data to RoomWithSharingData
-      const roomData: RoomWithSharingData = {
-        name: data.name,
+      // Map form fields to cloud DB schema
+      const roomData = {
+        room_number: data.roomNumber,
+        floor: parseInt(data.floor) || 1,
+        category: data.category as 'standard' | 'premium' | 'luxury',
         description: data.description,
-        maxCapacity: data.maxCapacity,
-        roomNumber: data.roomNumber,
-        floor: data.floor,
-        basePrice: data.basePrice,
-        category: data.category,
-        imageSrc: data.imageSrc,
-        sharingOptions: data.sharingOptions as RoomSharingOption[],
-        isActive: data.isActive,
-        amenities: data.amenities,
+        image_url: data.imageSrc || '',
         images: data.images,
+        amenities: data.amenities,
+        is_active: data.isActive,
       };
+
+      // Map sharing options to cloud DB schema
+      const sharingOptions = data.sharingOptions.map(opt => ({
+        type: opt.type,
+        capacity: opt.capacity,
+        total_beds: opt.count,
+        price_monthly: opt.price,
+        price_daily: Math.round(opt.price / 30),
+      }));
       
-      const response = await hostelService.addRoom(hostelId, roomData);
+      await hostelRoomService.createRoom(hostelId, roomData, sharingOptions);
       
       toast({
         title: "Room Added",
@@ -139,7 +143,7 @@ export function AddRoomWithSharingForm({ hostelId, onSuccess, onClose }: AddRoom
       if (onSuccess) {
         onSuccess();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding room:', error);
       toast({
         title: "Error",
@@ -157,10 +161,9 @@ export function AddRoomWithSharingForm({ hostelId, onSuccess, onClose }: AddRoom
 
   const close = () => {
     form.reset();
-    onClose();
+    onClose?.();
   };
 
-    // Set an image as the main image
   const setAsMainImage = (url: string) => {
     form.setValue('imageSrc', url);
     toast({
@@ -169,29 +172,22 @@ export function AddRoomWithSharingForm({ hostelId, onSuccess, onClose }: AddRoom
     });
   };
   
-  // Handle image uploads
   const handleImageUpload = (url: string) => {
     const currentImages = form.getValues('images') || [];
     form.setValue('images', [...currentImages, url]);
-    
-    // If no main image set, use this as main image
     if (!form.getValues('imageSrc')) {
       form.setValue('imageSrc', url);
     }
   };
   
-  // Remove an image from the array
   const handleRemoveImage = (url: string) => {
     const currentImages = form.getValues('images') || [];
     const filteredImages = currentImages.filter(image => image !== url);
     form.setValue('images', filteredImages);
-    
-    // If removing the main image, set the first available image as main
     if (form.getValues('imageSrc') === url) {
       form.setValue('imageSrc', filteredImages[0] || '');
     }
   };
-
 
   return (
     <Form {...form}>
@@ -339,72 +335,6 @@ export function AddRoomWithSharingForm({ hostelId, onSuccess, onClose }: AddRoom
               />
             </div>
 
-          {/* <div className="space-y-4">
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Describe the room features"
-                      className="min-h-[100px]"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="imageSrc"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Room Image</FormLabel>
-                  <FormControl>
-                    <ImageUpload
-                      existingImages={field.value ? [field.value] : []}
-                      onUpload={(url) => field.onChange(url)}
-                      onRemove={() => field.onChange('')}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name={`floor`}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Floor</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter Floor Name /  Number" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name={`roomNumber`}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Room Number</FormLabel>
-                  <FormControl>
-                  <Input placeholder="Enter Room Number" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-          </div> */}
-          
-
          <div className="space-y-6">
             {/* Room Images Management */}
             <Card>
@@ -501,19 +431,7 @@ export function AddRoomWithSharingForm({ hostelId, onSuccess, onClose }: AddRoom
           </div>
         </div>
         <Card>
-          <CardHeader>
-            {/* <div className="flex justify-between items-center">
-              <CardTitle>Sharing Options</CardTitle>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleAddSharingOption}
-              >
-                <Plus className="h-4 w-4 mr-1" /> Add Option
-              </Button>
-            </div> */}
-          </CardHeader>
+          <CardHeader />
           <CardContent>
             {fields.map((field, index) => (
               <div 
@@ -560,26 +478,26 @@ export function AddRoomWithSharingForm({ hostelId, onSuccess, onClose }: AddRoom
                   )}
                 />
 
-                {/* <FormField
+                <FormField
                   control={form.control}
-                  name={`sharingOptions.${index}.count`}
+                  name={`sharingOptions.${index}.price`}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Count</FormLabel>
+                      <FormLabel>Price (₹/month)</FormLabel>
                       <FormControl>
                         <Input type="number" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
-                /> */}
+                />
 
                 <FormField
                   control={form.control}
-                  name={`sharingOptions.${index}.price`}
+                  name={`sharingOptions.${index}.count`}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Price (₹)</FormLabel>
+                      <FormLabel>Total Beds</FormLabel>
                       <FormControl>
                         <Input type="number" {...field} />
                       </FormControl>
