@@ -1,59 +1,59 @@
 
 
-## Fix Review & Pay Missing Details + Advance Payment Duration Control
+## Streamline Review & Pay: Merge Terms + Direct Payment
 
-### Issue 1: Missing Details in "Review & Pay" Section
-The Step 3 "Review & Pay" summary (lines 796-887 in `SeatBookingForm.tsx`) only shows Selected Seat, Seat Price, Locker, and Total Amount. It's missing:
-- **Seat Type** (category like AC/Non-AC)
-- **Duration Type** (Daily/Weekly/Monthly with count)
-- **Time Slot** (if a slot is selected)
+### What Changes
+The current booking flow has an unnecessary extra confirmation screen after clicking "Confirm & Proceed to Payment". This plan removes that extra step by moving the terms acceptance and payment button directly into the Review & Pay section (Step 3).
 
-**Fix in `src/components/seats/SeatBookingForm.tsx`** (around line 808, after the Selected Seat row):
+### New Flow
+1. **Step 3 (Review & Pay)** -- Shows summary + Reading Room Rules + "I agree to terms" checkbox + Pay button
+2. On clicking Pay: Creates booking in database (pending status) and immediately opens Razorpay payment
+3. **If payment succeeds** -- Booking confirmed, redirected to confirmation page
+4. **If payment fails or dismissed** -- Redirect to My Bookings where the booking shows as "pending" with a 5-minute countdown timer and a "Pay Now" button
+5. **After 5 minutes** -- Auto-cancel the booking and release the seat
 
-Add three new rows in the summary card:
-1. **Duration**: Show `{count} {type}` (e.g., "1 Monthly") with start-end date range
-2. **Time Slot**: Show slot name and time range (only when a slot is selected and it's not Full Day with no slots enabled)
+### Technical Changes
 
-The seat category is already shown as a badge next to the seat number (line 801-804), so that's covered. But we should also add the duration and slot info.
+**File: `src/components/seats/SeatBookingForm.tsx`**
 
----
+1. **Move Terms + Rules into the Review & Pay card** (lines 912-958 area):
+   - Add `ReadingRoomRules` component and the "I agree to terms" checkbox directly below the coupon section inside the summary card
+   - Change the button from "Confirm & Proceed to Payment" to directly trigger `handleCreateBookingAndPay`
 
-### Issue 2: Advance Payment Duration Restriction
+2. **Merge booking creation + payment into one action** (`handleCreateBookingAndPay`):
+   - Create the booking (pending status) -- same as current `handleCreateBooking`
+   - On success, immediately invoke Razorpay checkout programmatically
+   - On Razorpay success: confirm booking, navigate to confirmation
+   - On Razorpay failure/dismiss: navigate to My Bookings with a toast saying "Complete payment within 5 minutes"
 
-Currently, `advanceBookingEnabled` applies globally to all duration types. The admin/partner should be able to specify which duration types allow advance payment (e.g., only Monthly).
+3. **Remove the second confirmation screen** (lines 973-1095):
+   - The `bookingCreated` state-driven view with duplicate summary, terms, timer, and RazorpayCheckout is no longer needed
+   - Replace it with a simple "redirecting..." state or remove entirely
 
-**Database Migration**: Add a new column to the `cabins` table:
-```sql
-ALTER TABLE cabins 
-  ADD COLUMN advance_applicable_durations jsonb NOT NULL DEFAULT '["daily","weekly","monthly"]';
-```
+4. **Button should be disabled** until `agree` is true (terms accepted)
 
-**Admin UI (`CabinEditor.tsx`)**: Inside the advance booking section (after the existing fields, around line 509), add checkboxes for "Allow advance for" with Daily/Weekly/Monthly options. Only show durations that are in `allowedDurations`.
+5. **Integrate RazorpayCheckout programmatically**: Instead of rendering the `RazorpayCheckout` component in the UI, trigger it after booking creation. Use the existing `RazorpayCheckout` component but render it conditionally after booking is created, auto-triggering payment.
 
-**API Layer (`adminCabinsService.ts`)**: Map `advanceApplicableDurations` to `advance_applicable_durations` in create/update.
+**File: `src/components/booking/BookingsList.tsx`** (already has the infrastructure)
+- Already shows pending bookings with `PaymentTimer` (5 min) and `RazorpayCheckout` for retry
+- Already has `handlePaymentExpiry` that shows expiry toast
+- No changes needed here -- it already supports the "pay within 5 minutes" flow
 
-**Student Booking (`SeatBookingForm.tsx`)**: Change the `advanceEnabled` check from:
-```typescript
-const advanceEnabled = cabin?.advanceBookingEnabled === true;
-```
-to:
-```typescript
-const advanceApplicableDurations = (cabin as any)?.advance_applicable_durations || 
-  (cabin as any)?.advanceApplicableDurations || ['daily','weekly','monthly'];
-const advanceEnabled = cabin?.advanceBookingEnabled === true && 
-  advanceApplicableDurations.includes(selectedDuration.type);
-```
+**File: `src/api/bookingsService.ts`** (if needed)
+- Verify that the auto-cancel logic works: when the timer expires and the student doesn't pay, the booking should be cancelled and seat released
+- Currently `handlePaymentExpiry` in `BookingsList` just shows a toast but doesn't actually cancel. Need to add an API call to cancel the booking on expiry.
 
-This makes the "Book with advance payment" checkbox only appear when the selected duration type is in the allowed list.
+**File: `src/components/booking/BookingsList.tsx`**
+- Update `handlePaymentExpiry` to actually call `bookingsService.cancelBooking(bookingId)` to cancel and release the seat after 5 minutes
 
----
+### Summary of UI Changes
+- **Before**: Review & Pay summary -> Click "Confirm" -> New screen with duplicate summary + terms + timer + payment
+- **After**: Review & Pay summary + terms checkbox + "Pay Now" button -> Creates booking + opens Razorpay immediately -> On failure, go to My Bookings (5 min window)
 
 ### Files Modified
 
 | File | Change |
 |------|--------|
-| Database migration | Add `advance_applicable_durations` column to `cabins` |
-| `src/api/adminCabinsService.ts` | Map `advanceApplicableDurations` in create/update |
-| `src/components/admin/CabinEditor.tsx` | Add "Allow advance for" duration checkboxes inside advance booking section; add state field |
-| `src/components/seats/SeatBookingForm.tsx` | Add duration type, slot info rows to Review & Pay summary; conditionally show advance based on selected duration |
+| `src/components/seats/SeatBookingForm.tsx` | Move terms/rules into Step 3 card, merge create+pay, remove second confirmation screen |
+| `src/components/booking/BookingsList.tsx` | Add actual booking cancellation on timer expiry |
 
