@@ -202,7 +202,23 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
     const cabinId = cabin?._id || cabin?.id;
     if (cabinId && cabin?.slotsEnabled) {
       cabinSlotService.getSlotsByCabin(cabinId).then((res) => {
-        if (res.success) setAvailableSlots(res.data);
+        if (res.success) {
+          // Create virtual "Full Day" slot
+          const fullDaySlot: CabinSlot = {
+            id: 'full_day',
+            cabin_id: cabinId,
+            name: 'Full Day',
+            start_time: (cabin as any)?.openingTime || (cabin as any)?.opening_time || '06:00',
+            end_time: (cabin as any)?.closingTime || (cabin as any)?.closing_time || '22:00',
+            price: selectedSeat?.price || cabin?.price || 0,
+            is_active: true,
+            created_at: '',
+          };
+          const allSlots = [fullDaySlot, ...res.data];
+          setAvailableSlots(allSlots);
+          // Auto-select Full Day as default
+          setSelectedSlot(fullDaySlot);
+        }
       });
     } else {
       setAvailableSlots([]);
@@ -291,8 +307,10 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
       setEndDate(newEndDate);
 
       if (selectedSeat) {
-        // Pricing source of truth: slot price if slotsEnabled, else seat price
-        const monthlyBasePrice = cabin?.slotsEnabled && selectedSlot ? selectedSlot.price : selectedSeat.price;
+        // Pricing: Full Day uses seat price, specific slot uses slot price
+        const monthlyBasePrice = cabin?.slotsEnabled && selectedSlot
+          ? (selectedSlot.id === 'full_day' ? selectedSeat.price : selectedSlot.price)
+          : selectedSeat.price;
         let basePrice = 0;
 
         switch (selectedDuration.type) {
@@ -447,7 +465,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
       return;
     }
 
-    // Block if slots enabled but no slot selected
+    // Block if slots enabled but no slot selected (Full Day is auto-selected so this rarely triggers)
     if (cabin.slotsEnabled && !selectedSlot) {
       toast({ title: "Select a Slot", description: "Please select a time slot before booking", variant: "destructive" });
       return;
@@ -475,7 +493,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
         end_date: format(withFixedTime(endDate, CHECK_OUT_HOUR), 'yyyy-MM-dd'),
         booking_duration: selectedDuration.type,
         duration_count: String(selectedDuration.count),
-        slot_id: selectedSlot?.id || undefined,
+        slot_id: selectedSlot?.id === 'full_day' ? undefined : selectedSlot?.id,
         total_price: totalPrice,
         payment_status: useAdvancePayment ? "advance_paid" : "pending",
         locker_included: effectiveLockerIncluded,
@@ -690,9 +708,6 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                     </button>
                   ))}
                 </div>
-                {!selectedSlot && (
-                  <p className="text-xs text-destructive">Please select a time slot to continue</p>
-                )}
               </div>
             )}
 
