@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { addDays, addWeeks, addMonths, format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -92,6 +93,7 @@ const HostelRoomDetails = () => {
   const [selectedBed, setSelectedBed] = useState<any>(null);
   const [selectedStayPackage, setSelectedStayPackage] = useState<StayPackage | null>(null);
   const [durationType, setDurationType] = useState<DurationType>('monthly');
+  const [durationCount, setDurationCount] = useState<number>(1);
   const [showDetails, setShowDetails] = useState(true);
   const [categories, setCategories] = useState<HostelBedCategory[]>([]);
 
@@ -184,6 +186,7 @@ const HostelRoomDetails = () => {
         sharingOption, 
         stayPackage: selectedStayPackage,
         durationType,
+        durationCount,
         selectedBed: {
           id: selectedBed.id,
           bed_number: selectedBed.bed_number,
@@ -426,10 +429,73 @@ const HostelRoomDetails = () => {
               )}
             </div>
 
-            {/* ═══ Step 2: Select Your Bed (Inline Bed Map) ═══ */}
+            {/* ═══ Step 2: Stay Duration ═══ */}
+            <div className="px-3 pt-3">
+              <div className="mb-2">
+                <h2 className="text-base font-bold text-foreground">Step 2: Stay Duration</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">Choose duration type and length of stay</p>
+              </div>
+
+              {/* Duration type pills */}
+              <div className="flex gap-2 mb-3">
+                {(['daily', 'weekly', 'monthly'] as DurationType[]).map(type => (
+                  <button
+                    key={type}
+                    onClick={() => { setDurationType(type); setDurationCount(1); setSelectedStayPackage(null); setSelectedBed(null); }}
+                    className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all ${
+                      durationType === type
+                        ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                        : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
+                    }`}
+                  >
+                    {type === 'daily' ? 'Daily' : type === 'weekly' ? 'Weekly' : 'Monthly'}
+                  </button>
+                ))}
+              </div>
+
+              {/* Duration count */}
+              <div className="flex items-center gap-3 mb-3">
+                <span className="text-sm text-muted-foreground">Duration:</span>
+                <div className="flex items-center border rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => { if (durationCount > 1) { setDurationCount(durationCount - 1); setSelectedBed(null); } }}
+                    className="px-3 py-1.5 text-sm font-bold bg-muted/50 hover:bg-muted border-r"
+                  >−</button>
+                  <span className="px-4 py-1.5 text-sm font-semibold min-w-[3rem] text-center">{durationCount}</span>
+                  <button
+                    onClick={() => { setDurationCount(durationCount + 1); setSelectedBed(null); }}
+                    className="px-3 py-1.5 text-sm font-bold bg-muted/50 hover:bg-muted border-l"
+                  >+</button>
+                </div>
+                <span className="text-sm text-muted-foreground">
+                  {durationType === 'daily' ? (durationCount === 1 ? 'day' : 'days') : durationType === 'weekly' ? (durationCount === 1 ? 'week' : 'weeks') : (durationCount === 1 ? 'month' : 'months')}
+                </span>
+              </div>
+
+              {/* Check-in / Check-out info */}
+              <div className="bg-muted/30 rounded-lg p-2.5 border border-border/50 text-xs space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Check-in</span>
+                  <span className="font-medium text-foreground">Today ({format(new Date(), 'dd MMM yyyy')})</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Check-out</span>
+                  <span className="font-medium text-foreground">
+                    {format(
+                      durationType === 'daily' ? addDays(new Date(), durationCount)
+                        : durationType === 'weekly' ? addWeeks(new Date(), durationCount)
+                        : addMonths(new Date(), durationCount),
+                      'dd MMM yyyy'
+                    )}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* ═══ Step 3: Select Your Bed (Inline Bed Map) ═══ */}
             <div className="px-3 pt-3" ref={bedMapRef}>
               <div className="mb-2">
-                <h2 className="text-base font-bold text-foreground">Step 2: Select Your Bed</h2>
+                <h2 className="text-base font-bold text-foreground">Step 3: Select Your Bed</h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {selectedBed 
                     ? `Bed #${selectedBed.bed_number} selected (${selectedBed.sharingType || 'Unknown'})`
@@ -444,33 +510,15 @@ const HostelRoomDetails = () => {
                 readOnly={false}
                 sharingFilter={sharingFilter}
                 categoryFilter={categoryFilter}
+                startDate={format(new Date(), 'yyyy-MM-dd')}
+                endDate={format(
+                  durationType === 'daily' ? addDays(new Date(), durationCount)
+                    : durationType === 'weekly' ? addWeeks(new Date(), durationCount)
+                    : addMonths(new Date(), durationCount),
+                  'yyyy-MM-dd'
+                )}
               />
             </div>
-
-            {/* ═══ Step 3: Stay Duration Type (shown after bed selected) ═══ */}
-            {selectedBed && (
-              <div className="px-3 pt-4">
-                <div className="mb-2">
-                  <h2 className="text-base font-bold text-foreground">Step 3: Stay Duration Type</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">Choose your preferred stay duration</p>
-                </div>
-                <div className="flex gap-2">
-                  {(['daily', 'weekly', 'monthly'] as DurationType[]).map(type => (
-                    <button
-                      key={type}
-                      onClick={() => { setDurationType(type); setSelectedStayPackage(null); }}
-                      className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all ${
-                        durationType === type
-                          ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                          : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
-                      }`}
-                    >
-                      {type === 'daily' ? 'Daily' : type === 'weekly' ? 'Weekly' : 'Monthly'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* ═══ Step 4: Choose Package (shown after bed selected) ═══ */}
             {selectedBed && (
@@ -511,10 +559,14 @@ const HostelRoomDetails = () => {
                       )}
                     </div>
                     <div className="flex items-baseline gap-1 mt-0.5">
-                      <span className="text-base font-bold text-primary">{formatCurrency(discountedPrice)}</span>
-                      <span className="text-xs text-muted-foreground">{priceLabel}</span>
+                      <span className="text-base font-bold text-primary">
+                        {formatCurrency(discountedPrice * durationCount)}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        for {durationCount} {durationType === 'daily' ? (durationCount === 1 ? 'day' : 'days') : durationType === 'weekly' ? (durationCount === 1 ? 'week' : 'weeks') : (durationCount === 1 ? 'month' : 'months')}
+                      </span>
                       {selectedStayPackage && selectedStayPackage.discount_percentage > 0 && (
-                        <span className="text-xs text-muted-foreground line-through ml-1">{formatCurrency(selectedBedPrice)}</span>
+                        <span className="text-xs text-muted-foreground line-through ml-1">{formatCurrency(effectiveBasePrice * durationCount)}</span>
                       )}
                     </div>
                   </div>
