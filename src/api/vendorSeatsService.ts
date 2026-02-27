@@ -52,6 +52,8 @@ export interface VendorSeat {
     studentPhone: string;
     profilePicture: string;
     userId: string;
+    slotId: string | null;
+    slotName: string | null;
   };
   allBookings: SeatBookingDetail[];
 }
@@ -304,6 +306,19 @@ export const vendorSeatsService = {
         });
       }
 
+      // Fetch slot names for bookings that have slot_id
+      const slotIds = [...new Set(allBookings.filter(b => b.slot_id).map(b => b.slot_id))];
+      let slotNameMap: Record<string, string> = {};
+      if (slotIds.length > 0) {
+        const { data: slotsData } = await supabase
+          .from('cabin_slots')
+          .select('id, name')
+          .in('id', slotIds);
+        (slotsData || []).forEach((s: any) => {
+          slotNameMap[s.id] = s.name;
+        });
+      }
+
       const mappedSeats: VendorSeat[] = (seatsData || []).map(seat => {
         const seatBookings = allBookings.filter(b => b.seat_id === seat.id);
         const dateStatus = computeDateStatus(seat, allBookings, date, dateBlocks, duesMap);
@@ -326,6 +341,8 @@ export const vendorSeatsService = {
           studentPhone: (currentBookingRaw.profiles as any)?.phone || 'N/A',
           profilePicture: (currentBookingRaw.profiles as any)?.profile_picture || '',
           userId: (currentBookingRaw.profiles as any)?.id || '',
+          slotId: currentBookingRaw.slot_id || null,
+          slotName: currentBookingRaw.slot_id ? (slotNameMap[currentBookingRaw.slot_id] || null) : null,
         } : undefined;
 
         const mappedBookings: SeatBookingDetail[] = seatBookings.map(mapBookingToDetail);
