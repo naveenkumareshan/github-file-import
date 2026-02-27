@@ -52,6 +52,8 @@ const SupportTicketsManagement = lazy(() => import("./components/admin/SupportTi
 const DueManagement = lazy(() => import("./pages/admin/DueManagement"));
 const Receipts = lazy(() => import("./pages/admin/Receipts"));
 const HostelApprovals = lazy(() => import("./pages/admin/HostelApprovals"));
+const HostelReceipts = lazy(() => import("./pages/admin/HostelReceipts"));
+const HostelDeposits = lazy(() => import("./pages/admin/HostelDeposits"));
 
 // Student / public pages
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
@@ -148,6 +150,8 @@ function App() {
               <Route path="due-management" element={<DueManagement />} />
               <Route path="receipts" element={<Receipts />} />
               <Route path="hostel-approvals" element={<HostelApprovals />} />
+              <Route path="hostel-receipts" element={<HostelReceipts />} />
+              <Route path="hostel-deposits" element={<HostelDeposits />} />
             </Route>
 
             {/* ── Partner routes (formerly vendor/host) ── */}

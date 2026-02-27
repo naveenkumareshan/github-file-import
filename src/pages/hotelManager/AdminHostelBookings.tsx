@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { hostelService } from '@/api/hostelService';
+import { hostelBookingService } from '@/api/hostelBookingService';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format } from 'date-fns';
 import { Eye, Search, RefreshCw, Calendar } from 'lucide-react';
@@ -39,38 +39,41 @@ export default function AdminHostelBookings() {
       setLoading(true);
       const params: any = {};
       if (activeTab !== 'all') params.status = activeTab;
-      const response = await hostelService.getAllBookings(params);
-      if (response.success) {
-        setBookings(response.data);
-      } else {
-        toast({ title: "Error", description: "Failed to fetch bookings", variant: "destructive" });
-      }
-    } catch (error) {
+      const data = await hostelBookingService.getAllBookings(params);
+      setBookings(data || []);
+    } catch (error: any) {
       console.error("Error fetching bookings:", error);
-      toast({ title: "Error", description: "Failed to fetch bookings", variant: "destructive" });
+      toast({ title: "Error", description: error.message || "Failed to fetch bookings", variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
   const handleViewBooking = (bookingId: string) => {
-    navigate(`/admin/hostel-bookings/${bookingId}`);
+    navigate(`/admin/bookings/${bookingId}/hostel`);
   };
 
   const filteredBookings = bookings.filter(booking => {
     if (statusFilter !== 'all' && booking.status !== statusFilter) return false;
     const searchLower = searchTerm.toLowerCase();
+    if (!searchLower) return true;
     return (
-      (booking.bookingId?.toLowerCase().includes(searchLower)) ||
-      (booking.userId?.name?.toLowerCase().includes(searchLower)) ||
-      (booking.userId?.email?.toLowerCase().includes(searchLower)) ||
-      (booking.hostelId?.name?.toLowerCase().includes(searchLower))
+      (booking.serial_number?.toLowerCase().includes(searchLower)) ||
+      (booking.profiles?.name?.toLowerCase().includes(searchLower)) ||
+      (booking.profiles?.email?.toLowerCase().includes(searchLower)) ||
+      (booking.hostels?.name?.toLowerCase().includes(searchLower))
     );
   });
 
+  const durationLabel = (booking: any) => {
+    const count = booking.duration_count || 1;
+    const type = booking.booking_duration || 'monthly';
+    const unit = type === 'daily' ? 'day' : type === 'weekly' ? 'week' : 'month';
+    return `${count} ${unit}${count !== 1 ? 's' : ''}`;
+  };
+
   return (
     <div className="space-y-4">
-      {/* Page Header */}
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-lg font-semibold tracking-tight">Hostel Bookings</h1>
@@ -91,26 +94,17 @@ export default function AdminHostelBookings() {
               <TabsTrigger value="cancelled">Cancelled</TabsTrigger>
             </TabsList>
             
-            {/* Filter Strip */}
             <div className="flex flex-col md:flex-row gap-3 mb-4 p-3 bg-muted/30 rounded-lg border border-border/40">
               <div className="relative flex-1">
                 <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
-                <Input
-                  placeholder="Search bookings..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8 h-8 text-sm"
-                />
+                <Input placeholder="Search bookings..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-8 h-8 text-sm" />
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="h-8 text-sm w-full md:w-44">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
+                <SelectTrigger className="h-8 text-sm w-full md:w-44"><SelectValue placeholder="Filter by status" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="completed">Confirmed</SelectItem>
+                  <SelectItem value="confirmed">Confirmed</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="reserved">Reserved</SelectItem>
                   <SelectItem value="cancelled">Cancelled</SelectItem>
                   <SelectItem value="expired">Expired</SelectItem>
                 </SelectContent>
@@ -119,9 +113,7 @@ export default function AdminHostelBookings() {
             
             <TabsContent value={activeTab} className="mt-0">
               {loading ? (
-                <div className="flex justify-center py-12">
-                  <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
-                </div>
+                <div className="flex justify-center py-12"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>
               ) : filteredBookings.length === 0 ? (
                 <div className="flex flex-col items-center gap-2 py-12 text-muted-foreground">
                   <Calendar className="h-8 w-8 opacity-20" />
@@ -146,45 +138,32 @@ export default function AdminHostelBookings() {
                     </TableHeader>
                     <TableBody>
                       {filteredBookings.map((booking, idx) => (
-                        <TableRow key={booking._id} className={idx % 2 === 0 ? "bg-background" : "bg-muted/20"}>
-                          <TableCell className="font-medium text-sm">
-                            {booking.bookingId || '-'}
-                          </TableCell>
+                        <TableRow key={booking.id} className={idx % 2 === 0 ? "bg-background" : "bg-muted/20"}>
+                          <TableCell className="font-medium text-sm">{booking.serial_number || '-'}</TableCell>
                           <TableCell>
-                            <p className="text-sm font-medium">{booking.userId?.name || '-'}</p>
-                            {booking.userId?.email && (
-                              <p className="text-xs text-muted-foreground">{booking.userId.email}</p>
-                            )}
+                            <p className="text-sm font-medium">{booking.profiles?.name || '-'}</p>
+                            {booking.profiles?.email && <p className="text-xs text-muted-foreground">{booking.profiles.email}</p>}
+                          </TableCell>
+                          <TableCell className="text-sm">{booking.hostels?.name || '-'}</TableCell>
+                          <TableCell className="text-sm">
+                            Room {booking.hostel_rooms?.room_number || '-'}, Bed #{booking.hostel_beds?.bed_number || '-'}
                           </TableCell>
                           <TableCell className="text-sm">
-                            {booking.hostelId?.name || '-'}
+                            {booking.start_date ? format(new Date(booking.start_date), 'dd MMM yyyy') : '-'}
                           </TableCell>
-                          <TableCell className="text-sm">
-                            Room {booking.bedId?.roomNumber || '-'}, Bed #{booking.bedId?.number || '-'}
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {booking.startDate ? format(new Date(booking.startDate), 'dd MMM yyyy') : '-'}
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {booking.months} mo{booking.months !== 1 ? 's' : ''}
-                          </TableCell>
+                          <TableCell className="text-sm">{durationLabel(booking)}</TableCell>
                           <TableCell>
                             <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${getStatusBadgeClass(booking.status)}`}>
                               {booking.status}
                             </span>
                           </TableCell>
                           <TableCell>
-                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${getStatusBadgeClass(booking.paymentStatus)}`}>
-                              {booking.paymentStatus}
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${getStatusBadgeClass(booking.payment_status)}`}>
+                              {booking.payment_status}
                             </span>
                           </TableCell>
                           <TableCell>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-7 text-xs"
-                              onClick={() => handleViewBooking(booking._id)}
-                            >
+                            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => handleViewBooking(booking.id)}>
                               <Eye className="h-3 w-3 mr-1" /> View
                             </Button>
                           </TableCell>
