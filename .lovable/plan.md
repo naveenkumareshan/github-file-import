@@ -1,47 +1,75 @@
 
-## Fix: Add 24/7, Timings, and Slot Management to CabinEditor
+
+## Redesign: Edit Reading Room Page - Section-Wise Flow
 
 ### Problem
-The admin room management page (`/admin/rooms`) uses the `CabinEditor` component, but all the 24/7, timing, and slot-based booking features were added to `CabinForm` -- a component that is **not used** in the admin flow. The service layer (`adminCabinsService`) already supports these fields, but `CabinEditor` neither stores them in state nor renders the UI for them.
+The current `CabinEditor.tsx` (1029 lines) crams everything into 4 tabs with an overloaded "Reading Room Details" tab containing room info, amenities, locker settings, advance booking, pricing, timings, slots, and images all in a single two-column layout. It's hard to navigate and find settings.
 
-### Root Cause
-Two different form components exist for cabins:
-- `CabinForm.tsx` -- has timing/slot UI but is unused in the main admin workflow
-- `CabinEditor.tsx` -- the actual component used at `/admin/rooms`, missing all timing/slot features
+### New Design: Vertical Section-Based Layout
 
-### Changes Required
+Replace the tab-based layout with a **single scrollable page** divided into clearly labeled, collapsible card sections. Each section has a numbered step indicator and descriptive header. This follows the premium SaaS admin pattern already used elsewhere in the app.
 
-**File: `src/components/admin/CabinEditor.tsx`**
+### Section Flow (Top to Bottom)
 
-1. **Add timing fields to component state** (around line 50-92 where `cabin` state is initialized):
-   - `is24Hours` (from `existingCabin?.is_24_hours`)
-   - `slotsEnabled` (from `existingCabin?.slots_enabled`)
-   - `openingTime` (from `existingCabin?.opening_time`, default `'06:00'`)
-   - `closingTime` (from `existingCabin?.closing_time`, default `'22:00'`)
-   - `workingDays` (from `existingCabin?.working_days`, default all 7 days)
+**Section 1 -- Basic Information**
+- Room Name, Category (standard/premium/luxury), Seat Capacity, Description
+- Clean 2-column grid on desktop, stacked on mobile
 
-2. **Add "Room Timings" UI section** inside the "Reading Room Details" tab (after the price/images section, around line 674):
-   - 24/7 toggle (checkbox or switch)
-   - When OFF: show opening time, closing time inputs and working day checkboxes
-   - When ON: show "Open 24/7" info message, hide time/day inputs
-   - Slot-based booking toggle
-   - When slots enabled and cabin has an ID: render `SlotManagement` component
-   - Import `Switch` from UI components and `SlotManagement` from admin components
+**Section 2 -- Images**
+- Main image preview + ImageUpload component for multiple images
+- Full-width section
 
-3. **No changes needed to `RoomManagement.tsx`** -- `handleSaveCabin` already passes the full `cabin` object spread, and the service maps `is24Hours`, `slotsEnabled`, `openingTime`, `closingTime`, `workingDays` correctly. We just need to make sure `CabinEditor` includes these keys in the state object it passes to `onSave`.
+**Section 3 -- Pricing and Locker**
+- Starting Price (with /month label)
+- Locker toggle, locker price, mandatory/optional radio
+- Advance Booking toggle with all sub-fields (percentage/flat, validity days, auto-cancel)
 
-**File: `src/pages/RoomManagement.tsx`**
+**Section 4 -- Room Timings**
+- 24/7 toggle switch
+- When OFF: opening time, closing time, working days pills
+- When ON: green confirmation message
 
-4. **Pass timing fields in `cabinDataStore`** (lines 191-229):
-   - Add `is24Hours`, `slotsEnabled`, `openingTime`, `closingTime`, `workingDays` from `cabinData` to the object sent to `adminCabinsService`
+**Section 5 -- Slot-Based Booking**
+- Enable/disable toggle
+- When enabled + room saved: embedded SlotManagement component
+- When enabled + new room: "Save first" message
+
+**Section 6 -- Amenities**
+- Checkbox grid (3 columns desktop, 2 mobile) for all amenity options
+
+**Section 7 -- Contact Person Details**
+- Name, Phone, Email in a 2-column grid
+
+**Section 8 -- Partner Assignment**
+- Admin: partner dropdown selector + read-only detail card
+- Partner: auto-loaded read-only details
+
+**Section 9 -- Location**
+- State/City/Area selector
+- Full Address, Pincode, Locality
+- Latitude/Longitude + MapPicker
+- Nearby Landmarks
+
+### UI/UX Details
+
+- Each section is a `Card` with a compact `CardHeader` showing section number badge + title + subtitle
+- Sticky footer bar with Cancel and Save buttons (always visible)
+- Validation error banner at the top (unchanged)
+- "Back to Dashboard" button stays in the page header
+- All existing state, handlers, and logic remain identical -- this is purely a layout restructure
+- Responsive: sections stack vertically, internal grids collapse on mobile
 
 ### Technical Details
 
-- The `SlotManagement` component and `cabinSlotService` are already created and functional
-- The database columns (`is_24_hours`, `slots_enabled`, `opening_time`, `closing_time`, `working_days`) already exist on the `cabins` table
-- The `adminCabinsService.createCabin` and `updateCabin` already map these fields correctly
-- The student-facing display (`CabinCard`, `BookSeat`, etc.) already reads and displays these fields
-- This is purely a matter of wiring the existing backend + display logic into the `CabinEditor` admin form
+**File modified: `src/components/admin/CabinEditor.tsx`**
 
-### Result
-After this fix, admins/partners will see and configure 24/7 mode, opening/closing times, working days, and slot-based booking directly in the room editor they actually use.
+- Remove `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent` wrapper
+- Remove `activeTab` state (no longer needed)
+- Restructure the return JSX into 9 sequential `Card` sections within a single scrollable container
+- Keep all state variables, handlers (`handleInputChange`, `handleAmenityChange`, `handleImageUpload`, `handleImageRemove`, `handleSave`, `handleLockerAvailableChange`, `handleMapLocationChange`), useEffects, and validation logic exactly as-is
+- Update `handleSave` validation: remove `setActiveTab("details")` calls (no tabs anymore), just scroll to top on error
+- Add a section number badge component (small circle with number) for visual flow
+- Footer uses `sticky bottom-0` for always-visible save/cancel
+
+**No other files are modified.** All features (24/7 toggle, slot management, advance booking, locker config, location picker, partner assignment, image upload) remain fully functional -- only their visual arrangement changes.
+
