@@ -575,7 +575,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
         </div>
       </CardHeader>
       <CardContent className="px-4 pt-3">
-        {!bookingCreated ? (
+        {(
           <div className="space-y-5">
             {/* Seat Type - compact pills */}
             {categories.length > 0 && (
@@ -942,20 +942,73 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                   </div>
                 )}
 
-                <Button
-                  className="w-full h-11 rounded-xl shadow-md text-sm font-semibold"
-                  onClick={handleCreateBooking}
-                  disabled={isSubmitting || !selectedSeat}
-                >
-                  {isSubmitting ? (
-                    <span className="flex items-center">
-                      <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full mr-2"></div>
-                      Processing...
-                    </span>
-                  ) : (
-                    useAdvancePayment ? `Pay ₹${advanceAmount} Advance` : "Confirm & Proceed to Payment"
-                  )}
-                </Button>
+                {/* Reading Room Rules & Terms */}
+                <div className="mt-3">
+                  <ReadingRoomRules />
+                </div>
+                <div className="flex items-center gap-2 mt-3">
+                  <Checkbox
+                    id="agree-terms"
+                    checked={agree}
+                    onCheckedChange={() => setAgree((prev) => !prev)}
+                  />
+                  <label htmlFor="agree-terms" className="text-sm cursor-pointer">I agree to the terms and conditions</label>
+                </div>
+
+                {/* Pay / Create Booking Button */}
+                {!bookingCreated ? (
+                  <Button
+                    className="w-full h-11 rounded-xl shadow-md text-sm font-semibold"
+                    onClick={handleCreateBooking}
+                    disabled={isSubmitting || !selectedSeat || !agree}
+                  >
+                    {isSubmitting ? (
+                      <span className="flex items-center">
+                        <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full mr-2"></div>
+                        Creating Booking...
+                      </span>
+                    ) : (
+                      useAdvancePayment ? `Pay ₹${advanceAmount} Advance` : "Confirm & Proceed to Payment"
+                    )}
+                  </Button>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="rounded-lg p-3 bg-green-50 border border-green-200 text-green-800 text-sm">
+                      <p className="font-medium">Booking created! Complete payment to confirm.</p>
+                    </div>
+                    {bookingCreatedAt && (
+                      <Suspense fallback={<div className="p-2 text-sm text-muted-foreground">Loading timer...</div>}>
+                        <PaymentTimer
+                          createdAt={bookingCreatedAt}
+                          onExpiry={handlePaymentExpiry}
+                          variant="compact"
+                        />
+                      </Suspense>
+                    )}
+                    <div className="flex gap-2">
+                      <RazorpayCheckout
+                        appliedCoupon={appliedCoupon}
+                        amount={useAdvancePayment ? advanceAmount : totalPrice}
+                        bookingId={bookingId}
+                        bookingType="cabin"
+                        endDate={endDate}
+                        bookingDuration={selectedDuration.type}
+                        durationCount={selectedDuration.count}
+                        onSuccess={handlePaymentSuccess}
+                        onError={(error) => {
+                          handlePaymentError(error);
+                          navigate('/student/bookings');
+                        }}
+                        buttonText={useAdvancePayment && advanceAmount < totalPrice ? `Pay ₹${advanceAmount.toFixed(0)} Advance` : "Pay Now"}
+                        buttonVariant="default"
+                        className="flex-1 h-11 rounded-xl shadow-md text-sm font-semibold"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground text-center">
+                      If payment fails, you can retry from My Bookings within 5 minutes.
+                    </p>
+                  </div>
+                )}
               </>
             ):(
              !cabin.isBookingActive && (
@@ -969,129 +1022,6 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                 </Alert>
               )
             )}
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <div ref={bookingSuccessRef} className="rounded-lg p-4 bg-green-50 border border-green-200 text-green-800">
-              <h3 className="font-medium mb-1">
-                Booking Created Successfully!
-              </h3>
-              <p className="text-sm">
-                Please complete the payment to confirm your booking.
-              </p>
-            </div>
-            {bookingCreatedAt && (
-              <div className="mb-4">
-                <Suspense fallback={<div className="p-3 text-sm text-muted-foreground">Loading payment timer...</div>}>
-                  <PaymentTimer 
-                    createdAt={bookingCreatedAt}
-                    onExpiry={handlePaymentExpiry}
-                    variant="full" 
-                  />
-                </Suspense>
-                <p className="text-sm text-amber-700 mt-2">
-                  Complete your payment before the timer expires or your booking
-                  will be cancelled.
-                </p>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span>Room:</span>
-                <span>{cabin?.name || "Selected Room"}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Seat Number:</span>
-                <span>#{selectedSeat?.number || ""}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Duration:</span>
-                <span>
-                  {selectedDuration.count} {selectedDuration.type}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>From:</span>
-                <span>
-                  {startDate
-                    ? format(withFixedTime(startDate, CHECK_IN_HOUR), "dd MMM yyyy hh:mm:ss a")
-                    : ""}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>To:</span>
-                <span>
-                  {endDate
-                    ? format(withFixedTime(endDate, CHECK_OUT_HOUR), "dd MMM yyyy hh:mm:ss a")
-                    : ""}
-                </span>
-              </div>
-              <Separator />
-              <div className="flex justify-between">
-                <span>Seat Price:</span>
-                <span>₹{seatPrice.toFixed(2)}</span>
-              </div>
-              {((cabin?.lockerMandatory && keyDeposit > 0) || (!cabin?.lockerMandatory && lockerOptedIn && keyDeposit > 0)) && (
-                <div className="flex justify-between text-blue-600">
-                  <span>Key Deposit ({cabin?.lockerMandatory ? 'mandatory' : 'optional'}, refundable):</span>
-                  <span>₹{keyDeposit}</span>
-                </div>
-              )}
-              {appliedCoupon && (
-                <div className="flex justify-between text-green-600">
-                  <span>Coupon Discount:</span>
-                  <span>-₹{appliedCoupon.discountAmount}</span>
-                </div>
-              )}
-              <div className="flex justify-between font-medium text-lg pt-2">
-                <span>Total Price:</span>
-                <span>₹{totalPrice.toFixed(2)}</span>
-              </div>
-              {useAdvancePayment && advanceAmount < totalPrice && (
-                <div className="space-y-1 pt-1">
-                  <div className="flex justify-between text-primary font-bold">
-                    <span>Pay Now (Advance):</span>
-                    <span>₹{advanceAmount.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-muted-foreground text-sm">
-                    <span>Remaining Due:</span>
-                    <span>₹{(totalPrice - advanceAmount).toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-muted-foreground text-sm">
-                    <span>Due By:</span>
-                    <span>{endDate ? format(new Date(new Date().getTime() + (cabin?.advanceValidityDays || 3) * 86400000), "dd MMM yyyy") : ""}</span>
-                  </div>
-                </div>
-              )}
-              <div>
-                <ReadingRoomRules />
-              </div>
-              <div>
-                <Checkbox
-                  checked={agree}
-                  onCheckedChange={() => setAgree((prev) => !prev)}
-                />
-                <span className="mb-3 ml-2 text-sm">I agree to the terms</span>
-              </div>
-            </div>
-            <div className="flex justify-center">
-              <RazorpayCheckout
-                appliedCoupon={appliedCoupon}
-                amount={useAdvancePayment ? advanceAmount : totalPrice}
-                bookingId={bookingId}
-                bookingType="cabin"
-                endDate={endDate}
-                bookingDuration={selectedDuration.type}
-                durationCount={selectedDuration.count}
-                onSuccess={handlePaymentSuccess}
-                onFailure={handlePaymentError}
-                buttonText={useAdvancePayment && advanceAmount < totalPrice ? `Pay ₹${advanceAmount.toFixed(0)} Advance` : "Complete Payment"}
-                buttonDisabled={!agree}
-                buttonVariant="default"
-                className="px-8"
-              />
-            </div>
           </div>
         )}
       </CardContent>
