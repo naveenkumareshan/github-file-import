@@ -196,6 +196,7 @@ export function CabinEditor({
     }
   }, [selectedPartner, partners, isAdmin, user?.id]);
 
+  const [openSection, setOpenSection] = useState<number | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -319,7 +320,7 @@ export function CabinEditor({
 
       <div className="space-y-4 pb-24">
         {/* ── Section 1: Basic Information ── */}
-        <Collapsible defaultOpen={false}>
+        <Collapsible open={openSection === 1} onOpenChange={(isOpen) => setOpenSection(isOpen ? 1 : null)}>
           <Card>
             <CollapsibleTrigger asChild>
               <CardHeader className="py-4 px-4 cursor-pointer group">
@@ -365,7 +366,7 @@ export function CabinEditor({
         </Collapsible>
 
         {/* ── Section 2: Images ── */}
-        <Collapsible defaultOpen={false}>
+        <Collapsible open={openSection === 2} onOpenChange={(isOpen) => setOpenSection(isOpen ? 2 : null)}>
           <Card>
             <CollapsibleTrigger asChild>
               <CardHeader className="py-4 px-4 cursor-pointer group">
@@ -396,7 +397,7 @@ export function CabinEditor({
         </Collapsible>
 
         {/* ── Section 3: Pricing and Locker ── */}
-        <Collapsible defaultOpen={false}>
+        <Collapsible open={openSection === 3} onOpenChange={(isOpen) => setOpenSection(isOpen ? 3 : null)}>
           <Card>
             <CollapsibleTrigger asChild>
               <CardHeader className="py-4 px-4 cursor-pointer group">
@@ -513,7 +514,7 @@ export function CabinEditor({
         </Collapsible>
 
         {/* ── Section 4: Room Timings ── */}
-        <Collapsible defaultOpen={false}>
+        <Collapsible open={openSection === 4} onOpenChange={(isOpen) => setOpenSection(isOpen ? 4 : null)}>
           <Card>
             <CollapsibleTrigger asChild>
               <CardHeader className="py-4 px-4 cursor-pointer group">
@@ -590,7 +591,7 @@ export function CabinEditor({
         </Collapsible>
 
         {/* ── Section 5: Slot-Based Booking ── */}
-        <Collapsible defaultOpen={false}>
+        <Collapsible open={openSection === 5} onOpenChange={(isOpen) => setOpenSection(isOpen ? 5 : null)}>
           <Card>
             <CollapsibleTrigger asChild>
               <CardHeader className="py-4 px-4 cursor-pointer group">
@@ -629,7 +630,7 @@ export function CabinEditor({
         </Collapsible>
 
         {/* ── Section 6: Amenities ── */}
-        <Collapsible defaultOpen={false}>
+        <Collapsible open={openSection === 6} onOpenChange={(isOpen) => setOpenSection(isOpen ? 6 : null)}>
           <Card>
             <CollapsibleTrigger asChild>
               <CardHeader className="py-4 px-4 cursor-pointer group">
@@ -666,7 +667,7 @@ export function CabinEditor({
         </Collapsible>
 
         {/* ── Section 7: Contact Person Details ── */}
-        <Collapsible defaultOpen={false}>
+        <Collapsible open={openSection === 7} onOpenChange={(isOpen) => setOpenSection(isOpen ? 7 : null)}>
           <Card>
             <CollapsibleTrigger asChild>
               <CardHeader className="py-4 px-4 cursor-pointer group">
@@ -704,7 +705,7 @@ export function CabinEditor({
         </Collapsible>
 
         {/* ── Section 8: Partner Assignment ── */}
-        <Collapsible defaultOpen={false}>
+        <Collapsible open={openSection === 8} onOpenChange={(isOpen) => setOpenSection(isOpen ? 8 : null)}>
           <Card>
             <CollapsibleTrigger asChild>
               <CardHeader className="py-4 px-4 cursor-pointer group">
@@ -775,7 +776,7 @@ export function CabinEditor({
         </Collapsible>
 
         {/* ── Section 9: Location ── */}
-        <Collapsible defaultOpen={false}>
+        <Collapsible open={openSection === 9} onOpenChange={(isOpen) => setOpenSection(isOpen ? 9 : null)}>
           <Card>
             <CollapsibleTrigger asChild>
               <CardHeader className="py-4 px-4 cursor-pointer group">
