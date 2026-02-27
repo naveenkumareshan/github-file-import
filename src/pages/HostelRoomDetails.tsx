@@ -1,26 +1,30 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { addDays, addWeeks, addMonths, format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { hostelService } from "@/api/hostelService";
 import { hostelRoomService } from "@/api/hostelRoomService";
 import { hostelBedCategoryService, HostelBedCategory } from "@/api/hostelBedCategoryService";
+import { hostelBookingService } from "@/api/hostelBookingService";
+import { razorpayService } from "@/api/razorpayService";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import {
   ArrowLeft,
   Bed,
   Building,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   CreditCard,
-  ImageIcon,
   IndianRupee,
-  Info,
   MapPin,
-  Phone,
   Shield,
   Star,
   Users,
@@ -28,12 +32,6 @@ import {
 import { CabinImageSlider } from "@/components/CabinImageSlider";
 import { getImageUrl } from "@/lib/utils";
 import { formatCurrency } from "@/utils/currency";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { HostelBedMap } from "@/components/hostels/HostelBedMap";
 import { StayDurationPackages } from "@/components/hostels/StayDurationPackages";
 import { StayPackage, DurationType } from "@/api/hostelStayPackageService";
@@ -77,7 +75,9 @@ const getGenderChipColor = (gender: string) => {
 const HostelRoomDetails = () => {
   const { roomId: hostelId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+  const { user, isAuthenticated, authChecked } = useAuth();
   const heroRef = useRef<HTMLDivElement>(null);
   const bedMapRef = useRef<HTMLDivElement>(null);
 
@@ -97,10 +97,11 @@ const HostelRoomDetails = () => {
   const [showDetails, setShowDetails] = useState(true);
   const [categories, setCategories] = useState<HostelBedCategory[]>([]);
 
-  // Image gallery
-  const [selectedRoom, setSelectedRoom] = useState<any | null>(null);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [isImageGalleryOpen, setIsImageGalleryOpen] = useState(false);
+  // Step 5: Review & Pay state
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [useAdvancePayment, setUseAdvancePayment] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
 
   /* ─── Data fetch ─── */
   useEffect(() => {
@@ -165,37 +166,140 @@ const HostelRoomDetails = () => {
     }, 100);
   };
 
-  const handleBookNow = () => {
-    if (!selectedBed || !hostel) return;
-    
-    // Find the room and sharing option for the selected bed
-    const room = rooms.find(r => 
-      r.hostel_sharing_options?.some((opt: any) => opt.id === selectedBed.sharing_option_id)
-    );
-    const sharingOption = room?.hostel_sharing_options?.find((opt: any) => opt.id === selectedBed.sharing_option_id);
+  /* ─── Razorpay ─── */
+  const loadRazorpayScript = (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      if ((window as any).Razorpay) { resolve(true); return; }
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
 
-    if (!room || !sharingOption) {
-      toast({ title: "Error", description: "Could not find room details for selected bed", variant: "destructive" });
+  /* ─── Price calculations ─── */
+  const totalPrice = discountedPrice * durationCount;
+  const calculateAdvanceAmount = () => {
+    if (!hostel?.advance_booking_enabled) return null;
+    if (hostel.advance_use_flat && hostel.advance_flat_amount) {
+      return Math.min(hostel.advance_flat_amount, totalPrice);
+    }
+    return Math.round(totalPrice * (hostel.advance_percentage / 100));
+  };
+  const advanceAmount = calculateAdvanceAmount();
+  const payableAmount = (useAdvancePayment && advanceAmount !== null) ? advanceAmount : totalPrice;
+
+  const selectedRoom = selectedBed ? rooms.find(r =>
+    r.hostel_sharing_options?.some((opt: any) => opt.id === selectedBed.sharing_option_id)
+  ) : null;
+  const selectedSharingOption = selectedRoom?.hostel_sharing_options?.find((opt: any) => opt.id === selectedBed?.sharing_option_id);
+
+  const endDate = durationType === 'daily' ? addDays(new Date(), durationCount)
+    : durationType === 'weekly' ? addWeeks(new Date(), durationCount)
+    : addMonths(new Date(), durationCount);
+
+  /* ─── Payment handler ─── */
+  const handleProceedToPayment = async () => {
+    if (!isAuthenticated || !user) {
+      toast({ title: "Login Required", description: "Please log in to complete the booking", variant: "destructive" });
+      navigate('/student/login', { state: { from: location.pathname } });
       return;
     }
+    if (!selectedBed || !hostel || !selectedRoom || !selectedSharingOption) return;
 
-    navigate(`/hostel-booking/${hostel.id}/${room.id}`, {
-      state: { 
-        room, 
-        hostel, 
-        sharingOption, 
-        stayPackage: selectedStayPackage,
-        durationType,
+    try {
+      const isScriptLoaded = await loadRazorpayScript();
+      if (!isScriptLoaded) {
+        toast({ title: "Payment Failed", description: "Unable to load payment SDK.", variant: "destructive" });
+        return;
+      }
+      setIsProcessing(true);
+
+      const bookingData = {
+        hostel_id: hostel.id,
+        room_id: selectedRoom.id,
+        bed_id: selectedBed.id,
+        sharing_option_id: selectedSharingOption.id,
+        start_date: format(new Date(), 'yyyy-MM-dd'),
+        end_date: format(endDate, 'yyyy-MM-dd'),
+        booking_duration: durationType as 'daily' | 'weekly' | 'monthly',
+        duration_count: durationCount,
+        total_price: totalPrice,
+        advance_amount: (useAdvancePayment && advanceAmount) ? advanceAmount : 0,
+        remaining_amount: (useAdvancePayment && advanceAmount) ? totalPrice - advanceAmount : 0,
+        security_deposit: hostel.security_deposit || 0,
+        payment_method: 'online',
+      };
+
+      const booking = await hostelBookingService.createBooking(bookingData);
+
+      const orderResponse = await razorpayService.createOrder({
+        amount: payableAmount,
+        currency: 'INR',
+        bookingId: booking.id,
+        bookingType: 'hostel',
+        bookingDuration: durationType,
         durationCount,
-        selectedBed: {
-          id: selectedBed.id,
-          bed_number: selectedBed.bed_number,
-          price: selectedBed.price_override ?? selectedBed.price ?? sharingOption.price_monthly,
-          category: selectedBed.category,
-          sharingType: selectedBed.sharingType,
-        }
-      },
-    });
+        notes: { hostelId: hostel.id, roomId: selectedRoom.id, sharingType: selectedSharingOption.type },
+      });
+
+      if (!orderResponse.success || !orderResponse.data) {
+        throw new Error(orderResponse.error?.message || 'Failed to create order');
+      }
+
+      const order = orderResponse.data;
+
+      if (order.testMode) {
+        const verifyResponse = await razorpayService.verifyPayment({
+          razorpay_payment_id: `test_pay_${Date.now()}`,
+          razorpay_order_id: order.id,
+          razorpay_signature: 'test_signature',
+          bookingId: booking.id,
+          bookingType: 'hostel',
+        });
+        if (verifyResponse.success) {
+          toast({ title: "Booking Confirmed!", description: "Your hostel booking has been confirmed (Test Mode)" });
+          navigate(`/hostel-confirmation/${booking.id}`);
+        } else { throw new Error('Test payment verification failed'); }
+        return;
+      }
+
+      const rzpOptions = {
+        key: order.KEY_ID,
+        amount: payableAmount * 100,
+        currency: 'INR',
+        name: hostel.name,
+        description: `Room ${selectedRoom.room_number} - ${selectedSharingOption.type}`,
+        order_id: order.id,
+        prefill: { name: user?.name, email: user?.email, contact: (user as any)?.phone || '' },
+        handler: async (response: any) => {
+          try {
+            const verifyResponse = await razorpayService.verifyPayment({
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_signature: response.razorpay_signature,
+              bookingId: booking.id,
+              bookingType: 'hostel',
+            });
+            if (verifyResponse.success) {
+              toast({ title: "Payment Successful", description: "Your booking has been confirmed!" });
+              navigate(`/hostel-confirmation/${booking.id}`);
+            } else { throw new Error('Payment verification failed'); }
+          } catch (err) {
+            console.error('Payment verification error:', err);
+            toast({ title: "Verification Failed", description: "Please contact support", variant: "destructive" });
+          }
+        },
+      };
+      const rzp = new (window as any).Razorpay(rzpOptions);
+      rzp.open();
+    } catch (error: any) {
+      console.error('Error processing booking:', error);
+      toast({ title: "Booking Failed", description: error.message || 'An error occurred', variant: "destructive" });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleGoBack = () => navigate(-1);
@@ -328,19 +432,6 @@ const HostelRoomDetails = () => {
                         </span>
                       ))}
                     </div>
-                  )}
-                  {(hostel.contact_phone || hostel.contact_email) && (
-                    <>
-                      <Separator className="my-2.5 opacity-50" />
-                      <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                        {hostel.contact_phone && (
-                          <a href={`tel:${hostel.contact_phone}`} className="flex items-center gap-1 text-primary font-medium">
-                            <Phone className="h-3 w-3" /> {hostel.contact_phone}
-                          </a>
-                        )}
-                        {hostel.contact_email && <span>{hostel.contact_email}</span>}
-                      </div>
-                    </>
                   )}
                 </div>
               </div>
@@ -537,83 +628,118 @@ const HostelRoomDetails = () => {
               </div>
             )}
 
-            {/* ═══ Sticky Bottom Bar ═══ */}
-            {selectedBed && (
-              <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-t border-border px-4 py-3 safe-area-bottom">
-                <div className="flex items-center justify-between max-w-lg mx-auto">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <Bed className="h-4 w-4 text-primary flex-shrink-0" />
-                      <span className="text-sm font-semibold text-foreground truncate">
-                        Bed #{selectedBed.bed_number}
-                      </span>
-                      {selectedBed.sharingType && (
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 flex-shrink-0">
-                          {selectedBed.sharingType}
-                        </Badge>
-                      )}
-                      {selectedBed.category && (
-                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 flex-shrink-0">
-                          {selectedBed.category}
-                        </Badge>
+            {/* ═══ Step 5: Review & Pay (shown after package selected) ═══ */}
+            {selectedBed && selectedStayPackage && (
+              <div className="px-3 pt-4 pb-6">
+                <div className="mb-3">
+                  <h2 className="text-base font-bold text-foreground">Step 5: Review & Pay</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">Review your booking and proceed to payment</p>
+                </div>
+
+                <div className="bg-muted/30 rounded-xl border border-border/50 divide-y divide-border/50">
+                  {/* Booking Summary */}
+                  <div className="p-3 space-y-1.5 text-xs">
+                    <h4 className="text-sm font-semibold text-foreground mb-2">Booking Summary</h4>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Hostel</span><span className="font-medium text-foreground">{hostel.name}</span></div>
+                    {selectedRoom && <div className="flex justify-between"><span className="text-muted-foreground">Room</span><span className="font-medium text-foreground">{selectedRoom.room_number} (Floor {selectedRoom.floor})</span></div>}
+                    <div className="flex justify-between"><span className="text-muted-foreground">Bed</span><span className="font-medium text-foreground">#{selectedBed.bed_number}</span></div>
+                    {selectedBed.sharingType && <div className="flex justify-between"><span className="text-muted-foreground">Sharing</span><span className="font-medium text-foreground">{selectedBed.sharingType}</span></div>}
+                    {selectedBed.category && <div className="flex justify-between"><span className="text-muted-foreground">Category</span><span className="font-medium text-foreground">{selectedBed.category}</span></div>}
+                    <div className="flex justify-between"><span className="text-muted-foreground">Check-in</span><span className="font-medium text-foreground">{format(new Date(), 'dd MMM yyyy')}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Check-out</span><span className="font-medium text-foreground">{format(endDate, 'dd MMM yyyy')}</span></div>
+                    <div className="flex justify-between"><span className="text-muted-foreground">Duration</span><span className="font-medium text-foreground">{durationCount} {durationType === 'daily' ? (durationCount === 1 ? 'day' : 'days') : durationType === 'weekly' ? (durationCount === 1 ? 'week' : 'weeks') : (durationCount === 1 ? 'month' : 'months')}</span></div>
+                  </div>
+
+                  {/* Price Breakdown */}
+                  <div className="p-3 space-y-1.5 text-xs">
+                    <h4 className="text-sm font-semibold text-foreground mb-2">Price Breakdown</h4>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Base Price</span>
+                      <span className="font-medium text-foreground">{formatCurrency(effectiveBasePrice)} {priceLabel} × {durationCount}</span>
+                    </div>
+                    {selectedStayPackage.discount_percentage > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Package Discount ({selectedStayPackage.name})</span>
+                        <span className="font-medium text-emerald-600 dark:text-emerald-400">-{selectedStayPackage.discount_percentage}%</span>
+                      </div>
+                    )}
+                    <Separator className="my-1.5 opacity-50" />
+                    <div className="flex justify-between text-sm">
+                      <span className="font-semibold text-foreground">Total Amount</span>
+                      <span className="font-bold text-primary">{formatCurrency(totalPrice)}</span>
+                    </div>
+                    {hostel.security_deposit > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground flex items-center gap-1"><Shield className="h-3 w-3" /> Security Deposit</span>
+                        <span className="font-medium text-foreground">{formatCurrency(hostel.security_deposit)} <span className="text-muted-foreground">(at check-in)</span></span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Advance Payment Option */}
+                  {hostel.advance_booking_enabled && advanceAmount !== null && advanceAmount < totalPrice && (
+                    <div className="p-3 space-y-2">
+                      <div className="flex items-start gap-2">
+                        <Checkbox
+                          id="advance-payment"
+                          checked={useAdvancePayment}
+                          onCheckedChange={(checked) => setUseAdvancePayment(checked === true)}
+                        />
+                        <label htmlFor="advance-payment" className="text-xs font-medium text-foreground cursor-pointer leading-tight">
+                          Book with advance payment
+                        </label>
+                      </div>
+                      {useAdvancePayment && (
+                        <div className="ml-6 space-y-1 text-xs bg-primary/5 rounded-lg p-2.5 border border-primary/10">
+                          <div className="flex justify-between"><span className="text-muted-foreground">Pay now</span><span className="font-semibold text-primary">{formatCurrency(advanceAmount)}</span></div>
+                          <div className="flex justify-between"><span className="text-muted-foreground">Remaining due</span><span className="font-medium text-foreground">{formatCurrency(totalPrice - advanceAmount)}</span></div>
+                          <div className="flex justify-between"><span className="text-muted-foreground">Due by</span><span className="font-medium text-foreground">{format(endDate, 'dd MMM yyyy')}</span></div>
+                        </div>
                       )}
                     </div>
-                    <div className="flex items-baseline gap-1 mt-0.5">
-                      <span className="text-base font-bold text-primary">
-                        {formatCurrency(discountedPrice * durationCount)}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        for {durationCount} {durationType === 'daily' ? (durationCount === 1 ? 'day' : 'days') : durationType === 'weekly' ? (durationCount === 1 ? 'week' : 'weeks') : (durationCount === 1 ? 'month' : 'months')}
-                      </span>
-                      {selectedStayPackage && selectedStayPackage.discount_percentage > 0 && (
-                        <span className="text-xs text-muted-foreground line-through ml-1">{formatCurrency(effectiveBasePrice * durationCount)}</span>
-                      )}
+                  )}
+
+                  {/* Terms & Conditions */}
+                  <div className="p-3 space-y-2">
+                    {hostel.refund_policy && (
+                      <Collapsible open={rulesOpen} onOpenChange={setRulesOpen}>
+                        <CollapsibleTrigger className="flex items-center gap-1 text-xs text-primary font-medium w-full">
+                          {rulesOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                          Hostel Rules & Refund Policy
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <p className="text-xs text-muted-foreground mt-2 leading-relaxed whitespace-pre-line">{hostel.refund_policy}</p>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
+                    <div className="flex items-start gap-2 pt-1">
+                      <Checkbox
+                        id="terms"
+                        checked={agreedToTerms}
+                        onCheckedChange={(checked) => setAgreedToTerms(checked === true)}
+                      />
+                      <label htmlFor="terms" className="text-xs text-muted-foreground cursor-pointer leading-tight">
+                        I agree to the terms and conditions, cancellation policy, and hostel rules.
+                      </label>
                     </div>
                   </div>
-                  <Button onClick={handleBookNow} className="flex-shrink-0">
-                    <CreditCard className="h-4 w-4 mr-1.5" />
-                    Book Now
-                  </Button>
                 </div>
+
+                {/* Pay Button */}
+                <Button
+                  className="w-full mt-4"
+                  size="lg"
+                  disabled={!agreedToTerms || isProcessing}
+                  onClick={handleProceedToPayment}
+                >
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  {isProcessing ? 'Processing...' : useAdvancePayment && advanceAmount ? `Pay ${formatCurrency(advanceAmount)} Advance` : `Confirm & Pay ${formatCurrency(totalPrice)}`}
+                </Button>
               </div>
             )}
           </>
         )}
 
-        {/* ═══ Image Gallery Dialog ═══ */}
-        <Dialog open={isImageGalleryOpen} onOpenChange={setIsImageGalleryOpen}>
-          <DialogContent className="max-w-4xl">
-            <DialogHeader>
-              <DialogTitle>Room {selectedRoom?.room_number}</DialogTitle>
-            </DialogHeader>
-            {selectedRoom && (
-              <div className="space-y-4">
-                <div className="w-full aspect-video bg-muted rounded-lg overflow-hidden">
-                  {selectedImage ? (
-                    <img src={getImageUrl(selectedImage)} alt={`Room ${selectedRoom.room_number}`} className="w-full h-full object-contain" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Bed className="h-16 w-16 text-muted-foreground" />
-                    </div>
-                  )}
-                </div>
-                {selectedRoom.images && selectedRoom.images.length > 0 && (
-                  <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
-                    {selectedRoom.images.map((img: string, index: number) => (
-                      <div
-                        key={index}
-                        onClick={() => setSelectedImage(img)}
-                        className={`aspect-square rounded-md overflow-hidden cursor-pointer ${selectedImage === img ? "ring-2 ring-primary" : ""}`}
-                      >
-                        <img src={getImageUrl(img)} alt={`Room image ${index + 1}`} className="w-full h-full object-cover" />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
       </div>
     </ErrorBoundary>
   );

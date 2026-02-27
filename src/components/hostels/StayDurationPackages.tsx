@@ -32,7 +32,26 @@ export const StayDurationPackages: React.FC<StayDurationPackagesProps> = ({
     const fetchPackages = async () => {
       try {
         setLoading(true);
-        const data = await hostelStayPackageService.getPackages(hostelId, durationType);
+        let data = await hostelStayPackageService.getPackages(hostelId, durationType);
+        // Fallback "Base" package when none exist for this duration type
+        if (data.length === 0) {
+          const fallbackPkg: StayPackage = {
+            id: `base-${durationType}`,
+            hostel_id: hostelId,
+            name: 'Base Package',
+            min_months: 1,
+            discount_percentage: 0,
+            deposit_months: 1,
+            lock_in_months: 0,
+            notice_months: 1,
+            description: '',
+            is_active: true,
+            display_order: 0,
+            duration_type: durationType,
+            created_at: new Date().toISOString(),
+          };
+          data = [fallbackPkg];
+        }
         setPackages(data);
         // Auto-select base package
         if (data.length > 0 && !selectedPackage) {
