@@ -9,6 +9,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { BedDouble } from 'lucide-react';
+import { formatCurrency } from '@/utils/currency';
 
 interface BedData {
   id: string;
@@ -19,6 +20,8 @@ interface BedData {
   sharing_option_id: string;
   sharingType?: string;
   price?: number;
+  category?: string | null;
+  price_override?: number | null;
   occupantName?: string;
 }
 
@@ -35,6 +38,8 @@ interface HostelFloorViewProps {
   selectedBedId?: string | null;
   onBedSelect?: (bed: BedData) => void;
   readOnly?: boolean;
+  sharingFilter?: string;
+  categoryFilter?: string;
 }
 
 export const HostelFloorView: React.FC<HostelFloorViewProps> = ({
@@ -43,6 +48,8 @@ export const HostelFloorView: React.FC<HostelFloorViewProps> = ({
   selectedBedId,
   onBedSelect,
   readOnly = false,
+  sharingFilter,
+  categoryFilter,
 }) => {
   return (
     <div className="space-y-4">
@@ -85,36 +92,50 @@ export const HostelFloorView: React.FC<HostelFloorViewProps> = ({
                     const isAvailable = bed.is_available && !bed.is_blocked;
                     const isBlocked = bed.is_blocked;
 
+                    // Check if bed matches the active filters
+                    const matchesSharing = !sharingFilter || sharingFilter === 'all' || bed.sharingType?.toLowerCase() === sharingFilter.toLowerCase();
+                    const matchesCategory = !categoryFilter || categoryFilter === 'all' || (bed.category || '').toLowerCase() === categoryFilter.toLowerCase();
+                    const matchesFilter = matchesSharing && matchesCategory;
+                    const isDisabledByFilter = !matchesFilter;
+
                     let bgClass = 'bg-emerald-50 border-emerald-400 text-emerald-800 hover:bg-emerald-100';
                     if (isSelected) bgClass = 'bg-primary border-primary text-primary-foreground ring-2 ring-primary/30';
+                    else if (isDisabledByFilter) bgClass = 'bg-muted/50 border-border/50 text-muted-foreground/40';
                     else if (isBlocked) bgClass = 'bg-destructive/10 border-destructive/30 text-destructive';
                     else if (!isAvailable) bgClass = 'bg-blue-50 border-blue-400 text-blue-800';
+
+                    const canSelect = !readOnly && isAvailable && matchesFilter;
+                    const effectivePrice = bed.price_override ?? bed.price ?? 0;
 
                     return (
                       <Tooltip key={bed.id}>
                         <TooltipTrigger asChild>
                           <button
                             className={`flex flex-col items-center justify-center rounded-lg border p-2 text-[10px] font-bold transition-all ${bgClass} ${
-                              !readOnly && isAvailable ? 'cursor-pointer' : readOnly ? 'cursor-default' : 'cursor-not-allowed'
+                              canSelect ? 'cursor-pointer' : readOnly ? 'cursor-default' : 'cursor-not-allowed'
                             }`}
                             onClick={() => {
-                              if (!readOnly && isAvailable && onBedSelect) {
+                              if (canSelect && onBedSelect) {
                                 onBedSelect(bed);
                               }
                             }}
-                            disabled={!isAvailable && !readOnly}
+                            disabled={!canSelect && !readOnly}
                           >
                             <BedDouble className="h-3.5 w-3.5 mb-0.5" />
                             {bed.bed_number}
+                            {bed.category && (
+                              <span className="text-[8px] font-normal opacity-70 mt-0.5">{bed.category}</span>
+                            )}
                           </button>
                         </TooltipTrigger>
                         <TooltipContent>
                           <div className="text-xs space-y-0.5">
                             <p className="font-bold">Bed #{bed.bed_number}</p>
                             {bed.sharingType && <p>Type: {bed.sharingType}</p>}
-                            {bed.price !== undefined && <p>₹{bed.price}/month</p>}
+                            {bed.category && <p>Category: {bed.category}</p>}
+                            <p>{formatCurrency(effectivePrice)}/month</p>
                             <p>
-                              {isBlocked ? '🚫 Blocked' : isAvailable ? '✅ Available' : '👤 Occupied'}
+                              {isDisabledByFilter ? '⚪ Filtered out' : isBlocked ? '🚫 Blocked' : isAvailable ? '✅ Available' : '👤 Occupied'}
                             </p>
                             {bed.occupantName && <p>Guest: {bed.occupantName}</p>}
                           </div>

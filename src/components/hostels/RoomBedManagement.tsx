@@ -1,9 +1,8 @@
 
 import React, { useState } from 'react';
 import { HostelBedsDisplay } from './HostelBedsDisplay';
-import { HostelBedManagement } from './HostelBedManagement';
 import { SharingBedsList } from './SharingBedsList';
-import { HostelBedMap } from './HostelBedMap';
+import { HostelBedMapEditor } from './HostelBedMapEditor';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { BedDouble, UsersRound, MapPin } from 'lucide-react';
@@ -24,14 +23,6 @@ export const RoomBedManagement: React.FC<RoomBedManagementProps> = ({
   const [activeTab, setActiveTab] = useState('map');
   const { toast } = useToast();
   
-  const handleBedsAdded = () => {
-    toast({
-      title: "Beds added successfully",
-      description: "The beds have been added to this room",
-    });
-    setActiveTab('view');
-  };
-  
   return (
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -51,7 +42,7 @@ export const RoomBedManagement: React.FC<RoomBedManagementProps> = ({
         </TabsList>
 
         <TabsContent value="map" className="pt-4">
-          <HostelBedMap hostelId={hostelId} readOnly />
+          <HostelBedMapEditor hostelId={hostelId} />
         </TabsContent>
         
         <TabsContent value="view" className="pt-4">

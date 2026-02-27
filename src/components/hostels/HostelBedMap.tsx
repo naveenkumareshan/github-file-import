@@ -10,6 +10,8 @@ interface HostelBedMapProps {
   selectedBedId?: string | null;
   onBedSelect?: (bed: any) => void;
   readOnly?: boolean;
+  sharingFilter?: string;
+  categoryFilter?: string;
 }
 
 export const HostelBedMap: React.FC<HostelBedMapProps> = ({
@@ -17,6 +19,8 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
   selectedBedId,
   onBedSelect,
   readOnly = true,
+  sharingFilter,
+  categoryFilter,
 }) => {
   const [loading, setLoading] = useState(true);
   const [floorData, setFloorData] = useState<Record<number, any[]>>({});
@@ -25,7 +29,6 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Get rooms for this hostel
         const { data: rooms } = await supabase
           .from('hostel_rooms')
           .select('id, room_number, floor, category')
@@ -42,14 +45,12 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
 
         const roomIds = rooms.map(r => r.id);
 
-        // Get beds with sharing options
         const { data: beds } = await supabase
           .from('hostel_beds')
           .select('*, hostel_sharing_options(type, price_monthly)')
           .in('room_id', roomIds)
           .order('bed_number');
 
-        // Get active bookings to determine occupancy
         const { data: bookings } = await supabase
           .from('hostel_bookings')
           .select('bed_id, profiles:user_id(name)')
@@ -61,7 +62,6 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
           bookingMap.set(b.bed_id, b.profiles?.name || 'Occupied');
         });
 
-        // Group by floor
         const grouped: Record<number, any[]> = {};
         rooms.forEach(room => {
           const floor = room.floor;
@@ -78,6 +78,8 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
               sharing_option_id: b.sharing_option_id,
               sharingType: (b as any).hostel_sharing_options?.type || '',
               price: (b as any).hostel_sharing_options?.price_monthly || 0,
+              category: (b as any).category || null,
+              price_override: (b as any).price_override || null,
               occupantName: bookingMap.get(b.id) || undefined,
             }));
 
@@ -139,6 +141,8 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
               selectedBedId={selectedBedId}
               onBedSelect={onBedSelect}
               readOnly={readOnly}
+              sharingFilter={sharingFilter}
+              categoryFilter={categoryFilter}
             />
           </TabsContent>
         ))}

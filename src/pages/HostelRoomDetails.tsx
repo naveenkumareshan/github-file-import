@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { hostelService } from "@/api/hostelService";
 import { hostelRoomService } from "@/api/hostelRoomService";
+import { hostelBedCategoryService, HostelBedCategory } from "@/api/hostelBedCategoryService";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import {
   ArrowLeft,
@@ -77,21 +78,26 @@ const HostelRoomDetails = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const heroRef = useRef<HTMLDivElement>(null);
-  const roomsSectionRef = useRef<HTMLDivElement>(null);
+  const bedMapRef = useRef<HTMLDivElement>(null);
 
   const [rooms, setRooms] = useState<any[]>([]);
   const [hostel, setHostel] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedSharingOption, setSelectedSharingOption] = useState<any>(null);
-  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const fetchedRef = useRef(false);
+
+  // Selection state
+  const [sharingFilter, setSharingFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [selectedBed, setSelectedBed] = useState<any>(null);
+  const [selectedStayPackage, setSelectedStayPackage] = useState<StayPackage | null>(null);
+  const [showDetails, setShowDetails] = useState(true);
+  const [categories, setCategories] = useState<HostelBedCategory[]>([]);
+
+  // Image gallery
   const [selectedRoom, setSelectedRoom] = useState<any | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isImageGalleryOpen, setIsImageGalleryOpen] = useState(false);
-  const [isBedMapOpen, setIsBedMapOpen] = useState(false);
-  const [selectedStayPackage, setSelectedStayPackage] = useState<StayPackage | null>(null);
-  const [showDetails, setShowDetails] = useState(true);
 
   /* ─── Data fetch ─── */
   useEffect(() => {
@@ -101,12 +107,14 @@ const HostelRoomDetails = () => {
         fetchedRef.current = true;
         setLoading(true);
         setError(null);
-        const [hostelData, roomsData] = await Promise.all([
+        const [hostelData, roomsData, catResult] = await Promise.all([
           hostelService.getHostelById(hostelId),
           hostelRoomService.getHostelRooms(hostelId),
+          hostelBedCategoryService.getCategories(hostelId),
         ]);
         setHostel(hostelData);
         setRooms(roomsData || []);
+        if (catResult.success) setCategories(catResult.data);
       } catch (err) {
         console.error("Error fetching hostel details:", err);
         setError("Failed to load hostel details");
@@ -118,10 +126,10 @@ const HostelRoomDetails = () => {
     fetchData();
   }, [hostelId]);
 
-  /* ─── Collapse hero when a sharing option is selected ─── */
+  /* ─── Collapse hero when a bed is selected ─── */
   useEffect(() => {
-    if (selectedSharingOption) setShowDetails(false);
-  }, [selectedSharingOption]);
+    if (selectedBed) setShowDetails(false);
+  }, [selectedBed]);
 
   /* ─── IntersectionObserver: re-show hero when scrolled to top ─── */
   useEffect(() => {
@@ -134,31 +142,55 @@ const HostelRoomDetails = () => {
     return () => observer.disconnect();
   }, [showDetails]);
 
-  /* ─── Handlers (unchanged logic) ─── */
-  const handleSelectSharingOption = (option: any, roomId: string) => {
-    setSelectedSharingOption(option);
-    setSelectedRoomId(roomId);
+  /* ─── Sharing types from rooms ─── */
+  const sharingTypes = useMemo(() => {
+    const types = new Set<string>();
+    rooms.forEach(room => {
+      room.hostel_sharing_options?.forEach((opt: any) => {
+        if (opt.type) types.add(opt.type);
+      });
+    });
+    return Array.from(types);
+  }, [rooms]);
+
+  /* ─── Handlers ─── */
+  const handleBedSelect = (bed: any) => {
+    setSelectedBed(bed);
+    // Scroll to packages section smoothly
+    setTimeout(() => {
+      bedMapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }, 100);
   };
 
-  const getAvailableCount = (option: any) =>
-    option.hostel_beds?.filter((b: any) => b.is_available && !b.is_blocked).length || 0;
+  const handleBookNow = () => {
+    if (!selectedBed || !hostel) return;
+    
+    // Find the room and sharing option for the selected bed
+    const room = rooms.find(r => 
+      r.hostel_sharing_options?.some((opt: any) => opt.id === selectedBed.sharing_option_id)
+    );
+    const sharingOption = room?.hostel_sharing_options?.find((opt: any) => opt.id === selectedBed.sharing_option_id);
 
-  const getTotalBedCount = (option: any) => option.total_beds || 0;
-
-  const handleBookNow = (room: any) => {
-    if (!selectedSharingOption || selectedRoomId !== room.id) {
-      toast({ title: "Selection Required", description: "Please select a sharing option first", variant: "default" });
+    if (!room || !sharingOption) {
+      toast({ title: "Error", description: "Could not find room details for selected bed", variant: "destructive" });
       return;
     }
-    navigate(`/hostel-booking/${hostel.id}/${room.id}`, {
-      state: { room, hostel, sharingOption: selectedSharingOption, stayPackage: selectedStayPackage },
-    });
-  };
 
-  const handleOpenImageGallery = (room: any, initialImage?: string) => {
-    setSelectedRoom(room);
-    setSelectedImage(initialImage || room.image_url);
-    setIsImageGalleryOpen(true);
+    navigate(`/hostel-booking/${hostel.id}/${room.id}`, {
+      state: { 
+        room, 
+        hostel, 
+        sharingOption, 
+        stayPackage: selectedStayPackage,
+        selectedBed: {
+          id: selectedBed.id,
+          bed_number: selectedBed.bed_number,
+          price: selectedBed.price_override ?? selectedBed.price ?? sharingOption.price_monthly,
+          category: selectedBed.category,
+          sharingType: selectedBed.sharingType,
+        }
+      },
+    });
   };
 
   const handleGoBack = () => navigate(-1);
@@ -173,6 +205,14 @@ const HostelRoomDetails = () => {
   }, Infinity);
 
   const stayTypeLabel = hostel?.stay_type === "long_term" ? "Long-term" : hostel?.stay_type === "short_term" ? "Short-term" : "Both";
+
+  // Effective price for selected bed
+  const selectedBedPrice = selectedBed
+    ? (selectedBed.price_override ?? selectedBed.price ?? 0)
+    : 0;
+  const discountedPrice = selectedStayPackage?.discount_percentage
+    ? Math.round(selectedBedPrice * (1 - selectedStayPackage.discount_percentage / 100))
+    : selectedBedPrice;
 
   /* ─── Render ─── */
   return (
@@ -198,9 +238,7 @@ const HostelRoomDetails = () => {
                 <div className="w-full overflow-hidden bg-muted">
                   <CabinImageSlider images={hostelImages} autoPlay hideThumbnails />
                 </div>
-                {/* Gradient for button visibility */}
                 <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/40 to-transparent pointer-events-none" />
-                {/* Back button */}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -209,7 +247,6 @@ const HostelRoomDetails = () => {
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
-                {/* Gender badge */}
                 <Badge className={`absolute top-3 right-3 ${getGenderColor(hostel.gender)} border-0 text-xs shadow-lg`}>
                   {hostel.gender?.charAt(0).toUpperCase() + hostel.gender?.slice(1)}
                 </Badge>
@@ -274,9 +311,7 @@ const HostelRoomDetails = () => {
                   {hostel.description && (
                     <p className="text-xs text-muted-foreground leading-relaxed">{hostel.description}</p>
                   )}
-                  {hostel.description && hostel.amenities?.length > 0 && (
-                    <Separator className="my-2.5 opacity-50" />
-                  )}
+                  {hostel.description && hostel.amenities?.length > 0 && <Separator className="my-2.5 opacity-50" />}
                   {hostel.amenities?.length > 0 && (
                     <div className="flex flex-wrap gap-1">
                       {hostel.amenities.map((amenity: string) => (
@@ -287,8 +322,6 @@ const HostelRoomDetails = () => {
                       ))}
                     </div>
                   )}
-
-                  {/* Contact info */}
                   {(hostel.contact_phone || hostel.contact_email) && (
                     <>
                       <Separator className="my-2.5 opacity-50" />
@@ -298,9 +331,7 @@ const HostelRoomDetails = () => {
                             <Phone className="h-3 w-3" /> {hostel.contact_phone}
                           </a>
                         )}
-                        {hostel.contact_email && (
-                          <span>{hostel.contact_email}</span>
-                        )}
+                        {hostel.contact_email && <span>{hostel.contact_email}</span>}
                       </div>
                     </>
                   )}
@@ -326,191 +357,146 @@ const HostelRoomDetails = () => {
               </div>
             )}
 
-            {/* ═══ Rooms & Pricing ═══ */}
-            <div className="px-3 pt-3" ref={roomsSectionRef}>
-              <div className="mb-3">
-                <h2 className="text-base font-bold text-foreground">Rooms & Pricing</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">Select your preferred room and sharing option</p>
+            {/* ═══ Step 1: Filter Pills ═══ */}
+            <div className="px-3 pt-3">
+              <div className="mb-2">
+                <h2 className="text-base font-bold text-foreground">Step 1: Select Sharing Type</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">Filter beds by sharing type and category</p>
               </div>
 
-              {rooms.length === 0 ? (
-                <div className="text-center py-10">
-                  <Info className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
-                  <p className="text-sm text-muted-foreground">No rooms available</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {rooms.map((room) => (
-                    <div key={room.id} className="border border-border/60 rounded-xl overflow-hidden">
-                      {/* Room header */}
-                      <div className="flex gap-3 p-3">
-                        <div
-                          className="relative h-20 w-20 rounded-lg overflow-hidden flex-shrink-0 cursor-pointer bg-muted"
-                          onClick={() => handleOpenImageGallery(room)}
-                        >
-                          {room.image_url ? (
-                            <img src={getImageUrl(room.image_url)} alt={`Room ${room.room_number}`} className="h-full w-full object-cover" />
-                          ) : (
-                            <div className="h-full w-full flex items-center justify-center">
-                              <Bed className="h-5 w-5 text-muted-foreground" />
-                            </div>
-                          )}
-                          {room.images && room.images.length > 1 && (
-                            <div className="absolute bottom-0.5 right-0.5 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
-                              <ImageIcon className="h-2.5 w-2.5" />
-                              {room.images.length}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-sm font-semibold text-foreground">Room {room.room_number}</h3>
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
-                              {room.category?.charAt(0).toUpperCase() + room.category?.slice(1)}
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-0.5">Floor {room.floor}</p>
-                          {/* Room amenities */}
-                          {room.amenities && room.amenities.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1.5">
-                              {room.amenities.slice(0, 4).map((amenity: string, i: number) => (
-                                <span key={i} className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
-                                  {amenity}
-                                </span>
-                              ))}
-                              {room.amenities.length > 4 && (
-                                <span className="text-[10px] text-muted-foreground">+{room.amenities.length - 4}</span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
+              {/* Sharing type pills */}
+              <div className="flex gap-1.5 overflow-x-auto pb-2 no-scrollbar">
+                <button
+                  onClick={() => setSharingFilter('all')}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all ${
+                    sharingFilter === 'all'
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
+                  }`}
+                >
+                  All
+                </button>
+                {sharingTypes.map(type => (
+                  <button
+                    key={type}
+                    onClick={() => setSharingFilter(type)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all ${
+                      sharingFilter === type
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
+                    }`}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
 
-                      <Separator />
-
-                      {/* Sharing options */}
-                      <div className="p-3 space-y-3">
-                        {room.hostel_sharing_options && room.hostel_sharing_options.length > 0 ? (
-                          <>
-                            {room.hostel_sharing_options.map((option: any, idx: number) => {
-                              const available = getAvailableCount(option);
-                              const totalBeds = getTotalBedCount(option);
-                              const isSelected = selectedSharingOption?.id === option.id && selectedRoomId === room.id;
-
-                              return (
-                                <div
-                                  key={idx}
-                                  onClick={() => handleSelectSharingOption(option, room.id)}
-                                  className={`relative border rounded-xl p-3 cursor-pointer transition-all ${
-                                    isSelected
-                                      ? "border-primary bg-primary/5 ring-2 ring-primary/20"
-                                      : "hover:border-primary/50"
-                                  }`}
-                                >
-                                  <div className="flex justify-between items-center mb-1.5">
-                                    <h4 className="text-sm font-semibold">{option.type}</h4>
-                                    <Badge
-                                      variant={available > 0 ? "default" : "outline"}
-                                      className={`text-[10px] ${available > 0 ? "bg-green-500 text-white" : "border text-muted-foreground"}`}
-                                    >
-                                      {available > 0 ? `${available} Available` : "Full"}
-                                    </Badge>
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">{option.capacity} persons per unit</div>
-
-                                  {/* Availability bar */}
-                                  <div className="mt-2">
-                                    <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-                                      <div
-                                        className={`h-1.5 rounded-full ${available > 0 ? "bg-green-500" : "bg-gray-400"}`}
-                                        style={{ width: `${totalBeds > 0 ? (available / totalBeds) * 100 : 0}%` }}
-                                      />
-                                    </div>
-                                  </div>
-
-                                  {/* Price */}
-                                  <div className="mt-2 flex items-baseline gap-1">
-                                    <span className="text-base font-bold text-foreground">{formatCurrency(option.price_monthly)}</span>
-                                    <span className="text-xs text-muted-foreground">/month</span>
-                                    {option.price_daily > 0 && (
-                                      <span className="text-xs text-muted-foreground ml-1">({formatCurrency(option.price_daily)}/day)</span>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
-
-                            {/* Stay Duration Packages */}
-                            {selectedSharingOption && selectedRoomId === room.id && (
-                              <div className="mt-2">
-                                <Separator className="mb-3" />
-                                <StayDurationPackages
-                                  hostelId={hostel.id}
-                                  monthlyPrice={selectedSharingOption.price_monthly}
-                                  selectedPackage={selectedStayPackage}
-                                  onSelectPackage={setSelectedStayPackage}
-                                />
-                              </div>
-                            )}
-
-                            {/* View Bed Map */}
-                            <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => setIsBedMapOpen(true)}>
-                              <MapPin className="mr-1.5 h-3.5 w-3.5" />
-                              View Bed Map
-                            </Button>
-
-                            {/* Book Now */}
-                            <Button
-                              className="w-full"
-                              size="sm"
-                              disabled={!selectedSharingOption || selectedRoomId !== room.id || getAvailableCount(selectedSharingOption) <= 0}
-                              onClick={() => handleBookNow(room)}
-                            >
-                              <CreditCard className="mr-1.5 h-4 w-4" />
-                              Book Now
-                            </Button>
-
-                            {(!selectedSharingOption || selectedRoomId !== room.id) && (
-                              <p className="text-[11px] text-center text-muted-foreground">Select a sharing option above</p>
-                            )}
-
-                            {/* Contact for short stays */}
-                            {hostel.contact_phone && (
-                              <div className="text-center p-2 bg-muted/50 rounded-lg">
-                                <p className="text-[11px] text-muted-foreground">
-                                  For stays &lt; 30 days, call{" "}
-                                  <a href={`tel:${hostel.contact_phone}`} className="text-primary font-medium">
-                                    <Phone className="h-3 w-3 inline mr-0.5" />
-                                    {hostel.contact_phone}
-                                  </a>
-                                </p>
-                              </div>
-                            )}
-                          </>
-                        ) : (
-                          <div className="text-center py-4">
-                            <Info className="h-8 w-8 mx-auto text-muted-foreground mb-1" />
-                            <p className="text-xs text-muted-foreground">No sharing options available</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+              {/* Category pills (only if categories exist) */}
+              {categories.length > 0 && (
+                <div className="flex gap-1.5 overflow-x-auto pb-2 no-scrollbar">
+                  <button
+                    onClick={() => setCategoryFilter('all')}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all ${
+                      categoryFilter === 'all'
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
+                    }`}
+                  >
+                    All
+                  </button>
+                  {categories.map(cat => (
+                    <button
+                      key={cat.id}
+                      onClick={() => setCategoryFilter(cat.name)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all ${
+                        categoryFilter === cat.name
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
+                      }`}
+                    >
+                      {cat.name}
+                      {cat.price_adjustment > 0 && ` (+${formatCurrency(cat.price_adjustment)})`}
+                    </button>
                   ))}
                 </div>
               )}
             </div>
+
+            {/* ═══ Step 2: Select Your Bed (Inline Bed Map) ═══ */}
+            <div className="px-3 pt-3" ref={bedMapRef}>
+              <div className="mb-2">
+                <h2 className="text-base font-bold text-foreground">Step 2: Select Your Bed</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {selectedBed 
+                    ? `Bed #${selectedBed.bed_number} selected (${selectedBed.sharingType || 'Unknown'})`
+                    : 'Tap on an available bed to select it'}
+                </p>
+              </div>
+
+              <HostelBedMap
+                hostelId={hostel.id}
+                selectedBedId={selectedBed?.id}
+                onBedSelect={handleBedSelect}
+                readOnly={false}
+                sharingFilter={sharingFilter}
+                categoryFilter={categoryFilter}
+              />
+            </div>
+
+            {/* ═══ Step 3: Stay Duration (shown after bed selected) ═══ */}
+            {selectedBed && (
+              <div className="px-3 pt-4">
+                <div className="mb-2">
+                  <h2 className="text-base font-bold text-foreground">Step 3: Choose Stay Duration</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">Select a stay package for better pricing</p>
+                </div>
+                <StayDurationPackages
+                  hostelId={hostel.id}
+                  monthlyPrice={selectedBedPrice}
+                  selectedPackage={selectedStayPackage}
+                  onSelectPackage={setSelectedStayPackage}
+                />
+              </div>
+            )}
+
+            {/* ═══ Sticky Bottom Bar ═══ */}
+            {selectedBed && (
+              <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-t border-border px-4 py-3 safe-area-bottom">
+                <div className="flex items-center justify-between max-w-lg mx-auto">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <Bed className="h-4 w-4 text-primary flex-shrink-0" />
+                      <span className="text-sm font-semibold text-foreground truncate">
+                        Bed #{selectedBed.bed_number}
+                      </span>
+                      {selectedBed.sharingType && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 flex-shrink-0">
+                          {selectedBed.sharingType}
+                        </Badge>
+                      )}
+                      {selectedBed.category && (
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 flex-shrink-0">
+                          {selectedBed.category}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-baseline gap-1 mt-0.5">
+                      <span className="text-base font-bold text-primary">{formatCurrency(discountedPrice)}</span>
+                      <span className="text-xs text-muted-foreground">/mo</span>
+                      {selectedStayPackage && selectedStayPackage.discount_percentage > 0 && (
+                        <span className="text-xs text-muted-foreground line-through ml-1">{formatCurrency(selectedBedPrice)}</span>
+                      )}
+                    </div>
+                  </div>
+                  <Button onClick={handleBookNow} className="flex-shrink-0">
+                    <CreditCard className="h-4 w-4 mr-1.5" />
+                    Book Now
+                  </Button>
+                </div>
+              </div>
+            )}
           </>
         )}
-
-        {/* ═══ Bed Map Dialog ═══ */}
-        <Dialog open={isBedMapOpen} onOpenChange={setIsBedMapOpen}>
-          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Bed Map - {hostel?.name}</DialogTitle>
-            </DialogHeader>
-            {hostel && <HostelBedMap hostelId={hostel.id} readOnly />}
-          </DialogContent>
-        </Dialog>
 
         {/* ═══ Image Gallery Dialog ═══ */}
         <Dialog open={isImageGalleryOpen} onOpenChange={setIsImageGalleryOpen}>

@@ -29,7 +29,7 @@ const HostelBooking = () => {
   const { toast } = useToast();
   const { user, authChecked, isAuthenticated } = useAuth();
 
-  const { room, hostel, sharingOption, stayPackage } = location.state || {};
+  const { room, hostel, sharingOption, stayPackage, selectedBed: preSelectedBed } = location.state || {};
 
   const [bookingPeriod, setBookingPeriod] = useState<BookingPeriod>({
     type: 'monthly',
@@ -39,7 +39,7 @@ const HostelBooking = () => {
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [startDate] = useState<Date>(new Date());
-  const [availableBed, setAvailableBed] = useState<any>(null);
+  const [availableBed, setAvailableBed] = useState<any>(preSelectedBed || null);
   const [loadingBeds, setLoadingBeds] = useState(false);
 
   const loadRazorpayScript = (): Promise<boolean> => {
@@ -80,10 +80,11 @@ const HostelBooking = () => {
     }
   }, [isAuthenticated, authChecked]);
 
-  // Fetch available beds
+  // Fetch available beds (skip if pre-selected bed exists)
   useEffect(() => {
     const fetchBeds = async () => {
       if (!room?.id || !sharingOption?.id) return;
+      if (preSelectedBed) return; // Already have a bed from the details page
       setLoadingBeds(true);
       try {
         const endDate = calculateEndDate();
@@ -92,7 +93,6 @@ const HostelBooking = () => {
           startDate.toISOString().split('T')[0],
           endDate.toISOString().split('T')[0]
         );
-        // Find first available bed for the selected sharing option
         const bed = beds?.find(
           (b: any) => b.sharing_option_id === sharingOption.id && b.is_available && !b.is_blocked
         );
