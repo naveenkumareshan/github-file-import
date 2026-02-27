@@ -236,7 +236,10 @@ export const BookingsList = ({
                 {booking.originalPrice && booking.appliedCoupon ? (
                   <span className="text-[10px] text-muted-foreground line-through mr-1">₹{booking.originalPrice.toLocaleString()}</span>
                 ) : null}
-                <span className="text-[12px] font-bold text-primary">₹{booking.totalPrice.toLocaleString()}</span>
+                <div className="text-[12px] font-bold text-primary">Seat: ₹{((booking.totalPrice || 0) - (booking.lockerPrice || 0)).toLocaleString()}</div>
+                {(booking.lockerPrice || 0) > 0 && (
+                  <div className="text-[10px] text-muted-foreground">Locker: ₹{booking.lockerPrice.toLocaleString()}</div>
+                )}
               </div>
             </div>
 

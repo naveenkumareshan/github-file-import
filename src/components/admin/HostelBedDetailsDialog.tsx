@@ -98,7 +98,12 @@ export function HostelBedDetailsDialog({ open, onOpenChange, bedId, bedNumber, h
                     </TableCell>
                     <TableCell>{b.start_date ? format(new Date(b.start_date), 'dd MMM yyyy') : '-'}</TableCell>
                     <TableCell>{b.end_date ? format(new Date(b.end_date), 'dd MMM yyyy') : '-'}</TableCell>
-                    <TableCell>{formatCurrency(b.total_price)}</TableCell>
+                    <TableCell>
+                      <div>Bed: {formatCurrency(b.total_price)}</div>
+                      {(b.security_deposit || 0) > 0 && (
+                        <div className="text-xs text-muted-foreground">Deposit: {formatCurrency(b.security_deposit)}</div>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <Badge variant={b.status === 'confirmed' ? 'default' : b.status === 'cancelled' ? 'destructive' : 'secondary'}>
                         {b.status}
