@@ -574,9 +574,43 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
       <CardContent className="px-4 pt-3">
         {!bookingCreated ? (
           <div className="space-y-5">
-            {/* Step 1: Duration Type as horizontal pills */}
+            {/* Seat Type - compact pills */}
+            {categories.length > 0 && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground">Seat Type</Label>
+                <div className="flex gap-1.5 flex-wrap">
+                  <button
+                    onClick={() => setSelectedCategory("all")}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all",
+                      selectedCategory === "all"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    All
+                  </button>
+                  {categories.map((cat) => (
+                    <button
+                      key={cat.id}
+                      onClick={() => setSelectedCategory(cat.name)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all",
+                        selectedCategory === cat.name
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "bg-muted text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {cat.name} • ₹{cat.price}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Duration Type as horizontal pills */}
             <div>
-              <Label className="block mb-2 text-xs text-muted-foreground uppercase tracking-wide">Duration Type</Label>
+              <Label className="block mb-2 text-xs font-medium text-muted-foreground">Duration Type</Label>
               <div className="flex gap-1.5 bg-muted/50 rounded-xl p-1">
                 {(["daily", "weekly", "monthly"] as const).map((type) => (
                   <button
@@ -709,39 +743,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
               </div>
             )}
 
-            {/* Seat Type - compact pills */}
-            {categories.length > 0 && (
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-muted-foreground">Seat Type</Label>
-                <div className="flex gap-1.5 flex-wrap">
-                  <button
-                    onClick={() => setSelectedCategory("all")}
-                    className={cn(
-                      "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all",
-                      selectedCategory === "all"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    All
-                  </button>
-                  {categories.map((cat) => (
-                    <button
-                      key={cat.id}
-                      onClick={() => setSelectedCategory(cat.name)}
-                      className={cn(
-                        "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all",
-                        selectedCategory === cat.name
-                          ? "bg-primary text-primary-foreground shadow-sm"
-                          : "bg-muted text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      {cat.name} • ₹{cat.price}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* (Seat Type moved above Duration Type) */}
 
             {/* Step 2: Seat Selection */}
             {showSeatSelection && cabin && (!cabin.slotsEnabled || selectedSlot) && !hasPendingDues && (
