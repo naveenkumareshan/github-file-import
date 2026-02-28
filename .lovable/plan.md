@@ -1,69 +1,61 @@
 
 
-## Unify Student Bookings: Show Hostel Bookings in My Bookings
+## Check-in Tracker Enhancements
 
-Currently, the Student "My Bookings" page (`StudentBookings.tsx`) only shows reading room bookings from the `bookings` table. Hostel bookings from `hostel_bookings` are not displayed. This plan adds hostel bookings alongside reading room bookings in the same unified list.
-
----
-
-### What Changes
-
-**File: `src/pages/StudentBookings.tsx`** (primary change)
-
-1. **Import hostel booking service** -- import `hostelBookingService` from `src/api/hostelBookingService.ts` to fetch the user's hostel bookings.
-
-2. **Fetch hostel bookings in `fetchBookings()`** -- alongside the existing `getCurrentBookings()` and `getBookingHistory()` calls, also call `hostelBookingService.getUserBookings()` to get all hostel bookings for the current user.
-
-3. **Fetch hostel dues** -- in `fetchDues()`, also query the `hostel_dues` table for pending/overdue dues and merge them into the `duesMap` so hostel due amounts show on booking cards too.
-
-4. **Map hostel bookings to the same `Booking` shape** -- create a `mapHostelBooking()` function that transforms hostel_bookings rows into the same `BookingDisplay` interface used by `BookingsList`:
-   - `bookingType: 'hostel'`
-   - `itemName`: hostel name from joined `hostels` table
-   - `itemNumber`: bed number from joined `hostel_beds`
-   - `itemImage`: hostel logo_image
-   - `paymentStatus` mapped from hostel booking's `payment_status`
-   - `totalPrice`, `startDate`, `endDate`, `id`, etc.
-
-5. **Merge and sort** -- combine mapped reading room bookings and hostel bookings into a single array, sorted by `created_at` descending, then split into current (active) and past (expired/cancelled) tabs as before.
-
-6. **Update Active Bookings count** -- the header card count will automatically include hostel bookings since it counts from the merged `currentBookings` array.
-
-7. **Update the "Book New" button** -- optionally add a second button or make it a dropdown: "Book Reading Room" and "Book Hostel". Or keep it simple with just the existing button since hostel booking has its own entry point.
-
-8. **View Details link** -- for hostel bookings, the "View Details" link should navigate to the hostel booking view page (if it exists) or fall back to a generic detail page. Will check for existing hostel booking detail route and use it.
+Three improvements to the Check-in Tracker on the Operations page.
 
 ---
 
-### No Database Changes Required
+### 1. Add "View Details" and "Upload Document" buttons per row
 
-The `hostel_bookings` table already exists with proper RLS policies allowing users to view their own bookings. No migrations needed.
+Each booking row will get two new action buttons alongside "Mark Reported":
+- **View Details**: Links to the existing admin booking view page (`/admin/bookings/:bookingId`)
+- **Upload Document**: Opens a dialog to upload files (Aadhar, signed forms, etc.) to a dedicated storage bucket
 
-### No New Files
+**Storage setup** (new migration):
+- Create a `checkin-documents` storage bucket (public: false)
+- Add RLS policies for authenticated users to upload/read
+- Add a `check_in_documents` JSONB column to both `bookings` and `hostel_bookings` tables to store file references (array of `{name, path, uploaded_at}`)
 
-All changes are within `src/pages/StudentBookings.tsx`.
+**Upload Dialog**: Simple file input allowing multiple files. On upload, files are stored to `checkin-documents/{booking_id}/{filename}` and references saved to the `check_in_documents` column. Already-uploaded docs shown as a list with download links.
 
 ---
 
-### Technical Details
+### 2. Filter to only today and yesterday start dates
 
-**Hostel booking mapping function:**
+Currently the query fetches ALL unreported bookings regardless of start date. Change the queries to filter:
+- `start_date` equals today OR yesterday only
+- This keeps the page focused on "today's arrivals" and "yesterday's no-shows"
+
+Update both the reading room and hostel booking queries to add `.in('start_date', [today, yesterday])` filter.
+
+---
+
+### 3. Show today's already-reported people
+
+Add a new section below the pending table: "Reported Today" -- showing bookings where `checked_in_at` was set today.
+
+- New query fetching bookings where `checked_in_at >= start of today` 
+- Displayed in a separate collapsed/expandable table with a green header
+- Shows: Student, Room/Seat, Start Date, Payment, Reported Time, Notes
+- Read-only (no actions needed since already reported)
+
+---
+
+### Technical Changes
+
+**New migration (1)**:
 ```text
-hostel booking fields -> BookingDisplay fields:
-  id -> id
-  serial_number -> bookingId
-  start_date -> startDate
-  end_date -> endDate
-  payment_status -> paymentStatus
-  total_price -> totalPrice
-  hostels.name -> itemName
-  hostel_beds.bed_number -> itemNumber
-  hostels.logo_image -> itemImage
-  'hostel' -> bookingType
-  hostel_id -> cabinId (reuse field for navigation)
-  created_at -> createdAt
+- Create storage bucket 'checkin-documents' (private)
+- RLS: authenticated users can upload and read
+- Add check_in_documents jsonb column to bookings and hostel_bookings
 ```
 
-**Current bookings filter for hostel:** `end_date >= today AND payment_status IN ('completed', 'confirmed', 'advance_paid')`
-
-**Past bookings filter for hostel:** `end_date < today OR status IN ('cancelled')`
+**Modified file: `src/components/admin/operations/CheckInTracker.tsx`**:
+1. Add date filter (today + yesterday) to both RR and hostel queries
+2. Add new query for "reported today" bookings (checked_in_at >= today)
+3. Add "View Details" button linking to `/admin/bookings/:id`
+4. Add "Upload Docs" button opening an upload dialog
+5. Add "Reported Today" expandable section at the bottom with a collapsible table
+6. Upload dialog: file input, upload to storage, save references to check_in_documents column
 
