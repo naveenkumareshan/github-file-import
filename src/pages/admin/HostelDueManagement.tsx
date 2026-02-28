@@ -12,9 +12,6 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Wallet, AlertTriangle, IndianRupee, Calendar as CalendarIcon, Search, Banknote, Smartphone, Building2, CreditCard, Receipt, Pencil } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -48,8 +45,8 @@ const HostelDueManagement: React.FC = () => {
   // Date editing state
   const [editingField, setEditingField] = useState<'due_date' | 'bed_valid' | null>(null);
   const [editDueId, setEditDueId] = useState<string | null>(null);
-  const [editDateValue, setEditDateValue] = useState<Date | undefined>(undefined);
-  const [editMaxDate, setEditMaxDate] = useState<Date | undefined>(undefined);
+  const [editDateValue, setEditDateValue] = useState<string>('');
+  const [editMaxDate, setEditMaxDate] = useState<string>('');
   const [savingDate, setSavingDate] = useState(false);
 
   const { toast } = useToast();
@@ -365,8 +362,8 @@ const HostelDueManagement: React.FC = () => {
                               onClick={() => {
                                 setEditingField('due_date');
                                 setEditDueId(due.id);
-                                setEditDateValue(due.due_date ? new Date(due.due_date) : undefined);
-                                setEditMaxDate(undefined);
+                                setEditDateValue(due.due_date || '');
+                                setEditMaxDate('');
                               }}
                             >
                               <Pencil className="h-3 w-3 text-muted-foreground" />
@@ -383,9 +380,9 @@ const HostelDueManagement: React.FC = () => {
                               onClick={() => {
                                 setEditingField('bed_valid');
                                 setEditDueId(due.id);
-                                setEditDateValue(due.proportional_end_date ? new Date(due.proportional_end_date) : undefined);
+                                setEditDateValue(due.proportional_end_date || '');
                                 const bookingEnd = (due.hostel_bookings as any)?.end_date;
-                                setEditMaxDate(bookingEnd ? new Date(bookingEnd) : undefined);
+                                setEditMaxDate(bookingEnd || '');
                               }}
                             >
                               <Pencil className="h-3 w-3 text-muted-foreground" />
@@ -536,29 +533,30 @@ const HostelDueManagement: React.FC = () => {
           <div className="space-y-3">
             {editingField === 'bed_valid' && editMaxDate && (
               <p className="text-[11px] text-muted-foreground">
-                Cannot exceed booking end date: {format(editMaxDate, 'dd MMM yyyy')}
+                Cannot exceed booking end date: {format(new Date(editMaxDate), 'dd MMM yyyy')}
               </p>
             )}
-            <Calendar
-              mode="single"
-              selected={editDateValue}
-              onSelect={setEditDateValue}
-              disabled={editingField === 'bed_valid' && editMaxDate
-                ? (date) => date > editMaxDate!
-                : undefined
-              }
-              className={cn("p-3 pointer-events-auto")}
+            <Input
+              type="date"
+              className="h-9 text-sm"
+              value={editDateValue}
+              max={editingField === 'bed_valid' && editMaxDate ? editMaxDate : undefined}
+              onChange={(e) => setEditDateValue(e.target.value)}
             />
             <Button
               className="w-full h-8 text-xs"
               disabled={!editDateValue || savingDate}
               onClick={async () => {
                 if (!editDueId || !editDateValue) return;
+                if (editingField === 'bed_valid' && editMaxDate && editDateValue > editMaxDate) {
+                  toast({ title: 'Bed validity cannot exceed booking end date', variant: 'destructive' });
+                  return;
+                }
                 setSavingDate(true);
                 const fieldName = editingField === 'due_date' ? 'due_date' : 'proportional_end_date';
                 const { error } = await supabase
                   .from('hostel_dues')
-                  .update({ [fieldName]: format(editDateValue, 'yyyy-MM-dd') })
+                  .update({ [fieldName]: editDateValue })
                   .eq('id', editDueId);
                 if (error) {
                   toast({ title: 'Error', description: error.message, variant: 'destructive' });
