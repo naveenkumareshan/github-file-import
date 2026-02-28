@@ -565,10 +565,10 @@ const HostelBedMap: React.FC = () => {
     }
     const secDepAmt = collectSecurityDeposit ? (parseFloat(securityDepositAmount) || 0) : 0;
     const grandTotal = total + secDepAmt;
-    // Clamp advance to bed total only (security deposit is always collected upfront separately)
-    const advanceAmount = manualAdvanceAmount ? Math.min(parseFloat(manualAdvanceAmount) || 0, total) : defaultAdvance;
-    // Due balance = bed total minus advance paid (excludes security deposit since it's collected upfront)
-    const remainingDue = total - advanceAmount;
+    // Clamp advance to grandTotal (partial payment against total receivable)
+    const advanceAmount = manualAdvanceAmount ? Math.min(parseFloat(manualAdvanceAmount) || 0, grandTotal) : defaultAdvance;
+    // Due balance = grandTotal - advanceAmount (single partial amount model)
+    const remainingDue = grandTotal - advanceAmount;
     const defaultDueDate = new Date(bookingStartDate);
     defaultDueDate.setDate(defaultDueDate.getDate() + 3);
     const dueDate = manualDueDate || defaultDueDate;
@@ -624,11 +624,11 @@ const HostelBedMap: React.FC = () => {
     setCreatingBooking(true);
     const collectedByName = user?.name || user?.email || 'Admin';
     const total = computedTotal;
-    const advanceAmt = isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : total;
     const secDepAmt = collectSecurityDeposit ? (parseFloat(securityDepositAmount) || 0) : 0;
     const grandTotal = total + secDepAmt;
-    // remaining due = bed total minus advance (security deposit collected upfront, not part of due)
-    const remaining = total - advanceAmt;
+    const advanceAmt = isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : grandTotal;
+    // remaining due = grandTotal - advanceAmt (single partial amount model)
+    const remaining = grandTotal - advanceAmt;
     const hostel = selectedHostelInfo;
 
     const { data: newBooking, error } = await supabase.from('hostel_bookings').insert({
@@ -657,8 +657,8 @@ const HostelBedMap: React.FC = () => {
       // Update bed availability
       await supabase.from('hostel_beds').update({ is_available: false }).eq('id', selectedBed.id);
 
-      // Create receipt (include security deposit in receipt amount)
-      const receiptAmount = advanceAmt + secDepAmt;
+      // Receipt = just the amount collected (advanceAmt already includes any portion toward security deposit)
+      const receiptAmount = advanceAmt;
       await supabase.from('hostel_receipts').insert({
         hostel_id: selectedBed.hostelId,
         booking_id: newBooking.id,
@@ -1343,11 +1343,11 @@ const HostelBedMap: React.FC = () => {
                     <div className="border rounded p-2 text-[11px] space-y-1.5 bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">
                       <div className="space-y-1">
                         <Label className="text-[10px] uppercase text-muted-foreground">Amount to Collect</Label>
-                        <Input className="h-7 text-xs" type="number" placeholder={`₹ ${advanceComputed.advanceAmount}`} value={manualAdvanceAmount} max={computedTotal}
-                          onChange={e => { const val = parseFloat(e.target.value); if (e.target.value === '' || isNaN(val)) setManualAdvanceAmount(e.target.value); else if (val > computedTotal) setManualAdvanceAmount(String(computedTotal)); else setManualAdvanceAmount(e.target.value); }} />
+                        <Input className="h-7 text-xs" type="number" placeholder={`₹ ${advanceComputed.advanceAmount}`} value={manualAdvanceAmount} max={advanceComputed.grandTotal}
+                          onChange={e => { const val = parseFloat(e.target.value); if (e.target.value === '' || isNaN(val)) setManualAdvanceAmount(e.target.value); else if (val > advanceComputed.grandTotal) setManualAdvanceAmount(String(advanceComputed.grandTotal)); else setManualAdvanceAmount(e.target.value); }} />
                       </div>
                       <Separator />
-                      <div className="flex justify-between text-amber-700 dark:text-amber-400 font-medium"><span>Collecting Now</span><span>₹{advanceComputed.advanceAmount + (advanceComputed.secDepAmt || 0)}</span></div>
+                      <div className="flex justify-between text-amber-700 dark:text-amber-400 font-medium"><span>Collecting Now</span><span>₹{advanceComputed.advanceAmount}</span></div>
                       <div className="flex justify-between text-destructive"><span>Due Balance</span><span>₹{advanceComputed.remainingDue}</span></div>
                     </div>
                   )}
@@ -1392,7 +1392,7 @@ const HostelBedMap: React.FC = () => {
                         {isAdvanceBooking && advanceComputed && (
                           <>
                             <Separator />
-                            <div className="flex justify-between text-amber-700 dark:text-amber-400 font-medium"><span>Collecting Now</span><span>₹{advanceComputed.advanceAmount + (advanceComputed.secDepAmt || 0)}</span></div>
+                            <div className="flex justify-between text-amber-700 dark:text-amber-400 font-medium"><span>Collecting Now</span><span>₹{advanceComputed.advanceAmount}</span></div>
                             <div className="flex justify-between text-destructive"><span>Due Balance</span><span>₹{advanceComputed.remainingDue}</span></div>
                           </>
                         )}
