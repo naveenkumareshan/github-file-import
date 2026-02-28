@@ -84,7 +84,7 @@ export const DepositManagement: React.FC<ReportDateRangePickerProps> = ({ type }
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex items-center gap-2">
         <div className="relative">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
           <Input className="h-8 pl-7 text-xs w-[200px]" placeholder="Search name, booking#..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
