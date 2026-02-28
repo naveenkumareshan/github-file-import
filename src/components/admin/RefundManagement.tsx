@@ -1,49 +1,43 @@
 
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-import { DollarSign, Download, Search, Filter, RefreshCw, Upload, Image, ChevronLeft, ChevronRight, Currency } from 'lucide-react';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
+import { Wallet, Download, Search, RefreshCw, ChevronLeft, ChevronRight, DollarSign, Image } from 'lucide-react';
 import { depositRefundService, DepositRefund, DepositRefundFilters } from '@/api/depositRefundService';
 import { uploadService } from '@/api/uploadService';
 import { useToast } from '@/hooks/use-toast';
 import { DateFilterSelector } from '@/components/common/DateFilterSelector';
 import { format } from "date-fns";
+import { formatCurrency } from '@/utils/currency';
 
-type DateFilterType = 'all' |'today' | 'this_week' | 'this_month' | 'last_month' | 'this_year' | 'last_year' | 'custom';
+type DateFilterType = 'all' | 'today' | 'this_week' | 'this_month' | 'last_month' | 'this_year' | 'last_year' | 'custom';
 
 interface ReportDateRangePickerProps {
-  type?:string;
-  status?:string;
+  type?: string;
+  status?: string;
 }
 
-export const RefundManagement: React.FC<ReportDateRangePickerProps> = ({
-  type, status
-}) => {
+export const RefundManagement: React.FC<ReportDateRangePickerProps> = ({ type, status }) => {
   const [deposits, setDeposits] = useState<DepositRefund[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDeposits, setSelectedDeposits] = useState<string[]>([]);
   const [processing, setProcessing] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 10,
-    total: 0,
-    pages: 0
-  });
-  
-  // Filter states
+  const [pagination, setPagination] = useState({ page: 1, limit: 15, total: 0, pages: 0 });
+
   const [statusFilter, setStatusFilter] = useState(status);
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState<DateFilterType>('all');
   const [customStartDate, setCustomStartDate] = useState<Date>();
   const [customEndDate, setCustomEndDate] = useState<Date>();
-  
+
   // Refund dialog state
   const [showRefundDialog, setShowRefundDialog] = useState(false);
   const [selectedDepositForRefund, setSelectedDepositForRefund] = useState<DepositRefund | null>(null);
@@ -54,7 +48,7 @@ export const RefundManagement: React.FC<ReportDateRangePickerProps> = ({
   const [transactionImage, setTransactionImage] = useState<File | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [transactionImageUrl, setTransactionImageUrl] = useState('');
-  
+
   const { toast } = useToast();
 
   useEffect(() => {
@@ -63,47 +57,32 @@ export const RefundManagement: React.FC<ReportDateRangePickerProps> = ({
 
   const fetchDeposits = async () => {
     setLoading(true);
-    
     const filters: DepositRefundFilters = {
       status: statusFilter,
-      type:type,
+      type,
       search: searchTerm,
-      dateFilter: dateFilter,
+      dateFilter,
       startDate: dateFilter === 'custom' && customStartDate ? customStartDate.toISOString() : undefined,
-      endDate: dateFilter === 'custom' && customEndDate ? customEndDate.toISOString() : undefined
+      endDate: dateFilter === 'custom' && customEndDate ? customEndDate.toISOString() : undefined,
     };
-
     const result = await depositRefundService.getRefunds(pagination.page, pagination.limit, filters);
-    
     if (result.success && result.data) {
       setDeposits(result.data.data);
       setPagination(result.data.pagination);
     } else {
-      toast({
-        title: "Error",
-        description: "Failed to fetch deposits",
-        variant: "destructive"
-      });
+      toast({ title: 'Error', description: 'Failed to fetch deposits', variant: 'destructive' });
     }
-    
     setLoading(false);
   };
 
-
   const handleProcessRefund = (deposit?: DepositRefund) => {
     if (deposit) {
-      // Single refund
       setSelectedDepositForRefund(deposit);
       setSelectedDeposits([deposit._id]);
       setRefundAmount(deposit.keyDeposit.toString());
     } else {
-      // Bulk refund
       if (selectedDeposits.length === 0) {
-        toast({
-          title: "Error",
-          description: "Please select deposits to refund",
-          variant: "destructive"
-        });
+        toast({ title: 'Error', description: 'Please select deposits to refund', variant: 'destructive' });
         return;
       }
       setSelectedDepositForRefund(null);
@@ -114,31 +93,18 @@ export const RefundManagement: React.FC<ReportDateRangePickerProps> = ({
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
     setTransactionImage(file);
     setUploadingImage(true);
-
     try {
       const result = await uploadService.uploadImage(file);
       if (result.success) {
         setTransactionImageUrl(result.data.url);
-        toast({
-          title: "Success",
-          description: "Transaction image uploaded successfully"
-        });
+        toast({ title: 'Success', description: 'Transaction image uploaded successfully' });
       } else {
-        toast({
-          title: "Error",
-          description: "Failed to upload image",
-          variant: "destructive"
-        });
+        toast({ title: 'Error', description: 'Failed to upload image', variant: 'destructive' });
       }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to upload image",
-        variant: "destructive"
-      });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to upload image', variant: 'destructive' });
     } finally {
       setUploadingImage(false);
     }
@@ -146,41 +112,27 @@ export const RefundManagement: React.FC<ReportDateRangePickerProps> = ({
 
   const handleRefundSubmit = async () => {
     setProcessing(true);
-    
     const refundData = {
       refundAmount: parseFloat(refundAmount),
-      refundReason: refundReason,
-      refundMethod: refundMethod,
-      transactionId: transactionId,
-      transactionImageUrl: transactionImageUrl
+      refundReason,
+      refundMethod,
+      transactionId,
+      transactionImageUrl,
     };
-
     let result;
-    
     if (selectedDepositForRefund) {
-      // Single refund
       result = await depositRefundService.processRefund(selectedDepositForRefund._id, refundData);
     } else {
-      // Bulk refund
       result = await depositRefundService.bulkProcessRefunds(selectedDeposits, refundData);
     }
-    
     if (result.success) {
       const count = selectedDepositForRefund ? 1 : selectedDeposits.length;
-      toast({
-        title: "Success",
-        description: `${count} deposit${count > 1 ? 's' : ''} refunded successfully`
-      });
+      toast({ title: 'Success', description: `${count} deposit${count > 1 ? 's' : ''} refunded successfully` });
       resetRefundForm();
       fetchDeposits();
     } else {
-      toast({
-        title: "Error",
-        description: "Failed to process refund",
-        variant: "destructive"
-      });
+      toast({ title: 'Error', description: 'Failed to process refund', variant: 'destructive' });
     }
-    
     setProcessing(false);
   };
 
@@ -196,175 +148,153 @@ export const RefundManagement: React.FC<ReportDateRangePickerProps> = ({
     setTransactionImageUrl('');
   };
 
-  const handleExportReport = async (format: 'excel' | 'pdf' = 'excel') => {
+  const handleExportReport = async () => {
     setExporting(true);
-    
     const filters: DepositRefundFilters = {
       status: statusFilter,
       search: searchTerm,
-      dateFilter: dateFilter,
+      dateFilter,
       startDate: dateFilter === 'custom' && customStartDate ? customStartDate.toISOString() : undefined,
-      endDate: dateFilter === 'custom' && customEndDate ? customEndDate.toISOString() : undefined
+      endDate: dateFilter === 'custom' && customEndDate ? customEndDate.toISOString() : undefined,
     };
-
-    const result = await depositRefundService.exportDepositsReport(filters, format);
-    
+    const result = await depositRefundService.exportDepositsReport(filters, 'excel');
     if (result.success) {
-      toast({
-        title: "Success",
-        description: `Report exported successfully as ${format.toUpperCase()}`
-      });
+      toast({ title: 'Success', description: 'Report exported successfully' });
     } else {
-      toast({
-        title: "Error",
-        description: "Failed to export report",
-        variant: "destructive"
-      });
+      toast({ title: 'Error', description: 'Failed to export report', variant: 'destructive' });
     }
-    
     setExporting(false);
   };
 
+  // Summary
+  const totalAmount = useMemo(() => deposits.reduce((s, d) => s + d.keyDeposit, 0), [deposits]);
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-        <p className="text-xs text-muted-foreground">{pagination.total} record{pagination.total !== 1 ? 's' : ''} found</p>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" disabled={exporting} onClick={() => handleExportReport('excel')}>
-            {exporting ? <RefreshCw className="mr-2 h-3 w-3 animate-spin" /> : <Download className="mr-2 h-3 w-3" />}
-            Export
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Wallet className="h-5 w-5 text-primary" />
+          <h1 className="text-lg font-semibold">Refund Management</h1>
+          <Badge variant="secondary" className="text-xs">{pagination.total} records</Badge>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="h-8 text-xs gap-1" disabled={exporting} onClick={handleExportReport}>
+            {exporting ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />} Export
           </Button>
-          {/* <Button variant="outline" disabled={exporting} onClick={() => handleExportReport('pdf')}>
-            {exporting ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-            PDF
-          </Button> */}
+          <Button variant="outline" size="sm" className="h-8 text-xs gap-1" onClick={fetchDeposits}>
+            <RefreshCw className="h-3 w-3" /> Refresh
+          </Button>
         </div>
       </div>
 
-      {/* Filter Section */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <Label className="text-xs">Search</Label>
-              <Input
-                type="text"
-                placeholder="Search by booking ID or user name"
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label className="text-xs">Date Range</Label>
-              <DateFilterSelector
-                dateFilter={dateFilter}
-                startDate={customStartDate}
-                endDate={customEndDate}
-                onDateFilterChange={(filter) => setDateFilter(filter as DateFilterType)}
-                onStartDateChange={setCustomStartDate}
-                onEndDateChange={setCustomEndDate}
-              />
-            </div>
-          </div>
-          <div className="mt-3">
-            <Button size="sm" onClick={fetchDeposits}>
-              <Filter className="mr-2 h-3 w-3" />
-              Apply
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Summary */}
+      <div className="border rounded-md p-3 bg-card flex items-center gap-6">
+        <div>
+          <div className="text-[10px] uppercase text-muted-foreground">Total</div>
+          <div className="text-lg font-bold">{formatCurrency(totalAmount)}</div>
+        </div>
+        <div>
+          <div className="text-[10px] uppercase text-muted-foreground">Records</div>
+          <div className="text-sm font-semibold">{pagination.total}</div>
+        </div>
+      </div>
 
-      {/* Records List */}
-      <Card>
-        <CardHeader className="py-3 flex flex-row items-center justify-between">
-          <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Records</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <div className="min-w-[800px]">
-              <table className="w-full divide-y divide-border">
-                <thead>
-                  <tr className="bg-muted/50">
-                    <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Booking ID</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">User</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Reading Room</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Seat</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Deposit</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {loading ? (
-                    <tr>
-                      <td colSpan={9} className="px-3 py-4 whitespace-nowrap text-center">
-                        Loading...
-                      </td>
-                    </tr>
-                  ) : deposits.length === 0 ? (
-                    <tr>
-                      <td colSpan={9} className="px-3 py-4 whitespace-nowrap text-center">
-                        No deposits found.
-                      </td>
-                    </tr>
-                  ) : (
-                    deposits.map((deposit, idx) => (
-                      <tr key={deposit._id} className={`hover:bg-muted/30 ${idx % 2 === 0 ? '' : 'bg-muted/10'}`}>
-                        <td className="px-3 py-2 whitespace-nowrap text-sm">
-                          <span className="font-mono text-xs">{deposit.booking?.bookingId || 'N/A'}</span>
-                          {deposit.transactionId && <div className="text-xs text-muted-foreground">TR: {deposit.transactionId}</div>}
-                        </td>
-                        <td className="px-3 py-2 whitespace-nowrap text-sm">{deposit.user?.name || 'N/A'}</td>
-                        <td className="px-3 py-2 whitespace-nowrap text-sm">{deposit.cabin?.name || 'N/A'}</td>
-                        <td className="px-3 py-2 whitespace-nowrap text-sm">{deposit.seat?.number || 'N/A'}</td>
-                        <td className="px-3 py-2 whitespace-nowrap text-sm font-semibold">₹{deposit.keyDeposit}</td>
-                        <td className="px-3 py-2 whitespace-nowrap text-xs text-muted-foreground">
-                          <div>End: {format(new Date(deposit.endDate), "dd MMM yyyy")}</div>
-                          {deposit.transactionId && <div>Refund: {format(new Date(deposit.keyDepositRefundDate), "dd MMM yyyy")}</div>}
-                        </td>
-                        <td className="px-3 py-2 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${deposit.keyDepositRefunded ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
-                            {deposit.keyDepositRefunded ? 'Refunded' : 'Pending'}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 whitespace-nowrap">
-                          {!deposit.keyDepositRefunded && (
-                            <Button size="sm" variant="outline" onClick={() => handleProcessRefund(deposit)}>
-                              Refund
-                            </Button>
-                          )}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-          
-          {/* Pagination */}
-          <div className="flex flex-col sm:flex-row justify-between items-center mt-4 gap-4 px-4 pb-4">
-            <div className="text-sm text-muted-foreground">
-              Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} results
-            </div>
-            <div className="flex items-center space-x-2">
-              <Button variant="outline" size="sm" onClick={() => setPagination(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))} disabled={pagination.page === 1}>
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                Previous
-              </Button>
-              <span className="text-sm">Page {pagination.page} of {pagination.pages}</span>
-              <Button variant="outline" size="sm" onClick={() => setPagination(prev => ({ ...prev, page: Math.min(prev.pages, prev.page + 1) }))} disabled={pagination.page === pagination.pages}>
-                Next
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Filters */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="relative">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+          <Input className="h-8 pl-7 text-xs w-[200px]" placeholder="Search name, booking#..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+        </div>
+        <DateFilterSelector
+          dateFilter={dateFilter}
+          startDate={customStartDate}
+          endDate={customEndDate}
+          onDateFilterChange={(filter) => setDateFilter(filter as DateFilterType)}
+          onStartDateChange={setCustomStartDate}
+          onEndDateChange={setCustomEndDate}
+        />
+        {searchTerm && (
+          <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setSearchTerm('')}>
+            Clear
+          </Button>
+        )}
+      </div>
 
-      {/* Refund Dialog */}
+      {/* Table */}
+      <div className="border rounded-md">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="text-xs">Booking ID</TableHead>
+              <TableHead className="text-xs">User</TableHead>
+              <TableHead className="text-xs">Reading Room</TableHead>
+              <TableHead className="text-xs">Seat</TableHead>
+              <TableHead className="text-xs">Deposit</TableHead>
+              <TableHead className="text-xs">Date</TableHead>
+              <TableHead className="text-xs">Status</TableHead>
+              <TableHead className="text-xs">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground text-xs">Loading...</TableCell></TableRow>
+            ) : deposits.length === 0 ? (
+              <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground text-xs">No deposits found</TableCell></TableRow>
+            ) : (
+              deposits.map(deposit => (
+                <TableRow key={deposit._id}>
+                  <TableCell className="text-xs">
+                    <span className="font-mono">{deposit.booking?.bookingId || 'N/A'}</span>
+                    {deposit.transactionId && <div className="text-muted-foreground text-[10px]">TR: {deposit.transactionId}</div>}
+                  </TableCell>
+                  <TableCell className="text-xs">
+                    <div className="font-medium">{deposit.user?.name || 'N/A'}</div>
+                    {deposit.user?.phone && <div className="text-muted-foreground text-[10px]">{deposit.user.phone}</div>}
+                  </TableCell>
+                  <TableCell className="text-xs">{deposit.cabin?.name || 'N/A'}</TableCell>
+                  <TableCell className="text-xs">{deposit.seat?.number || 'N/A'}</TableCell>
+                  <TableCell className="text-xs font-semibold">{formatCurrency(deposit.keyDeposit)}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    <div>End: {format(new Date(deposit.endDate), "dd MMM yyyy")}</div>
+                    {deposit.keyDepositRefundDate && <div>Refund: {format(new Date(deposit.keyDepositRefundDate), "dd MMM yyyy")}</div>}
+                  </TableCell>
+                  <TableCell className="text-xs">
+                    <Badge variant={deposit.keyDepositRefunded ? 'default' : 'secondary'} className="text-[10px]">
+                      {deposit.keyDepositRefunded ? 'Refunded' : 'Pending'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-xs">
+                    {!deposit.keyDepositRefunded && (
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleProcessRefund(deposit)}>
+                        Refund
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Pagination */}
+      <div className="flex justify-between items-center text-xs text-muted-foreground">
+        <div>
+          Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setPagination(p => ({ ...p, page: Math.max(1, p.page - 1) }))} disabled={pagination.page === 1}>
+            <ChevronLeft className="h-3 w-3 mr-1" /> Prev
+          </Button>
+          <span>Page {pagination.page} of {pagination.pages}</span>
+          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setPagination(p => ({ ...p, page: Math.min(p.pages, p.page + 1) }))} disabled={pagination.page === pagination.pages}>
+            Next <ChevronRight className="h-3 w-3 ml-1" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Refund Dialog - kept as-is */}
       <Dialog open={showRefundDialog} onOpenChange={setShowRefundDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -374,39 +304,17 @@ export const RefundManagement: React.FC<ReportDateRangePickerProps> = ({
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="refundAmount" className="text-right">
-                Amount
-              </Label>
-              <Input
-                type="number"
-                id="refundAmount"
-                value={refundAmount}
-                onChange={e => setRefundAmount(e.target.value)}
-                className="col-span-3"
-                placeholder="Enter refund amount"
-              />
+              <Label htmlFor="refundAmount" className="text-right">Amount</Label>
+              <Input type="number" id="refundAmount" value={refundAmount} onChange={e => setRefundAmount(e.target.value)} className="col-span-3" placeholder="Enter refund amount" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="refundReason" className="text-right">
-                Reason
-              </Label>
-              <Input
-                type="text"
-                id="refundReason"
-                value={refundReason}
-                onChange={e => setRefundReason(e.target.value)}
-                className="col-span-3"
-                placeholder="Refund reason"
-              />
+              <Label htmlFor="refundReason" className="text-right">Reason</Label>
+              <Input type="text" id="refundReason" value={refundReason} onChange={e => setRefundReason(e.target.value)} className="col-span-3" placeholder="Refund reason" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="refundMethod" className="text-right">
-                Method
-              </Label>
+              <Label htmlFor="refundMethod" className="text-right">Method</Label>
               <Select value={refundMethod} onValueChange={setRefundMethod}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select refund method" />
-                </SelectTrigger>
+                <SelectTrigger className="col-span-3"><SelectValue placeholder="Select refund method" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
                   <SelectItem value="upi">UPI</SelectItem>
@@ -416,48 +324,28 @@ export const RefundManagement: React.FC<ReportDateRangePickerProps> = ({
               </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="transactionId" className="text-right">
-                Transaction ID
-              </Label>
-              <Input
-                type="text"
-                id="transactionId"
-                value={transactionId}
-                onChange={e => setTransactionId(e.target.value)}
-                className="col-span-3"
-                placeholder="Transaction ID"
-              />
+              <Label htmlFor="transactionId" className="text-right">Transaction ID</Label>
+              <Input type="text" id="transactionId" value={transactionId} onChange={e => setTransactionId(e.target.value)} className="col-span-3" placeholder="Transaction ID" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label className="text-right">
-                Receipt
-              </Label>
+              <Label className="text-right">Receipt</Label>
               <div className="col-span-3 space-y-2">
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  disabled={uploadingImage}
-                />
+                <Input type="file" accept="image/*" onChange={handleImageUpload} disabled={uploadingImage} />
                 {uploadingImage && (
-                  <div className="flex items-center text-sm text-gray-500">
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    Uploading...
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Uploading...
                   </div>
                 )}
                 {transactionImageUrl && (
-                  <div className="flex items-center text-sm text-green-600">
-                    <Image className="mr-2 h-4 w-4" />
-                    Image uploaded successfully
+                  <div className="flex items-center text-sm text-primary">
+                    <Image className="mr-2 h-4 w-4" /> Image uploaded successfully
                   </div>
                 )}
               </div>
             </div>
           </div>
           <div className="flex justify-end space-x-2">
-            <Button variant="secondary" onClick={resetRefundForm}>
-              Cancel
-            </Button>
+            <Button variant="secondary" onClick={resetRefundForm}>Cancel</Button>
             <Button disabled={processing || !refundAmount} onClick={handleRefundSubmit}>
               {processing ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <DollarSign className="mr-2 h-4 w-4" />}
               Process Refund
