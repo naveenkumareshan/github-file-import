@@ -12,7 +12,17 @@ import {
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Users, Edit, KeyRound, Eye, Link2, Building2, Copy, Check, Unlink } from "lucide-react";
+import { Search, Users, Edit, KeyRound, Eye, Link2, Building2, Copy, Check, Unlink, ShieldCheck, ShieldOff } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { adminUsersService } from "../api/adminUsersService";
 import { toast } from "@/hooks/use-toast";
 import ErrorBoundary from "../components/ErrorBoundary";
@@ -80,6 +90,8 @@ const AdminStudents = () => {
   const [partnerProperties, setPartnerProperties] = useState<{ cabins: any[]; hostels: any[] }>({ cabins: [], hostels: [] });
   const [loadingPartnerProps, setLoadingPartnerProps] = useState(false);
   const [copiedLogin, setCopiedLogin] = useState(false);
+  const [toggleStatusUser, setToggleStatusUser] = useState<Student | null>(null);
+  const [togglingStatus, setTogglingStatus] = useState(false);
 
   useEffect(() => {
     fetchStudents();
@@ -213,6 +225,26 @@ const AdminStudents = () => {
     toast({ title: "Copied!", description: "Partner login info copied." });
   };
 
+  const handleToggleUserStatus = async () => {
+    if (!toggleStatusUser) return;
+    setTogglingStatus(true);
+    try {
+      const newStatus = !toggleStatusUser.isActive;
+      const res = await adminUsersService.toggleUserActive(toggleStatusUser._id, newStatus);
+      if (res.success) {
+        toast({ title: newStatus ? "Activated" : "Deactivated", description: `${toggleStatusUser.name} has been ${newStatus ? 'activated' : 'deactivated'}.` });
+        fetchStudents();
+      } else {
+        toast({ title: "Error", description: "Failed to update user status.", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to update user status.", variant: "destructive" });
+    } finally {
+      setTogglingStatus(false);
+      setToggleStatusUser(null);
+    }
+  };
+
   const currentTabLabel = ROLE_TABS.find(t => t.value === role)?.label || "Users";
   const isPartnerTab = role === 'vendor';
 
@@ -287,6 +319,7 @@ const AdminStudents = () => {
                         <th className="text-left py-2 px-3 font-medium">College</th>
                       </>
                     )}
+                    <th className="text-left py-2 px-3 font-medium">Status</th>
                     <th className="text-left py-2 px-3 font-medium">Joined</th>
                     <th className="text-right py-2 px-3 font-medium">Actions</th>
                   </tr>
@@ -311,6 +344,11 @@ const AdminStudents = () => {
                           <td className="py-1.5 px-3 text-muted-foreground">{s.collegeStudied || '—'}</td>
                         </>
                       )}
+                      <td className="py-1.5 px-3">
+                        <Badge variant={s.isActive ? 'success' : 'destructive'} className="text-[9px]">
+                          {s.isActive ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </td>
                       <td className="py-1.5 px-3 text-muted-foreground">
                         {s.joinedAt ? new Date(s.joinedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
                       </td>
@@ -334,10 +372,21 @@ const AdminStudents = () => {
                               </Button>
                             </>
                           )}
-                          {user.role === "admin" && (
-                            <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 gap-1" onClick={() => { setSelectedStudent(s); setIsResetPasswordOpen(true); }}>
-                              <KeyRound className="h-3 w-3" /> Reset
-                            </Button>
+                          {user?.role === "admin" && (
+                            <>
+                              <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 gap-1" onClick={() => { setSelectedStudent(s); setIsResetPasswordOpen(true); }}>
+                                <KeyRound className="h-3 w-3" /> Reset
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className={`h-6 text-[10px] px-2 gap-1 ${s.isActive ? 'text-destructive hover:text-destructive' : 'text-green-600 hover:text-green-700'}`}
+                                onClick={() => setToggleStatusUser(s)}
+                              >
+                                {s.isActive ? <ShieldOff className="h-3 w-3" /> : <ShieldCheck className="h-3 w-3" />}
+                                {s.isActive ? 'Deactivate' : 'Activate'}
+                              </Button>
+                            </>
                           )}
                         </div>
                       </td>
@@ -549,6 +598,32 @@ const AdminStudents = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Toggle Status Confirmation */}
+        <AlertDialog open={!!toggleStatusUser} onOpenChange={(open) => { if (!open) setToggleStatusUser(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-sm">
+                {toggleStatusUser?.isActive ? 'Deactivate' : 'Activate'} User
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-xs">
+                {toggleStatusUser?.isActive
+                  ? `Are you sure you want to deactivate ${toggleStatusUser?.name}? They will no longer be able to log in.`
+                  : `Are you sure you want to activate ${toggleStatusUser?.name}? They will be able to log in again.`}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="h-8 text-xs" disabled={togglingStatus}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className={`h-8 text-xs ${toggleStatusUser?.isActive ? 'bg-destructive hover:bg-destructive/90' : ''}`}
+                onClick={handleToggleUserStatus}
+                disabled={togglingStatus}
+              >
+                {togglingStatus ? 'Processing...' : toggleStatusUser?.isActive ? 'Deactivate' : 'Activate'}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Reset Password Dialog */}
         {selectedStudent && (

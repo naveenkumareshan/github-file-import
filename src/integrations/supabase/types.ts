@@ -1417,6 +1417,7 @@ export type Database = {
           email: string | null
           gender: string | null
           id: string
+          is_active: boolean
           name: string | null
           parent_mobile_number: string | null
           phone: string | null
@@ -1440,6 +1441,7 @@ export type Database = {
           email?: string | null
           gender?: string | null
           id: string
+          is_active?: boolean
           name?: string | null
           parent_mobile_number?: string | null
           phone?: string | null
@@ -1463,6 +1465,7 @@ export type Database = {
           email?: string | null
           gender?: string | null
           id?: string
+          is_active?: boolean
           name?: string | null
           parent_mobile_number?: string | null
           phone?: string | null
