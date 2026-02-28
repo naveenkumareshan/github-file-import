@@ -1,27 +1,60 @@
 
 
-## Fix: Remove Old Booking View and Route to Correct Page
+## Show Booking Details as Popup Instead of Navigation
 
-### Problem
-The "View Details" button in CheckInTracker navigates to `/admin/bookings/:bookingId` (no type suffix), which hits the old `AdminBookingView` -- a MongoDB-based page that doesn't work with the current database. The correct, working page is `AdminBookingDetail` at `/admin/bookings/:bookingId/:type`.
+Replace the current "View Details" navigation with an inline dialog/popup that displays booking information and attached documents.
 
 ### Changes
 
-**1. Update CheckInTracker navigation** (`src/components/admin/operations/CheckInTracker.tsx`)
-- Change `handleViewDetails` to include the booking type based on the active module:
-  - Reading room: `/admin/bookings/${bookingId}/cabin`
-  - Hostel: `/admin/bookings/${bookingId}/hostel`
+**New file: `src/components/admin/operations/CheckInViewDetailsDialog.tsx`**
 
-**2. Remove old route** (`src/App.tsx`, line 147)
-- Delete the route `bookings/:bookingId` that points to `AdminBookingView`
-- This prevents any accidental navigation to the old page
+A dialog component that shows:
+- Student name, phone, email
+- Room/Seat (reading room) or Hostel/Bed (hostel)
+- Start date, end date, booking duration
+- Payment status, total price, payment method, transaction ID
+- Serial number
+- Check-in notes (if any)
+- Attached documents list with download buttons (from `check_in_documents` JSONB)
 
-**3. Delete old file** (`src/pages/AdminBookingView.tsx`)
-- Remove this file entirely -- it uses the old MongoDB-based `adminBookingsService` and is no longer needed
-- The `StudentBookingView.tsx` file (used by the student route) will remain untouched
+**Modified file: `src/components/admin/operations/CheckInTracker.tsx`**
 
-**4. Update other references** 
-- `DashboardExpiringBookings.tsx` navigates to `/admin/bookings/${booking._id}` without type -- fix to include `/cabin`
+- Remove `useNavigate` import (no longer needed)
+- Remove the `navigate()` call in `handleViewDetails`
+- Instead, set a `viewBooking` state and open a `CheckInViewDetailsDialog`
+- Pass the full booking object and module type to the dialog
 
-### Result
-All "View Details" clicks will now open the correct `AdminBookingDetail` page that works with the current database.
+### Dialog Layout
+
+```text
++----------------------------------+
+| Booking Details            [X]   |
++----------------------------------+
+| Student: John Doe                |
+| Phone: 9876543210                |
+| Email: john@example.com         |
+|                                  |
+| Room / Seat: Room A / Seat #12  |
+| Duration: monthly (1)           |
+| Start: 28 Feb 2026              |
+| End: 28 Mar 2026                |
+|                                  |
+| Payment: completed              |
+| Amount: 5000                     |
+| Method: online                   |
+| Transaction: TXN123             |
+|                                  |
+| --- Documents (2) ---           |
+| [icon] aadhar.pdf    [download] |
+| [icon] form.pdf      [download] |
++----------------------------------+
+|                        [Close]   |
++----------------------------------+
+```
+
+### Technical Details
+
+- The booking data is already fetched with joins (profiles, cabins/hostels, seats/beds), so no additional queries needed
+- Documents are read from `booking.check_in_documents` JSONB array
+- Download uses `supabase.storage.from('checkin-documents').createSignedUrl()` (same as upload dialog)
+- Dialog uses `ScrollArea` for overflow if content is long
