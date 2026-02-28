@@ -36,6 +36,7 @@ import errorLogsService, {
   ErrorLogStats 
 } from '@/api/errorLogsService';
 import { format } from 'date-fns';
+import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 
 const ErrorLogManagement: React.FC = () => {
   const [logs, setLogs] = useState<ErrorLog[]>([]);
@@ -50,12 +51,12 @@ const ErrorLogManagement: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalLogs, setTotalLogs] = useState(0);
-  const [itemsPerPage, setItemsPerPage] = useState(20);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   
   // Filter state
   const [filters, setFilters] = useState<ErrorLogFilters>({
     page: 1,
-    limit: 20
+    limit: 10
   });
 
   // Load error logs
@@ -378,12 +379,13 @@ const ErrorLogManagement: React.FC = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-12">
+              <TableHead className="w-12">
                   <Checkbox
                     checked={selectedLogs.length === logs.length && logs.length > 0}
                     onCheckedChange={selectAllLogs}
                   />
                 </TableHead>
+                <TableHead>S.No.</TableHead>
                 <TableHead>Level</TableHead>
                 <TableHead>Message</TableHead>
                 <TableHead>Source</TableHead>
@@ -394,7 +396,7 @@ const ErrorLogManagement: React.FC = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {logs.map((log) => (
+              {logs.map((log, index) => (
                 <TableRow key={log._id}>
                   <TableCell>
                     <Checkbox
@@ -402,6 +404,7 @@ const ErrorLogManagement: React.FC = () => {
                       onCheckedChange={() => toggleLogSelection(log._id)}
                     />
                   </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{getSerialNumber(index, currentPage, itemsPerPage)}</TableCell>
                   <TableCell>
                     <Badge variant={getLevelBadgeVariant(log.level)} className="flex items-center gap-1">
                       {getLevelIcon(log.level)}
@@ -532,34 +535,13 @@ const ErrorLogManagement: React.FC = () => {
           </Table>
 
           {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4">
-              <div className="text-sm text-muted-foreground">
-                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalLogs)} of {totalLogs} results
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                >
-                  Previous
-                </Button>
-                <span className="text-sm">
-                  Page {currentPage} of {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  Next
-                </Button>
-              </div>
-            </div>
-          )}
+          <AdminTablePagination
+            currentPage={currentPage}
+            totalItems={totalLogs}
+            pageSize={itemsPerPage}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(s) => { setItemsPerPage(s); setCurrentPage(1); }}
+          />
         </CardContent>
       </Card>
 

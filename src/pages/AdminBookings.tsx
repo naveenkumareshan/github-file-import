@@ -6,9 +6,6 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious,
-} from "@/components/ui/pagination";
-import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
@@ -18,9 +15,9 @@ import { adminBookingsService } from "../api/adminBookingsService";
 import { useToast } from "@/hooks/use-toast";
 import { BookingFilters } from "@/types/BookingTypes";
 import { Eye, Search, Filter, BookOpen } from "lucide-react";
+import { AdminTablePagination, getSerialNumber } from "@/components/admin/AdminTablePagination";
 
 type BookingStatus = "pending" | "completed" | "failed";
-const PAGE_SIZE = 15;
 
 const fmtDate = (d: string) => {
   if (!d) return "-";
@@ -47,24 +44,25 @@ const AdminBookings = () => {
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [status, setStatus] = useState<BookingStatus | "">("");
 
-  useEffect(() => { fetchBookings(); }, [currentPage, searchQuery, status]);
+  useEffect(() => { fetchBookings(); }, [currentPage, pageSize, searchQuery, status]);
 
   const fetchBookings = async () => {
     try {
       setLoading(true);
-      const filters: BookingFilters = { page: currentPage, limit: PAGE_SIZE, search: searchQuery };
+      const filters: BookingFilters = { page: currentPage, limit: pageSize, search: searchQuery };
       if (status) filters.status = status as BookingStatus;
       const response = await adminBookingsService.getAllBookings(filters);
       if (response.success) {
         setBookings(response.data || []);
         const count = response.count || 0;
         setTotalCount(count);
-        setTotalPages(response.totalPages || Math.ceil(count / PAGE_SIZE) || 1);
+        setTotalPages(response.totalPages || Math.ceil(count / pageSize) || 1);
       } else {
         toast({ title: "Error fetching bookings", description: response.error || "Failed to load bookings", variant: "destructive" });
       }
@@ -78,7 +76,6 @@ const AdminBookings = () => {
   const handleSearch = (e: React.FormEvent) => { e.preventDefault(); setCurrentPage(1); };
   const handleStatusChange = (v: string) => { setStatus(v === "all" ? "" : v as BookingStatus); setCurrentPage(1); };
 
-
   const badgeCls = (s: string) => {
     switch (s) {
       case "completed": case "paid": return "bg-emerald-50 text-emerald-700 border border-emerald-200";
@@ -88,9 +85,6 @@ const AdminBookings = () => {
       default: return "bg-muted text-muted-foreground border border-border";
     }
   };
-
-  const showStart = (currentPage - 1) * PAGE_SIZE + 1;
-  const showEnd = Math.min(currentPage * PAGE_SIZE, totalCount);
 
   return (
     <div className="flex flex-col gap-4">
@@ -141,7 +135,7 @@ const AdminBookings = () => {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/30">
-                      {["Booking ID", "Student", "Category", "Room / Seat", "Slot", "Booked On", "Duration", "Amount", "Status", "Actions"].map(h => (
+                      {["S.No.", "Booking ID", "Student", "Category", "Room / Seat", "Slot", "Booked On", "Duration", "Amount", "Status", "Actions"].map(h => (
                         <TableHead key={h} className={`text-[11px] font-medium text-muted-foreground uppercase tracking-wider py-2 px-2 ${h === "Actions" ? "text-right" : ""}`}>{h}</TableHead>
                       ))}
                     </TableRow>
@@ -149,6 +143,7 @@ const AdminBookings = () => {
                   <TableBody>
                     {bookings.map((b, idx) => (
                       <TableRow key={b._id} className={idx % 2 === 0 ? "bg-background" : "bg-muted/20"}>
+                        <TableCell className="py-1 px-2 text-[11px] text-muted-foreground">{getSerialNumber(idx, currentPage, pageSize)}</TableCell>
                         <TableCell className="py-1 px-2 font-mono text-[10px]">{b.bookingId || b._id}</TableCell>
                         <TableCell className="py-1 px-2 text-[11px] whitespace-nowrap">
                           <span className="font-medium">{b.userId?.name || "N/A"}</span>
@@ -188,31 +183,14 @@ const AdminBookings = () => {
                 </Table>
               </div>
 
-              <div className="flex items-center justify-between px-4 py-2 border-t text-xs text-muted-foreground">
-                <span>Showing {showStart}–{showEnd} of {totalCount} entries</span>
-                <Pagination>
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); if (currentPage > 1) setCurrentPage(currentPage - 1); }} className={currentPage === 1 ? "pointer-events-none opacity-50" : ""} />
-                    </PaginationItem>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1)
-                      .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
-                      .map((page, index, array) => {
-                        const ellipsisBefore = index > 0 && array[index - 1] !== page - 1;
-                        const ellipsisAfter = index < array.length - 1 && array[index + 1] !== page + 1;
-                        return (
-                          <React.Fragment key={page}>
-                            {ellipsisBefore && <PaginationItem><PaginationLink href="#" onClick={(e) => e.preventDefault()}>...</PaginationLink></PaginationItem>}
-                            <PaginationItem><PaginationLink href="#" onClick={(e) => { e.preventDefault(); setCurrentPage(page); }} isActive={page === currentPage}>{page}</PaginationLink></PaginationItem>
-                            {ellipsisAfter && <PaginationItem><PaginationLink href="#" onClick={(e) => e.preventDefault()}>...</PaginationLink></PaginationItem>}
-                          </React.Fragment>
-                        );
-                      })}
-                    <PaginationItem>
-                      <PaginationNext href="#" onClick={(e) => { e.preventDefault(); if (currentPage < totalPages) setCurrentPage(currentPage + 1); }} className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""} />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
+              <div className="border-t">
+                <AdminTablePagination
+                  currentPage={currentPage}
+                  totalItems={totalCount}
+                  pageSize={pageSize}
+                  onPageChange={setCurrentPage}
+                  onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
+                />
               </div>
             </TooltipProvider>
           )}
