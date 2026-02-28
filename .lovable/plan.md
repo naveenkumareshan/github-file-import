@@ -1,80 +1,61 @@
 
-## Reusable Admin Table Pagination Component
 
-### Overview
-Create a single reusable `AdminTablePagination` component that replaces all the duplicated inline pagination code across 10+ admin pages. It provides: S.No. column support, page numbers, prev/next buttons, rows-per-page selector (10/25/50/100), and "Showing X-Y of Z entries" display.
+## 1. Add S.No. and Pagination to Operations Page Tables
 
-### New Component
+### Changes to `src/components/admin/operations/CheckInTracker.tsx`
+- Add `useState` for `currentPage` (default 1) and `pageSize` (default 10)
+- Add S.No. column as first column in the pending table header
+- Add S.No. cell using `getSerialNumber(index, currentPage, pageSize)` in each row
+- Slice `filtered` array for current page: `filtered.slice((currentPage-1)*pageSize, currentPage*pageSize)`
+- Add `<AdminTablePagination>` below the pending table
+- Import `AdminTablePagination` and `getSerialNumber`
 
-**`src/components/admin/AdminTablePagination.tsx`**
+### Changes to `src/components/admin/operations/ReportedTodaySection.tsx`
+- Add S.No. column as first column in the reported today table
+- Simple sequential numbering (index + 1) since this is a small collapsible section
 
-A reusable component accepting:
-- `currentPage` -- current page number
-- `totalItems` -- total record count
-- `pageSize` -- current rows per page (default: 10)
-- `onPageChange(page)` -- callback when page changes
-- `onPageSizeChange(size)` -- callback when rows-per-page changes
-- `pageSizeOptions` -- array of options (default: [10, 25, 50, 100])
+### Changes to `src/components/admin/operations/ComplaintTracker.tsx`
+- Add `useState` for `currentPage` (default 1) and `pageSize` (default 10)
+- Add S.No. column as first column in the complaints table header
+- Add S.No. cell using `getSerialNumber(index, currentPage, pageSize)` in each row
+- Paginate the `filtered` array client-side
+- Add `<AdminTablePagination>` below the complaints table
+- Import `AdminTablePagination` and `getSerialNumber`
 
-Renders:
-- Left: "Showing 11-20 of 148 entries"
-- Center: Page number buttons (1, 2, ... , N) with ellipsis for large ranges
-- Right: "Rows per page" dropdown (10/25/50/100)
-- Prev/Next buttons
+---
 
-Also exports a helper function `getSerialNumber(index, currentPage, pageSize)` that returns the correct S.No. across pages (e.g., page 2 with pageSize 10 starts at 11).
+## 2. Redesign Users Page to Match Admin Table Style
 
-### Integration Plan
+### Changes to `src/components/admin/login-details/UserTable.tsx`
+Complete restyle to match the high-density admin table pattern used in Receipts/Deposits:
+- Use the same `text-[11px]` font size, `py-1.5 px-3` padding, `border rounded-lg` wrapper
+- Add S.No. as first column
+- Accept `currentPage` and `pageSize` props for serial number calculation
+- Replace large Avatar with a compact inline layout (smaller avatar or initials only)
+- Use Badge component for role display (matching the style used in other admin tables)
+- Compact action buttons matching the small button style (`h-6 text-[10px]`)
+- Remove localStorage lookups for gender/image/address (these are unreliable and not matching other pages)
 
-Replace inline pagination in all these admin pages/components:
+### Changes to `src/components/admin/login-details/UserSection.tsx`
+- Add `currentPage`, `pageSize` state
+- Paginate the users array client-side
+- Add `<AdminTablePagination>` below the UserTable
+- Pass `currentPage` and `pageSize` to UserTable for S.No. calculation
 
-| # | File | Current Pagination |
-|---|------|--------------------|
-| 1 | `src/components/admin/DepositManagement.tsx` | Inline Prev/Next (lines 172-186) |
-| 2 | `src/components/admin/RefundManagement.tsx` | Inline Prev/Next (lines 260-274) |
-| 3 | `src/pages/admin/HostelDeposits.tsx` | Two instances: HostelDepositList (lines 169-181) and HostelRefundManagement (lines 368-380) |
-| 4 | `src/pages/AdminBookings.tsx` | PaginationPrevious/Next with page numbers (lines 190-220) |
-| 5 | `src/components/admin/AdminBookingsList.tsx` | PaginationPrevious/Next with page numbers (lines 559-650) |
-| 6 | `src/pages/admin/ReviewsManagement.tsx` | Inline Prev/Next (lines 350-370) |
-| 7 | `src/pages/admin/HostelReceipts.tsx` | Inline pagination |
-| 8 | `src/pages/admin/Receipts.tsx` | Inline pagination |
-| 9 | `src/components/admin/ErrorLogManagement.tsx` | Inline Prev/Next (lines 536-560) |
-| 10 | `src/components/admin/reports/BookingTransactions.tsx` | PaginationPrevious/Next with per-page selector |
-| 11 | `src/pages/hotelManager/AdminHostelBookings.tsx` | PaginationPrevious/Next with page numbers |
+### Changes to `src/components/admin/LoginDetailsCard.tsx`
+- Remove the outer `<Card>` wrapper to flatten the layout (matching other admin pages that don't wrap tables in cards)
+- Or keep the card but make it borderless/minimal to match the clean look
 
-For each page:
-1. Add S.No. as the first `TableHead` column
-2. Add S.No. cell in each row using `getSerialNumber(index, page, pageSize)`
-3. Replace inline pagination with `<AdminTablePagination />` 
-4. Change default page size from 15 to 10
-5. Add `pageSize` state and wire `onPageSizeChange` to reset page to 1 and re-fetch data
-6. For server-side paginated pages (DepositManagement, RefundManagement, AdminBookings, BookingTransactions), the `pageSize` change also triggers API re-fetch with new limit
-7. For client-side paginated pages (HostelDeposits, HostelReceipts), the `pageSize` change recalculates the slice
+---
 
-### Technical Details
+## Summary of Files to Edit
 
-**Component structure:**
-```text
-+------------------------------------------------------------------+
-| Showing 11-20 of 148 entries    [1][2]...[15]    Rows/page [10 v]|
-|                                 [< Prev] [Next >]                |
-+------------------------------------------------------------------+
-```
+| File | What Changes |
+|------|-------------|
+| `CheckInTracker.tsx` | Add S.No. column + pagination |
+| `ComplaintTracker.tsx` | Add S.No. column + pagination |
+| `ReportedTodaySection.tsx` | Add S.No. column |
+| `UserTable.tsx` | Full restyle to match admin table pattern + S.No. |
+| `UserSection.tsx` | Add pagination state + AdminTablePagination |
+| `LoginDetailsCard.tsx` | Minor cleanup for consistency |
 
-**S.No. calculation:**
-```
-serialNumber = (currentPage - 1) * pageSize + rowIndex + 1
-```
-
-**State changes per page:**
-- Add `const [pageSize, setPageSize] = useState(10)` 
-- Update existing `PAGE_SIZE` constants to use state
-- Wire `onPageSizeChange` to reset `currentPage` to 1
-
-**Pages with server-side pagination** (API fetches with page/limit params):
-- DepositManagement, RefundManagement, AdminBookings, AdminBookingsList, BookingTransactions, ErrorLogManagement, ReviewsManagement
-- These need `pageSize` added to the fetch dependency array
-
-**Pages with client-side pagination** (all data loaded, sliced locally):
-- HostelDeposits (both tabs), HostelReceipts, Receipts
-- These just need the slice logic updated to use `pageSize` state
