@@ -10,7 +10,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Wallet, AlertTriangle, IndianRupee, Calendar, Search, Banknote, Smartphone, Building2, CreditCard, Receipt } from 'lucide-react';
+import { Wallet, AlertTriangle, IndianRupee, Calendar, Search, Banknote, Smartphone, Building2, CreditCard, Receipt, Pencil } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -41,6 +41,14 @@ const DueManagement: React.FC = () => {
   const [collectTxnId, setCollectTxnId] = useState('');
   const [collectNotes, setCollectNotes] = useState('');
   const [collecting, setCollecting] = useState(false);
+
+  // Date editing state
+  const [editingField, setEditingField] = useState<'due_date' | 'seat_valid' | null>(null);
+  const [editDueId, setEditDueId] = useState<string>('');
+  const [editDateValue, setEditDateValue] = useState<string>('');
+  const [editMaxDate, setEditMaxDate] = useState<string>('');
+  const [savingDate, setSavingDate] = useState(false);
+  const [dateDialogOpen, setDateDialogOpen] = useState(false);
 
   const { toast } = useToast();
 
@@ -119,6 +127,39 @@ const DueManagement: React.FC = () => {
     setCollecting(false);
   };
 
+  const openDateEdit = (due: any, field: 'due_date' | 'seat_valid') => {
+    setEditingField(field);
+    setEditDueId(due.id);
+    if (field === 'due_date') {
+      setEditDateValue(due.due_date || '');
+      setEditMaxDate('');
+    } else {
+      setEditDateValue(due.proportional_end_date || '');
+      setEditMaxDate((due.bookings as any)?.end_date || '');
+    }
+    setDateDialogOpen(true);
+  };
+
+  const handleSaveDate = async () => {
+    if (!editDueId || !editDateValue) return;
+    if (editingField === 'seat_valid' && editMaxDate && editDateValue > editMaxDate) {
+      toast({ title: 'Seat validity cannot exceed booking end date', variant: 'destructive' });
+      return;
+    }
+    setSavingDate(true);
+    const updateField = editingField === 'due_date' ? 'due_date' : 'proportional_end_date';
+    const { error } = await supabase.from('dues').update({ [updateField]: editDateValue }).eq('id', editDueId);
+    if (error) {
+      toast({ title: 'Error updating date', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Date updated successfully' });
+      setDateDialogOpen(false);
+      setEditingField(null);
+      fetchData();
+    }
+    setSavingDate(false);
+  };
+
   return (
     <div className="space-y-3">
       <h1 className="text-lg font-semibold">Due Management</h1>
@@ -186,6 +227,7 @@ const DueManagement: React.FC = () => {
               <Table>
                 <TableHeader>
                   <TableRow className="text-[10px]">
+                    <TableHead className="text-[10px]">Booking Date</TableHead>
                     <TableHead className="text-[10px]">Student</TableHead>
                     <TableHead className="text-[10px]">Room / Seat</TableHead>
                     <TableHead className="text-[10px]">Booking</TableHead>
@@ -203,6 +245,9 @@ const DueManagement: React.FC = () => {
                     const remaining = Number(due.due_amount) - Number(due.paid_amount);
                     return (
                       <TableRow key={due.id} className="text-[11px]">
+                        <TableCell className="py-2 text-[11px]">
+                          {(due.bookings as any)?.start_date ? format(new Date((due.bookings as any).start_date), 'dd MMM yy') : '-'}
+                        </TableCell>
                         <TableCell className="py-2">
                           <div className="font-medium text-[11px]">{(due.profiles as any)?.name || 'N/A'}</div>
                           {(due.profiles as any)?.phone && <div className="text-[10px] text-muted-foreground">{(due.profiles as any)?.phone}</div>}
@@ -219,11 +264,23 @@ const DueManagement: React.FC = () => {
                         <TableCell className="py-2 text-right text-emerald-600">₹{(Number(due.advance_paid) + Number(due.paid_amount)).toLocaleString()}</TableCell>
                         <TableCell className="py-2 text-right text-red-600 font-medium">₹{Math.max(0, remaining).toLocaleString()}</TableCell>
                         <TableCell className="py-2">
-                          <div className="text-[11px]">{due.due_date ? format(new Date(due.due_date), 'dd MMM yy') : '-'}</div>
-                          {getDaysInfo(due)}
+                          <div className="flex items-center gap-1">
+                            <div>
+                              <div className="text-[11px]">{due.due_date ? format(new Date(due.due_date), 'dd MMM yy') : '-'}</div>
+                              {getDaysInfo(due)}
+                            </div>
+                            <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => openDateEdit(due, 'due_date')}>
+                              <Pencil className="h-3 w-3 text-muted-foreground" />
+                            </Button>
+                          </div>
                         </TableCell>
-                        <TableCell className="py-2 text-[11px]">
-                          {due.proportional_end_date ? format(new Date(due.proportional_end_date), 'dd MMM yy') : '-'}
+                        <TableCell className="py-2">
+                          <div className="flex items-center gap-1">
+                            <span className="text-[11px]">{due.proportional_end_date ? format(new Date(due.proportional_end_date), 'dd MMM yy') : '-'}</span>
+                            <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => openDateEdit(due, 'seat_valid')}>
+                              <Pencil className="h-3 w-3 text-muted-foreground" />
+                            </Button>
+                          </div>
                         </TableCell>
                         <TableCell className="py-2">{getStatusBadge(due)}</TableCell>
                         <TableCell className="py-2">
@@ -355,6 +412,44 @@ const DueManagement: React.FC = () => {
               ))}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Date Edit Dialog */}
+      <Dialog open={dateDialogOpen} onOpenChange={(open) => { if (!open) { setDateDialogOpen(false); setEditingField(null); } }}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle className="text-sm">
+              {editingField === 'due_date' ? 'Edit Due Date' : 'Edit Seat Validity'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs">
+                {editingField === 'due_date' ? 'Due Date' : 'Seat Valid Until'}
+              </Label>
+              <Input
+                type="date"
+                className="h-9 text-sm"
+                value={editDateValue}
+                max={editingField === 'seat_valid' && editMaxDate ? editMaxDate : undefined}
+                onChange={(e) => setEditDateValue(e.target.value)}
+              />
+              {editingField === 'seat_valid' && editMaxDate && (
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Max: {format(new Date(editMaxDate), 'dd MMM yyyy')} (booking end)
+                </p>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1 h-8 text-xs" onClick={() => { setDateDialogOpen(false); setEditingField(null); }}>
+                Cancel
+              </Button>
+              <Button className="flex-1 h-8 text-xs" onClick={handleSaveDate} disabled={savingDate || !editDateValue}>
+                {savingDate ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
