@@ -11,12 +11,15 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, parseISO } from 'date-fns';
 import { Search, ChevronDown, ChevronUp, Send } from 'lucide-react';
+import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 
 const ComplaintTracker = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [responseText, setResponseText] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -140,6 +143,7 @@ const ComplaintTracker = () => {
           <table className="w-full text-[11px]">
             <thead>
               <tr className="border-b bg-muted/50">
+                <th className="text-left py-2 px-3 font-medium w-12">S.No.</th>
                 <th className="text-left py-2 px-3 font-medium w-6"></th>
                 <th className="text-left py-2 px-3 font-medium">ID</th>
                 <th className="text-left py-2 px-3 font-medium">Subject</th>
@@ -151,9 +155,10 @@ const ComplaintTracker = () => {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((c: any) => (
+              {filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((c: any, index: number) => (
                 <React.Fragment key={c.id}>
                   <tr className="border-b last:border-0 hover:bg-muted/30 cursor-pointer" onClick={() => toggleExpand(c.id)}>
+                    <td className="py-1.5 px-3 text-muted-foreground">{getSerialNumber(index, currentPage, pageSize)}</td>
                     <td className="py-1.5 px-3">
                       {expandedId === c.id ? (
                         <ChevronUp className="h-3 w-3 text-muted-foreground" />
@@ -210,7 +215,7 @@ const ComplaintTracker = () => {
                   </tr>
                   {expandedId === c.id && (
                     <tr className="bg-muted/20">
-                      <td colSpan={8} className="px-3 py-3">
+                      <td colSpan={9} className="px-3 py-3">
                         <div className="space-y-3 text-xs">
                           <div>
                             <span className="font-medium text-muted-foreground">Description:</span>
@@ -251,6 +256,13 @@ const ComplaintTracker = () => {
               ))}
             </tbody>
           </table>
+          <AdminTablePagination
+            currentPage={currentPage}
+            totalItems={filtered.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
+          />
         </div>
       )}
     </div>
