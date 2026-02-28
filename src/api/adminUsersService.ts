@@ -41,9 +41,34 @@ export const adminUsersService = {
       const page = filters?.page || 1;
       const limit = filters?.limit || 10;
       const from = (page - 1) * limit;
+      const role = filters?.role;
 
-      // Get profiles
+      // Step 1: If role filter is set, get user IDs from user_roles first
+      let roleUserIds: string[] | null = null;
+      if (role) {
+        const { data: roleRows, error: roleError } = await supabase
+          .from('user_roles')
+          .select('user_id')
+          .eq('role', role);
+        if (roleError) throw roleError;
+        roleUserIds = (roleRows || []).map(r => r.user_id);
+        if (roleUserIds.length === 0) {
+          return {
+            success: true,
+            data: [],
+            count: 0,
+            totalCount: 0,
+            pagination: { totalPages: 1, currentPage: page },
+          };
+        }
+      }
+
+      // Step 2: Query profiles filtered by those user IDs
       let query = supabase.from('profiles').select('*', { count: 'exact' });
+
+      if (roleUserIds) {
+        query = query.in('id', roleUserIds);
+      }
 
       if (filters?.search) {
         query = query.or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,phone.ilike.%${filters.search}%`);
@@ -54,7 +79,7 @@ export const adminUsersService = {
       const { data: profiles, error, count } = await query;
       if (error) throw error;
 
-      // Get roles for these users
+      // Step 3: Get roles for returned profiles (for display)
       const userIds = (profiles || []).map(p => p.id);
       const { data: roles } = await supabase
         .from('user_roles')
@@ -64,8 +89,7 @@ export const adminUsersService = {
       const roleMap: Record<string, string> = {};
       (roles || []).forEach(r => { roleMap[r.user_id] = r.role; });
 
-      // Filter by role if specified
-      let filteredProfiles = (profiles || []).map(p => ({
+      const mappedProfiles = (profiles || []).map(p => ({
         _id: p.id,
         id: p.id,
         userId: p.id?.slice(0, 8),
@@ -86,13 +110,9 @@ export const adminUsersService = {
         profilePicture: p.profile_picture || '',
       }));
 
-      if (filters?.role) {
-        filteredProfiles = filteredProfiles.filter(p => p.role === filters.role);
-      }
-
       return {
         success: true,
-        data: filteredProfiles,
+        data: mappedProfiles,
         count: count || 0,
         totalCount: count || 0,
         pagination: {
