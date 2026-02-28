@@ -1,69 +1,73 @@
 
-## Redesign User Management Page with Role Tabs
+
+## Revamp Coupon Management Page
 
 ### Problem
-The current AdminStudents page uses an outdated UI with a Card wrapper, large fonts, a role dropdown selector, and inline pagination that doesn't match the compact, high-density admin table style used in Receipts, Bookings, and other admin pages. The service also filters by role client-side after fetching, which breaks server-side pagination counts.
+The current CouponManagement page uses the old Card-wrapped UI with large fonts, no S.No. column, no pagination, and only supports "Reading Room" (cabin) coupons. It needs to match the compact admin table pattern and support both Reading Room and Hostel coupons with proper scope-based tabs.
 
 ### Solution
-Completely rewrite the AdminStudents page with:
-1. Separate tabs for Admins, Partners, Students, and Employees
-2. Compact table style matching Receipts/Deposits (text-xs, tight padding)
-3. S.No. column with AdminTablePagination
-4. Proper role-based columns (different info shown per tab)
-5. Fix the service to filter by role server-side
+Completely rewrite `src/components/admin/CouponManagement.tsx` with:
+1. Tabs: **All**, **Reading Room**, **Hostel** (filter by `applicableFor`)
+2. Compact high-density table matching AdminStudents/Receipts pattern
+3. S.No. column + AdminTablePagination
+4. Updated create/edit dialog with Hostel option in "Applicable For"
+5. Compact single-line filter row (Search + Scope dropdown + Type dropdown)
+6. Fix the gl-matrix type error in tsconfig (skipLibCheck)
 
 ### Changes
 
-**1. Fix `src/api/adminUsersService.ts` - Server-side role filtering**
-- Currently fetches all profiles then filters by role client-side, which breaks pagination counts
-- Add role filtering by joining with `user_roles` table before pagination
-- Query `user_roles` first for the target role, get those user IDs, then fetch profiles for those IDs only
-- This ensures `totalCount` is accurate per role
+**1. Rewrite `src/components/admin/CouponManagement.tsx`**
 
-**2. Rewrite `src/pages/AdminStudents.tsx` - Complete redesign**
-- Remove Card wrapper, use flat layout matching Receipts page
-- Replace role dropdown with Tabs component (Admins, Partners, Students, Employees)
-- Each tab shares the same table component but with role-specific columns:
-  - **Students tab**: S.No., Name (with phone/email below), Gender, Course, College, Bookings (Active/Total), Status, Actions
-  - **Partners tab**: S.No., Name (with phone/email below), Gender, Status, Actions
-  - **Admins tab**: S.No., Name (with phone/email below), Status, Actions
-  - **Employees tab**: S.No., Name (with phone/email below), Gender, Status, Actions
-- Compact filter row: Search input + Include Inactive switch (single line, h-8 inputs)
-- AdminTablePagination at bottom
-- Keep existing dialogs: StudentEditDialog, AdminResetPasswordDialog, View Details dialog
-- Make View Details dialog compact too
-- Table uses text-xs fonts, muted-foreground for secondary text, compact row heights
-
-**3. UI Pattern (matching Receipts)**
+Layout matching AdminStudents pattern:
 ```text
-[Users icon] User Management   [Badge: X users]
+[TicketPercent icon] Coupon Management  [Badge: X coupons]  [+ Create Coupon]
 
-[Students] [Partners] [Admins] [Employees]    <-- Tabs
+[All] [Reading Room] [Hostel]    <-- Tabs filter by applicableFor
 
-[Search input] [Include Inactive toggle]       <-- Compact filter row
+[Search input] [Scope: All/Global/Partner] [Type: All/%/Fixed]   <-- Compact filter row
 
-+------+------------------+--------+----------+--------+---------+
-| S.No.| Student          | Gender | Course   |Bookings| Actions |
-+------+------------------+--------+----------+--------+---------+
-| 1    | John Doe         | Male   | UPSC     | 2 Act  | Edit    |
-|      | 9876543210       |        | ABC Univ | 5 Tot  | Reset   |
-|      | john@email.com   |        |          |        | View    |
-+------+------------------+--------+----------+--------+---------+
++------+----------+--------+------+-------+-------+--------+--------+---------+
+| S.No.| Code     | Name   |Scope | Type  | Value | Usage  | Valid  | Actions |
++------+----------+--------+------+-------+-------+--------+--------+---------+
+| 1    | SAVE20   | Save.. |Global| 20%   | max500| 5/100  | 31 Mar | Edit Del|
++------+----------+--------+------+-------+-------+--------+--------+---------+
 
-Showing 1-10 of 148 entries    [1][2]...[15]    Rows [10 v]
+Showing 1-10 of 48 entries    [1][2]...[5]    Rows [10 v]
 ```
+
+Key UI changes:
+- Remove Card wrappers, use flat layout
+- Use `text-[11px]` fonts, `py-1.5 px-3` padding
+- Tab value maps to applicableFor filter: `all`, `cabin`, `hostel`
+- Add `currentPage`, `pageSize` state (default 10)
+- Client-side pagination (slice filtered array)
+- S.No. via `getSerialNumber`
+- AdminTablePagination at bottom
+- Compact action buttons (h-6 text-[10px])
+
+Form dialog changes:
+- Add "Hostel" option in Applicable For dropdown alongside "Reading Room"
+- Add "All" option for admin-level global coupons
+- Keep all existing fields (scope, vendor selection, user assignment, etc.)
+- Make dialog layout more compact with smaller labels
+
+**2. Fix `tsconfig.json` - Add skipLibCheck**
+- The gl-matrix type errors are from node_modules and unrelated to our code
+- Add `"skipLibCheck": true` to tsconfig compilerOptions if not already present
 
 ### Technical Details
 
-- Tab value maps to role: `student`, `vendor`, `admin`, `vendor_employee`
-- When tab changes, reset page to 1 and re-fetch with new role
-- Service change: fetch user IDs from `user_roles` by role first, then fetch profiles with `.in('id', userIds)` and use those for count
-- The Include Inactive toggle remains for admin use
-- Student name column shows phone and email as sub-lines (matching the student-contact-visibility memory)
-- Actions column: Edit (students only, admin only), Reset Password (admin only), View Details (all)
+- The coupon service uses the legacy Express/MongoDB backend via axios -- no changes needed to the service
+- Tab filtering is done client-side: filter `coupons` array by `applicableFor` before slicing for pagination
+- When tab is "all", show all coupons; when "cabin", show coupons where applicableFor includes "cabin"; when "hostel", show where applicableFor includes "hostel"
+- Scope filter (Global/Partner/Referral) and Type filter (Percentage/Fixed) remain as inline dropdowns in the filter row
+- The "+ Create Coupon" button stays in the header row
+- Partner users (role=vendor) only see their own coupons (existing backend behavior)
+- Admin users see all coupons with vendor column visible
 
 ### Files to Edit
 | File | Change |
 |------|--------|
-| `src/api/adminUsersService.ts` | Fix role filtering to be server-side via user_roles join |
-| `src/pages/AdminStudents.tsx` | Complete rewrite with tabs and compact table UI |
+| `src/components/admin/CouponManagement.tsx` | Complete rewrite with tabs, compact table, S.No., pagination |
+| `tsconfig.json` | Add skipLibCheck to fix gl-matrix type errors |
+
