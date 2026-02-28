@@ -313,6 +313,17 @@ const HostelBedMap: React.FC = () => {
     if (!loading) fetchBeds();
   }, [fetchBeds, loading]);
 
+  // Sync selectedBed with refreshed beds array after price/data changes
+  useEffect(() => {
+    if (selectedBed && beds.length > 0) {
+      const updated = beds.find(b => b.id === selectedBed.id);
+      if (updated && updated.price !== selectedBed.price) {
+        setSelectedBed(updated);
+        setBookingPrice(String(updated.price));
+      }
+    }
+  }, [beds]);
+
   // Filtered beds
   const filteredBeds = useMemo(() => {
     let result = beds;
@@ -554,12 +565,14 @@ const HostelBedMap: React.FC = () => {
     }
     const secDepAmt = collectSecurityDeposit ? (parseFloat(securityDepositAmount) || 0) : 0;
     const grandTotal = total + secDepAmt;
-    const advanceAmount = manualAdvanceAmount ? Math.min(parseFloat(manualAdvanceAmount) || 0, grandTotal) : defaultAdvance;
-    const remainingDue = grandTotal - advanceAmount;
+    // Clamp advance to bed total only (security deposit is always collected upfront separately)
+    const advanceAmount = manualAdvanceAmount ? Math.min(parseFloat(manualAdvanceAmount) || 0, total) : defaultAdvance;
+    // Due balance = bed total minus advance paid (excludes security deposit since it's collected upfront)
+    const remainingDue = total - advanceAmount;
     const defaultDueDate = new Date(bookingStartDate);
     defaultDueDate.setDate(defaultDueDate.getDate() + 3);
     const dueDate = manualDueDate || defaultDueDate;
-    return { advanceAmount, remainingDue, dueDate, proportionalEndDate: dueDate };
+    return { advanceAmount, remainingDue, dueDate, proportionalEndDate: dueDate, grandTotal, secDepAmt };
   }, [isAdvanceBooking, selectedHostelInfo, computedTotal, bookingStartDate, manualAdvanceAmount, manualDueDate, collectSecurityDeposit, securityDepositAmount]);
 
   // Price recalculation when duration changes
@@ -614,7 +627,8 @@ const HostelBedMap: React.FC = () => {
     const advanceAmt = isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : total;
     const secDepAmt = collectSecurityDeposit ? (parseFloat(securityDepositAmount) || 0) : 0;
     const grandTotal = total + secDepAmt;
-    const remaining = grandTotal - advanceAmt;
+    // remaining due = bed total minus advance (security deposit collected upfront, not part of due)
+    const remaining = total - advanceAmt;
     const hostel = selectedHostelInfo;
 
     const { data: newBooking, error } = await supabase.from('hostel_bookings').insert({
@@ -1333,7 +1347,7 @@ const HostelBedMap: React.FC = () => {
                           onChange={e => { const val = parseFloat(e.target.value); if (e.target.value === '' || isNaN(val)) setManualAdvanceAmount(e.target.value); else if (val > computedTotal) setManualAdvanceAmount(String(computedTotal)); else setManualAdvanceAmount(e.target.value); }} />
                       </div>
                       <Separator />
-                      <div className="flex justify-between text-amber-700 dark:text-amber-400 font-medium"><span>Collecting Now</span><span>₹{advanceComputed.advanceAmount}</span></div>
+                      <div className="flex justify-between text-amber-700 dark:text-amber-400 font-medium"><span>Collecting Now</span><span>₹{advanceComputed.advanceAmount + (advanceComputed.secDepAmt || 0)}</span></div>
                       <div className="flex justify-between text-destructive"><span>Due Balance</span><span>₹{advanceComputed.remainingDue}</span></div>
                     </div>
                   )}
@@ -1378,7 +1392,7 @@ const HostelBedMap: React.FC = () => {
                         {isAdvanceBooking && advanceComputed && (
                           <>
                             <Separator />
-                            <div className="flex justify-between text-amber-700 dark:text-amber-400 font-medium"><span>Advance</span><span>₹{advanceComputed.advanceAmount}</span></div>
+                            <div className="flex justify-between text-amber-700 dark:text-amber-400 font-medium"><span>Collecting Now</span><span>₹{advanceComputed.advanceAmount + (advanceComputed.secDepAmt || 0)}</span></div>
                             <div className="flex justify-between text-destructive"><span>Due Balance</span><span>₹{advanceComputed.remainingDue}</span></div>
                           </>
                         )}
