@@ -153,14 +153,48 @@ export const hostelBookingService = {
     // Get active bookings that overlap with the requested dates
     const { data: overlappingBookings, error: bookingsError } = await supabase
       .from('hostel_bookings')
-      .select('bed_id')
+      .select('bed_id, payment_status')
       .eq('room_id', roomId)
       .in('status', ['confirmed', 'pending'])
       .lte('start_date', endDate)
       .gte('end_date', startDate);
     if (bookingsError) throw bookingsError;
 
-    const bookedBedIds = new Set(overlappingBookings?.map(b => b.bed_id) || []);
+    // Get hostel_dues with proportional_end_date for advance_paid bookings
+    const advancePaidBedIds = (overlappingBookings || [])
+      .filter(b => b.payment_status === 'advance_paid')
+      .map(b => b.bed_id);
+
+    let duesMap = new Map<string, string>();
+    if (advancePaidBedIds.length > 0) {
+      const { data: duesData } = await supabase
+        .from('hostel_dues')
+        .select('bed_id, proportional_end_date')
+        .in('bed_id', advancePaidBedIds)
+        .eq('status', 'pending')
+        .not('proportional_end_date', 'is', null);
+
+      duesData?.forEach((d: any) => {
+        if (d.bed_id && d.proportional_end_date) {
+          duesMap.set(d.bed_id, d.proportional_end_date);
+        }
+      });
+    }
+
+    const bookedBedIds = new Set(
+      (overlappingBookings || [])
+        .filter(b => {
+          // For advance_paid, check if proportional_end_date is before requested startDate
+          if (b.payment_status === 'advance_paid') {
+            const propEnd = duesMap.get(b.bed_id);
+            if (propEnd && propEnd < startDate) {
+              return false; // Bed is available after proportional_end_date
+            }
+          }
+          return true;
+        })
+        .map(b => b.bed_id)
+    );
 
     return beds?.map(bed => ({
       ...bed,
