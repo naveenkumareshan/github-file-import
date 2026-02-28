@@ -1,46 +1,37 @@
 
 
-## Hostel Due Management - Enhancements
+## Fix: Hostel Due Management - Calendar/Dialog Issues and Cleanup
 
-### 1. Add Booking Date column (before Student name) and sort by latest created first
+### Issues Identified
 
-- Add a new "Booking Date" column as the first column, showing the booking's `start_date`
-- Change the query's `.order()` from `due_date ascending` to `created_at descending` so newest dues appear first
+1. **Calendar numbers bleeding through table** - The Date Edit Dialog with Calendar component is rendering incorrectly, causing calendar day numbers (1-28) to appear overlaid on the table. The Dialog component is receiving a ref warning ("Function components cannot be given refs"), which may cause the overlay/backdrop to fail.
 
-### 2. Editable Due Date
+2. **Dialog rendering issue** - The `open={!!editingField}` pattern combined with an inline Calendar may be causing render glitches.
 
-- Add a pencil/edit icon next to the Due Date cell
-- Clicking it opens a small inline date picker (or a dialog) to change the due date
-- On save, update `hostel_dues.due_date` in the database and refresh
-
-### 3. Editable Bed Validity Date (proportional_end_date)
-
-- Add a pencil/edit icon next to the Bed Valid cell
-- Clicking it opens a date picker to change the `proportional_end_date`
-- Constraint: The selected date cannot exceed the booking's `end_date` (total booking validity)
-- On save, update `hostel_dues.proportional_end_date` in the database
-
-### 4. Bed availability impact
-
-- The bed availability logic in `HostelBedMap.tsx` already checks overlapping bookings. The `proportional_end_date` on hostel_dues should be used similarly to how the reading room uses it for seat availability -- beds with advance_paid status should only be considered "occupied" up to their `proportional_end_date`, not the full booking `end_date`
-- This requires updating the bed availability check in the hostel bed map to also consider `proportional_end_date` from `hostel_dues` when determining if a bed is available on a given date
-
-### Technical Details
+### Fix Approach
 
 **File: `src/pages/admin/HostelDueManagement.tsx`**
 
-1. Change query order: `.order('created_at', { ascending: false })` instead of `.order('due_date', { ascending: true })`
-2. Add new state for editing: `editingDueDate`, `editingBedValid`, `editDueId`, `editDateValue`
-3. Add "Booking Date" column header and cell before "Student" column, displaying `hostel_bookings.start_date`
-4. Add edit icons next to Due Date and Bed Valid cells
-5. Add a small Dialog for date editing with a date input, validation (bed valid date <= booking end_date), and save button
-6. Save handler updates the respective field in `hostel_dues` table
+1. **Replace Dialog-based date picker with Popover-based inline editing** - Instead of a separate Dialog with a full Calendar component, use a Popover attached directly to the pencil button for each date field. This avoids the Dialog ref warning and keeps editing inline and clean.
 
-**File: `src/pages/admin/HostelBedMap.tsx`** (or equivalent bed availability logic)
+2. **Alternatively, fix the Dialog approach** by:
+   - Moving the Calendar into a properly structured Dialog with a controlled `open` state using a separate boolean (e.g., `dateDialogOpen`) instead of deriving from `editingField`
+   - Ensuring the Dialog only mounts when explicitly opened
+   - Adding `initialFocus` handling to prevent focus/render issues
 
-- When checking bed availability for date-based filtering, also query `hostel_dues` for the bed and check if `proportional_end_date` is set. If an advance-paid booking's `proportional_end_date` has passed, the bed should be considered available after that date (similar to reading room seat logic)
+3. **Chosen approach: Use a simple date Input field in a small Dialog** instead of the full Calendar component, which is simpler and avoids the Calendar rendering bug entirely:
+   - Replace the `<Calendar>` component inside the date edit Dialog with a standard `<input type="date">` field
+   - This eliminates the Calendar bleed-through issue entirely
+   - Keep the Dialog for the modal editing experience
 
-**File: `src/api/hostelBookingService.ts`**
+### Technical Changes
 
-- Update `getAvailableBeds` to also check `hostel_dues.proportional_end_date` for advance_paid bookings, so beds past their validity date are shown as available
+**`src/pages/admin/HostelDueManagement.tsx`**:
 
+- Remove the `Calendar` import and the Popover-related imports (unused)
+- Replace the Date Edit Dialog's Calendar component with a simple `<Input type="date">` control
+- Use a dedicated `dateDialogOpen` boolean state instead of `!!editingField` to control Dialog visibility
+- Update the save handler to parse the date from the input value
+- Remove unused imports (`Popover`, `PopoverContent`, `PopoverTrigger`, `Calendar`, `cn`)
+
+This is a minimal, focused fix that resolves the visual bug without restructuring the page.
