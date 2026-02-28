@@ -43,7 +43,7 @@ export default function HostelDeposits() {
             <Wallet className="h-4 w-4" /> Deposits
           </TabsTrigger>
           <TabsTrigger value="refunds" className="flex items-center gap-2">
-            <Wallet className="h-4 w-4" /> Refund Management
+            <Wallet className="h-4 w-4" /> Refund Pendings
           </TabsTrigger>
           <TabsTrigger value="refunded" className="flex items-center gap-2">
             <Wallet className="h-4 w-4" /> Refunded
@@ -237,7 +237,9 @@ function HostelRefundManagement({ status }: { status: 'pending' | 'refunded' }) 
       const refundedBookingIds = new Set((refunds || []).map(r => r.booking_id).filter(Boolean));
 
       if (status === 'pending') {
-        setBookings((allBookings || []).filter(b => !refundedBookingIds.has(b.id)));
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        setBookings((allBookings || []).filter(b => !refundedBookingIds.has(b.id) && new Date(b.end_date) < today));
       } else {
         const refundMap = Object.fromEntries((refunds || []).map(r => [r.booking_id, r]));
         setBookings((allBookings || []).filter(b => refundedBookingIds.has(b.id)).map(b => ({ ...b, refundReceipt: refundMap[b.id] })));
@@ -313,7 +315,7 @@ function HostelRefundManagement({ status }: { status: 'pending' | 'refunded' }) 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Wallet className="h-5 w-5 text-primary" />
-          <h1 className="text-lg font-semibold">{status === 'pending' ? 'Refund Management' : 'Refunded'}</h1>
+          <h1 className="text-lg font-semibold">{status === 'pending' ? 'Refund Pendings' : 'Refunded'}</h1>
           <Badge variant="secondary" className="text-xs">{filtered.length} records</Badge>
         </div>
         <Button variant="outline" size="sm" className="h-8 text-xs gap-1" onClick={fetchData}>
