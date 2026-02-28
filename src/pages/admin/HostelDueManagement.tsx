@@ -261,7 +261,7 @@ const HostelDueManagement: React.FC = () => {
           <div><p className="text-[10px] text-muted-foreground uppercase">Overdue</p><p className="text-sm font-bold text-red-600">₹{summary.overdue.toLocaleString()}</p></div>
         </CardContent></Card>
         <Card><CardContent className="p-3 flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-amber-500" />
+          <CalendarIcon className="h-4 w-4 text-amber-500" />
           <div><p className="text-[10px] text-muted-foreground uppercase">Due Today</p><p className="text-sm font-bold">₹{summary.dueToday.toLocaleString()}</p></div>
         </CardContent></Card>
         <Card><CardContent className="p-3 flex items-center gap-2">
