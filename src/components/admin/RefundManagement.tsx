@@ -175,7 +175,7 @@ export const RefundManagement: React.FC<ReportDateRangePickerProps> = ({ type, s
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Wallet className="h-5 w-5 text-primary" />
-          <h1 className="text-lg font-semibold">Refund Management</h1>
+          <h1 className="text-lg font-semibold">{status === 'pending' ? 'Refund Pendings' : 'Refunded'}</h1>
           <Badge variant="secondary" className="text-xs">{pagination.total} records</Badge>
         </div>
         <div className="flex items-center gap-2">

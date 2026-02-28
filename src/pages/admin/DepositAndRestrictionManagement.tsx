@@ -34,7 +34,7 @@ const DepositAndRestrictionManagement = () => {
           </TabsTrigger>
           <TabsTrigger value="refunds" className="flex items-center gap-2">
           <Wallet className="h-4 w-4" />
-            Refund Management
+            Refund Pendings
           </TabsTrigger>
           <TabsTrigger value="refunded" className="flex items-center gap-2">
             <Wallet className="h-4 w-4" />
