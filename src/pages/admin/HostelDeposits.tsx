@@ -10,14 +10,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { Wallet, Search, RefreshCw, ChevronLeft, ChevronRight, DollarSign } from 'lucide-react';
+import { Wallet, Search, RefreshCw, DollarSign } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { formatCurrency } from '@/utils/currency';
-
-const PAGE_SIZE = 15;
+import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 
 export default function HostelDeposits() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -70,6 +69,7 @@ function HostelDepositList() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const { toast } = useToast();
 
   useEffect(() => { fetchDeposits(); }, []);
@@ -101,9 +101,8 @@ function HostelDepositList() {
     );
   }, [bookings, searchTerm]);
 
-  const totalDeposits = useMemo(() => filtered.reduce((s, b) => s + (b.security_deposit || 0), 0), [filtered]);
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE) || 1;
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   return (
     <div className="space-y-4">
@@ -130,6 +129,7 @@ function HostelDepositList() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="text-xs">S.No.</TableHead>
               <TableHead className="text-xs">Booking ID</TableHead>
               <TableHead className="text-xs">User</TableHead>
               <TableHead className="text-xs">Hostel</TableHead>
@@ -141,12 +141,13 @@ function HostelDepositList() {
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground text-xs">Loading...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground text-xs">Loading...</TableCell></TableRow>
             ) : paginated.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground text-xs">No deposits found</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground text-xs">No deposits found</TableCell></TableRow>
             ) : (
-              paginated.map(b => (
+              paginated.map((b, index) => (
                 <TableRow key={b.id}>
+                  <TableCell className="text-xs text-muted-foreground">{getSerialNumber(index, page, pageSize)}</TableCell>
                   <TableCell className="text-xs font-mono">{b.serial_number || 'N/A'}</TableCell>
                   <TableCell className="text-xs">
                     <div className="font-medium">{b.profiles?.name || 'N/A'}</div>
@@ -167,18 +168,13 @@ function HostelDepositList() {
       </div>
 
       {/* Pagination */}
-      <div className="flex justify-between items-center text-xs text-muted-foreground">
-        <div>Showing {((page - 1) * PAGE_SIZE) + 1} to {Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}</div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
-            <ChevronLeft className="h-3 w-3 mr-1" /> Prev
-          </Button>
-          <span>Page {page} of {totalPages}</span>
-          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
-            Next <ChevronRight className="h-3 w-3 ml-1" />
-          </Button>
-        </div>
-      </div>
+      <AdminTablePagination
+        currentPage={page}
+        totalItems={filtered.length}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        onPageSizeChange={(s) => { setPageSize(s); setPage(1); }}
+      />
     </div>
   );
 }
@@ -189,6 +185,7 @@ function HostelRefundManagement({ status }: { status: 'pending' | 'refunded' }) 
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [showRefundDialog, setShowRefundDialog] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [refundAmount, setRefundAmount] = useState('');
@@ -242,9 +239,8 @@ function HostelRefundManagement({ status }: { status: 'pending' | 'refunded' }) 
     );
   }, [bookings, searchTerm]);
 
-  const totalDeposits = useMemo(() => filtered.reduce((s, b) => s + (b.security_deposit || b.refundReceipt?.amount || 0), 0), [filtered]);
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE) || 1;
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   const handleProcessRefund = (booking: any) => {
     setSelectedBooking(booking);
@@ -315,6 +311,7 @@ function HostelRefundManagement({ status }: { status: 'pending' | 'refunded' }) 
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="text-xs">S.No.</TableHead>
               <TableHead className="text-xs">Booking ID</TableHead>
               <TableHead className="text-xs">User</TableHead>
               <TableHead className="text-xs">Hostel</TableHead>
@@ -327,12 +324,13 @@ function HostelRefundManagement({ status }: { status: 'pending' | 'refunded' }) 
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground text-xs">Loading...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground text-xs">Loading...</TableCell></TableRow>
             ) : paginated.length === 0 ? (
-              <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground text-xs">No records found</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground text-xs">No records found</TableCell></TableRow>
             ) : (
-              paginated.map(b => (
+              paginated.map((b, index) => (
                 <TableRow key={b.id}>
+                  <TableCell className="text-xs text-muted-foreground">{getSerialNumber(index, page, pageSize)}</TableCell>
                   <TableCell className="text-xs">
                     <span className="font-mono">{b.serial_number || 'N/A'}</span>
                     {b.refundReceipt?.transaction_id && <div className="text-muted-foreground text-[10px]">TR: {b.refundReceipt.transaction_id}</div>}
@@ -366,20 +364,15 @@ function HostelRefundManagement({ status }: { status: 'pending' | 'refunded' }) 
       </div>
 
       {/* Pagination */}
-      <div className="flex justify-between items-center text-xs text-muted-foreground">
-        <div>Showing {((page - 1) * PAGE_SIZE) + 1} to {Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}</div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
-            <ChevronLeft className="h-3 w-3 mr-1" /> Prev
-          </Button>
-          <span>Page {page} of {totalPages}</span>
-          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
-            Next <ChevronRight className="h-3 w-3 ml-1" />
-          </Button>
-        </div>
-      </div>
+      <AdminTablePagination
+        currentPage={page}
+        totalItems={filtered.length}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        onPageSizeChange={(s) => { setPageSize(s); setPage(1); }}
+      />
 
-      {/* Refund Dialog - kept as-is */}
+      {/* Refund Dialog */}
       <Dialog open={showRefundDialog} onOpenChange={setShowRefundDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -388,16 +381,16 @@ function HostelRefundManagement({ status }: { status: 'pending' | 'refunded' }) 
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="refundAmount" className="text-right">Amount</Label>
-              <Input type="number" id="refundAmount" value={refundAmount} onChange={e => setRefundAmount(e.target.value)} className="col-span-3" placeholder="Enter refund amount" />
+              <Input type="number" id="refundAmount" value={refundAmount} onChange={e => setRefundAmount(e.target.value)} className="col-span-3" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="refundReason" className="text-right">Reason</Label>
               <Input type="text" id="refundReason" value={refundReason} onChange={e => setRefundReason(e.target.value)} className="col-span-3" placeholder="Refund reason" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="refundMethod" className="text-right">Method</Label>
+              <Label className="text-right">Method</Label>
               <Select value={refundMethod} onValueChange={setRefundMethod}>
-                <SelectTrigger className="col-span-3"><SelectValue placeholder="Select refund method" /></SelectTrigger>
+                <SelectTrigger className="col-span-3"><SelectValue placeholder="Select method" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
                   <SelectItem value="upi">UPI</SelectItem>
@@ -406,8 +399,8 @@ function HostelRefundManagement({ status }: { status: 'pending' | 'refunded' }) 
               </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="transactionId" className="text-right">Transaction ID</Label>
-              <Input type="text" id="transactionId" value={transactionId} onChange={e => setTransactionId(e.target.value)} className="col-span-3" placeholder="Transaction ID" />
+              <Label htmlFor="transactionId" className="text-right">Txn ID</Label>
+              <Input type="text" id="transactionId" value={transactionId} onChange={e => setTransactionId(e.target.value)} className="col-span-3" />
             </div>
           </div>
           <div className="flex justify-end space-x-2">

@@ -34,6 +34,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Filter, Download, FileSpreadsheet, Eye, TicketPercent } from "lucide-react";
 import { format } from "date-fns";
 import { getImageUrl } from "@/lib/utils";
+import { AdminTablePagination, getSerialNumber } from "@/components/admin/AdminTablePagination";
 
 interface Booking {
   _id: string;
@@ -413,6 +414,7 @@ const AdminBookingsList = () => {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>S.No.</TableHead>
                   <TableHead>Booking ID</TableHead>
                   <TableHead>Customer</TableHead>
                   <TableHead>Location</TableHead>
@@ -426,8 +428,9 @@ const AdminBookingsList = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {bookings.map((booking) => (
+                {bookings.map((booking, idx) => (
                   <TableRow key={booking._id}>
+                    <TableCell className="text-muted-foreground text-sm">{getSerialNumber(idx, currentPage, itemsPerPage)}</TableCell>
                     <TableCell className="font-medium">
                       {booking.bookingId || booking._id.substring(0, 8)}
                     </TableCell>
@@ -557,97 +560,13 @@ const AdminBookingsList = () => {
       </Card>
       
       {bookings.length > 0 && (
-      <div className="flex justify-center mt-2">
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (currentPage > 1) setCurrentPage(currentPage - 1);
-                    }}
-                    className={
-                      currentPage === 1
-                        ? "pointer-events-none opacity-50"
-                        : ""
-                    }
-                  />
-                </PaginationItem>
-
-                {Array.from({ length: totalPages }, (_, i) => i + 1)
-                  .filter((page) => {
-                    return (
-                      page === 1 ||
-                      page === totalPages ||
-                      Math.abs(page - currentPage) <= 1
-                    );
-                  })
-                  .map((page, index, array) => {
-                    const showEllipsisBefore =
-                      index > 0 && array[index - 1] !== page - 1;
-                    const showEllipsisAfter =
-                      index < array.length - 1 &&
-                      array[index + 1] !== page + 1;
-
-                    return (
-                      <React.Fragment key={page}>
-                        {showEllipsisBefore && (
-                          <PaginationItem>
-                            <PaginationLink
-                              href="#"
-                              onClick={(e) => e.preventDefault()}
-                            >
-                              ...
-                            </PaginationLink>
-                          </PaginationItem>
-                        )}
-
-                        <PaginationItem>
-                          <PaginationLink
-                            href="#"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              setCurrentPage(page);
-                            }}
-                            isActive={page === currentPage}
-                          >
-                            {page}
-                          </PaginationLink>
-                        </PaginationItem>
-
-                        {showEllipsisAfter && (
-                          <PaginationItem>
-                            <PaginationLink
-                              href="#"
-                              onClick={(e) => e.preventDefault()}
-                            >
-                              ...
-                            </PaginationLink>
-                          </PaginationItem>
-                        )}
-                      </React.Fragment>
-                    );
-                  })}
-
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (currentPage < totalPages)
-                        setCurrentPage(currentPage + 1);
-                    }}
-                    className={
-                      currentPage === totalPages
-                        ? "pointer-events-none opacity-50"
-                        : ""
-                    }
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-      </div>
+        <AdminTablePagination
+          currentPage={currentPage}
+          totalItems={totalCount}
+          pageSize={itemsPerPage}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={(s) => { /* itemsPerPage is currently not settable via state, but we wire it */ }}
+        />
       )}
     </div>
   );

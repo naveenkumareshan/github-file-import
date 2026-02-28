@@ -7,22 +7,20 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
-  Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious,
-} from '@/components/ui/pagination';
-import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Eye, Search, Filter, BookOpen, BarChart3 } from 'lucide-react';
 import { HostelBookingCalendarDashboard } from '@/components/admin/HostelBookingCalendarDashboard';
 import { format } from 'date-fns';
 
-const PAGE_SIZE = 15;
+const PAGE_SIZE = 10;
 
 const fmtDate = (d: string) => {
   if (!d) return '-';
@@ -50,6 +48,7 @@ export default function AdminHostelBookings() {
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [status, setStatus] = useState('');
@@ -57,7 +56,7 @@ export default function AdminHostelBookings() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const totalPages = Math.ceil(totalCount / PAGE_SIZE) || 1;
+  const totalPages = Math.ceil(totalCount / pageSize) || 1;
 
   useEffect(() => {
     if (activeTab === 'bookings') fetchBookings();
@@ -78,8 +77,8 @@ export default function AdminHostelBookings() {
         // We'll fetch all and filter client-side for search
       }
 
-      const from = (currentPage - 1) * PAGE_SIZE;
-      query = query.range(from, from + PAGE_SIZE - 1);
+      const from = (currentPage - 1) * pageSize;
+      query = query.range(from, from + pageSize - 1);
 
       const { data, error, count } = await query;
       if (error) throw error;
@@ -141,8 +140,8 @@ export default function AdminHostelBookings() {
     return `${count} ${unit}${count !== 1 ? 's' : ''}`;
   };
 
-  const showStart = (currentPage - 1) * PAGE_SIZE + 1;
-  const showEnd = Math.min(currentPage * PAGE_SIZE, totalCount);
+  const showStart = (currentPage - 1) * pageSize + 1;
+  const showEnd = Math.min(currentPage * pageSize, totalCount);
 
   return (
     <div className="flex flex-col gap-4">
@@ -202,7 +201,7 @@ export default function AdminHostelBookings() {
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-muted/30">
-                          {['Booking ID', 'Student', 'Hostel', 'Room / Bed', 'Booked On', 'Duration', 'Amount', 'Status', 'Actions'].map(h => (
+                          {['S.No.', 'Booking ID', 'Student', 'Hostel', 'Room / Bed', 'Booked On', 'Duration', 'Amount', 'Status', 'Actions'].map(h => (
                             <TableHead key={h} className={`text-[11px] font-medium text-muted-foreground uppercase tracking-wider py-2 px-2 ${h === 'Actions' ? 'text-right' : ''}`}>{h}</TableHead>
                           ))}
                         </TableRow>
@@ -210,6 +209,7 @@ export default function AdminHostelBookings() {
                       <TableBody>
                         {bookings.map((b, idx) => (
                           <TableRow key={b.id} className={idx % 2 === 0 ? 'bg-background' : 'bg-muted/20'}>
+                            <TableCell className="py-1 px-2 text-[11px] text-muted-foreground">{getSerialNumber(idx, currentPage, pageSize)}</TableCell>
                             <TableCell className="py-1 px-2 font-mono text-[10px]">{b.serial_number || '-'}</TableCell>
                             <TableCell className="py-1 px-2 text-[11px] whitespace-nowrap">
                               <span className="font-medium">{b.profiles?.name || 'N/A'}</span>
@@ -248,29 +248,14 @@ export default function AdminHostelBookings() {
                     </Table>
                   </div>
 
-                  <div className="flex items-center justify-between px-4 py-2 border-t text-xs text-muted-foreground">
-                    <span>Showing {showStart}–{showEnd} of {totalCount} entries</span>
-                    <Pagination>
-                      <PaginationContent>
-                        <PaginationItem>
-                          <PaginationPrevious href="#" onClick={e => { e.preventDefault(); if (currentPage > 1) setCurrentPage(currentPage - 1); }} className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''} />
-                        </PaginationItem>
-                        {Array.from({ length: totalPages }, (_, i) => i + 1)
-                          .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
-                          .map((page, index, array) => {
-                            const ellipsisBefore = index > 0 && array[index - 1] !== page - 1;
-                            return (
-                              <React.Fragment key={page}>
-                                {ellipsisBefore && <PaginationItem><PaginationLink href="#" onClick={e => e.preventDefault()}>...</PaginationLink></PaginationItem>}
-                                <PaginationItem><PaginationLink href="#" onClick={e => { e.preventDefault(); setCurrentPage(page); }} isActive={page === currentPage}>{page}</PaginationLink></PaginationItem>
-                              </React.Fragment>
-                            );
-                          })}
-                        <PaginationItem>
-                          <PaginationNext href="#" onClick={e => { e.preventDefault(); if (currentPage < totalPages) setCurrentPage(currentPage + 1); }} className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''} />
-                        </PaginationItem>
-                      </PaginationContent>
-                    </Pagination>
+                  <div className="border-t">
+                    <AdminTablePagination
+                      currentPage={currentPage}
+                      totalItems={totalCount}
+                      pageSize={pageSize}
+                      onPageChange={setCurrentPage}
+                      onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
+                    />
                   </div>
                 </TooltipProvider>
               )}

@@ -13,6 +13,7 @@ import {
 import { CalendarIcon, Search, Receipt, Download, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/utils/currency';
+import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 
 interface ReceiptRow {
   id: string;
@@ -30,7 +31,6 @@ interface ReceiptRow {
   receipt_type: string;
   notes: string;
   created_at: string;
-  // joined
   studentName?: string;
   studentPhone?: string;
   cabinName?: string;
@@ -47,6 +47,8 @@ const Receipts: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
   const [toDate, setToDate] = useState<Date | undefined>(undefined);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -130,6 +132,7 @@ const Receipts: React.FC = () => {
   }, [receipts, filterCabin, filterType, fromDate, toDate, searchTerm]);
 
   const totalAmount = useMemo(() => filtered.reduce((s, r) => s + r.amount, 0), [filtered]);
+  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   const methodLabel = (m: string) => {
     switch (m) {
@@ -174,16 +177,16 @@ const Receipts: React.FC = () => {
       <div className="flex items-center gap-2 flex-wrap">
         <div className="relative">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
-          <Input className="h-8 pl-7 text-xs w-[200px]" placeholder="Search name, phone, receipt#..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+          <Input className="h-8 pl-7 text-xs w-[200px]" placeholder="Search name, phone, receipt#..." value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setPage(1); }} />
         </div>
-        <Select value={filterCabin} onValueChange={setFilterCabin}>
+        <Select value={filterCabin} onValueChange={(v) => { setFilterCabin(v); setPage(1); }}>
           <SelectTrigger className="h-8 w-[160px] text-xs"><SelectValue placeholder="Room" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all" className="text-xs">All Rooms</SelectItem>
             {cabins.map(c => <SelectItem key={c.id} value={c.id} className="text-xs">{c.name}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={filterType} onValueChange={setFilterType}>
+        <Select value={filterType} onValueChange={(v) => { setFilterType(v); setPage(1); }}>
           <SelectTrigger className="h-8 w-[140px] text-xs"><SelectValue placeholder="Type" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all" className="text-xs">All Types</SelectItem>
@@ -197,7 +200,7 @@ const Receipts: React.FC = () => {
               <CalendarIcon className="h-3 w-3" /> {fromDate ? format(fromDate, 'dd MMM') : 'From'}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={fromDate} onSelect={setFromDate} /></PopoverContent>
+          <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={fromDate} onSelect={(d) => { setFromDate(d); setPage(1); }} /></PopoverContent>
         </Popover>
         <Popover>
           <PopoverTrigger asChild>
@@ -205,10 +208,10 @@ const Receipts: React.FC = () => {
               <CalendarIcon className="h-3 w-3" /> {toDate ? format(toDate, 'dd MMM') : 'To'}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={toDate} onSelect={setToDate} /></PopoverContent>
+          <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={toDate} onSelect={(d) => { setToDate(d); setPage(1); }} /></PopoverContent>
         </Popover>
         {(fromDate || toDate || filterCabin !== 'all' || filterType !== 'all' || searchTerm) && (
-          <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setFromDate(undefined); setToDate(undefined); setFilterCabin('all'); setFilterType('all'); setSearchTerm(''); }}>
+          <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setFromDate(undefined); setToDate(undefined); setFilterCabin('all'); setFilterType('all'); setSearchTerm(''); setPage(1); }}>
             Clear
           </Button>
         )}
@@ -219,6 +222,7 @@ const Receipts: React.FC = () => {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="text-xs">S.No.</TableHead>
               <TableHead className="text-xs">Receipt #</TableHead>
               <TableHead className="text-xs">Student</TableHead>
               <TableHead className="text-xs">Room / Seat</TableHead>
@@ -233,12 +237,13 @@ const Receipts: React.FC = () => {
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground text-xs">Loading...</TableCell></TableRow>
-            ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground text-xs">No receipts found</TableCell></TableRow>
+              <TableRow><TableCell colSpan={11} className="text-center py-8 text-muted-foreground text-xs">Loading...</TableCell></TableRow>
+            ) : paginated.length === 0 ? (
+              <TableRow><TableCell colSpan={11} className="text-center py-8 text-muted-foreground text-xs">No receipts found</TableCell></TableRow>
             ) : (
-              filtered.map(r => (
+              paginated.map((r, index) => (
                 <TableRow key={r.id}>
+                  <TableCell className="text-xs text-muted-foreground">{getSerialNumber(index, page, pageSize)}</TableCell>
                   <TableCell className="text-xs font-mono">{r.serial_number}</TableCell>
                   <TableCell className="text-xs">
                     <div className="font-medium">{r.studentName}</div>
@@ -269,6 +274,15 @@ const Receipts: React.FC = () => {
           </TableBody>
         </Table>
       </div>
+
+      {/* Pagination */}
+      <AdminTablePagination
+        currentPage={page}
+        totalItems={filtered.length}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        onPageSizeChange={(s) => { setPageSize(s); setPage(1); }}
+      />
     </div>
   );
 };

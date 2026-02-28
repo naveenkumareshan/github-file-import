@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
 import { formatDistanceToNow } from 'date-fns';
 import { useSearchParams } from 'react-router-dom';
+import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 
 const ReviewManagement: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -234,26 +235,14 @@ const ReviewManagement: React.FC = () => {
         </Card>
       ) : (
         <div className="space-y-3">
-          {/* Items per page */}
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Items per page:</span>
-              <Select value={itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
-                <SelectTrigger className="w-16 h-7 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="5">5</SelectItem>
-                  <SelectItem value="10">10</SelectItem>
-                  <SelectItem value="25">25</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="text-xs text-muted-foreground">
-              Showing {((currentPage - 1) * itemsPerPage) + 1}–{Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount}
-            </div>
-          </div>
+          {/* Pagination */}
+          <AdminTablePagination
+            currentPage={currentPage}
+            totalItems={totalCount}
+            pageSize={itemsPerPage}
+            onPageChange={handlePageChange}
+            onPageSizeChange={(s) => handleItemsPerPageChange(s.toString())}
+          />
 
           {filteredReviews.map((review) => (
             <Card key={review.id} className={`border-border/60 shadow-sm ${review.status === 'pending' ? "border-l-2 border-l-amber-400" : review.status === 'rejected' ? "border-l-2 border-l-red-400" : ""}`}>
@@ -345,27 +334,6 @@ const ReviewManagement: React.FC = () => {
             </Card>
           ))}
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex justify-center items-center gap-2 mt-4">
-              <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="h-7 text-xs">
-                <ChevronLeft className="h-3.5 w-3.5" /> Prev
-              </Button>
-              <div className="flex gap-1">
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  const page = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
-                  return (
-                    <Button key={page} variant={currentPage === page ? "default" : "outline"} size="sm" onClick={() => handlePageChange(page)} className="h-7 w-7 text-xs p-0">
-                      {page}
-                    </Button>
-                  );
-                })}
-              </div>
-              <Button variant="outline" size="sm" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className="h-7 text-xs">
-                Next <ChevronRight className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          )}
         </div>
       )}
 

@@ -7,12 +7,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { Wallet, Download, Search, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Wallet, Download, Search, RefreshCw } from 'lucide-react';
 import { depositRefundService, DepositRefund, DepositRefundFilters } from '@/api/depositRefundService';
 import { useToast } from '@/hooks/use-toast';
 import { DateFilterSelector } from '@/components/common/DateFilterSelector';
 import { format } from "date-fns";
 import { formatCurrency } from '@/utils/currency';
+import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 
 type DateFilterType = 'today' | 'this_week' | 'this_month' | 'last_month' | 'this_year' | 'last_year' | 'custom';
 
@@ -24,7 +25,7 @@ export const DepositManagement: React.FC<ReportDateRangePickerProps> = ({ type }
   const [deposits, setDeposits] = useState<DepositRefund[]>([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
-  const [pagination, setPagination] = useState({ page: 1, limit: 15, total: 0, pages: 0 });
+  const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, pages: 0 });
 
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'refunded'>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -36,7 +37,7 @@ export const DepositManagement: React.FC<ReportDateRangePickerProps> = ({ type }
 
   useEffect(() => {
     fetchDeposits();
-  }, [pagination.page, statusFilter, searchTerm, dateFilter, customStartDate, customEndDate]);
+  }, [pagination.page, pagination.limit, statusFilter, searchTerm, dateFilter, customStartDate, customEndDate]);
 
   const fetchDeposits = async () => {
     setLoading(true);
@@ -75,11 +76,6 @@ export const DepositManagement: React.FC<ReportDateRangePickerProps> = ({ type }
     }
     setExporting(false);
   };
-
-  // Summary stats
-  const totalDeposits = useMemo(() => deposits.reduce((s, d) => s + d.keyDeposit, 0), [deposits]);
-  const pendingCount = useMemo(() => deposits.filter(d => !d.keyDepositRefunded).length, [deposits]);
-  const refundedCount = useMemo(() => deposits.filter(d => d.keyDepositRefunded).length, [deposits]);
 
   return (
     <div className="space-y-4">
@@ -125,6 +121,7 @@ export const DepositManagement: React.FC<ReportDateRangePickerProps> = ({ type }
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="text-xs">S.No.</TableHead>
               <TableHead className="text-xs">Booking ID</TableHead>
               <TableHead className="text-xs">User</TableHead>
               <TableHead className="text-xs">Reading Room</TableHead>
@@ -136,12 +133,13 @@ export const DepositManagement: React.FC<ReportDateRangePickerProps> = ({ type }
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground text-xs">Loading...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground text-xs">Loading...</TableCell></TableRow>
             ) : deposits.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground text-xs">No deposits found</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground text-xs">No deposits found</TableCell></TableRow>
             ) : (
-              deposits.map(deposit => (
+              deposits.map((deposit, index) => (
                 <TableRow key={deposit._id}>
+                  <TableCell className="text-xs text-muted-foreground">{getSerialNumber(index, pagination.page, pagination.limit)}</TableCell>
                   <TableCell className="text-xs">
                     <span className="font-mono">{deposit.booking?.bookingId || 'N/A'}</span>
                     {deposit.transactionId && <div className="text-muted-foreground text-[10px]">TR: {deposit.transactionId}</div>}
@@ -170,20 +168,13 @@ export const DepositManagement: React.FC<ReportDateRangePickerProps> = ({ type }
       </div>
 
       {/* Pagination */}
-      <div className="flex justify-between items-center text-xs text-muted-foreground">
-        <div>
-          Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setPagination(p => ({ ...p, page: Math.max(1, p.page - 1) }))} disabled={pagination.page === 1}>
-            <ChevronLeft className="h-3 w-3 mr-1" /> Prev
-          </Button>
-          <span>Page {pagination.page} of {pagination.pages}</span>
-          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setPagination(p => ({ ...p, page: Math.min(p.pages, p.page + 1) }))} disabled={pagination.page === pagination.pages}>
-            Next <ChevronRight className="h-3 w-3 ml-1" />
-          </Button>
-        </div>
-      </div>
+      <AdminTablePagination
+        currentPage={pagination.page}
+        totalItems={pagination.total}
+        pageSize={pagination.limit}
+        onPageChange={(p) => setPagination(prev => ({ ...prev, page: p }))}
+        onPageSizeChange={(s) => setPagination(prev => ({ ...prev, limit: s, page: 1 }))}
+      />
     </div>
   );
 };

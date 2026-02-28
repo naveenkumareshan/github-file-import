@@ -11,14 +11,6 @@ import { ReportSkeleton } from './ReportSkeleton';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination';
 import { useNavigate } from 'react-router-dom';
 import { transactionReportsService, TransactionReport, TransactionFilters } from '@/api/transactionReportsService';
 import {
@@ -27,6 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 
 interface BookingTransactionsProps {
   dateRange?: DateRange;
@@ -418,61 +411,14 @@ export const BookingTransactions: React.FC<BookingTransactionsProps> = ({ dateRa
         )}
         
         {filteredTransactions.length > 0 && (
-          <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Show</span>
-              <Select 
-                value={filters.limit?.toString() || '10'} 
-                onValueChange={(value) => handleFilterChange('limit', parseInt(value))}
-              >
-                <SelectTrigger className="w-[80px] h-8">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="5">5</SelectItem>
-                  <SelectItem value="10">10</SelectItem>
-                  <SelectItem value="25">25</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                  <SelectItem value="100">100</SelectItem>
-                </SelectContent>
-              </Select>
-              <span className="text-sm text-muted-foreground">per page</span>
-              <span className="text-sm ml-4">
-                Showing {((filters.page || 1) - 1) * (filters.limit || 10) + 1} to {Math.min((filters.page || 1) * (filters.limit || 10), totalCount)} of {totalCount} entries
-              </span>
-            </div>
-            
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious 
-                    onClick={() => handlePageChange(Math.max(1, (filters.page || 1) - 1))}
-                    className={(filters.page || 1) === 1 ? 'pointer-events-none opacity-50' : ''}
-                  />
-                </PaginationItem>
-                
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  const page = i + 1;
-                  return (
-                    <PaginationItem key={page}>
-                      <PaginationLink 
-                        isActive={(filters.page || 1) === page}
-                        onClick={() => handlePageChange(page)}
-                      >
-                        {page}
-                      </PaginationLink>
-                    </PaginationItem>
-                  );
-                })}
-                
-                <PaginationItem>
-                  <PaginationNext 
-                    onClick={() => handlePageChange(Math.min(totalPages, (filters.page || 1) + 1))}
-                    className={(filters.page || 1) === totalPages ? 'pointer-events-none opacity-50' : ''}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
+          <div className="mt-4">
+            <AdminTablePagination
+              currentPage={filters.page || 1}
+              totalItems={totalCount}
+              pageSize={filters.limit || 10}
+              onPageChange={handlePageChange}
+              onPageSizeChange={(s) => handleFilterChange('limit', s)}
+            />
           </div>
         )}
       </CardContent>
