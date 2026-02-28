@@ -193,7 +193,7 @@ const HostelBedMap: React.FC = () => {
       bedsQuery = bedsQuery.eq('hostel_rooms.hostel_id', selectedHostelId);
     }
 
-    const { data: bedsData } = await bedsQuery;
+    const { data: bedsData } = await bedsQuery.order('bed_number');
 
     if (!bedsData || bedsData.length === 0) {
       setBeds([]);
@@ -338,6 +338,11 @@ const HostelBedMap: React.FC = () => {
         b.roomNumber.toLowerCase().includes(q)
       );
     }
+    result.sort((a, b) => {
+      const roomCmp = a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true });
+      if (roomCmp !== 0) return roomCmp;
+      return a.bed_number - b.bed_number;
+    });
     return result;
   }, [beds, statusFilter, searchTerm]);
 
@@ -972,27 +977,29 @@ const HostelBedMap: React.FC = () => {
       )}
 
       {/* ──── Price Edit Dialog ──── */}
-      <Dialog open={!!editingBedId} onOpenChange={() => setEditingBedId(null)}>
-        <DialogContent className="max-w-xs">
-          <DialogHeader>
-            <DialogTitle className="text-sm">Edit Bed Price</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <Label className="text-xs">New Price (₹/month)</Label>
-              <Input type="number" value={editPrice} onChange={e => setEditPrice(e.target.value)} className="h-8 text-sm" />
+      {editingBedId && (
+        <Dialog open={true} onOpenChange={() => setEditingBedId(null)}>
+          <DialogContent className="max-w-xs">
+            <DialogHeader>
+              <DialogTitle className="text-sm">Edit Bed Price</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <Label className="text-xs">New Price (₹/month)</Label>
+                <Input type="number" value={editPrice} onChange={e => setEditPrice(e.target.value)} className="h-8 text-sm" />
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={() => handleSavePrice(editingBedId)} disabled={updating}>
+                  <Save className="h-3 w-3 mr-1" /> Save
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setEditingBedId(null)}>
+                  <X className="h-3 w-3 mr-1" /> Cancel
+                </Button>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <Button size="sm" onClick={() => editingBedId && handleSavePrice(editingBedId)} disabled={updating}>
-                <Save className="h-3 w-3 mr-1" /> Save
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => setEditingBedId(null)}>
-                <X className="h-3 w-3 mr-1" /> Cancel
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* ──── Block/Unblock Dialog ──── */}
       <Dialog open={blockDialogOpen} onOpenChange={setBlockDialogOpen}>
