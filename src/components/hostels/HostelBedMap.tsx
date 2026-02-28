@@ -58,7 +58,7 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
         // Date-aware booking overlap query
         let bookingQuery = supabase
           .from('hostel_bookings')
-          .select('bed_id, profiles:user_id(name)')
+          .select('bed_id, payment_status, profiles:user_id(name)')
           .eq('hostel_id', hostelId)
           .in('status', ['confirmed', 'pending']);
 
@@ -70,8 +70,31 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
 
         const { data: bookings } = await bookingQuery;
 
+        // Fetch hostel_dues with proportional_end_date for advance_paid bookings
+        const { data: duesData } = await supabase
+          .from('hostel_dues')
+          .select('bed_id, proportional_end_date, booking_id')
+          .eq('hostel_id', hostelId)
+          .eq('status', 'pending')
+          .not('proportional_end_date', 'is', null);
+
+        const duesMap = new Map<string, string>();
+        duesData?.forEach((d: any) => {
+          if (d.bed_id && d.proportional_end_date) {
+            duesMap.set(d.bed_id, d.proportional_end_date);
+          }
+        });
+
         const bookingMap = new Map<string, string>();
         bookings?.forEach((b: any) => {
+          // For advance_paid bookings, check proportional_end_date
+          if (b.payment_status === 'advance_paid' && startDate) {
+            const propEnd = duesMap.get(b.bed_id);
+            if (propEnd && propEnd < startDate) {
+              // Bed is available after proportional_end_date
+              return;
+            }
+          }
           bookingMap.set(b.bed_id, b.profiles?.name || 'Occupied');
         });
 

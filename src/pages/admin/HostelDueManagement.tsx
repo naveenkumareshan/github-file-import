@@ -10,8 +10,11 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Wallet, AlertTriangle, IndianRupee, Calendar, Search, Banknote, Smartphone, Building2, CreditCard, Receipt } from 'lucide-react';
+import { Wallet, AlertTriangle, IndianRupee, Calendar as CalendarIcon, Search, Banknote, Smartphone, Building2, CreditCard, Receipt, Pencil } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -42,6 +45,13 @@ const HostelDueManagement: React.FC = () => {
   const [collectNotes, setCollectNotes] = useState('');
   const [collecting, setCollecting] = useState(false);
 
+  // Date editing state
+  const [editingField, setEditingField] = useState<'due_date' | 'bed_valid' | null>(null);
+  const [editDueId, setEditDueId] = useState<string | null>(null);
+  const [editDateValue, setEditDateValue] = useState<Date | undefined>(undefined);
+  const [editMaxDate, setEditMaxDate] = useState<Date | undefined>(undefined);
+  const [savingDate, setSavingDate] = useState(false);
+
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -60,7 +70,7 @@ const HostelDueManagement: React.FC = () => {
     let duesQuery = supabase
       .from('hostel_dues')
       .select('*, profiles:user_id(name, email, phone), hostels:hostel_id(name), hostel_beds:bed_id(bed_number), hostel_bookings:booking_id(serial_number, start_date, end_date)')
-      .order('due_date', { ascending: true });
+      .order('created_at', { ascending: false });
 
     if (filterHostel !== 'all') duesQuery = duesQuery.eq('hostel_id', filterHostel);
     if (filterStatus !== 'all') duesQuery = duesQuery.eq('status', filterStatus);
@@ -306,6 +316,7 @@ const HostelDueManagement: React.FC = () => {
               <Table>
                 <TableHeader>
                   <TableRow className="text-[10px]">
+                    <TableHead className="text-[10px]">Booking Date</TableHead>
                     <TableHead className="text-[10px]">Student</TableHead>
                     <TableHead className="text-[10px]">Hostel / Bed</TableHead>
                     <TableHead className="text-[10px]">Booking</TableHead>
@@ -323,6 +334,11 @@ const HostelDueManagement: React.FC = () => {
                     const remaining = Number(due.due_amount) - Number(due.paid_amount);
                     return (
                       <TableRow key={due.id} className="text-[11px]">
+                        <TableCell className="py-2 text-[11px]">
+                          {(due.hostel_bookings as any)?.start_date
+                            ? format(new Date((due.hostel_bookings as any).start_date), 'dd MMM yy')
+                            : '-'}
+                        </TableCell>
                         <TableCell className="py-2">
                           <div className="font-medium text-[11px]">{(due.profiles as any)?.name || 'N/A'}</div>
                           {(due.profiles as any)?.phone && <div className="text-[10px] text-muted-foreground">{(due.profiles as any)?.phone}</div>}
@@ -339,11 +355,42 @@ const HostelDueManagement: React.FC = () => {
                         <TableCell className="py-2 text-right text-emerald-600">₹{(Number(due.advance_paid) + Number(due.paid_amount)).toLocaleString()}</TableCell>
                         <TableCell className="py-2 text-right text-red-600 font-medium">₹{Math.max(0, remaining).toLocaleString()}</TableCell>
                         <TableCell className="py-2">
-                          <div className="text-[11px]">{due.due_date ? format(new Date(due.due_date), 'dd MMM yy') : '-'}</div>
-                          {getDaysInfo(due)}
+                          <div className="flex items-center gap-1">
+                            <div>
+                              <div className="text-[11px]">{due.due_date ? format(new Date(due.due_date), 'dd MMM yy') : '-'}</div>
+                              {getDaysInfo(due)}
+                            </div>
+                            <button
+                              className="p-0.5 rounded hover:bg-muted"
+                              onClick={() => {
+                                setEditingField('due_date');
+                                setEditDueId(due.id);
+                                setEditDateValue(due.due_date ? new Date(due.due_date) : undefined);
+                                setEditMaxDate(undefined);
+                              }}
+                            >
+                              <Pencil className="h-3 w-3 text-muted-foreground" />
+                            </button>
+                          </div>
                         </TableCell>
-                        <TableCell className="py-2 text-[11px]">
-                          {due.proportional_end_date ? format(new Date(due.proportional_end_date), 'dd MMM yy') : '-'}
+                        <TableCell className="py-2">
+                          <div className="flex items-center gap-1">
+                            <span className="text-[11px]">
+                              {due.proportional_end_date ? format(new Date(due.proportional_end_date), 'dd MMM yy') : '-'}
+                            </span>
+                            <button
+                              className="p-0.5 rounded hover:bg-muted"
+                              onClick={() => {
+                                setEditingField('bed_valid');
+                                setEditDueId(due.id);
+                                setEditDateValue(due.proportional_end_date ? new Date(due.proportional_end_date) : undefined);
+                                const bookingEnd = (due.hostel_bookings as any)?.end_date;
+                                setEditMaxDate(bookingEnd ? new Date(bookingEnd) : undefined);
+                              }}
+                            >
+                              <Pencil className="h-3 w-3 text-muted-foreground" />
+                            </button>
+                          </div>
                         </TableCell>
                         <TableCell className="py-2">{getStatusBadge(due)}</TableCell>
                         <TableCell className="py-2">
@@ -475,6 +522,58 @@ const HostelDueManagement: React.FC = () => {
               ))}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Date Edit Dialog */}
+      <Dialog open={!!editingField} onOpenChange={(open) => { if (!open) { setEditingField(null); setEditDueId(null); } }}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle className="text-sm">
+              {editingField === 'due_date' ? 'Edit Due Date' : 'Edit Bed Validity Date'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {editingField === 'bed_valid' && editMaxDate && (
+              <p className="text-[11px] text-muted-foreground">
+                Cannot exceed booking end date: {format(editMaxDate, 'dd MMM yyyy')}
+              </p>
+            )}
+            <Calendar
+              mode="single"
+              selected={editDateValue}
+              onSelect={setEditDateValue}
+              disabled={editingField === 'bed_valid' && editMaxDate
+                ? (date) => date > editMaxDate!
+                : undefined
+              }
+              className={cn("p-3 pointer-events-auto")}
+            />
+            <Button
+              className="w-full h-8 text-xs"
+              disabled={!editDateValue || savingDate}
+              onClick={async () => {
+                if (!editDueId || !editDateValue) return;
+                setSavingDate(true);
+                const fieldName = editingField === 'due_date' ? 'due_date' : 'proportional_end_date';
+                const { error } = await supabase
+                  .from('hostel_dues')
+                  .update({ [fieldName]: format(editDateValue, 'yyyy-MM-dd') })
+                  .eq('id', editDueId);
+                if (error) {
+                  toast({ title: 'Error', description: error.message, variant: 'destructive' });
+                } else {
+                  toast({ title: `${editingField === 'due_date' ? 'Due date' : 'Bed validity date'} updated` });
+                  setEditingField(null);
+                  setEditDueId(null);
+                  fetchData();
+                }
+                setSavingDate(false);
+              }}
+            >
+              {savingDate ? 'Saving...' : 'Save'}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
