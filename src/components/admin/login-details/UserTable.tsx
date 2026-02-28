@@ -2,8 +2,9 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { LoginDetail } from './types';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { User, MapPin } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { User, KeyRound, Trash2, RotateCcw } from 'lucide-react';
+import { getSerialNumber } from '@/components/admin/AdminTablePagination';
 
 interface UserTableProps {
   users: LoginDetail[];
@@ -11,6 +12,8 @@ interface UserTableProps {
   onChangePassword: (user: LoginDetail) => void;
   onRestore: (user: LoginDetail) => void;
   isDeletedView: boolean;
+  currentPage: number;
+  pageSize: number;
 }
 
 export const UserTable: React.FC<UserTableProps> = ({ 
@@ -18,101 +21,79 @@ export const UserTable: React.FC<UserTableProps> = ({
   onDelete, 
   onChangePassword, 
   onRestore,
-  isDeletedView 
+  isDeletedView,
+  currentPage,
+  pageSize
 }) => {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse">
+    <div className="border rounded-lg overflow-x-auto">
+      <table className="w-full text-[11px]">
         <thead>
-          <tr className="border-b">
-            <th className="text-left py-2 px-4">User</th>
-            <th className="text-left py-2 px-4">Email</th>
-            <th className="text-left py-2 px-4">Role</th>
-            <th className="text-left py-2 px-4">Address</th>
-            <th className="text-right py-2 px-4">Actions</th>
+          <tr className="border-b bg-muted/50">
+            <th className="text-left py-2 px-3 font-medium w-12">S.No.</th>
+            <th className="text-left py-2 px-3 font-medium">Name</th>
+            <th className="text-left py-2 px-3 font-medium">Email</th>
+            <th className="text-left py-2 px-3 font-medium">Role</th>
+            <th className="text-right py-2 px-3 font-medium">Actions</th>
           </tr>
         </thead>
         <tbody>
-          {users.map((user) => {
-            // Get user additional details from localStorage
-            const userGender = localStorage.getItem(`${user.email}_gender`) || 
-                              localStorage.getItem('userGender') || '';
-            const userImage = localStorage.getItem(`${user.email}_profileImage`) || 
-                             localStorage.getItem('userProfileImage') || '';
-            const userAddressStr = localStorage.getItem('userAddress');
-            const userAddress = userAddressStr ? JSON.parse(userAddressStr) : null;
-            
-            return (
-              <tr key={user.email} className="border-b hover:bg-muted/50">
-                <td className="py-2 px-4">
-                  <div className="flex items-center space-x-3">
-                    <Avatar className="h-8 w-8">
-                      {userImage ? (
-                        <AvatarImage src={userImage} alt={user.name} />
-                      ) : (
-                        <AvatarFallback className={userGender === 'female' ? 'bg-pink-100 text-pink-500' : 'bg-blue-100 text-blue-500'}>
-                          <User className="h-4 w-4" />
-                        </AvatarFallback>
-                      )}
-                    </Avatar>
-                    <span>{user.name}</span>
+          {users.map((user, index) => (
+            <tr key={user.email} className="border-b last:border-0 hover:bg-muted/30">
+              <td className="py-1.5 px-3 text-muted-foreground">{getSerialNumber(index, currentPage, pageSize)}</td>
+              <td className="py-1.5 px-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center">
+                    <User className="h-3 w-3 text-muted-foreground" />
                   </div>
-                </td>
-                <td className="py-2 px-4">{user.email}</td>
-                <td className="py-2 px-4 capitalize">
-                  <span className={`inline-block py-1 px-2 rounded-full text-xs ${
-                    user.role === 'admin' 
-                      ? 'bg-purple-100 text-purple-700'
-                      : 'bg-blue-100 text-blue-700'
-                  }`}>
-                    {user.role}
-                  </span>
-                </td>
-                <td className="py-2 px-4">
-                  {userAddress ? (
-                    <div className="flex items-center space-x-1 text-xs">
-                      <MapPin className="h-3 w-3" />
-                      <span className="truncate max-w-[200px]">
-                        {userAddress.city}, {userAddress.state}
-                      </span>
-                    </div>
-                  ) : (
-                    <span className="text-muted-foreground text-xs">No address</span>
-                  )}
-                </td>
-                <td className="py-2 px-4 text-right">
-                  <div className="flex justify-end space-x-2">
+                  <span className="font-medium">{user.name}</span>
+                </div>
+              </td>
+              <td className="py-1.5 px-3 text-muted-foreground">{user.email}</td>
+              <td className="py-1.5 px-3">
+                <Badge 
+                  variant={user.role === 'admin' ? 'default' : 'secondary'} 
+                  className="text-[10px] capitalize"
+                >
+                  {user.role}
+                </Badge>
+              </td>
+              <td className="py-1.5 px-3 text-right">
+                <div className="flex items-center justify-end gap-1">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-6 text-[10px] px-2 gap-1"
+                    onClick={() => onChangePassword(user)}
+                  >
+                    <KeyRound className="h-3 w-3" />
+                    Password
+                  </Button>
+                  {isDeletedView ? (
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      onClick={() => onChangePassword(user)}
+                      className="h-6 text-[10px] px-2 gap-1 text-green-600 hover:text-green-700 hover:bg-green-50"
+                      onClick={() => onRestore(user)}
                     >
-                      Change Password
+                      <RotateCcw className="h-3 w-3" />
+                      Restore
                     </Button>
-                    {isDeletedView ? (
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-green-600 hover:text-green-700 hover:bg-green-50"
-                        onClick={() => onRestore(user)}
-                      >
-                        Restore
-                      </Button>
-                    ) : (
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        onClick={() => onDelete(user)}
-                      >
-                        Delete
-                      </Button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            );
-          })}
+                  ) : (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-6 text-[10px] px-2 gap-1 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => onDelete(user)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      Delete
+                    </Button>
+                  )}
+                </div>
+              </td>
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>

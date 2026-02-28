@@ -65,6 +65,7 @@ const ReportedTodaySection = ({ module }: { module: Module }) => {
           <table className="w-full text-[11px]">
             <thead>
               <tr className="border-b bg-green-50/50 dark:bg-green-950/20">
+                <th className="text-left py-2 px-3 font-medium w-12">S.No.</th>
                 <th className="text-left py-2 px-3 font-medium">Student</th>
                 <th className="text-left py-2 px-3 font-medium">
                   {module === 'reading_room' ? 'Room / Seat' : 'Hostel / Bed'}
@@ -77,8 +78,9 @@ const ReportedTodaySection = ({ module }: { module: Module }) => {
               </tr>
             </thead>
             <tbody>
-              {reported.map((b: any) => (
+              {reported.map((b: any, index: number) => (
                 <tr key={b.id} className="border-b last:border-0 hover:bg-muted/30">
+                  <td className="py-1.5 px-3 text-muted-foreground">{index + 1}</td>
                   <td className="py-1.5 px-3">
                     <div className="font-medium">{b.profiles?.name || 'N/A'}</div>
                     <div className="text-muted-foreground">{b.profiles?.phone || b.profiles?.email || ''}</div>

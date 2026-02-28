@@ -14,6 +14,7 @@ import { Search, AlertTriangle, CheckCircle2, Eye, Upload } from 'lucide-react';
 import CheckInUploadDialog from './CheckInUploadDialog';
 import ReportedTodaySection from './ReportedTodaySection';
 import CheckInViewDetailsDialog from './CheckInViewDetailsDialog';
+import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 
 type Module = 'reading_room' | 'hostel';
 
@@ -27,6 +28,8 @@ const CheckInTracker = () => {
   const [notes, setNotes] = useState('');
   const [viewBooking, setViewBooking] = useState<any>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -177,6 +180,7 @@ const CheckInTracker = () => {
           <table className="w-full text-[11px]">
             <thead>
               <tr className="border-b bg-muted/50">
+                <th className="text-left py-2 px-3 font-medium w-12">S.No.</th>
                 <th className="text-left py-2 px-3 font-medium">Student</th>
                 <th className="text-left py-2 px-3 font-medium">
                   {module === 'reading_room' ? 'Room / Seat' : 'Hostel / Bed'}
@@ -187,11 +191,12 @@ const CheckInTracker = () => {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((b: any) => {
+              {filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((b: any, index: number) => {
                 const startDate = b.start_date;
                 const noShow = isNoShow(startDate);
                 return (
                   <tr key={b.id} className={`border-b last:border-0 ${noShow ? 'bg-destructive/5' : 'hover:bg-muted/30'}`}>
+                    <td className="py-1.5 px-3 text-muted-foreground">{getSerialNumber(index, currentPage, pageSize)}</td>
                     <td className="py-1.5 px-3">
                       <div className="font-medium">{b.profiles?.name || 'N/A'}</div>
                       <div className="text-muted-foreground">{b.profiles?.phone || b.profiles?.email || ''}</div>
@@ -235,6 +240,13 @@ const CheckInTracker = () => {
               })}
             </tbody>
           </table>
+          <AdminTablePagination
+            currentPage={currentPage}
+            totalItems={filtered.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
+          />
         </div>
       )}
 
