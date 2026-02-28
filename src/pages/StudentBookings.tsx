@@ -6,8 +6,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { BookingsList } from '@/components/booking/BookingsList';
 import { useToast } from '@/hooks/use-toast';
 import { bookingsService } from '@/api/bookingsService';
+import { hostelBookingService } from '@/api/hostelBookingService';
 import { format } from 'date-fns';
-import { Calendar, Building, BookOpen, Plus, CreditCard, CheckCircle } from 'lucide-react';
+import { Calendar, Building, BookOpen, Plus, CreditCard, CheckCircle, Hotel } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -61,23 +62,32 @@ const StudentBookings = () => {
     try {
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (!authUser) return;
-      const { data } = await supabase
-        .from('dues')
-        .select('booking_id, due_amount, paid_amount, status, due_date')
-        .eq('user_id', authUser.id)
-        .in('status', ['pending', 'overdue', 'partial']);
-      if (data) {
-        const map = new Map<string, number>();
-        (data as DueInfo[]).forEach((d) => {
-          if (d.booking_id) {
-            map.set(d.booking_id, Number(d.due_amount) - Number(d.paid_amount));
-          }
-        });
-        setDuesMap(map);
-        // Store first due info for header card
-        const firstDue = (data as DueInfo[]).find(d => (Number(d.due_amount) - Number(d.paid_amount)) > 0);
-        setFirstDueInfo(firstDue || null);
-      }
+
+      // Fetch both reading room and hostel dues in parallel
+      const [cabinDuesRes, hostelDuesRes] = await Promise.all([
+        supabase
+          .from('dues')
+          .select('booking_id, due_amount, paid_amount, status, due_date')
+          .eq('user_id', authUser.id)
+          .in('status', ['pending', 'overdue', 'partial']),
+        supabase
+          .from('hostel_dues')
+          .select('booking_id, due_amount, paid_amount, status, due_date')
+          .eq('user_id', authUser.id)
+          .in('status', ['pending', 'overdue', 'partial']),
+      ]);
+
+      const allDues = [...(cabinDuesRes.data || []), ...(hostelDuesRes.data || [])] as DueInfo[];
+      const map = new Map<string, number>();
+      allDues.forEach((d) => {
+        if (d.booking_id) {
+          map.set(d.booking_id, Number(d.due_amount) - Number(d.paid_amount));
+        }
+      });
+      setDuesMap(map);
+
+      const firstDue = allDues.find(d => (Number(d.due_amount) - Number(d.paid_amount)) > 0);
+      setFirstDueInfo(firstDue || null);
     } catch (e) {
       console.error('Error fetching dues:', e);
     }
@@ -87,9 +97,10 @@ const StudentBookings = () => {
     try {
       setIsLoading(true);
 
-      const [currentRes, historyRes] = await Promise.all([
+      const [currentRes, historyRes, hostelBookingsRes] = await Promise.all([
         bookingsService.getCurrentBookings(),
         bookingsService.getBookingHistory(),
+        hostelBookingService.getUserBookings(),
       ]);
 
       const allCurrentRaw = currentRes.success ? currentRes.data : [];
@@ -146,20 +157,60 @@ const StudentBookings = () => {
         };
       };
 
-      const mappedCurrent = allCurrentRaw.map(mapBooking).map((b: any) => ({
-        ...b,
-        dueAmount: duesMap.get(b.id) || 0,
-      }));
-      setCurrentBookings(mappedCurrent);
+      // Map hostel bookings
+      const mapHostelBooking = (hb: any) => ({
+        id: hb.id,
+        bookingId: hb.serial_number || hb.id?.substring(0, 8),
+        startDate: hb.start_date,
+        endDate: hb.end_date,
+        status: hb.payment_status,
+        createdAt: hb.created_at,
+        totalPrice: hb.total_price,
+        originalPrice: hb.total_price,
+        appliedCoupon: undefined,
+        seatPrice: hb.total_price,
+        cabinId: hb.hostel_id,
+        paymentStatus: hb.payment_status,
+        bookingType: 'hostel' as const,
+        itemName: hb.hostels?.name || 'Hostel',
+        itemNumber: hb.hostel_beds?.bed_number || 0,
+        itemImage: hb.hostels?.logo_image,
+        bookingStatus: hb.status,
+        location: hb.hostels?.location,
+        cabinAddress: '',
+        lockerPrice: 0,
+        keyDeposit: undefined,
+        cabinCode: hb.hostel_id || '',
+        transferredHistory: null,
+      });
+
+      const hostelBookings = (hostelBookingsRes || []).map(mapHostelBooking);
+
       const today = new Date().toISOString().split('T')[0];
-      const allHistory = allHistoryRaw.map(mapBooking).map((b: any) => ({
-        ...b,
-        dueAmount: duesMap.get(b.id) || 0,
-      }));
-      setPastBookings(allHistory.filter((b: Booking) =>
-        (b.endDate < today && !['pending'].includes(b.paymentStatus)) ||
-        ['failed', 'cancelled'].includes(b.paymentStatus)
-      ));
+
+      // Merge cabin current + hostel current
+      const mappedCurrent = allCurrentRaw.map(mapBooking);
+      const hostelCurrent = hostelBookings.filter((b: any) =>
+        b.endDate >= today && !['failed', 'cancelled'].includes(b.bookingStatus)
+      );
+      const allCurrent = [...mappedCurrent, ...hostelCurrent]
+        .map((b: any) => ({ ...b, dueAmount: duesMap.get(b.id) || 0 }))
+        .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setCurrentBookings(allCurrent);
+
+      // Merge cabin past + hostel past
+      const allHistory = allHistoryRaw.map(mapBooking);
+      const hostelPast = hostelBookings.filter((b: any) =>
+        b.endDate < today || ['failed', 'cancelled'].includes(b.bookingStatus)
+      );
+      const allPast = [...allHistory, ...hostelPast]
+        .map((b: any) => ({ ...b, dueAmount: duesMap.get(b.id) || 0 }))
+        .filter((b: Booking) =>
+          (b.endDate < today && !['pending'].includes(b.paymentStatus)) ||
+          ['failed', 'cancelled'].includes(b.paymentStatus)
+        )
+        .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setPastBookings(allPast);
     } catch (error) {
       console.error('Error fetching bookings:', error);
     } finally {
@@ -231,14 +282,24 @@ const StudentBookings = () => {
 
       {/* Content */}
       <div className="max-w-lg mx-auto px-3 -mt-3">
-        <Button
-          onClick={() => navigate('/cabins')}
-          className="w-full mb-4 rounded-2xl py-3 shadow-sm bg-card text-primary border border-primary/20 hover:bg-primary/5 flex items-center gap-2 text-[13px]"
-          variant="outline"
-        >
-          <Plus className="w-4 h-4" />
-          Book a New Reading Room
-        </Button>
+        <div className="flex gap-2 mb-4">
+          <Button
+            onClick={() => navigate('/cabins')}
+            className="flex-1 rounded-2xl py-3 shadow-sm bg-card text-primary border border-primary/20 hover:bg-primary/5 flex items-center gap-2 text-[13px]"
+            variant="outline"
+          >
+            <Plus className="w-4 h-4" />
+            Book Reading Room
+          </Button>
+          <Button
+            onClick={() => navigate('/hostels')}
+            className="flex-1 rounded-2xl py-3 shadow-sm bg-card text-primary border border-primary/20 hover:bg-primary/5 flex items-center gap-2 text-[13px]"
+            variant="outline"
+          >
+            <Hotel className="w-4 h-4" />
+            Book Hostel
+          </Button>
+        </div>
 
         <h2 className="text-[15px] font-semibold text-foreground mb-3">My Bookings</h2>
 
