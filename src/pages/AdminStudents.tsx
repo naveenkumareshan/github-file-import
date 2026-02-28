@@ -50,6 +50,13 @@ interface Student {
   address: string;
   bio: string;
   profilePicture?: string;
+  alternatePhone?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  dateOfBirth?: string;
+  coursePreparingFor?: string;
+  serialNumber?: string;
 }
 
 const ROLE_TABS = [
@@ -313,12 +320,6 @@ const AdminStudents = () => {
                     {(role === "student" || role === "vendor_employee") && (
                       <th className="text-left py-2 px-3 font-medium">Gender</th>
                     )}
-                    {role === "student" && (
-                      <>
-                        <th className="text-left py-2 px-3 font-medium">Course</th>
-                        <th className="text-left py-2 px-3 font-medium">College</th>
-                      </>
-                    )}
                     <th className="text-left py-2 px-3 font-medium">Status</th>
                     <th className="text-left py-2 px-3 font-medium">Joined</th>
                     <th className="text-right py-2 px-3 font-medium">Actions</th>
@@ -338,12 +339,6 @@ const AdminStudents = () => {
                       {(role === "student" || role === "vendor_employee") && (
                         <td className="py-1.5 px-3 text-muted-foreground">{s.gender || '—'}</td>
                       )}
-                      {role === "student" && (
-                        <>
-                          <td className="py-1.5 px-3 text-muted-foreground">{s.courseStudying || '—'}</td>
-                          <td className="py-1.5 px-3 text-muted-foreground">{s.collegeStudied || '—'}</td>
-                        </>
-                      )}
                       <td className="py-1.5 px-3">
                         <Badge variant={s.isActive ? 'success' : 'destructive'} className="text-[9px]">
                           {s.isActive ? 'Active' : 'Inactive'}
@@ -357,7 +352,7 @@ const AdminStudents = () => {
                           <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 gap-1" onClick={() => handleViewDetails(s)}>
                             <Eye className="h-3 w-3" /> View
                           </Button>
-                          {s.role === "student" && user.role === "admin" && (
+                          {user.role === "admin" && (
                             <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 gap-1" onClick={() => { setSelectedStudent(s); setIsEditOpen(true); }}>
                               <Edit className="h-3 w-3" /> Edit
                             </Button>
@@ -439,18 +434,35 @@ const AdminStudents = () => {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="p-3 border rounded-lg space-y-1">
+                    <h4 className="font-medium text-xs mb-1.5">Personal</h4>
+                    <p><span className="text-muted-foreground">Gender:</span> {selectedStudent.gender || '—'}</p>
+                    <p><span className="text-muted-foreground">Date of Birth:</span> {selectedStudent.dateOfBirth ? new Date(selectedStudent.dateOfBirth).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</p>
+                    <p><span className="text-muted-foreground">Bio:</span> {selectedStudent.bio || '—'}</p>
+                    <p><span className="text-muted-foreground">Serial No:</span> {selectedStudent.serialNumber || '—'}</p>
+                    <p><span className="text-muted-foreground">Status:</span> <Badge variant={selectedStudent.isActive ? 'success' : 'destructive'} className="text-[9px]">{selectedStudent.isActive ? 'Active' : 'Inactive'}</Badge></p>
+                  </div>
+                  <div className="p-3 border rounded-lg space-y-1">
                     <h4 className="font-medium text-xs mb-1.5">Contact</h4>
                     <p><span className="text-muted-foreground">Email:</span> {selectedStudent.email}</p>
                     <p><span className="text-muted-foreground">Phone:</span> {selectedStudent.phone || '—'}</p>
+                    <p><span className="text-muted-foreground">Alt Phone:</span> {selectedStudent.alternatePhone || '—'}</p>
                     <p><span className="text-muted-foreground">Parent Phone:</span> {selectedStudent.parentMobileNumber || '—'}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 border rounded-lg space-y-1">
+                    <h4 className="font-medium text-xs mb-1.5">Address</h4>
                     <p><span className="text-muted-foreground">Address:</span> {selectedStudent.address || '—'}</p>
+                    <p><span className="text-muted-foreground">City:</span> {selectedStudent.city || '—'}</p>
+                    <p><span className="text-muted-foreground">State:</span> {selectedStudent.state || '—'}</p>
+                    <p><span className="text-muted-foreground">Pincode:</span> {selectedStudent.pincode || '—'}</p>
                   </div>
                   <div className="p-3 border rounded-lg space-y-1">
-                    <h4 className="font-medium text-xs mb-1.5">Info</h4>
-                    <p><span className="text-muted-foreground">Gender:</span> {selectedStudent.gender || '—'}</p>
-                    <p><span className="text-muted-foreground">Course:</span> {selectedStudent.courseStudying || '—'}</p>
+                    <h4 className="font-medium text-xs mb-1.5">Academic</h4>
+                    <p><span className="text-muted-foreground">Course Studying:</span> {selectedStudent.courseStudying || '—'}</p>
+                    <p><span className="text-muted-foreground">Preparing For:</span> {selectedStudent.coursePreparingFor || '—'}</p>
                     <p><span className="text-muted-foreground">College:</span> {selectedStudent.collegeStudied || '—'}</p>
-                    <p><span className="text-muted-foreground">Bio:</span> {selectedStudent.bio || '—'}</p>
                   </div>
                 </div>
 
