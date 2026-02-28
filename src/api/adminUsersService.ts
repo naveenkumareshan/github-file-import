@@ -87,7 +87,7 @@ export const adminUsersService = {
         bookingsCount: 0,
         activeBookings: 0,
         joinedAt: p.created_at || '',
-        isActive: true,
+        isActive: p.is_active !== false,
         collegeStudied: p.college_studied || '',
         courseStudying: p.course_studying || '',
         parentMobileNumber: p.parent_mobile_number || '',
@@ -265,6 +265,19 @@ export const adminUsersService = {
       if (error) throw error;
       return { success: true };
     } catch (e) {
+      return { success: false };
+    }
+  },
+
+  toggleUserActive: async (userId: string, isActive: boolean) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('toggle-user-status', {
+        body: { userId, isActive },
+      });
+      if (error) throw error;
+      return { success: true };
+    } catch (e) {
+      console.error('Error toggling user status:', e);
       return { success: false };
     }
   },

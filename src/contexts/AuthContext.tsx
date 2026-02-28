@@ -121,6 +121,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (data.user) {
+        // Check if user is active
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_active')
+          .eq('id', data.user.id)
+          .single();
+
+        if (profile && profile.is_active === false) {
+          await supabase.auth.signOut();
+          return { success: false, error: 'Your account has been deactivated. Please contact admin.' };
+        }
+
         // Wait for onAuthStateChange to populate user state
         await new Promise<void>((resolve) => {
           const checkUser = () => {
@@ -130,9 +142,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               setTimeout(checkUser, 100);
             }
           };
-          // Give it a short delay then start checking
           setTimeout(checkUser, 200);
-          // Timeout after 5 seconds to avoid infinite wait
           setTimeout(resolve, 5000);
         });
         return { success: true };
