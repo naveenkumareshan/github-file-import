@@ -988,7 +988,43 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fk_hostel_dues_bed"
+            columns: ["bed_id"]
+            isOneToOne: false
+            referencedRelation: "hostel_beds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_hostel_dues_booking"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "hostel_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_hostel_dues_hostel"
+            columns: ["hostel_id"]
+            isOneToOne: false
+            referencedRelation: "hostels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_hostel_dues_room"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "hostel_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_hostel_dues_user"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       hostel_receipts: {
         Row: {
