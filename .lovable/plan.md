@@ -1,37 +1,33 @@
 
 
-## Fix: Hostel Due Management - Calendar/Dialog Issues and Cleanup
+## Apply Hostel Due Enhancements to Reading Room Due Management
 
-### Issues Identified
+### Changes
 
-1. **Calendar numbers bleeding through table** - The Date Edit Dialog with Calendar component is rendering incorrectly, causing calendar day numbers (1-28) to appear overlaid on the table. The Dialog component is receiving a ref warning ("Function components cannot be given refs"), which may cause the overlay/backdrop to fail.
+**1. Update query to include booking dates** (`src/api/vendorSeatsService.ts`)
+- Change the `getAllDues` select to include `start_date` and `end_date` from bookings:
+  `bookings:booking_id(serial_number)` becomes `bookings:booking_id(serial_number, start_date, end_date)`
 
-2. **Dialog rendering issue** - The `open={!!editingField}` pattern combined with an inline Calendar may be causing render glitches.
+**2. Update Reading Room DueManagement UI** (`src/pages/admin/DueManagement.tsx`)
 
-### Fix Approach
+- Add `Pencil` icon import from lucide-react
+- Add date editing state variables (`editingField`, `editDueId`, `editDateValue`, `editMaxDate`, `savingDate`)
+- Add "Booking Date" column as first column showing `bookings.start_date`
+- Add pencil edit icons next to "Due Date" and "Seat Valid" columns
+- Add Date Edit Dialog at bottom (same pattern as hostel version) with:
+  - `type="date"` input
+  - Validation: seat validity cannot exceed booking end date
+  - Save updates `dues` table (`due_date` or `proportional_end_date`)
 
-**File: `src/pages/admin/HostelDueManagement.tsx`**
+### Technical Details
 
-1. **Replace Dialog-based date picker with Popover-based inline editing** - Instead of a separate Dialog with a full Calendar component, use a Popover attached directly to the pencil button for each date field. This avoids the Dialog ref warning and keeps editing inline and clean.
+**File: `src/api/vendorSeatsService.ts`** (line ~713)
+- Expand bookings join: `bookings:booking_id(serial_number, start_date, end_date)`
 
-2. **Alternatively, fix the Dialog approach** by:
-   - Moving the Calendar into a properly structured Dialog with a controlled `open` state using a separate boolean (e.g., `dateDialogOpen`) instead of deriving from `editingField`
-   - Ensuring the Dialog only mounts when explicitly opened
-   - Adding `initialFocus` handling to prevent focus/render issues
-
-3. **Chosen approach: Use a simple date Input field in a small Dialog** instead of the full Calendar component, which is simpler and avoids the Calendar rendering bug entirely:
-   - Replace the `<Calendar>` component inside the date edit Dialog with a standard `<input type="date">` field
-   - This eliminates the Calendar bleed-through issue entirely
-   - Keep the Dialog for the modal editing experience
-
-### Technical Changes
-
-**`src/pages/admin/HostelDueManagement.tsx`**:
-
-- Remove the `Calendar` import and the Popover-related imports (unused)
-- Replace the Date Edit Dialog's Calendar component with a simple `<Input type="date">` control
-- Use a dedicated `dateDialogOpen` boolean state instead of `!!editingField` to control Dialog visibility
-- Update the save handler to parse the date from the input value
-- Remove unused imports (`Popover`, `PopoverContent`, `PopoverTrigger`, `Calendar`, `cn`)
-
-This is a minimal, focused fix that resolves the visual bug without restructuring the page.
+**File: `src/pages/admin/DueManagement.tsx`**
+- Import `Pencil` from lucide-react
+- Add 5 state variables for date editing
+- Add `Booking Date` TableHead before Student column
+- Add TableCell with formatted `start_date`
+- Wrap Due Date and Seat Valid cells with pencil button + edit handler
+- Add Date Edit Dialog before closing `</div>` (identical pattern to hostel version, but updating `dues` table instead of `hostel_dues`)
