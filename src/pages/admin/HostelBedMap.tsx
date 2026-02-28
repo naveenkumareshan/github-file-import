@@ -1433,7 +1433,7 @@ const HostelBedMap: React.FC = () => {
                         <Button className="flex-1 h-9 text-xs"
                           disabled={creatingBooking || ((paymentMethod === 'upi' || paymentMethod === 'bank_transfer') && !transactionId.trim())}
                           onClick={handleCreateBooking}>
-                          {creatingBooking ? 'Creating...' : `Confirm · ₹${(() => { const collectAmt = isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : computedTotal; const secDep = collectSecurityDeposit ? (parseFloat(securityDepositAmount) || 0) : 0; return collectAmt + secDep; })()}`}
+                          {creatingBooking ? 'Creating...' : `Confirm · ₹${isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : (computedTotal + (collectSecurityDeposit ? (parseFloat(securityDepositAmount) || 0) : 0))}`}
                         </Button>
                       </div>
                     </div>
