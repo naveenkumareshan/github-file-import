@@ -11,9 +11,9 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, subDays, parseISO } from 'date-fns';
 import { Search, AlertTriangle, CheckCircle2, Eye, Upload } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import CheckInUploadDialog from './CheckInUploadDialog';
 import ReportedTodaySection from './ReportedTodaySection';
+import CheckInViewDetailsDialog from './CheckInViewDetailsDialog';
 
 type Module = 'reading_room' | 'hostel';
 
@@ -25,10 +25,11 @@ const CheckInTracker = () => {
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
   const [uploadBooking, setUploadBooking] = useState<any>(null);
   const [notes, setNotes] = useState('');
+  const [viewBooking, setViewBooking] = useState<any>(null);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
 
   const today = format(new Date(), 'yyyy-MM-dd');
   const yesterday = format(subDays(new Date(), 1), 'yyyy-MM-dd');
@@ -111,9 +112,9 @@ const CheckInTracker = () => {
     setUploadDialogOpen(true);
   };
 
-  const handleViewDetails = (bookingId: string) => {
-    const type = module === 'reading_room' ? 'cabin' : 'hostel';
-    navigate(`/admin/bookings/${bookingId}/${type}`);
+  const handleViewDetails = (booking: any) => {
+    setViewBooking(booking);
+    setViewDialogOpen(true);
   };
 
   const isLoading = module === 'reading_room' ? rrLoading : hostelLoading;
@@ -218,7 +219,7 @@ const CheckInTracker = () => {
                     </td>
                     <td className="py-1.5 px-3 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0" title="View Details" onClick={() => handleViewDetails(b.id)}>
+                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0" title="View Details" onClick={() => handleViewDetails(b)}>
                           <Eye className="h-3 w-3" />
                         </Button>
                         <Button size="sm" variant="ghost" className="h-6 w-6 p-0" title="Upload Documents" onClick={() => handleUploadDocs(b)}>
@@ -270,6 +271,14 @@ const CheckInTracker = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* View Details Dialog */}
+      <CheckInViewDetailsDialog
+        open={viewDialogOpen}
+        onOpenChange={setViewDialogOpen}
+        booking={viewBooking}
+        module={module}
+      />
 
       {/* Upload Documents Dialog */}
       {uploadBooking && (
