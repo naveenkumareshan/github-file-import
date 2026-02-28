@@ -1,25 +1,8 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { getImageUrl } from "@/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -27,21 +10,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import { Search, User, ChevronLeft, ChevronRight, Edit, KeyRound } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Search, Users, Edit, KeyRound, Eye } from "lucide-react";
 import { adminUsersService } from "../api/adminUsersService";
 import { toast } from "@/hooks/use-toast";
 import ErrorBoundary from "../components/ErrorBoundary";
 import { StudentEditDialog } from "@/components/admin/StudentEditDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { AdminResetPasswordDialog } from "@/components/admin/AdminResetPasswordDialog";
+import { AdminTablePagination, getSerialNumber } from "@/components/admin/AdminTablePagination";
 
 interface Student {
   _id: string;
@@ -64,28 +41,29 @@ interface Student {
   profilePicture?: string;
 }
 
+const ROLE_TABS = [
+  { label: "Students", value: "student" },
+  { label: "Partners", value: "vendor" },
+  { label: "Admins", value: "admin" },
+  { label: "Employees", value: "vendor_employee" },
+] as const;
+
 const AdminStudents = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
-  const [studentBookings, setStudentBookings] = useState<any>([]);
-
-  // Pagination state
+  const [studentBookings, setStudentBookings] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [role, setRole] = useState("student");
   const [includeInactive, setIncludeInactive] = useState(false);
   const [loadingBookings, setLoadingBookings] = useState(false);
   const { user } = useAuth();
-
-  const setIncludeInactive_ = (val: boolean) => setIncludeInactive(val);
 
   useEffect(() => {
     fetchStudents();
@@ -94,39 +72,21 @@ const AdminStudents = () => {
   const fetchStudents = async () => {
     try {
       setLoading(true);
-      setError(null);
-
-      const usersResponse = await adminUsersService.getUsers({
-        role: role,
+      const res = await adminUsersService.getUsers({
+        role,
         page: currentPage,
         limit: pageSize,
         search: searchQuery || undefined,
-        includeInactive: includeInactive,
+        includeInactive,
       });
-
-      if (usersResponse.success && Array.isArray(usersResponse.data)) {
-        setStudents(usersResponse.data);
-        setTotalPages(
-          usersResponse.pagination?.totalPages ||
-            Math.ceil(usersResponse.count / pageSize)
-        );
-        setTotalUsers(usersResponse.totalCount || usersResponse.count);
+      if (res.success && Array.isArray(res.data)) {
+        setStudents(res.data);
+        setTotalUsers(res.totalCount || res.count);
       } else {
-        setError("Failed to load students");
-        toast({
-          title: "Error",
-          description: "Failed to load students data",
-          variant: "destructive",
-        });
+        toast({ title: "Error", description: "Failed to load users", variant: "destructive" });
       }
-    } catch (error) {
-      console.error("Error fetching students:", error);
-      setError("Failed to load students");
-      toast({
-        title: "Error",
-        description: "Failed to load students data",
-        variant: "destructive",
-      });
+    } catch {
+      toast({ title: "Error", description: "Failed to load users", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -135,515 +95,260 @@ const AdminStudents = () => {
   const fetchStudentBookings = async (studentId: string) => {
     try {
       setLoadingBookings(true);
-
-      const bookingsResponse = await adminUsersService.getBookingsByUserId({
-        userId: studentId,
-      });
-
-      if (bookingsResponse.success && Array.isArray(bookingsResponse.data)) {
-        setStudentBookings(bookingsResponse.data);
-      }
-    } catch (error) {
-      console.error("Error fetching student bookings:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load student bookings",
-        variant: "destructive",
-      });
+      const res = await adminUsersService.getBookingsByUserId({ userId: studentId });
+      if (res.success && Array.isArray(res.data)) setStudentBookings(res.data);
+    } catch {
+      toast({ title: "Error", description: "Failed to load bookings", variant: "destructive" });
     } finally {
       setLoadingBookings(false);
     }
   };
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-    setCurrentPage(1); // Reset to first page when searching
+  const handleTabChange = (val: string) => {
+    setRole(val);
+    setCurrentPage(1);
+    setSearchQuery("");
   };
 
-  const handleViewDetails = (student: Student) => {
-    setSelectedStudent(student);
+  const handleViewDetails = (s: Student) => {
+    setSelectedStudent(s);
     setIsDetailsOpen(true);
-    fetchStudentBookings(student._id);
+    fetchStudentBookings(s._id);
   };
 
-  const handleEditStudent = (student: Student) => {
-    setSelectedStudent(student);
-    setIsEditOpen(true);
-  };
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
-
-  const handlePageSizeChange = (newPageSize: string) => {
-    setPageSize(parseInt(newPageSize));
-    setCurrentPage(1); // Reset to first page when changing page size
-  };
-  const handleRoleChange = (role: string) => {
-    setRole(role);
-  };
-  const handleEditSuccess = () => {
-    fetchStudents(); // Refresh the list after successful edit
-  };
-
-  const handleIncludeInactiveChange = (checked: boolean) => {
-    setIncludeInactive(checked);
-    setCurrentPage(1); // Reset to first page when changing filter
-  };
-
-  const renderPagination = () => {
-    const pages = [];
-    const maxVisiblePages = 5;
-    const startPage = Math.max(
-      1,
-      currentPage - Math.floor(maxVisiblePages / 2)
-    );
-    const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-    for (let i = startPage; i <= endPage; i++) {
-      pages.push(
-        <PaginationItem key={i}>
-          <PaginationLink
-            onClick={() => handlePageChange(i)}
-            isActive={currentPage === i}
-            className="cursor-pointer"
-          >
-            {i}
-          </PaginationLink>
-        </PaginationItem>
-      );
-    }
-
-    return (
-      <Pagination className="mt-6">
-        <PaginationContent>
-          <PaginationItem>
-            <PaginationPrevious
-              onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-              className={`cursor-pointer ${
-                currentPage === 1 ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-            />
-          </PaginationItem>
-          {pages}
-          <PaginationItem>
-            <PaginationNext
-              onClick={() =>
-                handlePageChange(Math.min(totalPages, currentPage + 1))
-              }
-              className={`cursor-pointer ${
-                currentPage === totalPages
-                  ? "opacity-50 cursor-not-allowed"
-                  : ""
-              }`}
-            />
-          </PaginationItem>
-        </PaginationContent>
-      </Pagination>
-    );
-  };
+  const currentTabLabel = ROLE_TABS.find(t => t.value === role)?.label || "Users";
 
   return (
     <ErrorBoundary>
-      <div className="flex flex-col gap-6">
-        {/* Page Header */}
-        <div>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-            <span>Admin Panel</span>
-            <span>/</span>
-            <span className="text-foreground font-medium">User Management</span>
+      <div className="flex flex-col gap-4">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-muted-foreground" />
+            <h1 className="text-sm font-semibold">User Management</h1>
+            <Badge variant="secondary" className="text-[10px]">{totalUsers} {currentTabLabel.toLowerCase()}</Badge>
           </div>
-          <h1 className="text-lg font-semibold tracking-tight">User Management</h1>
-          <p className="text-muted-foreground text-xs mt-0.5">
-            Manage student accounts, view booking history, and update user details.
-          </p>
         </div>
 
-        <Card className="shadow-sm">
-        <CardHeader className="flex flex-row items-center justify-between pb-4 border-b">
-            <div>
-              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                {role === "student" ? "Students" : "Vendors"}
-              </CardTitle>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {totalUsers} {role === "student" ? "students" : "vendors"} total
-              </p>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="page-size" className="whitespace-nowrap">
-                  Role:
-                </Label>
-                <Select
-                  value={role.toString()}
-                  onValueChange={handleRoleChange}
-                >
-                  <SelectTrigger className="w-20" id="page-size">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {user.role == "admin" && (
-                      <SelectItem value="admin">Admin</SelectItem>
+        {/* Role Tabs */}
+        <Tabs value={role} onValueChange={handleTabChange}>
+          <TabsList className="h-8">
+            {ROLE_TABS.map(tab => (
+              <TabsTrigger key={tab.value} value={tab.value} className="text-xs px-3 py-1">
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+
+        {/* Filters */}
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Search by name, email, phone..."
+              className="pl-8 h-8 text-xs"
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+            />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Switch
+              id="include-inactive"
+              checked={includeInactive}
+              onCheckedChange={(v) => { setIncludeInactive(v); setCurrentPage(1); }}
+              className="scale-75"
+            />
+            <label htmlFor="include-inactive" className="text-[11px] text-muted-foreground whitespace-nowrap">Include Inactive</label>
+          </div>
+        </div>
+
+        {/* Table */}
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
+          </div>
+        ) : students.length === 0 ? (
+          <div className="text-center py-10 text-muted-foreground text-xs">
+            {searchQuery ? "No users found matching your search." : `No ${currentTabLabel.toLowerCase()} found.`}
+          </div>
+        ) : (
+          <>
+            <div className="border rounded-lg overflow-x-auto">
+              <table className="w-full text-[11px]">
+                <thead>
+                  <tr className="border-b bg-muted/50">
+                    <th className="text-left py-2 px-3 font-medium w-12">S.No.</th>
+                    <th className="text-left py-2 px-3 font-medium">Name</th>
+                    {(role === "student" || role === "vendor_employee") && (
+                      <th className="text-left py-2 px-3 font-medium">Gender</th>
                     )}
-                    {/* {user.role =='admin' && <SelectItem value="vendor">Vendor</SelectItem> } */}
-                    <SelectItem value="student">Students</SelectItem>
-                    <SelectItem value="vendor_employee">Employees</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  placeholder="Search students by name, email, or phone..."
-                  className="pl-10"
-                  value={searchQuery}
-                  onChange={handleSearchChange}
-                />
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="include-inactive"
-                    checked={includeInactive}
-                    onCheckedChange={handleIncludeInactiveChange}
-                  />
-                  <Label
-                    htmlFor="include-inactive"
-                    className="whitespace-nowrap"
-                  >
-                    Include Inactive
-                  </Label>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="page-size" className="whitespace-nowrap">
-                    Per page:
-                  </Label>
-                  <Select
-                    value={pageSize.toString()}
-                    onValueChange={handlePageSizeChange}
-                  >
-                    <SelectTrigger className="w-20" id="page-size">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="5">5</SelectItem>
-                      <SelectItem value="10">10</SelectItem>
-                      <SelectItem value="20">20</SelectItem>
-                      <SelectItem value="50">50</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+                    {role === "student" && (
+                      <>
+                        <th className="text-left py-2 px-3 font-medium">Course</th>
+                        <th className="text-left py-2 px-3 font-medium">College</th>
+                      </>
+                    )}
+                    <th className="text-left py-2 px-3 font-medium">Joined</th>
+                    <th className="text-right py-2 px-3 font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {students.map((s, index) => (
+                    <tr key={s._id} className="border-b last:border-0 hover:bg-muted/30">
+                      <td className="py-1.5 px-3 text-muted-foreground">{getSerialNumber(index, currentPage, pageSize)}</td>
+                      <td className="py-1.5 px-3">
+                        <div>
+                          <span className="font-medium">{s.name}</span>
+                          <div className="text-[10px] text-muted-foreground">{s.phone || '—'}</div>
+                          <div className="text-[10px] text-muted-foreground">{s.email}</div>
+                        </div>
+                      </td>
+                      {(role === "student" || role === "vendor_employee") && (
+                        <td className="py-1.5 px-3 text-muted-foreground">{s.gender || '—'}</td>
+                      )}
+                      {role === "student" && (
+                        <>
+                          <td className="py-1.5 px-3 text-muted-foreground">{s.courseStudying || '—'}</td>
+                          <td className="py-1.5 px-3 text-muted-foreground">{s.collegeStudied || '—'}</td>
+                        </>
+                      )}
+                      <td className="py-1.5 px-3 text-muted-foreground">
+                        {s.joinedAt ? new Date(s.joinedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                      </td>
+                      <td className="py-1.5 px-3 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 gap-1" onClick={() => handleViewDetails(s)}>
+                            <Eye className="h-3 w-3" /> View
+                          </Button>
+                          {s.role === "student" && user.role === "admin" && (
+                            <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 gap-1" onClick={() => { setSelectedStudent(s); setIsEditOpen(true); }}>
+                              <Edit className="h-3 w-3" /> Edit
+                            </Button>
+                          )}
+                          {user.role === "admin" && (
+                            <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 gap-1" onClick={() => { setSelectedStudent(s); setIsResetPasswordOpen(true); }}>
+                              <KeyRound className="h-3 w-3" /> Reset
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
 
-            {loading ? (
-              <div className="flex justify-center py-12">
-                <div className="animate-spin h-7 w-7 border-2 border-primary border-t-transparent rounded-full"></div>
-              </div>
-            ) : error ? (
-              <div className="text-center py-6 text-red-500">{error}</div>
-            ) : students.length === 0 ? (
-              <div className="text-center py-10 text-muted-foreground">
-                {searchQuery
-                  ? "No students found matching your search."
-                  : "No students found."}
-              </div>
-            ) : (
-              <>
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/30">
-                        <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">ID</TableHead>
-                        <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Name</TableHead>
-                        <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Email</TableHead>
-                        <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Phone</TableHead>
-                        <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Gender</TableHead>
-                        <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Bookings</TableHead>
-                        <TableHead className="text-xs font-medium text-muted-foreground uppercase tracking-wider py-3">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {students.map((student, idx) => (
-                        <TableRow key={student._id} className={idx % 2 === 0 ? "bg-background" : "bg-muted/20"}>
-                          <TableCell>
-                            <div>
-                              {student.userId}
-                              {student.profilePicture && (
-                                <a
-                                  href={getImageUrl(student.profilePicture)}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                >
-                                  <img
-                                    src={getImageUrl(student.profilePicture)}
-                                    alt={student?.userId}
-                                    className="w-8 h-8 rounded-full object-cover cursor-pointer mt-1"
-                                  />
-                                </a>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="font-medium">
-                            <div className="flex items-center gap-2">
-                              {student.name}
-                              {!student.isActive && (
-                                <Badge variant="secondary" className="text-xs">
-                                  Inactive
-                                </Badge>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>{student.email}</TableCell>
-                          <TableCell>{student.phone || "N/A"}</TableCell>
-                          <TableCell>
-                            {student.gender || "Not specified"}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-col gap-1">
-                              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 w-fit">
-                                {student.activeBookings} Active
-                              </span>
-                              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-muted text-muted-foreground border border-border w-fit">
-                                {student.bookingsCount} Total
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-2">
-                              {student.role == "student" &&
-                                user.role == "admin" && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleEditStudent(student)}
-                                  >
-                                    <Edit className="h-4 w-4 mr-1" />
-                                    Edit
-                                  </Button>
-                                )}
-                              {user.role == "admin" && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedStudent(student);
-                                    setIsResetPasswordOpen(true);
-                                  }}
-                                >
-                                  <KeyRound className="h-4 w-4 mr-1" />
-                                  Reset Password
-                                </Button>
-                              )}
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleViewDetails(student)}
-                              >
-                                View Details
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+            <AdminTablePagination
+              currentPage={currentPage}
+              totalItems={totalUsers}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
+            />
+          </>
+        )}
 
-                {totalPages > 1 && renderPagination()}
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Student Edit Dialog */}
+        {/* Edit Dialog */}
         <StudentEditDialog
           student={selectedStudent}
           open={isEditOpen}
           onClose={() => setIsEditOpen(false)}
-          onSuccess={handleEditSuccess}
+          onSuccess={fetchStudents}
         />
 
-        {/* Student Details Dialog */}
+        {/* Details Dialog */}
         <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Student Details</DialogTitle>
+              <DialogTitle className="text-sm">User Details</DialogTitle>
             </DialogHeader>
-
             {selectedStudent && (
-              <div className="space-y-6">
-                <div className="flex items-center gap-4">
-                  <div className="h-16 w-16 rounded-full bg-accent flex items-center justify-center">
-                    {/* <User  /> */}
-                    {selectedStudent.profilePicture && (
-                                <a
-                                  href={getImageUrl(selectedStudent.profilePicture)}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                >
-                                  <img
-                                    src={getImageUrl(selectedStudent.profilePicture)}
-                                    alt={selectedStudent?.userId}
-                                    className="w-20 h-20 object-contain cursor-pointer"
-                                  />
-                                </a>
-                              )}
-                  </div>
+              <div className="space-y-4 text-xs">
+                <div className="flex items-center gap-3">
+                  {selectedStudent.profilePicture ? (
+                    <img src={getImageUrl(selectedStudent.profilePicture)} alt="" className="w-10 h-10 rounded-full object-cover" />
+                  ) : (
+                    <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                  )}
                   <div>
-                    <h3 className="text-xl font-bold">
-                      {selectedStudent.name}
-                    </h3>
-                    <p className="text-muted-foreground">
-                      {selectedStudent.email}
-                    </p>
-                    <p className="text-muted-foreground">
-                      {selectedStudent.userId}
-                    </p>
-
-                    {!selectedStudent.isActive && (
-                      <Badge variant="secondary" className="mt-1">
-                        Inactive User
-                      </Badge>
-                    )}
+                    <p className="font-semibold text-sm">{selectedStudent.name}</p>
+                    <p className="text-muted-foreground">{selectedStudent.email}</p>
+                    <p className="text-muted-foreground">{selectedStudent.phone}</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 border rounded-lg">
-                    <h4 className="font-medium mb-2">Contact Information</h4>
-                    <p>
-                      <span className="text-muted-foreground">Email:</span>{" "}
-                      {selectedStudent.email}
-                    </p>
-                    <p>
-                      <span className="text-muted-foreground">Phone:</span>{" "}
-                      {selectedStudent.phone}
-                    </p>
-                    <p>
-                      <span className="text-muted-foreground">
-                        Parent Mobile Number:
-                      </span>{" "}
-                      {selectedStudent.parentMobileNumber}
-                    </p>
-                    <p>
-                      <span className="text-muted-foreground">
-                        Course Studying:
-                      </span>{" "}
-                      {selectedStudent.courseStudying}
-                    </p>
-                    <p>
-                      <span className="text-muted-foreground">
-                        College Studied:
-                      </span>{" "}
-                      {selectedStudent.collegeStudied}
-                    </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 border rounded-lg space-y-1">
+                    <h4 className="font-medium text-xs mb-1.5">Contact</h4>
+                    <p><span className="text-muted-foreground">Email:</span> {selectedStudent.email}</p>
+                    <p><span className="text-muted-foreground">Phone:</span> {selectedStudent.phone || '—'}</p>
+                    <p><span className="text-muted-foreground">Parent Phone:</span> {selectedStudent.parentMobileNumber || '—'}</p>
+                    <p><span className="text-muted-foreground">Address:</span> {selectedStudent.address || '—'}</p>
                   </div>
-
-                  <div className="p-4 border rounded-lg">
-                    <h4 className="font-medium mb-2">Student Information</h4>
-                    <p>
-                      <span className="text-muted-foreground">Gender:</span>{" "}
-                      {selectedStudent.gender}
-                    </p>
-                    <p>
-                      <span className="text-muted-foreground">
-                        Total Bookings:
-                      </span>
-                      {selectedStudent.bookingsCount}
-                    </p>
-                    <p>
-                      <span className="text-muted-foreground">
-                        Active Bookings:
-                      </span>
-                      {selectedStudent.activeBookings}
-                    </p>
-                    <p>
-                      <span className="text-muted-foreground">Bio:</span>
-                      {selectedStudent.bio}
-                    </p>
-                    <p>
-                      <span className="text-muted-foreground">Address:</span>
-                      {selectedStudent.address}
-                    </p>
+                  <div className="p-3 border rounded-lg space-y-1">
+                    <h4 className="font-medium text-xs mb-1.5">Info</h4>
+                    <p><span className="text-muted-foreground">Gender:</span> {selectedStudent.gender || '—'}</p>
+                    <p><span className="text-muted-foreground">Course:</span> {selectedStudent.courseStudying || '—'}</p>
+                    <p><span className="text-muted-foreground">College:</span> {selectedStudent.collegeStudied || '—'}</p>
+                    <p><span className="text-muted-foreground">Bio:</span> {selectedStudent.bio || '—'}</p>
                   </div>
                 </div>
 
+                {/* Booking History */}
                 <div>
-                  <h4 className="font-medium mb-3">Booking History</h4>
+                  <h4 className="font-medium text-xs mb-2">Booking History</h4>
                   {loadingBookings ? (
-                    <div className="flex justify-center py-6">
-                      <div className="animate-spin h-6 w-6 border-4 border-cabin-wood border-t-transparent rounded-full"></div>
+                    <div className="flex justify-center py-4">
+                      <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full" />
                     </div>
                   ) : studentBookings.length === 0 ? (
-                    <p className="text-center py-6 text-muted-foreground">
-                      No booking history found.
-                    </p>
+                    <p className="text-center py-4 text-muted-foreground text-[11px]">No bookings found.</p>
                   ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Room</TableHead>
-                          <TableHead>Seat</TableHead>
-                          <TableHead>Period</TableHead>
-                          <TableHead>Price</TableHead>
-                          <TableHead>Status</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {studentBookings.map((booking) => (
-                          <TableRow key={booking._id}>
-                            <TableCell>
-                              {booking.cabinId?.name || "N/A"}
-                            </TableCell>
-                            <TableCell>
-                              #{booking.seatId?.number || "N/A"}
-                            </TableCell>
-                            <TableCell>
-                              {new Date(booking.startDate).toLocaleDateString()}{" "}
-                              -{new Date(booking.endDate).toLocaleDateString()}
-                              <div className="text-xs text-muted-foreground">
-                                {booking.months} months
-                              </div>
-                            </TableCell>
-                            <TableCell>₹{booking.totalPrice}</TableCell>
-                            <TableCell>
-                              <Badge
-                                className={
-                                  booking.paymentStatus === "completed"
-                                    ? "bg-green-500"
-                                    : booking.paymentStatus === "pending"
-                                    ? "bg-yellow-500"
-                                    : "bg-red-500"
-                                }
-                              >
-                                {booking.paymentStatus}
-                              </Badge>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-[11px]">
+                        <thead>
+                          <tr className="border-b bg-muted/50">
+                            <th className="text-left py-1.5 px-2 font-medium">Room</th>
+                            <th className="text-left py-1.5 px-2 font-medium">Seat</th>
+                            <th className="text-left py-1.5 px-2 font-medium">Period</th>
+                            <th className="text-left py-1.5 px-2 font-medium">Price</th>
+                            <th className="text-left py-1.5 px-2 font-medium">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {studentBookings.map((b: any) => (
+                            <tr key={b._id} className="border-b last:border-0">
+                              <td className="py-1 px-2">{b.cabinId?.name || '—'}</td>
+                              <td className="py-1 px-2">#{b.seatId?.number || '—'}</td>
+                              <td className="py-1 px-2">
+                                {b.startDate && new Date(b.startDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} – {b.endDate && new Date(b.endDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                              </td>
+                              <td className="py-1 px-2">₹{b.totalPrice}</td>
+                              <td className="py-1 px-2">
+                                <Badge variant={b.paymentStatus === 'completed' ? 'success' : b.paymentStatus === 'pending' ? 'secondary' : 'destructive'} className="text-[9px]">
+                                  {b.paymentStatus}
+                                </Badge>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   )}
                 </div>
 
                 <div className="flex justify-end">
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsDetailsOpen(false)}
-                  >
-                    Close
-                  </Button>
+                  <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setIsDetailsOpen(false)}>Close</Button>
                 </div>
               </div>
             )}
           </DialogContent>
         </Dialog>
 
-        {/* Admin Reset Password Dialog */}
+        {/* Reset Password Dialog */}
         {selectedStudent && (
           <AdminResetPasswordDialog
             open={isResetPasswordOpen}
