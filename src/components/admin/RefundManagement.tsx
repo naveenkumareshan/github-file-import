@@ -171,35 +171,6 @@ export const RefundManagement: React.FC<ReportDateRangePickerProps> = ({ type, s
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Wallet className="h-5 w-5 text-primary" />
-          <h1 className="text-lg font-semibold">{status === 'pending' ? 'Refund Pendings' : 'Refunded'}</h1>
-          <Badge variant="secondary" className="text-xs">{pagination.total} records</Badge>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="h-8 text-xs gap-1" disabled={exporting} onClick={handleExportReport}>
-            {exporting ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />} Export
-          </Button>
-          <Button variant="outline" size="sm" className="h-8 text-xs gap-1" onClick={fetchDeposits}>
-            <RefreshCw className="h-3 w-3" /> Refresh
-          </Button>
-        </div>
-      </div>
-
-      {/* Summary */}
-      <div className="border rounded-md p-3 bg-card flex items-center gap-6">
-        <div>
-          <div className="text-[10px] uppercase text-muted-foreground">Total</div>
-          <div className="text-lg font-bold">{formatCurrency(totalAmount)}</div>
-        </div>
-        <div>
-          <div className="text-[10px] uppercase text-muted-foreground">Records</div>
-          <div className="text-sm font-semibold">{pagination.total}</div>
-        </div>
-      </div>
-
       {/* Filters */}
       <div className="flex items-center gap-2 flex-wrap">
         <div className="relative">
@@ -214,11 +185,19 @@ export const RefundManagement: React.FC<ReportDateRangePickerProps> = ({ type, s
           onStartDateChange={setCustomStartDate}
           onEndDateChange={setCustomEndDate}
         />
-        {searchTerm && (
-          <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setSearchTerm('')}>
-            Clear
+        <div className="ml-auto flex items-center gap-2">
+          {searchTerm && (
+            <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setSearchTerm('')}>
+              Clear
+            </Button>
+          )}
+          <Button variant="outline" size="sm" className="h-8 text-xs gap-1" disabled={exporting} onClick={handleExportReport}>
+            {exporting ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />} Export
           </Button>
-        )}
+          <Button variant="outline" size="sm" className="h-8 text-xs gap-1" onClick={fetchDeposits}>
+            <RefreshCw className="h-3 w-3" /> Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Table */}

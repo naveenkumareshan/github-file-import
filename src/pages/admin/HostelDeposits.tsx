@@ -107,41 +107,22 @@ function HostelDepositList() {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Wallet className="h-5 w-5 text-primary" />
-          <h1 className="text-lg font-semibold">Deposits</h1>
-          <Badge variant="secondary" className="text-xs">{filtered.length} records</Badge>
-        </div>
-        <Button variant="outline" size="sm" className="h-8 text-xs gap-1" onClick={fetchDeposits}>
-          <RefreshCw className="h-3 w-3" /> Refresh
-        </Button>
-      </div>
-
-      {/* Summary */}
-      <div className="border rounded-md p-3 bg-card flex items-center gap-6">
-        <div>
-          <div className="text-[10px] uppercase text-muted-foreground">Total Deposits</div>
-          <div className="text-lg font-bold">{formatCurrency(totalDeposits)}</div>
-        </div>
-        <div>
-          <div className="text-[10px] uppercase text-muted-foreground">Records</div>
-          <div className="text-sm font-semibold">{filtered.length}</div>
-        </div>
-      </div>
-
       {/* Filters */}
       <div className="flex items-center gap-2 flex-wrap">
         <div className="relative">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
           <Input className="h-8 pl-7 text-xs w-[200px]" placeholder="Search name, booking#..." value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setPage(1); }} />
         </div>
-        {searchTerm && (
-          <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setSearchTerm(''); setPage(1); }}>
-            Clear
+        <div className="ml-auto flex items-center gap-2">
+          {searchTerm && (
+            <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setSearchTerm(''); setPage(1); }}>
+              Clear
+            </Button>
+          )}
+          <Button variant="outline" size="sm" className="h-8 text-xs gap-1" onClick={fetchDeposits}>
+            <RefreshCw className="h-3 w-3" /> Refresh
           </Button>
-        )}
+        </div>
       </div>
 
       {/* Table */}
@@ -311,41 +292,22 @@ function HostelRefundManagement({ status }: { status: 'pending' | 'refunded' }) 
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Wallet className="h-5 w-5 text-primary" />
-          <h1 className="text-lg font-semibold">{status === 'pending' ? 'Refund Pendings' : 'Refunded'}</h1>
-          <Badge variant="secondary" className="text-xs">{filtered.length} records</Badge>
-        </div>
-        <Button variant="outline" size="sm" className="h-8 text-xs gap-1" onClick={fetchData}>
-          <RefreshCw className="h-3 w-3" /> Refresh
-        </Button>
-      </div>
-
-      {/* Summary */}
-      <div className="border rounded-md p-3 bg-card flex items-center gap-6">
-        <div>
-          <div className="text-[10px] uppercase text-muted-foreground">Total Deposits</div>
-          <div className="text-lg font-bold">{formatCurrency(totalDeposits)}</div>
-        </div>
-        <div>
-          <div className="text-[10px] uppercase text-muted-foreground">Records</div>
-          <div className="text-sm font-semibold">{filtered.length}</div>
-        </div>
-      </div>
-
       {/* Filters */}
       <div className="flex items-center gap-2 flex-wrap">
         <div className="relative">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
           <Input className="h-8 pl-7 text-xs w-[200px]" placeholder="Search name, booking#..." value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setPage(1); }} />
         </div>
-        {searchTerm && (
-          <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setSearchTerm(''); setPage(1); }}>
-            Clear
+        <div className="ml-auto flex items-center gap-2">
+          {searchTerm && (
+            <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setSearchTerm(''); setPage(1); }}>
+              Clear
+            </Button>
+          )}
+          <Button variant="outline" size="sm" className="h-8 text-xs gap-1" onClick={fetchData}>
+            <RefreshCw className="h-3 w-3" /> Refresh
           </Button>
-        )}
+        </div>
       </div>
 
       {/* Table */}
