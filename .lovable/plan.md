@@ -1,62 +1,40 @@
 
 
-## Align Reading Room & Hostel Deposits UI with Receipts/Bookings Pattern
+## Rename "Refund Management" to "Refund Pendings" and Filter by Expired Dates
 
 ### Problem
-The Reading Room key deposits (`DepositManagement`, `RefundManagement`) and the Hostel deposits (`HostelDeposits`) use a Card-wrapped filter layout with raw HTML `<table>` elements. This is inconsistent with the rest of the admin panel (Receipts, Bookings) which uses:
-- Inline compact filters (h-8 inputs, no Card wrapper)
-- Summary stats bar (`border rounded-md p-3 bg-card`)
-- shadcn `Table/TableHeader/TableBody/TableRow/TableCell/TableHead` components
-- Compact text sizing (text-xs throughout)
-- Badge for record count in header
-- Refresh button in header row
+1. The tab label "Refund Management" is confusing -- it should be "Refund Pendings"
+2. The "Refund Pendings" tab currently shows ALL deposits that haven't been refunded, but it should only show records where the seat/bed validity date has expired (end_date < today)
+3. Once refunded, records should only appear in the "Refunded" tab
 
 ### Changes
 
-**1. `src/components/admin/DepositManagement.tsx`** -- Full rewrite to match Receipts pattern:
-- Remove Card-wrapped filters, replace with inline compact filter row (Search input with icon, Select dropdowns, date pickers -- all h-8)
-- Add summary stats bar showing: Total Deposits, Pending count, Refunded count
-- Replace raw `<table>` with shadcn `Table` components
-- Add header row with icon + title + Badge count + Refresh button
-- Remove the separate "Apply" button (filters apply reactively)
-- Keep pagination at bottom
+**1. Rename tabs in both places:**
 
-**2. `src/components/admin/RefundManagement.tsx`** -- Same treatment:
-- Inline compact filters
-- Summary stats bar
-- shadcn `Table` components
-- Header with icon + title + Badge + Refresh
-- Keep refund Dialog as-is (it works fine)
+- `src/pages/admin/DepositAndRestrictionManagement.tsx` (Reading Room) -- line 37: "Refund Management" becomes "Refund Pendings"
+- `src/pages/admin/HostelDeposits.tsx` (Hostel) -- line 46: "Refund Management" becomes "Refund Pendings"
 
-**3. `src/pages/admin/HostelDeposits.tsx`** -- Both `HostelDepositList` and `HostelRefundManagement` sub-components:
-- Same inline filter row pattern
-- Summary stats bar
-- shadcn `Table` components
-- Compact sizing throughout
-- Keep refund Dialog as-is
+**2. Update header title in RefundManagement.tsx** (Reading Room):
+- Line 178: Change `"Refund Management"` to show "Refund Pendings" when status is pending, "Refunded" when status is refunded
 
-### UI Pattern (matching Receipts.tsx)
+**3. Update header title in HostelDeposits.tsx** (Hostel):
+- Line 316: Change `"Refund Management"` to "Refund Pendings" when status is pending
 
-```text
-[Icon] Title [Badge: N records]                    [Refresh]
+**4. Filter hostel "Refund Pendings" to only show expired bookings** (`src/pages/admin/HostelDeposits.tsx`):
+- In `HostelRefundManagement.fetchData()` (line 239), add an additional filter for pending: only include bookings where `end_date < today` AND not yet refunded
+- Change: `(allBookings || []).filter(b => !refundedBookingIds.has(b.id))` to also check `new Date(b.end_date) < new Date()` (today)
 
-|  Total Deposits  |  Pending  |  Refunded  |
-|  Rs 50,000       |  Rs 30,000|  Rs 20,000 |
-
-[Search input] [Status select] [From date] [To date] [Clear]
-
-+----------------------------------------------------------+
-| Table with shadcn components, text-xs, compact rows      |
-+----------------------------------------------------------+
-```
+**5. Reading Room RefundManagement** (`src/components/admin/RefundManagement.tsx`):
+- The backend API (`depositRefundService.getRefunds`) handles filtering server-side. The `status` prop is already passed as a filter. The backend controller should already filter by expired `endDate` for pending refunds. If not, this is a backend issue -- but since the reading room uses an external Express API, the filtering logic lives in the backend controller. The frontend passes `status: 'pending'` which the backend should use to return only expired+unrefunded records.
+- For the frontend title fix, update line 178 to use the `status` prop for the title.
 
 ### Technical Details
 
-All three files will:
-- Import `Table, TableBody, TableCell, TableHead, TableHeader, TableRow` from `@/components/ui/table`
-- Import `Badge` from `@/components/ui/badge`
-- Import `formatCurrency` from `@/utils/currency`
-- Use `useMemo` for filtering (client-side) instead of the "Apply" button pattern
-- Remove `Card/CardContent/CardHeader/CardTitle` wrappers from filter sections
-- Keep data fetching logic unchanged (reading room deposits still use the external API service, hostel deposits still use Supabase)
+| File | Line(s) | Change |
+|------|---------|--------|
+| `src/pages/admin/DepositAndRestrictionManagement.tsx` | 37 | "Refund Management" -> "Refund Pendings" |
+| `src/pages/admin/HostelDeposits.tsx` | 46 | "Refund Management" -> "Refund Pendings" |
+| `src/pages/admin/HostelDeposits.tsx` | 316 | Title: "Refund Management" -> "Refund Pendings" |
+| `src/pages/admin/HostelDeposits.tsx` | 240 | Add `&& new Date(b.end_date) < new Date()` filter for pending tab |
+| `src/components/admin/RefundManagement.tsx` | 178 | Title: "Refund Management" -> dynamic based on status prop ("Refund Pendings" or "Refunded") |
 
