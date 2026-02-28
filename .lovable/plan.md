@@ -1,33 +1,37 @@
 
 
-## Apply Hostel Due Enhancements to Reading Room Due Management
+## Fix: Beds jumping/reordering after price change or actions
 
-### Changes
+### Root Cause
 
-**1. Update query to include booking dates** (`src/api/vendorSeatsService.ts`)
-- Change the `getAllDues` select to include `start_date` and `end_date` from bookings:
-  `bookings:booking_id(serial_number)` becomes `bookings:booking_id(serial_number, start_date, end_date)`
+When a price is saved, bed is blocked/unblocked, or any action triggers `fetchBeds()`, the Supabase query returns beds in an arbitrary order (no `.order()` clause). Since `filteredBeds` also has no sort, the grid re-renders with beds in a different order, causing the visual "disturbance" where a bed appears to jump to the bottom.
 
-**2. Update Reading Room DueManagement UI** (`src/pages/admin/DueManagement.tsx`)
+### Fix
 
-- Add `Pencil` icon import from lucide-react
-- Add date editing state variables (`editingField`, `editDueId`, `editDateValue`, `editMaxDate`, `savingDate`)
-- Add "Booking Date" column as first column showing `bookings.start_date`
-- Add pencil edit icons next to "Due Date" and "Seat Valid" columns
-- Add Date Edit Dialog at bottom (same pattern as hostel version) with:
-  - `type="date"` input
-  - Validation: seat validity cannot exceed booking end date
-  - Save updates `dues` table (`due_date` or `proportional_end_date`)
+**File: `src/pages/admin/HostelBedMap.tsx`**
+
+1. **Add stable sorting to `filteredBeds`**: After filtering, sort by `roomNumber` (string, ascending) then `bed_number` (number, ascending). This ensures beds always appear in a consistent R101-B1, R101-B2, R101-B3... order regardless of how the database returns them.
+
+```text
+filteredBeds useMemo:
+  ... existing filter logic ...
+  result.sort((a, b) => {
+    const roomCmp = a.roomNumber.localeCompare(b.roomNumber, undefined, { numeric: true });
+    if (roomCmp !== 0) return roomCmp;
+    return a.bed_number - b.bed_number;
+  });
+  return result;
+```
+
+2. **Add `.order('bed_number')` to the Supabase query** in `fetchBeds` as a secondary stability measure, so the raw data also arrives in a predictable order.
+
+3. **Fix the "Function components cannot be given refs" warning** by wrapping the `Dialog open={!!editingBedId}` with a conditional render (`editingBedId &&`) so the Dialog only mounts when needed, avoiding the ref issue on initial render.
 
 ### Technical Details
 
-**File: `src/api/vendorSeatsService.ts`** (line ~713)
-- Expand bookings join: `bookings:booking_id(serial_number, start_date, end_date)`
+- **Line ~188**: Add `.order('bed_number')` to the `hostel_beds` query
+- **Line ~328-342**: Add `.sort()` call in the `filteredBeds` useMemo before returning
+- **Line ~975**: Change `<Dialog open={!!editingBedId}>` to `{editingBedId && <Dialog open={true}>...}</Dialog>}` pattern
 
-**File: `src/pages/admin/DueManagement.tsx`**
-- Import `Pencil` from lucide-react
-- Add 5 state variables for date editing
-- Add `Booking Date` TableHead before Student column
-- Add TableCell with formatted `start_date`
-- Wrap Due Date and Seat Valid cells with pencil button + edit handler
-- Add Date Edit Dialog before closing `</div>` (identical pattern to hostel version, but updating `dues` table instead of `hostel_dues`)
+These are minimal, targeted changes that fix the visual instability without altering any business logic.
+
