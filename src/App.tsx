@@ -18,7 +18,7 @@ import BookSharedRoom from "./pages/BookSharedRoom";
 import HostelBooking from "./pages/HostelBooking";
 import LaundryAgentPage from "./pages/LaundryAgentPage";
 
-const AdminBookingView = lazy(() => import("./pages/AdminBookingView"));
+
 const BookingReportsPage = lazy(() => import("./components/admin/reports/BookingReportsPage"));
 
 const EmailJobManagement = lazy(() => import("./components/admin/email_reports/EmailJobManagement"));
@@ -144,7 +144,7 @@ function App() {
               <Route path="vendor-auto-payout" element={<VendorAutoPayoutSettings />} />
               <Route path="seats-available-map" element={<VendorSeats />} />
               <Route path="hostels/:hostelId/rooms" element={<HostelRoomView />} />
-              <Route path="bookings/:bookingId" element={<AdminBookingView />} />
+              
               <Route path="reports" element={<BookingReportsPage />} />
               <Route path="email-reports" element={<EmailJobManagement />} />
               <Route path="email-templates" element={<EmailTemplatesManagement />} />

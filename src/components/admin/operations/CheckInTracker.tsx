@@ -112,7 +112,8 @@ const CheckInTracker = () => {
   };
 
   const handleViewDetails = (bookingId: string) => {
-    navigate(`/admin/bookings/${bookingId}`);
+    const type = module === 'reading_room' ? 'cabin' : 'hostel';
+    navigate(`/admin/bookings/${bookingId}/${type}`);
   };
 
   const isLoading = module === 'reading_room' ? rrLoading : hostelLoading;
