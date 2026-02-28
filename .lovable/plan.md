@@ -1,73 +1,114 @@
 
+## Admin Partner Creation, Property Linking, and Login Management
 
-## Revamp Coupon Management Page
+### Overview
+Enhance the admin's User Management page to support creating Partner accounts (with Supabase auth login credentials), linking existing Reading Rooms and Hostels to partners, and viewing partner login details -- all from the admin panel.
 
-### Problem
-The current CouponManagement page uses the old Card-wrapped UI with large fonts, no S.No. column, no pagination, and only supports "Reading Room" (cabin) coupons. It needs to match the compact admin table pattern and support both Reading Room and Hostel coupons with proper scope-based tabs.
+---
 
-### Solution
-Completely rewrite `src/components/admin/CouponManagement.tsx` with:
-1. Tabs: **All**, **Reading Room**, **Hostel** (filter by `applicableFor`)
-2. Compact high-density table matching AdminStudents/Receipts pattern
-3. S.No. column + AdminTablePagination
-4. Updated create/edit dialog with Hostel option in "Applicable For"
-5. Compact single-line filter row (Search + Scope dropdown + Type dropdown)
-6. Fix the gl-matrix type error in tsconfig (skipLibCheck)
+### 1. Create "Create Partner" Edge Function
 
-### Changes
+**New file: `supabase/functions/create-partner/index.ts`**
 
-**1. Rewrite `src/components/admin/CouponManagement.tsx`**
+Extend the existing `create-student` pattern to create a partner user:
+- Accept: `name`, `email`, `phone`, `password` (admin-set), `businessName` (optional)
+- Use `supabaseAdmin.auth.admin.createUser()` with the provided password (not random) and `email_confirm: true`
+- Insert into `user_roles` table with role = `vendor`
+- Update the `profiles` table with phone and name
+- Verify caller is admin via `user_roles` check
+- Return the created user ID and password confirmation
 
-Layout matching AdminStudents pattern:
-```text
-[TicketPercent icon] Coupon Management  [Badge: X coupons]  [+ Create Coupon]
+This is different from `create-student` because:
+- It assigns the `vendor` role instead of `student`
+- It uses a password provided by the admin (not random) so the admin can share credentials
+- Partners need to log in via the Partner Portal
 
-[All] [Reading Room] [Hostel]    <-- Tabs filter by applicableFor
+---
 
-[Search input] [Scope: All/Global/Partner] [Type: All/%/Fixed]   <-- Compact filter row
+### 2. Revamp "Create User" Page (`src/components/admin/CreateStudentForm.tsx`)
 
-+------+----------+--------+------+-------+-------+--------+--------+---------+
-| S.No.| Code     | Name   |Scope | Type  | Value | Usage  | Valid  | Actions |
-+------+----------+--------+------+-------+-------+--------+--------+---------+
-| 1    | SAVE20   | Save.. |Global| 20%   | max500| 5/100  | 31 Mar | Edit Del|
-+------+----------+--------+------+-------+-------+--------+--------+---------+
+Complete rewrite to match the new high-density admin UI and support creating multiple user types:
 
-Showing 1-10 of 48 entries    [1][2]...[5]    Rows [10 v]
-```
+- Add a **Role selector** at the top: Student, Partner, Admin, Employee
+- When **Partner** is selected:
+  - Show fields: Name, Email, Phone, Password, Business Name (optional)
+  - Call the new `create-partner` edge function
+  - On success, show the login credentials (email + password) in a confirmation dialog
+- When **Student** is selected (existing flow):
+  - Keep current fields: Name, Email, Phone, Gender
+  - Call existing `create-student` edge function
+- When **Admin** is selected:
+  - Show fields: Name, Email, Phone, Password
+  - Call a new variation that assigns `admin` role
+- When **Employee** is selected:
+  - Show fields: Name, Email, Phone, Password
+  - Call a variation that assigns `vendor_employee` role
 
-Key UI changes:
-- Remove Card wrappers, use flat layout
-- Use `text-[11px]` fonts, `py-1.5 px-3` padding
-- Tab value maps to applicableFor filter: `all`, `cabin`, `hostel`
-- Add `currentPage`, `pageSize` state (default 10)
-- Client-side pagination (slice filtered array)
-- S.No. via `getSerialNumber`
-- AdminTablePagination at bottom
-- Compact action buttons (h-6 text-[10px])
+UI: Compact form matching admin table style (text-xs labels, h-8 inputs)
 
-Form dialog changes:
-- Add "Hostel" option in Applicable For dropdown alongside "Reading Room"
-- Add "All" option for admin-level global coupons
-- Keep all existing fields (scope, vendor selection, user assignment, etc.)
-- Make dialog layout more compact with smaller labels
+---
 
-**2. Fix `tsconfig.json` - Add skipLibCheck**
-- The gl-matrix type errors are from node_modules and unrelated to our code
-- Add `"skipLibCheck": true` to tsconfig compilerOptions if not already present
+### 3. Add "Link Properties" Feature in Partners Tab
+
+**Changes to `src/pages/AdminStudents.tsx`:**
+
+In the Partners tab, add new actions per partner row:
+- **"Link Room"** button: Opens a dialog showing all Reading Rooms (cabins) with a dropdown to select and assign `created_by` to this partner's user ID
+- **"Link Hostel"** button: Opens a dialog showing all Hostels with a dropdown to select and assign `created_by` to this partner's user ID
+- **"View Properties"** in details dialog: Show linked Reading Rooms and Hostels for each partner
+
+**New service methods in `src/api/adminUsersService.ts`:**
+- `getPartnerProperties(userId)`: Fetch cabins and hostels where `created_by = userId`
+- `linkCabinToPartner(cabinId, partnerId)`: Update `cabins.created_by` to partner ID
+- `linkHostelToPartner(hostelId, partnerId)`: Update `hostels.created_by` to partner ID
+- `unlinkProperty(type, propertyId)`: Set `created_by` to null
+
+---
+
+### 4. Partner Login Info in Details Dialog
+
+**Changes to `src/pages/AdminStudents.tsx` (Details Dialog):**
+
+When viewing a Partner's details:
+- Show their email (login credential) prominently
+- Show linked Reading Rooms and Hostels with names
+- Show a "Reset Password" button (already exists)
+- Show partner login URL: `/partner/login`
+- Add a "Copy Login Info" button that copies email + partner login URL to clipboard
+
+---
+
+### 5. Update Edge Function to Support Multiple Roles
+
+Instead of creating separate edge functions per role, extend `create-partner` to be a general `create-user` function:
+
+**New file: `supabase/functions/admin-create-user/index.ts`**
+- Accept: `name`, `email`, `phone`, `password`, `role` (student/vendor/admin/vendor_employee)
+- Validate caller is admin
+- Create auth user with provided password and email_confirm: true
+- Insert appropriate role into `user_roles`
+- Update profile with phone/name
+- Return userId
+
+This replaces the separate `create-student` call for the form (though the existing function stays for backward compatibility with partner-side student creation).
+
+---
 
 ### Technical Details
 
-- The coupon service uses the legacy Express/MongoDB backend via axios -- no changes needed to the service
-- Tab filtering is done client-side: filter `coupons` array by `applicableFor` before slicing for pagination
-- When tab is "all", show all coupons; when "cabin", show coupons where applicableFor includes "cabin"; when "hostel", show where applicableFor includes "hostel"
-- Scope filter (Global/Partner/Referral) and Type filter (Percentage/Fixed) remain as inline dropdowns in the filter row
-- The "+ Create Coupon" button stays in the header row
-- Partner users (role=vendor) only see their own coupons (existing backend behavior)
-- Admin users see all coupons with vendor column visible
+**Files to create:**
+| File | Purpose |
+|------|---------|
+| `supabase/functions/admin-create-user/index.ts` | Edge function to create any user type with role |
 
-### Files to Edit
+**Files to edit:**
 | File | Change |
 |------|--------|
-| `src/components/admin/CouponManagement.tsx` | Complete rewrite with tabs, compact table, S.No., pagination |
-| `tsconfig.json` | Add skipLibCheck to fix gl-matrix type errors |
+| `src/components/admin/CreateStudentForm.tsx` | Add role selector, partner/admin/employee creation, compact UI |
+| `src/pages/AdminStudents.tsx` | Add Link Room/Hostel buttons in Partners tab, property display in details |
+| `src/api/adminUsersService.ts` | Add partner property linking/fetching methods, createUser method |
+| `supabase/config.toml` | Add `admin-create-user` function config with `verify_jwt = false` |
 
+**Database changes:** None required -- existing tables (`profiles`, `user_roles`, `cabins.created_by`, `hostels.created_by`) already support this flow.
+
+**Security:** The edge function validates the caller has `admin` role before creating users. Property linking uses existing RLS policies (admin has ALL access on cabins and hostels).
