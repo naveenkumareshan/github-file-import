@@ -5,13 +5,21 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
-import { User, UserPlus } from 'lucide-react';
-import { authService } from '@/api/authService';
+import { UserPlus, Copy, Check } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface CreateStudentFormProps {
   onStudentCreated?: () => void;
 }
+
+const ROLE_OPTIONS = [
+  { value: 'student', label: 'Student' },
+  { value: 'vendor', label: 'Partner' },
+  { value: 'admin', label: 'Admin' },
+  { value: 'vendor_employee', label: 'Employee' },
+];
 
 const CreateStudentForm: React.FC<CreateStudentFormProps> = ({ onStudentCreated }) => {
   const [formData, setFormData] = useState({
@@ -19,174 +27,202 @@ const CreateStudentForm: React.FC<CreateStudentFormProps> = ({ onStudentCreated 
     email: '',
     phone: '',
     password: '',
-    gender: ''
+    gender: '',
+    role: 'student',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [credentialsDialog, setCredentialsDialog] = useState<{ email: string; password: string; role: string } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleGenderChange = (gender: string) => {
-    setFormData({
-      ...formData,
-      gender
-    });
-  };
+  const needsPassword = formData.role !== 'student';
+  const showGender = formData.role === 'student';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
-      // Validate form data
-      if (!formData.name || !formData.email || !formData.phone || !formData.password || !formData.gender) {
-        toast({
-          title: "Error",
-          description: "Please fill in all required fields.",
-          variant: "destructive"
-        });
+      if (!formData.name || !formData.email || !formData.phone) {
+        toast({ title: "Error", description: "Please fill in all required fields.", variant: "destructive" });
         return;
       }
 
-      if (formData.password.length < 6) {
-        toast({
-          title: "Error",
-          description: "Password must be at least 6 characters long.",
-          variant: "destructive"
-        });
+      if (needsPassword && (!formData.password || formData.password.length < 6)) {
+        toast({ title: "Error", description: "Password must be at least 6 characters.", variant: "destructive" });
         return;
       }
 
-      // Create the student
-      const response = await authService.CreateUserregister({
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        password: formData.password,
-        gender: formData.gender,
-        role: 'student'
-      });
-
-      if (response.success) {
-        toast({
-          title: "User Created",
-          description: `User ${formData.name} has been created successfully.`,
+      if (formData.role === 'student') {
+        // Use existing create-student edge function
+        const { data, error } = await supabase.functions.invoke('create-student', {
+          body: { name: formData.name, email: formData.email, phone: formData.phone },
         });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
 
-        // Reset form
-        setFormData({
-          name: '',
-          email: '',
-          phone: '',
-          password: '',
-          gender: ''
-        });
-
-        // Notify parent component
-        if (onStudentCreated) {
-          onStudentCreated();
-        }
+        toast({ title: "Student Created", description: `Student ${formData.name} has been created.` });
       } else {
-        throw new Error(response.message || 'Failed to create User');
+        // Use new admin-create-user edge function
+        const { data, error } = await supabase.functions.invoke('admin-create-user', {
+          body: {
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            password: formData.password,
+            role: formData.role,
+          },
+        });
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+
+        const roleLabel = ROLE_OPTIONS.find(r => r.value === formData.role)?.label || formData.role;
+        toast({ title: `${roleLabel} Created`, description: `${formData.name} has been created successfully.` });
+
+        // Show credentials dialog for non-student roles
+        setCredentialsDialog({
+          email: formData.email,
+          password: formData.password,
+          role: formData.role,
+        });
       }
-    } catch (error) {
+
+      // Reset form
+      setFormData({ name: '', email: '', phone: '', password: '', gender: '', role: formData.role });
+      onStudentCreated?.();
+    } catch (error: any) {
       toast({
         title: "Creation Failed",
-        description: error?.response?.data?.message || "Failed to create User. This email may already be registered.",
-        variant: "destructive"
+        description: error?.message || "Failed to create user. This email may already be registered.",
+        variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const getLoginUrl = (role: string) => {
+    if (role === 'vendor' || role === 'vendor_employee') return '/partner/login';
+    if (role === 'admin') return '/admin/login';
+    return '/student/login';
+  };
+
+  const handleCopyCredentials = () => {
+    if (!credentialsDialog) return;
+    const loginUrl = `${window.location.origin}${getLoginUrl(credentialsDialog.role)}`;
+    const text = `Login URL: ${loginUrl}\nEmail: ${credentialsDialog.email}\nPassword: ${credentialsDialog.password}`;
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    toast({ title: "Copied!", description: "Login credentials copied to clipboard." });
+  };
+
+  const roleLabel = ROLE_OPTIONS.find(r => r.value === formData.role)?.label || 'User';
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <UserPlus className="h-5 w-5" />
-          Create New Create
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4 ">
-          <div className="space-y-2 ">
-            <Label htmlFor="name">Full Name *</Label>
-            <Input
-              id="name"
-              name="name"
-              placeholder="John Doe"
-              value={formData.name}
-              onChange={handleChange}
-              required
-            />
-          </div>
+    <>
+      <Card>
+        <CardHeader className="py-3 px-4">
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <UserPlus className="h-4 w-4" />
+            Create New User
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4">
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Role *</Label>
+              <Select value={formData.role} onValueChange={(v) => setFormData({ ...formData, role: v, password: '', gender: '' })}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ROLE_OPTIONS.map(r => (
+                    <SelectItem key={r.value} value={r.value} className="text-xs">{r.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="email">Email *</Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="john@example.com"
-              value={formData.email}
-              onChange={handleChange}
-              required
-            />
-          </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Full Name *</Label>
+              <Input name="name" placeholder="John Doe" value={formData.name} onChange={handleChange} required className="h-8 text-xs" />
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="phone">Phone Number *</Label>
-            <Input
-              id="phone"
-              name="phone"
-              placeholder="9876543210"
-              value={formData.phone}
-              onChange={handleChange}
-              required
-            />
-          </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Email *</Label>
+              <Input name="email" type="email" placeholder="john@example.com" value={formData.email} onChange={handleChange} required className="h-8 text-xs" />
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password">Password *</Label>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              placeholder="Minimum 6 characters"
-              value={formData.password}
-              onChange={handleChange}
-              required
-            />
-          </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Phone *</Label>
+              <Input name="phone" placeholder="9876543210" value={formData.phone} onChange={handleChange} required className="h-8 text-xs" />
+            </div>
 
-          <div className="space-y-2">
-            <Label>Gender *</Label>
-            <Select value={formData.gender} onValueChange={handleGenderChange}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select gender" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="male">Male</SelectItem>
-                <SelectItem value="female">Female</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+            {needsPassword && (
+              <div className="space-y-1">
+                <Label className="text-xs">Password *</Label>
+                <Input name="password" type="password" placeholder="Min 6 characters" value={formData.password} onChange={handleChange} required className="h-8 text-xs" />
+              </div>
+            )}
 
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? "Creating..." : "Create Create"}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+            {showGender && (
+              <div className="space-y-1">
+                <Label className="text-xs">Gender</Label>
+                <Select value={formData.gender} onValueChange={(v) => setFormData({ ...formData, gender: v })}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Select gender" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male" className="text-xs">Male</SelectItem>
+                    <SelectItem value="female" className="text-xs">Female</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <Button type="submit" className="w-full h-8 text-xs" disabled={isSubmitting}>
+              {isSubmitting ? "Creating..." : `Create ${roleLabel}`}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Credentials Dialog */}
+      <Dialog open={!!credentialsDialog} onOpenChange={() => { setCredentialsDialog(null); setCopied(false); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-sm">User Created Successfully</DialogTitle>
+          </DialogHeader>
+          {credentialsDialog && (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground">Share these login credentials with the user:</p>
+              <div className="border rounded-lg p-3 bg-muted/50 space-y-2 text-xs">
+                <div>
+                  <span className="text-muted-foreground">Login URL:</span>
+                  <p className="font-mono text-[11px] break-all">{window.location.origin}{getLoginUrl(credentialsDialog.role)}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Email:</span>
+                  <p className="font-medium">{credentialsDialog.email}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Password:</span>
+                  <p className="font-medium font-mono">{credentialsDialog.password}</p>
+                </div>
+              </div>
+              <Button variant="outline" size="sm" className="w-full h-8 text-xs gap-1.5" onClick={handleCopyCredentials}>
+                {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                {copied ? "Copied!" : "Copy Login Info"}
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 

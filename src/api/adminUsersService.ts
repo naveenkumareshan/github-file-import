@@ -43,7 +43,6 @@ export const adminUsersService = {
       const from = (page - 1) * limit;
       const role = filters?.role;
 
-      // Step 1: If role filter is set, get user IDs from user_roles first
       let roleUserIds: string[] | null = null;
       if (role) {
         const { data: roleRows, error: roleError } = await supabase
@@ -53,33 +52,20 @@ export const adminUsersService = {
         if (roleError) throw roleError;
         roleUserIds = (roleRows || []).map(r => r.user_id);
         if (roleUserIds.length === 0) {
-          return {
-            success: true,
-            data: [],
-            count: 0,
-            totalCount: 0,
-            pagination: { totalPages: 1, currentPage: page },
-          };
+          return { success: true, data: [], count: 0, totalCount: 0, pagination: { totalPages: 1, currentPage: page } };
         }
       }
 
-      // Step 2: Query profiles filtered by those user IDs
       let query = supabase.from('profiles').select('*', { count: 'exact' });
-
-      if (roleUserIds) {
-        query = query.in('id', roleUserIds);
-      }
-
+      if (roleUserIds) query = query.in('id', roleUserIds);
       if (filters?.search) {
         query = query.or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,phone.ilike.%${filters.search}%`);
       }
-
       query = query.range(from, from + limit - 1).order('created_at', { ascending: false });
 
       const { data: profiles, error, count } = await query;
       if (error) throw error;
 
-      // Step 3: Get roles for returned profiles (for display)
       const userIds = (profiles || []).map(p => p.id);
       const { data: roles } = await supabase
         .from('user_roles')
@@ -115,10 +101,7 @@ export const adminUsersService = {
         data: mappedProfiles,
         count: count || 0,
         totalCount: count || 0,
-        pagination: {
-          totalPages: Math.ceil((count || 0) / limit),
-          currentPage: page,
-        },
+        pagination: { totalPages: Math.ceil((count || 0) / limit), currentPage: page },
       };
     } catch (e) {
       console.error('Error fetching users:', e);
@@ -156,6 +139,77 @@ export const adminUsersService = {
       return { success: false, data: null };
     }
   },
+
+  // ── Partner Property Linking ──
+
+  getPartnerProperties: async (userId: string) => {
+    try {
+      const [cabinsRes, hostelsRes] = await Promise.all([
+        supabase.from('cabins').select('id, name, city, is_active').eq('created_by', userId),
+        supabase.from('hostels').select('id, name, location, is_active').eq('created_by', userId),
+      ]);
+      return {
+        success: true,
+        cabins: cabinsRes.data || [],
+        hostels: hostelsRes.data || [],
+      };
+    } catch (e) {
+      return { success: false, cabins: [], hostels: [] };
+    }
+  },
+
+  getAllCabins: async () => {
+    try {
+      const { data, error } = await supabase.from('cabins').select('id, name, city, created_by, is_active').order('name');
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (e) {
+      return { success: false, data: [] };
+    }
+  },
+
+  getAllHostels: async () => {
+    try {
+      const { data, error } = await supabase.from('hostels').select('id, name, location, created_by, is_active').order('name');
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (e) {
+      return { success: false, data: [] };
+    }
+  },
+
+  linkCabinToPartner: async (cabinId: string, partnerId: string) => {
+    try {
+      const { error } = await supabase.from('cabins').update({ created_by: partnerId }).eq('id', cabinId);
+      if (error) throw error;
+      return { success: true };
+    } catch (e) {
+      return { success: false };
+    }
+  },
+
+  linkHostelToPartner: async (hostelId: string, partnerId: string) => {
+    try {
+      const { error } = await supabase.from('hostels').update({ created_by: partnerId }).eq('id', hostelId);
+      if (error) throw error;
+      return { success: true };
+    } catch (e) {
+      return { success: false };
+    }
+  },
+
+  unlinkProperty: async (type: 'cabin' | 'hostel', propertyId: string) => {
+    try {
+      const table = type === 'cabin' ? 'cabins' : 'hostels';
+      const { error } = await supabase.from(table).update({ created_by: null }).eq('id', propertyId);
+      if (error) throw error;
+      return { success: true };
+    } catch (e) {
+      return { success: false };
+    }
+  },
+
+  // ── Bookings ──
 
   getBookingsByUserId: async (filters?: BookingFilters) => {
     try {
