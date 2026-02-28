@@ -168,6 +168,17 @@ const VendorSeats: React.FC = () => {
 
   useEffect(() => { fetchSeats(); }, [fetchSeats]);
 
+  // Sync selectedSeat with refreshed seats array after price/data changes
+  useEffect(() => {
+    if (selectedSeat && seats.length > 0) {
+      const updated = seats.find(s => s._id === selectedSeat._id);
+      if (updated && updated.price !== selectedSeat.price) {
+        setSelectedSeat(updated);
+        setBookingPrice(String(updated.price));
+      }
+    }
+  }, [seats]);
+
   // Filtered seats
   const filteredSeats = useMemo(() => {
     let result = seats;
