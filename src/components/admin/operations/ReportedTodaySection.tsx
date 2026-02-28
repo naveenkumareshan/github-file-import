@@ -6,12 +6,15 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { format, parseISO, startOfDay } from 'date-fns';
-import { CheckCircle2, ChevronDown, ChevronRight } from 'lucide-react';
+import { CheckCircle2, ChevronDown, ChevronRight, Eye } from 'lucide-react';
+import CheckInViewDetailsDialog from './CheckInViewDetailsDialog';
 
 type Module = 'reading_room' | 'hostel';
 
 const ReportedTodaySection = ({ module }: { module: Module }) => {
   const [open, setOpen] = useState(true);
+  const [viewBooking, setViewBooking] = useState<any>(null);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const todayStart = startOfDay(new Date()).toISOString();
 
   const { data: reportedRR = [] } = useQuery({
@@ -70,6 +73,7 @@ const ReportedTodaySection = ({ module }: { module: Module }) => {
                 <th className="text-left py-2 px-3 font-medium">Payment</th>
                 <th className="text-left py-2 px-3 font-medium">Reported At</th>
                 <th className="text-left py-2 px-3 font-medium">Notes</th>
+                <th className="text-left py-2 px-3 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -100,12 +104,18 @@ const ReportedTodaySection = ({ module }: { module: Module }) => {
                   <td className="py-1.5 px-3 max-w-[150px] truncate">
                     {b.check_in_notes || '—'}
                   </td>
+                  <td className="py-1.5 px-3">
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setViewBooking(b); setViewDialogOpen(true); }}>
+                      <Eye className="h-3.5 w-3.5" />
+                    </Button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </CollapsibleContent>
+      <CheckInViewDetailsDialog open={viewDialogOpen} onOpenChange={setViewDialogOpen} booking={viewBooking} module={module} />
     </Collapsible>
   );
 };
