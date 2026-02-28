@@ -1,40 +1,34 @@
 
 
-## Rename "Refund Management" to "Refund Pendings" and Filter by Expired Dates
+## Remove Redundant Headers from Deposit/Refund Tab Content
 
 ### Problem
-1. The tab label "Refund Management" is confusing -- it should be "Refund Pendings"
-2. The "Refund Pendings" tab currently shows ALL deposits that haven't been refunded, but it should only show records where the seat/bed validity date has expired (end_date < today)
-3. Once refunded, records should only appear in the "Refunded" tab
+Both the Reading Room and Hostel deposit pages have a page-level header ("Deposits & Refunds" with description) plus tab labels ("Deposits", "Refund Pendings", "Refunded"). But inside each tab's content, there is ANOTHER header row with icon + title + badge + buttons, plus a summary stats bar. This creates visual clutter and wastes vertical space.
+
+### Solution
+Remove the duplicate inner header (icon + title + badge) and the summary stats bar from inside each tab content component. Keep only the filters, table, and pagination. Move the Refresh and Export buttons inline with the filters row.
 
 ### Changes
 
-**1. Rename tabs in both places:**
+**1. `src/components/admin/DepositManagement.tsx` (Reading Room Deposits)**
+- Remove lines 87-101: The inner header row (icon + "Key Deposits" + badge + Export/Refresh buttons)
+- Remove lines 103-117: The summary stats bar (Total Deposits / Pending / Refunded)
+- Move Export and Refresh buttons to the filters row (alongside search + status + date filter)
 
-- `src/pages/admin/DepositAndRestrictionManagement.tsx` (Reading Room) -- line 37: "Refund Management" becomes "Refund Pendings"
-- `src/pages/admin/HostelDeposits.tsx` (Hostel) -- line 46: "Refund Management" becomes "Refund Pendings"
+**2. `src/components/admin/RefundManagement.tsx` (Reading Room Refund Pendings / Refunded)**
+- Remove lines 173-185: The inner header row (icon + title + badge + Export/Refresh buttons)
+- Remove lines 187-196: The summary stats bar (Total / Records)
+- Move Export and Refresh buttons to the filters row
 
-**2. Update header title in RefundManagement.tsx** (Reading Room):
-- Line 178: Change `"Refund Management"` to show "Refund Pendings" when status is pending, "Refunded" when status is refunded
+**3. `src/pages/admin/HostelDeposits.tsx` -- HostelDepositList component**
+- Remove lines 111-120: The inner header row (icon + "Deposits" + badge + Refresh)
+- Remove lines 122-132: The summary stats bar (Total Deposits / Records)
+- Move Refresh button to the filters row
 
-**3. Update header title in HostelDeposits.tsx** (Hostel):
-- Line 316: Change `"Refund Management"` to "Refund Pendings" when status is pending
+**4. `src/pages/admin/HostelDeposits.tsx` -- HostelRefundManagement component**
+- Remove lines 314-324: The inner header row (icon + title + badge + Refresh)
+- Remove lines 326-336: The summary stats bar (Total Deposits / Records)
+- Move Refresh button to the filters row
 
-**4. Filter hostel "Refund Pendings" to only show expired bookings** (`src/pages/admin/HostelDeposits.tsx`):
-- In `HostelRefundManagement.fetchData()` (line 239), add an additional filter for pending: only include bookings where `end_date < today` AND not yet refunded
-- Change: `(allBookings || []).filter(b => !refundedBookingIds.has(b.id))` to also check `new Date(b.end_date) < new Date()` (today)
-
-**5. Reading Room RefundManagement** (`src/components/admin/RefundManagement.tsx`):
-- The backend API (`depositRefundService.getRefunds`) handles filtering server-side. The `status` prop is already passed as a filter. The backend controller should already filter by expired `endDate` for pending refunds. If not, this is a backend issue -- but since the reading room uses an external Express API, the filtering logic lives in the backend controller. The frontend passes `status: 'pending'` which the backend should use to return only expired+unrefunded records.
-- For the frontend title fix, update line 178 to use the `status` prop for the title.
-
-### Technical Details
-
-| File | Line(s) | Change |
-|------|---------|--------|
-| `src/pages/admin/DepositAndRestrictionManagement.tsx` | 37 | "Refund Management" -> "Refund Pendings" |
-| `src/pages/admin/HostelDeposits.tsx` | 46 | "Refund Management" -> "Refund Pendings" |
-| `src/pages/admin/HostelDeposits.tsx` | 316 | Title: "Refund Management" -> "Refund Pendings" |
-| `src/pages/admin/HostelDeposits.tsx` | 240 | Add `&& new Date(b.end_date) < new Date()` filter for pending tab |
-| `src/components/admin/RefundManagement.tsx` | 178 | Title: "Refund Management" -> dynamic based on status prop ("Refund Pendings" or "Refunded") |
-
+### Result
+Each tab content will start directly with a compact filter row containing: Search input, any dropdowns, date filters, and action buttons (Export/Refresh) -- all on one line. Then immediately the table. This matches a clean, minimal layout without redundant headings.
