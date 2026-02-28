@@ -10,8 +10,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Users, Edit, KeyRound, Eye } from "lucide-react";
+import { Search, Users, Edit, KeyRound, Eye, Link2, Building2, Copy, Check, Unlink } from "lucide-react";
 import { adminUsersService } from "../api/adminUsersService";
 import { toast } from "@/hooks/use-toast";
 import ErrorBoundary from "../components/ErrorBoundary";
@@ -65,6 +66,21 @@ const AdminStudents = () => {
   const [loadingBookings, setLoadingBookings] = useState(false);
   const { user } = useAuth();
 
+  // Property linking state
+  const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
+  const [linkType, setLinkType] = useState<'cabin' | 'hostel'>('cabin');
+  const [linkPartnerId, setLinkPartnerId] = useState('');
+  const [linkPartnerName, setLinkPartnerName] = useState('');
+  const [availableProperties, setAvailableProperties] = useState<any[]>([]);
+  const [selectedPropertyId, setSelectedPropertyId] = useState('');
+  const [loadingProperties, setLoadingProperties] = useState(false);
+  const [linkingInProgress, setLinkingInProgress] = useState(false);
+
+  // Partner properties in details
+  const [partnerProperties, setPartnerProperties] = useState<{ cabins: any[]; hostels: any[] }>({ cabins: [], hostels: [] });
+  const [loadingPartnerProps, setLoadingPartnerProps] = useState(false);
+  const [copiedLogin, setCopiedLogin] = useState(false);
+
   useEffect(() => {
     fetchStudents();
   }, [currentPage, searchQuery, pageSize, includeInactive, role]);
@@ -104,6 +120,20 @@ const AdminStudents = () => {
     }
   };
 
+  const fetchPartnerProperties = async (userId: string) => {
+    try {
+      setLoadingPartnerProps(true);
+      const res = await adminUsersService.getPartnerProperties(userId);
+      if (res.success) {
+        setPartnerProperties({ cabins: res.cabins, hostels: res.hostels });
+      }
+    } catch {
+      // silent
+    } finally {
+      setLoadingPartnerProps(false);
+    }
+  };
+
   const handleTabChange = (val: string) => {
     setRole(val);
     setCurrentPage(1);
@@ -114,9 +144,77 @@ const AdminStudents = () => {
     setSelectedStudent(s);
     setIsDetailsOpen(true);
     fetchStudentBookings(s._id);
+    if (s.role === 'vendor') {
+      fetchPartnerProperties(s._id);
+    } else {
+      setPartnerProperties({ cabins: [], hostels: [] });
+    }
+  };
+
+  const handleOpenLinkDialog = async (partner: Student, type: 'cabin' | 'hostel') => {
+    setLinkType(type);
+    setLinkPartnerId(partner._id);
+    setLinkPartnerName(partner.name);
+    setSelectedPropertyId('');
+    setIsLinkDialogOpen(true);
+    setLoadingProperties(true);
+
+    try {
+      const res = type === 'cabin'
+        ? await adminUsersService.getAllCabins()
+        : await adminUsersService.getAllHostels();
+      setAvailableProperties(res.data || []);
+    } catch {
+      setAvailableProperties([]);
+    } finally {
+      setLoadingProperties(false);
+    }
+  };
+
+  const handleLinkProperty = async () => {
+    if (!selectedPropertyId || !linkPartnerId) return;
+    setLinkingInProgress(true);
+    try {
+      const res = linkType === 'cabin'
+        ? await adminUsersService.linkCabinToPartner(selectedPropertyId, linkPartnerId)
+        : await adminUsersService.linkHostelToPartner(selectedPropertyId, linkPartnerId);
+
+      if (res.success) {
+        toast({ title: "Linked!", description: `${linkType === 'cabin' ? 'Reading Room' : 'Hostel'} linked to ${linkPartnerName}.` });
+        setIsLinkDialogOpen(false);
+      } else {
+        toast({ title: "Error", description: "Failed to link property.", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to link property.", variant: "destructive" });
+    } finally {
+      setLinkingInProgress(false);
+    }
+  };
+
+  const handleUnlinkProperty = async (type: 'cabin' | 'hostel', propertyId: string) => {
+    try {
+      const res = await adminUsersService.unlinkProperty(type, propertyId);
+      if (res.success) {
+        toast({ title: "Unlinked", description: "Property unlinked from partner." });
+        if (selectedStudent) fetchPartnerProperties(selectedStudent._id);
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to unlink.", variant: "destructive" });
+    }
+  };
+
+  const handleCopyLoginInfo = (email: string) => {
+    const loginUrl = `${window.location.origin}/partner/login`;
+    const text = `Login URL: ${loginUrl}\nEmail: ${email}`;
+    navigator.clipboard.writeText(text);
+    setCopiedLogin(true);
+    setTimeout(() => setCopiedLogin(false), 2000);
+    toast({ title: "Copied!", description: "Partner login info copied." });
   };
 
   const currentTabLabel = ROLE_TABS.find(t => t.value === role)?.label || "Users";
+  const isPartnerTab = role === 'vendor';
 
   return (
     <ErrorBoundary>
@@ -217,7 +315,7 @@ const AdminStudents = () => {
                         {s.joinedAt ? new Date(s.joinedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
                       </td>
                       <td className="py-1.5 px-3 text-right">
-                        <div className="flex items-center justify-end gap-1">
+                        <div className="flex items-center justify-end gap-1 flex-wrap">
                           <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 gap-1" onClick={() => handleViewDetails(s)}>
                             <Eye className="h-3 w-3" /> View
                           </Button>
@@ -225,6 +323,16 @@ const AdminStudents = () => {
                             <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 gap-1" onClick={() => { setSelectedStudent(s); setIsEditOpen(true); }}>
                               <Edit className="h-3 w-3" /> Edit
                             </Button>
+                          )}
+                          {isPartnerTab && user.role === "admin" && (
+                            <>
+                              <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 gap-1" onClick={() => handleOpenLinkDialog(s, 'cabin')}>
+                                <Link2 className="h-3 w-3" /> Room
+                              </Button>
+                              <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 gap-1" onClick={() => handleOpenLinkDialog(s, 'hostel')}>
+                                <Building2 className="h-3 w-3" /> Hostel
+                              </Button>
+                            </>
                           )}
                           {user.role === "admin" && (
                             <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 gap-1" onClick={() => { setSelectedStudent(s); setIsResetPasswordOpen(true); }}>
@@ -297,6 +405,55 @@ const AdminStudents = () => {
                   </div>
                 </div>
 
+                {/* Partner Login Info & Properties */}
+                {selectedStudent.role === 'vendor' && (
+                  <div className="space-y-3">
+                    <div className="p-3 border rounded-lg space-y-2">
+                      <h4 className="font-medium text-xs mb-1.5">Partner Login Info</h4>
+                      <p><span className="text-muted-foreground">Login URL:</span> <span className="font-mono text-[10px]">{window.location.origin}/partner/login</span></p>
+                      <p><span className="text-muted-foreground">Email:</span> {selectedStudent.email}</p>
+                      <Button variant="outline" size="sm" className="h-6 text-[10px] gap-1" onClick={() => handleCopyLoginInfo(selectedStudent.email)}>
+                        {copiedLogin ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                        {copiedLogin ? "Copied!" : "Copy Login Info"}
+                      </Button>
+                    </div>
+
+                    <div className="p-3 border rounded-lg space-y-2">
+                      <h4 className="font-medium text-xs mb-1.5">Linked Properties</h4>
+                      {loadingPartnerProps ? (
+                        <div className="flex justify-center py-2">
+                          <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
+                        </div>
+                      ) : (
+                        <>
+                          {partnerProperties.cabins.length === 0 && partnerProperties.hostels.length === 0 ? (
+                            <p className="text-muted-foreground text-[11px]">No properties linked yet.</p>
+                          ) : (
+                            <div className="space-y-1">
+                              {partnerProperties.cabins.map((c: any) => (
+                                <div key={c.id} className="flex items-center justify-between py-1 px-2 bg-muted/30 rounded text-[11px]">
+                                  <span><Badge variant="secondary" className="text-[9px] mr-1.5">Room</Badge>{c.name} {c.city ? `(${c.city})` : ''}</span>
+                                  <Button variant="ghost" size="sm" className="h-5 text-[9px] px-1.5 text-destructive hover:text-destructive" onClick={() => handleUnlinkProperty('cabin', c.id)}>
+                                    <Unlink className="h-2.5 w-2.5" />
+                                  </Button>
+                                </div>
+                              ))}
+                              {partnerProperties.hostels.map((h: any) => (
+                                <div key={h.id} className="flex items-center justify-between py-1 px-2 bg-muted/30 rounded text-[11px]">
+                                  <span><Badge variant="secondary" className="text-[9px] mr-1.5">Hostel</Badge>{h.name} {h.location ? `(${h.location})` : ''}</span>
+                                  <Button variant="ghost" size="sm" className="h-5 text-[9px] px-1.5 text-destructive hover:text-destructive" onClick={() => handleUnlinkProperty('hostel', h.id)}>
+                                    <Unlink className="h-2.5 w-2.5" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Booking History */}
                 <div>
                   <h4 className="font-medium text-xs mb-2">Booking History</h4>
@@ -345,6 +502,51 @@ const AdminStudents = () => {
                 </div>
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Link Property Dialog */}
+        <Dialog open={isLinkDialogOpen} onOpenChange={setIsLinkDialogOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="text-sm">
+                Link {linkType === 'cabin' ? 'Reading Room' : 'Hostel'} to {linkPartnerName}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              {loadingProperties ? (
+                <div className="flex justify-center py-4">
+                  <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full" />
+                </div>
+              ) : availableProperties.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-4">No {linkType === 'cabin' ? 'reading rooms' : 'hostels'} found.</p>
+              ) : (
+                <>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium">Select {linkType === 'cabin' ? 'Reading Room' : 'Hostel'}</label>
+                    <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder={`Choose a ${linkType === 'cabin' ? 'room' : 'hostel'}...`} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableProperties.map((p: any) => (
+                          <SelectItem key={p.id} value={p.id} className="text-xs">
+                            {p.name} {p.created_by ? `(linked)` : ''} {p.city ? `- ${p.city}` : p.location ? `- ${p.location}` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button
+                    className="w-full h-8 text-xs"
+                    disabled={!selectedPropertyId || linkingInProgress}
+                    onClick={handleLinkProperty}
+                  >
+                    {linkingInProgress ? "Linking..." : "Link Property"}
+                  </Button>
+                </>
+              )}
+            </div>
           </DialogContent>
         </Dialog>
 
