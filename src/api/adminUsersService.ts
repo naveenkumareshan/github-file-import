@@ -33,6 +33,12 @@ interface UserUpdateData {
   courseStudying?: string;
   collegeStudied?: string;
   parentMobileNumber?: string;
+  alternatePhone?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  dateOfBirth?: string;
+  coursePreparingFor?: string;
 }
 
 export const adminUsersService = {
@@ -94,6 +100,13 @@ export const adminUsersService = {
         address: p.address || '',
         bio: p.bio || '',
         profilePicture: p.profile_picture || '',
+        alternatePhone: p.alternate_phone || '',
+        city: p.city || '',
+        state: p.state || '',
+        pincode: p.pincode || '',
+        dateOfBirth: p.date_of_birth || '',
+        coursePreparingFor: p.course_preparing_for || '',
+        serialNumber: p.serial_number || '',
       }));
 
       return {
@@ -131,6 +144,12 @@ export const adminUsersService = {
       if (userData.courseStudying !== undefined) updateData.course_studying = userData.courseStudying;
       if (userData.collegeStudied !== undefined) updateData.college_studied = userData.collegeStudied;
       if (userData.parentMobileNumber !== undefined) updateData.parent_mobile_number = userData.parentMobileNumber;
+      if (userData.alternatePhone !== undefined) updateData.alternate_phone = userData.alternatePhone;
+      if (userData.city !== undefined) updateData.city = userData.city;
+      if (userData.state !== undefined) updateData.state = userData.state;
+      if (userData.pincode !== undefined) updateData.pincode = userData.pincode;
+      if (userData.dateOfBirth !== undefined) updateData.date_of_birth = userData.dateOfBirth || null;
+      if (userData.coursePreparingFor !== undefined) updateData.course_preparing_for = userData.coursePreparingFor;
 
       const { data, error } = await supabase.from('profiles').update(updateData).eq('id', userId).select().single();
       if (error) throw error;
