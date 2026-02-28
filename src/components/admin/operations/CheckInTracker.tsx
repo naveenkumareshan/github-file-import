@@ -9,8 +9,11 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { format, subDays, isEqual, parseISO } from 'date-fns';
-import { Search, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { format, subDays, parseISO } from 'date-fns';
+import { Search, AlertTriangle, CheckCircle2, Eye, Upload } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import CheckInUploadDialog from './CheckInUploadDialog';
+import ReportedTodaySection from './ReportedTodaySection';
 
 type Module = 'reading_room' | 'hostel';
 
@@ -18,23 +21,28 @@ const CheckInTracker = () => {
   const [module, setModule] = useState<Module>('reading_room');
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<any>(null);
+  const [uploadBooking, setUploadBooking] = useState<any>(null);
   const [notes, setNotes] = useState('');
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
+  const today = format(new Date(), 'yyyy-MM-dd');
   const yesterday = format(subDays(new Date(), 1), 'yyyy-MM-dd');
 
-  // Reading room bookings query
+  // Reading room bookings query - only today & yesterday
   const { data: rrBookings = [], isLoading: rrLoading } = useQuery({
-    queryKey: ['checkin-rr-bookings'],
+    queryKey: ['checkin-rr-bookings', today, yesterday],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('bookings')
         .select('*, profiles:user_id(name, phone, email), cabins:cabin_id(name), seats:seat_id(number)')
         .is('checked_in_at', null)
         .in('payment_status', ['completed', 'advance_paid'])
+        .in('start_date', [today, yesterday])
         .order('start_date', { ascending: true });
       if (error) throw error;
       return data || [];
@@ -42,15 +50,16 @@ const CheckInTracker = () => {
     enabled: module === 'reading_room',
   });
 
-  // Hostel bookings query
+  // Hostel bookings query - only today & yesterday
   const { data: hostelBookings = [], isLoading: hostelLoading } = useQuery({
-    queryKey: ['checkin-hostel-bookings'],
+    queryKey: ['checkin-hostel-bookings', today, yesterday],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('hostel_bookings')
         .select('*, profiles:user_id(name, phone, email), hostels:hostel_id(name), hostel_rooms:room_id(room_number), hostel_beds:bed_id(bed_number)')
         .is('checked_in_at', null)
         .in('payment_status', ['completed', 'advance_paid'])
+        .in('start_date', [today, yesterday])
         .order('start_date', { ascending: true });
       if (error) throw error;
       return data || [];
@@ -75,6 +84,8 @@ const CheckInTracker = () => {
       toast({ title: 'Marked as reported', description: 'Student has been checked in successfully.' });
       queryClient.invalidateQueries({ queryKey: ['checkin-rr-bookings'] });
       queryClient.invalidateQueries({ queryKey: ['checkin-hostel-bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['reported-today-rr'] });
+      queryClient.invalidateQueries({ queryKey: ['reported-today-hostel'] });
       setDialogOpen(false);
       setNotes('');
       setSelectedBooking(null);
@@ -95,6 +106,15 @@ const CheckInTracker = () => {
     markReportedMutation.mutate({ id: selectedBooking.id, type: module });
   };
 
+  const handleUploadDocs = (booking: any) => {
+    setUploadBooking(booking);
+    setUploadDialogOpen(true);
+  };
+
+  const handleViewDetails = (bookingId: string) => {
+    navigate(`/admin/bookings/${bookingId}`);
+  };
+
   const isLoading = module === 'reading_room' ? rrLoading : hostelLoading;
   const bookings = module === 'reading_room' ? rrBookings : hostelBookings;
 
@@ -107,9 +127,7 @@ const CheckInTracker = () => {
     return name.includes(q) || phone.includes(q) || email.includes(q);
   });
 
-  const isNoShow = (startDate: string) => {
-    return startDate === yesterday;
-  };
+  const isNoShow = (startDate: string) => startDate === yesterday;
 
   return (
     <div className="space-y-4">
@@ -144,7 +162,7 @@ const CheckInTracker = () => {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Pending Table */}
       {isLoading ? (
         <div className="text-center py-8 text-sm text-muted-foreground">Loading...</div>
       ) : filtered.length === 0 ? (
@@ -163,7 +181,7 @@ const CheckInTracker = () => {
                 </th>
                 <th className="text-left py-2 px-3 font-medium">Start Date</th>
                 <th className="text-left py-2 px-3 font-medium">Payment</th>
-                <th className="text-right py-2 px-3 font-medium">Action</th>
+                <th className="text-right py-2 px-3 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -198,9 +216,17 @@ const CheckInTracker = () => {
                       </Badge>
                     </td>
                     <td className="py-1.5 px-3 text-right">
-                      <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => handleMarkReported(b)}>
-                        Mark Reported
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0" title="View Details" onClick={() => handleViewDetails(b.id)}>
+                          <Eye className="h-3 w-3" />
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0" title="Upload Documents" onClick={() => handleUploadDocs(b)}>
+                          <Upload className="h-3 w-3" />
+                        </Button>
+                        <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => handleMarkReported(b)}>
+                          Mark Reported
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -209,6 +235,9 @@ const CheckInTracker = () => {
           </table>
         </div>
       )}
+
+      {/* Reported Today Section */}
+      <ReportedTodaySection module={module} />
 
       {/* Mark Reported Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -240,6 +269,20 @@ const CheckInTracker = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Upload Documents Dialog */}
+      {uploadBooking && (
+        <CheckInUploadDialog
+          open={uploadDialogOpen}
+          onOpenChange={setUploadDialogOpen}
+          booking={uploadBooking}
+          module={module}
+          onUploaded={() => {
+            queryClient.invalidateQueries({ queryKey: ['checkin-rr-bookings'] });
+            queryClient.invalidateQueries({ queryKey: ['checkin-hostel-bookings'] });
+          }}
+        />
+      )}
     </div>
   );
 };
