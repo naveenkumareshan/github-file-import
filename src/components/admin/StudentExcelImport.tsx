@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/table";
 import { useToast } from '@/hooks/use-toast';
 import { Upload, Download, FileSpreadsheet, User, Bed, CreditCard, AlertCircle, CheckCircle } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { adminCabinsService } from '@/api/adminCabinsService';
 import { bulkBookingService } from '@/api/bulkBookingService';
 
@@ -67,21 +67,22 @@ const StudentExcelImport = () => {
   const selectedCabinData = cabins.find(c => c._id === selectedCabin);
   const floors = selectedCabinData?.floors || [];
 
-  const downloadTemplate = () => {
-    const sampleData = [
-      { name: 'John Doe', email: 'john@example.com', phone: '9876543210', amount: 3000, key_deposite: 500, startDate: '01-03-2026', endDate: '01-04-2026', seat_no: 1, room_name: 'Room A', status: 'booked', receipt_no: 'RCP-001', transaction_id: 'TXN-001', pay_mode: 'Cash' },
-      { name: 'Jane Smith', email: 'jane@example.com', phone: '9123456780', amount: 3500, key_deposite: 500, startDate: '01-03-2026', endDate: '01-04-2026', seat_no: 2, room_name: 'Room A', status: 'booked', receipt_no: 'RCP-002', transaction_id: 'TXN-002', pay_mode: 'UPI' },
-    ];
+  const downloadTemplate = async () => {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Students');
     const headers = ['name', 'email', 'phone', 'amount', 'key_deposite', 'startDate', 'endDate', 'seat_no', 'room_name', 'status', 'receipt_no', 'transaction_id', 'pay_mode'];
-    const ws = XLSX.utils.json_to_sheet(sampleData, { header: headers });
-    ws['!cols'] = [
-      { wch: 20 }, { wch: 25 }, { wch: 15 }, { wch: 10 }, { wch: 14 },
-      { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 15 }, { wch: 10 },
-      { wch: 14 }, { wch: 16 }, { wch: 12 },
-    ];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Students');
-    XLSX.writeFile(wb, 'student_import_template.xlsx');
+    const widths = [20, 25, 15, 10, 14, 14, 14, 10, 15, 10, 14, 16, 12];
+    ws.columns = headers.map((h, i) => ({ header: h, key: h, width: widths[i] }));
+    ws.addRow({ name: 'John Doe', email: 'john@example.com', phone: '9876543210', amount: 3000, key_deposite: 500, startDate: '01-03-2026', endDate: '01-04-2026', seat_no: 1, room_name: 'Room A', status: 'booked', receipt_no: 'RCP-001', transaction_id: 'TXN-001', pay_mode: 'Cash' });
+    ws.addRow({ name: 'Jane Smith', email: 'jane@example.com', phone: '9123456780', amount: 3500, key_deposite: 500, startDate: '01-03-2026', endDate: '01-04-2026', seat_no: 2, room_name: 'Room A', status: 'booked', receipt_no: 'RCP-002', transaction_id: 'TXN-002', pay_mode: 'UPI' });
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'student_import_template.xlsx';
+    a.click();
+    URL.revokeObjectURL(url);
     toast({ title: 'Template Downloaded', description: 'Fill in your student data and upload the file' });
   };
 
@@ -119,10 +120,22 @@ function excelDateToJSEndOfDay(serial: number): Date {
 
     try {
       const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data, { type: 'array' });
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet);
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(data);
+      const worksheet = workbook.worksheets[0];
+      const headers: string[] = [];
+      worksheet.getRow(1).eachCell((cell, colNumber) => {
+        headers[colNumber - 1] = String(cell.value || '');
+      });
+      const jsonData: any[] = [];
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return;
+        const rowObj: any = {};
+        row.eachCell((cell, colNumber) => {
+          rowObj[headers[colNumber - 1]] = cell.value;
+        });
+        jsonData.push(rowObj);
+      });
       const studentData: StudentData[] = jsonData
       .filter((row: any) => row.name && row.name?.toString().trim()  !== '')
       .map((row: any) => ({
@@ -315,7 +328,7 @@ function excelDateToJSEndOfDay(serial: number): Date {
     }
   };
 
-  const exportResults = () => {
+  const exportResults = async () => {
     const exportData = students.map(student => ({
       name: student.name,
       email: student.email,
@@ -330,10 +343,19 @@ function excelDateToJSEndOfDay(serial: number): Date {
       error: student.error || ''
     }));
 
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Results');
-    XLSX.writeFile(wb, `booking_results_${new Date().toISOString().split('T')[0]}.xlsx`);
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Results');
+    const cols = ['name', 'email', 'phone', 'endDate', 'startDate', 'seatNumber', 'totalPrice', 'status', 'bookingId', 'transactionId', 'error'];
+    ws.columns = cols.map(c => ({ header: c, key: c, width: 20 }));
+    exportData.forEach(row => ws.addRow(row));
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `booking_results_${new Date().toISOString().split('T')[0]}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
 
     toast({
       title: "Results Exported",

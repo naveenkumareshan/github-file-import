@@ -50,6 +50,7 @@
     "cmdk": "^1.0.0",
     "date-fns": "^2.30.0",
     "embla-carousel-react": "^8.3.0",
+    "exceljs": "^4.4.0",
     "firebase": "^11.9.0",
     "input-otp": "^1.2.4",
     "lovable-tagger": "^1.1.13",
@@ -71,7 +72,6 @@
     "tailwindcss-animate": "^1.0.7",
     "uuid": "^9.0.1",
     "vaul": "^0.9.3",
-    "xlsx": "^0.18.5",
     "zod": "^3.23.8"
   },
   "devDependencies": {
