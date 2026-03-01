@@ -586,11 +586,10 @@ const HostelBedManagementPage = () => {
       {/* ═══ Configuration Panel ═══ */}
       <div className="border rounded-lg p-3">
         <Tabs value={configTab} onValueChange={setConfigTab}>
-          <TabsList className="grid w-full grid-cols-4 max-w-lg">
+          <TabsList className="grid w-full grid-cols-3 max-w-md">
             <TabsTrigger value="categories" className="text-xs"><Tag className="h-3.5 w-3.5 mr-1" />Categories</TabsTrigger>
             <TabsTrigger value="sharing" className="text-xs"><Users className="h-3.5 w-3.5 mr-1" />Sharing Types</TabsTrigger>
             <TabsTrigger value="floors" className="text-xs"><Layers className="h-3.5 w-3.5 mr-1" />Floors</TabsTrigger>
-            <TabsTrigger value="rooms" className="text-xs"><Building className="h-3.5 w-3.5 mr-1" />Rooms</TabsTrigger>
           </TabsList>
 
           {/* Categories Tab */}
@@ -657,69 +656,6 @@ const HostelBedManagementPage = () => {
             </div>
           </TabsContent>
 
-          {/* Rooms Tab */}
-          <TabsContent value="rooms" className="pt-3">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-muted-foreground">Rooms grouped by floor. Beds & pricing configured per bed.</p>
-                <Button size="sm" variant="outline" onClick={() => setAddRoomDialogOpen(true)} disabled={floors.length === 0}>
-                  <Plus className="h-3.5 w-3.5 mr-1" /> Add Room
-                </Button>
-              </div>
-              {floors.length === 0 && <p className="text-xs text-amber-600">Create floors first before adding rooms.</p>}
-              {floors.map(floor => {
-                const flrRooms = rooms.filter(r => r.floor_id === floor.id || (!r.floor_id && r.floor === floor.floor_order));
-                if (flrRooms.length === 0) return (
-                  <div key={floor.id} className="text-xs text-muted-foreground">
-                    <span className="font-medium">{floor.name}</span> — No rooms
-                  </div>
-                );
-                return (
-                  <div key={floor.id}>
-                    <span className="text-xs font-semibold">{floor.name}</span>
-                    <div className="flex flex-wrap gap-1.5 mt-1">
-                      {flrRooms.map(room => {
-                        const bedCount = Object.values(floorData).flat().find((r: any) => r.roomId === room.id)?.beds?.length || 0;
-                        const isRenaming = renameRoomId === room.id;
-                        return (
-                          <div key={room.id} className="flex items-center gap-0.5">
-                            {isRenaming ? (
-                              <div className="flex items-center gap-1">
-                                <Input
-                                  value={renameRoomValue}
-                                  onChange={e => setRenameRoomValue(e.target.value)}
-                                  className="h-7 w-24 text-xs"
-                                  autoFocus
-                                  onKeyDown={e => { if (e.key === 'Enter') handleRenameRoom(room.id); if (e.key === 'Escape') setRenameRoomId(null); }}
-                                />
-                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleRenameRoom(room.id)}>✓</Button>
-                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setRenameRoomId(null)}>✕</Button>
-                              </div>
-                            ) : (
-                              <>
-                                <button
-                                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${selectedRoomId === room.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-accent border-border'}`}
-                                  onClick={() => setSelectedRoomId(room.id)}
-                                >
-                                  {room.room_number} ({bedCount} beds)
-                                </button>
-                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setRenameRoomId(room.id); setRenameRoomValue(room.room_number); }}>
-                                  <Pencil className="h-3 w-3" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDeleteRoom(room.id)}>
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </TabsContent>
         </Tabs>
       </div>
 
@@ -752,20 +688,44 @@ const HostelBedManagementPage = () => {
                   const roomData = allRoomData.find((r: any) => r.roomId === room.id);
                   const bedCount = roomData?.beds?.length || 0;
                   const availBeds = roomData?.beds?.filter((b: any) => b.is_available && !b.is_blocked).length || 0;
+                  const isRenaming = renameRoomId === room.id;
                   return (
-                    <button
-                      key={room.id}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors whitespace-nowrap ${
-                        selectedRoomId === room.id
-                          ? 'bg-primary text-primary-foreground border-primary'
-                          : 'bg-background hover:bg-accent border-border'
-                      }`}
-                      onClick={() => setSelectedRoomId(room.id)}
-                    >
-                      <Building className="h-3 w-3 inline mr-1" />
-                      Room {room.room_number}
-                      <span className="ml-1 opacity-75">({availBeds}/{bedCount})</span>
-                    </button>
+                    <div key={room.id} className="flex items-center gap-0.5">
+                      {isRenaming ? (
+                        <div className="flex items-center gap-1">
+                          <Input
+                            value={renameRoomValue}
+                            onChange={e => setRenameRoomValue(e.target.value)}
+                            className="h-7 w-24 text-xs"
+                            autoFocus
+                            onKeyDown={e => { if (e.key === 'Enter') handleRenameRoom(room.id); if (e.key === 'Escape') setRenameRoomId(null); }}
+                          />
+                          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleRenameRoom(room.id)}>✓</Button>
+                          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setRenameRoomId(null)}>✕</Button>
+                        </div>
+                      ) : (
+                        <>
+                          <button
+                            className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors whitespace-nowrap ${
+                              selectedRoomId === room.id
+                                ? 'bg-primary text-primary-foreground border-primary'
+                                : 'bg-background hover:bg-accent border-border'
+                            }`}
+                            onClick={() => setSelectedRoomId(room.id)}
+                          >
+                            <Building className="h-3 w-3 inline mr-1" />
+                            Room {room.room_number}
+                            <span className="ml-1 opacity-75">({availBeds}/{bedCount})</span>
+                          </button>
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setRenameRoomId(room.id); setRenameRoomValue(room.room_number); }}>
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDeleteRoom(room.id)}>
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   );
                 })}
                 <Button
