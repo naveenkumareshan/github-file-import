@@ -1,14 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
-import { CabinsHeader } from '../components/cabins/CabinsHeader';
-import { CategoryFilter } from '../components/cabins/CategoryFilter';
 import { CabinsGrid } from '../components/cabins/CabinsGrid';
 import { cabinsService } from '../api/cabinsService';
 import { reviewsService } from '../api/reviewsService';
 import { toast } from '@/hooks/use-toast';
 import { Cabin as FrontendCabin } from '../data/cabinsData';
 import ErrorBoundary from '../components/ErrorBoundary';
-import { Loader2 } from 'lucide-react';
+import { Loader2, BookOpen } from 'lucide-react';
 
 // Define backend Cabin type (Supabase schema)
 interface BackendCabin {
@@ -26,7 +24,17 @@ interface BackendCabin {
   working_days?: string[];
   is_24_hours?: boolean;
   slots_enabled?: boolean;
+  serial_number?: string;
+  city?: string;
+  area?: string;
 }
+
+const categories = [
+  { id: 'all', label: 'All Rooms' },
+  { id: 'standard', label: 'Standard' },
+  { id: 'premium', label: 'Premium' },
+  { id: 'luxury', label: 'Luxury' },
+] as const;
 
 const Cabins = () => {
   const [filter, setFilter] = useState<'all' | 'standard' | 'premium' | 'luxury'>('all');
@@ -43,7 +51,6 @@ const Cabins = () => {
         const response = await cabinsService.getAllCabins(filters);
         
         if (response.success) {
-          // Transform API cabins to match frontend model with required id property
           const transformedCabins = Array.isArray(response.data) ? response.data
             .filter((cabin: BackendCabin) => cabin.is_active !== false)
             .map((cabin: BackendCabin, index: number): FrontendCabin => ({
@@ -61,9 +68,11 @@ const Cabins = () => {
               openingTime: cabin.opening_time || undefined,
               closingTime: cabin.closing_time || undefined,
               workingDays: cabin.working_days || undefined,
+              serial_number: cabin.serial_number || undefined,
+              city: cabin.city || undefined,
+              area: cabin.area || undefined,
             } as any)) : [];
           
-          // Fetch rating stats for all cabins
           const cabinIds = transformedCabins.map(c => c._id).filter(Boolean) as string[];
           if (cabinIds.length > 0) {
             try {
@@ -83,20 +92,12 @@ const Cabins = () => {
           setCabins(transformedCabins);
         } else {
           setError('Failed to load rooms');
-          toast({
-            title: "Error",
-            description: "Failed to load cabins. Please try again.",
-            variant: "destructive"
-          });
+          toast({ title: "Error", description: "Failed to load cabins. Please try again.", variant: "destructive" });
         }
       } catch (error) {
         console.error('Error fetching cabins:', error);
         setError('Failed to load rooms');
-        toast({
-          title: "Error",
-          description: "Failed to load cabins. Please try again.",
-          variant: "destructive"
-        });
+        toast({ title: "Error", description: "Failed to load cabins. Please try again.", variant: "destructive" });
       } finally {
         setLoading(false);
       }
@@ -106,40 +107,52 @@ const Cabins = () => {
   }, [filter]);
     
   return (
-    <div className="bg-background">
-      
-      {/* Hero Banner */}
-      <section className="relative py-16 lg:py-20 bg-gradient-hero text-white overflow-hidden">
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-10 right-20 w-40 h-40 bg-brand-green/20 rounded-full blur-3xl" />
-          <div className="absolute bottom-10 left-20 w-60 h-60 bg-brand-teal/20 rounded-full blur-3xl" />
+    <div className="min-h-screen bg-background">
+      {/* Sticky header */}
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
+        <div className="px-3 pt-3 pb-2 max-w-lg lg:max-w-5xl mx-auto">
+          <h1 className="text-[16px] font-semibold mb-2 lg:text-xl">Study Rooms</h1>
+
+          {/* Category filter pills */}
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            {categories.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => setFilter(cat.id as any)}
+                className={`flex-shrink-0 flex items-center gap-1 px-3 py-1 rounded-xl border text-[11px] font-medium transition-colors h-8 ${
+                  filter === cat.id
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-card text-foreground border-border hover:bg-muted'
+                }`}
+              >
+                {cat.id === 'all' && <BookOpen className="h-3 w-3" />}
+                {cat.label}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="container mx-auto px-4 relative z-10">
-          <CabinsHeader />
-        </div>
-        
-        {/* Wave Separator */}
-        <div className="absolute bottom-0 left-0 right-0">
-          <svg viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full">
-            <path d="M0 80L60 73.3C120 66.7 240 53.3 360 46.7C480 40 600 40 720 43.3C840 46.7 960 53.3 1080 56.7C1200 60 1320 60 1380 60L1440 60V80H1380C1320 80 1200 80 1080 80C960 80 840 80 720 80C600 80 480 80 360 80C240 80 120 80 60 80H0Z" fill="hsl(200, 20%, 98%)"/>
-          </svg>
-        </div>
-      </section>
-      
-      <div className="container mx-auto px-4 py-12">
-        <CategoryFilter filter={filter} setFilter={setFilter} />
+      </div>
+
+      {/* Results */}
+      <div className="px-3 py-3 max-w-lg lg:max-w-5xl mx-auto">
         <ErrorBoundary>
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-4">
-              <Loader2 className="h-10 w-10 animate-spin text-primary" />
-              <p className="text-muted-foreground">Loading reading rooms...</p>
+            <div className="space-y-2.5">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="flex gap-3 p-3 bg-card rounded-2xl border border-border animate-pulse">
+                  <div className="w-20 h-20 rounded-xl bg-muted flex-shrink-0" />
+                  <div className="flex-1 space-y-2 py-1">
+                    <div className="h-3 bg-muted rounded w-3/4" />
+                    <div className="h-2.5 bg-muted rounded w-1/2" />
+                    <div className="h-2.5 bg-muted rounded w-1/3" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : error ? (
             <div className="text-center py-12">
-              <div className="bg-destructive/10 text-destructive rounded-xl p-6 max-w-md mx-auto">
-                <p className="font-medium">{error}</p>
-                <p className="text-sm mt-2">Please try refreshing the page.</p>
-              </div>
+              <p className="text-[14px] font-medium text-foreground mb-1">No Rooms Available</p>
+              <p className="text-[12px] text-muted-foreground">Check back later for new listings.</p>
             </div>
           ) : (
             <CabinsGrid cabins={cabins} />
