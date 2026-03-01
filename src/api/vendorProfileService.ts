@@ -63,7 +63,7 @@ export interface VendorProfileUpdateData {
 }
 
 // Helper to map Supabase partner row to VendorProfileData
-function mapPartnerToProfile(row: any): VendorProfileData {
+function mapPartnerToProfile(row: any): VendorProfileData & { documentApprovals: Record<string, string> } {
   const address = (row.address && typeof row.address === 'object') ? row.address : {};
   const businessDetails = (row.business_details && typeof row.business_details === 'object') ? row.business_details : {};
   const bankDetails = (row.bank_details && typeof row.bank_details === 'object') ? row.bank_details : {};
@@ -101,6 +101,7 @@ function mapPartnerToProfile(row: any): VendorProfileData {
     isActive: row.is_active !== false,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    documentApprovals: (row.document_approvals && typeof row.document_approvals === 'object') ? row.document_approvals : {},
   };
 }
 

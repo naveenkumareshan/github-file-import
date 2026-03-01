@@ -14,17 +14,69 @@ interface VendorEmployeeFormProps {
   onCancel: () => void;
 }
 
-const PERMISSION_MODULES = [
-  { label: 'Dashboard', viewKey: 'view_dashboard', editKey: 'manage_dashboard' },
-  { label: 'Bookings', viewKey: 'view_bookings', editKey: 'manage_bookings' },
-  { label: 'Reading Rooms', viewKey: 'view_reading_rooms', editKey: 'manage_reading_rooms' },
-  { label: 'Seat Map', viewKey: 'seats_available_map', editKey: 'seats_available_edit' },
-  { label: 'Users / Students', viewKey: 'view_students', editKey: 'manage_students' },
-  { label: 'Employees', viewKey: 'view_employees', editKey: 'manage_employees' },
-  { label: 'Reports', viewKey: 'view_reports', editKey: 'manage_reports' },
-  { label: 'Reviews', viewKey: 'view_reviews', editKey: 'manage_reviews' },
-  { label: 'Payouts', viewKey: 'view_payouts', editKey: 'manage_payouts' },
-  { label: 'Complaints', viewKey: 'view_complaints', editKey: 'manage_complaints' },
+interface PermissionModule {
+  label: string;
+  viewKey: string;
+  editKey: string;
+}
+
+interface PermissionGroup {
+  group: string;
+  modules: PermissionModule[];
+}
+
+const PERMISSION_GROUPS: PermissionGroup[] = [
+  {
+    group: 'General',
+    modules: [
+      { label: 'Dashboard', viewKey: 'view_dashboard', editKey: 'manage_dashboard' },
+      { label: 'Operations', viewKey: 'view_operations', editKey: 'manage_operations' },
+    ]
+  },
+  {
+    group: 'Reading Rooms',
+    modules: [
+      { label: 'Seat Map', viewKey: 'seats_available_map', editKey: 'seats_available_edit' },
+      { label: 'Due Management', viewKey: 'view_due_management', editKey: 'manage_due_management' },
+      { label: 'Bookings', viewKey: 'view_bookings', editKey: 'manage_bookings' },
+      { label: 'Receipts', viewKey: 'view_receipts', editKey: 'manage_receipts' },
+      { label: 'Key Deposits', viewKey: 'view_key_deposits', editKey: 'manage_key_deposits' },
+      { label: 'Manage Rooms', viewKey: 'view_reading_rooms', editKey: 'manage_reading_rooms' },
+    ]
+  },
+  {
+    group: 'Hostels',
+    modules: [
+      { label: 'Bed Map', viewKey: 'view_bed_map', editKey: 'manage_bed_map' },
+      { label: 'Hostel Due Management', viewKey: 'view_hostel_due_management', editKey: 'manage_hostel_due_management' },
+      { label: 'Hostel Bookings', viewKey: 'view_hostel_bookings', editKey: 'manage_hostel_bookings' },
+      { label: 'Hostel Receipts', viewKey: 'view_hostel_receipts', editKey: 'manage_hostel_receipts' },
+      { label: 'Hostel Deposits', viewKey: 'view_hostel_deposits', editKey: 'manage_hostel_deposits' },
+    ]
+  },
+  {
+    group: 'Properties & Reviews',
+    modules: [
+      { label: 'Manage Properties', viewKey: 'view_manage_properties', editKey: 'manage_manage_properties' },
+      { label: 'Reviews', viewKey: 'view_reviews', editKey: 'manage_reviews' },
+    ]
+  },
+  {
+    group: 'Users & Coupons',
+    modules: [
+      { label: 'Users / Students', viewKey: 'view_students', editKey: 'manage_students' },
+      { label: 'Coupons', viewKey: 'view_coupons', editKey: 'manage_coupons' },
+    ]
+  },
+  {
+    group: 'Management',
+    modules: [
+      { label: 'Employees', viewKey: 'view_employees', editKey: 'manage_employees' },
+      { label: 'Reports', viewKey: 'view_reports', editKey: 'manage_reports' },
+      { label: 'Payouts', viewKey: 'view_payouts', editKey: 'manage_payouts' },
+      { label: 'Complaints', viewKey: 'view_complaints', editKey: 'manage_complaints' },
+    ]
+  },
 ];
 
 export const VendorEmployeeForm: React.FC<VendorEmployeeFormProps> = ({
@@ -82,6 +134,8 @@ export const VendorEmployeeForm: React.FC<VendorEmployeeFormProps> = ({
       setLoading(false);
     }
   };
+
+  let rowIndex = 0;
 
   return (
     <Card>
@@ -145,24 +199,36 @@ export const VendorEmployeeForm: React.FC<VendorEmployeeFormProps> = ({
                   </tr>
                 </thead>
                 <tbody>
-                  {PERMISSION_MODULES.map((mod, idx) => (
-                    <tr key={mod.label} className={idx % 2 === 0 ? 'bg-background' : 'bg-muted/10'}>
-                      <td className="py-1.5 px-3 text-[11px] font-medium">{mod.label}</td>
-                      <td className="py-1.5 px-3 text-center">
-                        <Checkbox
-                          id={mod.viewKey}
-                          checked={formData.permissions.includes(mod.viewKey)}
-                          onCheckedChange={() => handlePermissionChange(mod.viewKey)}
-                        />
-                      </td>
-                      <td className="py-1.5 px-3 text-center">
-                        <Checkbox
-                          id={mod.editKey}
-                          checked={formData.permissions.includes(mod.editKey)}
-                          onCheckedChange={() => handlePermissionChange(mod.editKey)}
-                        />
-                      </td>
-                    </tr>
+                  {PERMISSION_GROUPS.map((group) => (
+                    <React.Fragment key={group.group}>
+                      <tr className="bg-muted/60">
+                        <td colSpan={3} className="py-1 px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                          {group.group}
+                        </td>
+                      </tr>
+                      {group.modules.map((mod) => {
+                        const idx = rowIndex++;
+                        return (
+                          <tr key={mod.label} className={idx % 2 === 0 ? 'bg-background' : 'bg-muted/10'}>
+                            <td className="py-1.5 px-3 text-[11px] font-medium">{mod.label}</td>
+                            <td className="py-1.5 px-3 text-center">
+                              <Checkbox
+                                id={mod.viewKey}
+                                checked={formData.permissions.includes(mod.viewKey)}
+                                onCheckedChange={() => handlePermissionChange(mod.viewKey)}
+                              />
+                            </td>
+                            <td className="py-1.5 px-3 text-center">
+                              <Checkbox
+                                id={mod.editKey}
+                                checked={formData.permissions.includes(mod.editKey)}
+                                onCheckedChange={() => handlePermissionChange(mod.editKey)}
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </React.Fragment>
                   ))}
                 </tbody>
               </table>

@@ -9,10 +9,18 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { 
   User, Building, MapPin, CreditCard, FileText, Phone, Mail,
-  Calendar, CheckCircle, Clock, XCircle, AlertCircle, Upload, Trash2, FileIcon
+  Calendar, CheckCircle, Clock, XCircle, AlertCircle, Upload, Trash2, FileIcon, Home
 } from 'lucide-react';
 import { vendorProfileService, VendorProfileData, VendorProfileUpdateData } from '@/api/vendorProfileService';
 import { supabase } from '@/integrations/supabase/client';
+
+interface PropertyInfo {
+  id: string;
+  name: string;
+  type: 'Reading Room' | 'Hostel';
+  capacity: number;
+  is_active: boolean;
+}
 
 export const VendorProfile: React.FC = () => {
   const { toast } = useToast();
@@ -23,6 +31,8 @@ export const VendorProfile: React.FC = () => {
   const [formData, setFormData] = useState<VendorProfileUpdateData>({});
   const [documents, setDocuments] = useState<{ name: string; url: string }[]>([]);
   const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [properties, setProperties] = useState<PropertyInfo[]>([]);
+  const [docApprovals, setDocApprovals] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const hasFetched = useRef(false);
 
@@ -31,6 +41,7 @@ export const VendorProfile: React.FC = () => {
       hasFetched.current = true;
       fetchProfile();
       fetchDocuments();
+      fetchProperties();
     }
   }, []);
 
@@ -40,6 +51,7 @@ export const VendorProfile: React.FC = () => {
       if (response.success && response.data) {
         const profileData = response.data as VendorProfileData;
         setProfile(profileData);
+        setDocApprovals((profileData as any).documentApprovals || {});
         setFormData({
           businessName: profileData.businessName,
           contactPerson: profileData.contactPerson,
@@ -71,9 +83,23 @@ export const VendorProfile: React.FC = () => {
         url: supabase.storage.from('partner-documents').getPublicUrl(`${user.id}/${f.name}`).data.publicUrl
       }));
       setDocuments(docs);
-    } catch {
-      // silent
-    }
+    } catch {}
+  };
+
+  const fetchProperties = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const [cabinsRes, hostelsRes] = await Promise.all([
+        supabase.from('cabins').select('id, name, capacity, is_active').eq('created_by', user.id),
+        supabase.from('hostels').select('id, name, is_active').eq('created_by', user.id),
+      ]);
+      const props: PropertyInfo[] = [
+        ...(cabinsRes.data || []).map(c => ({ id: c.id, name: c.name, type: 'Reading Room' as const, capacity: c.capacity || 0, is_active: c.is_active !== false })),
+        ...(hostelsRes.data || []).map(h => ({ id: h.id, name: h.name, type: 'Hostel' as const, capacity: 0, is_active: h.is_active !== false })),
+      ];
+      setProperties(props);
+    } catch {}
   };
 
   const handleDocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -83,12 +109,9 @@ export const VendorProfile: React.FC = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
-
       for (const file of Array.from(files)) {
         const filePath = `${user.id}/${Date.now()}_${file.name}`;
-        const { error } = await supabase.storage
-          .from('partner-documents')
-          .upload(filePath, file);
+        const { error } = await supabase.storage.from('partner-documents').upload(filePath, file);
         if (error) throw error;
       }
       toast({ title: "Success", description: "Document(s) uploaded" });
@@ -105,9 +128,12 @@ export const VendorProfile: React.FC = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { error } = await supabase.storage
-        .from('partner-documents')
-        .remove([`${user.id}/${docName}`]);
+      // Check if documents section is approved - prevent deletion
+      if (docApprovals['documents'] === 'approved') {
+        toast({ title: "Locked", description: "Documents section has been approved. Cannot delete.", variant: "destructive" });
+        return;
+      }
+      const { error } = await supabase.storage.from('partner-documents').remove([`${user.id}/${docName}`]);
       if (error) throw error;
       toast({ title: "Deleted", description: "Document removed" });
       fetchDocuments();
@@ -134,45 +160,45 @@ export const VendorProfile: React.FC = () => {
     }
   };
 
+  const isSectionLocked = (section: string) => docApprovals[section] === 'approved';
+
+  const SectionBadge = ({ section }: { section: string }) => {
+    const status = docApprovals[section];
+    if (status === 'approved') return <Badge className="bg-green-100 text-green-800 text-[10px]"><CheckCircle className="h-3 w-3 mr-1" />Approved</Badge>;
+    if (status === 'rejected') return <Badge className="bg-red-100 text-red-800 text-[10px]"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
+    return null;
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'approved':
-        return <Badge className="bg-green-100 text-green-800"><CheckCircle className="w-3 h-3 mr-1" />Approved</Badge>;
-      case 'pending':
-        return <Badge className="bg-yellow-100 text-yellow-800"><Clock className="w-3 h-3 mr-1" />Pending</Badge>;
-      case 'rejected':
-        return <Badge className="bg-red-100 text-red-800"><XCircle className="w-3 h-3 mr-1" />Rejected</Badge>;
-      case 'suspended':
-        return <Badge className="bg-orange-100 text-orange-800"><AlertCircle className="w-3 h-3 mr-1" />Suspended</Badge>;
-      default:
-        return <Badge variant="secondary">{status}</Badge>;
+      case 'approved': return <Badge className="bg-green-100 text-green-800"><CheckCircle className="w-3 h-3 mr-1" />Approved</Badge>;
+      case 'pending': return <Badge className="bg-yellow-100 text-yellow-800"><Clock className="w-3 h-3 mr-1" />Pending</Badge>;
+      case 'rejected': return <Badge className="bg-red-100 text-red-800"><XCircle className="w-3 h-3 mr-1" />Rejected</Badge>;
+      case 'suspended': return <Badge className="bg-orange-100 text-orange-800"><AlertCircle className="w-3 h-3 mr-1" />Suspended</Badge>;
+      default: return <Badge variant="secondary">{status}</Badge>;
     }
   };
 
   if (loading) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center p-8">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4" />
-            <p className="text-sm">Loading profile...</p>
-          </div>
-        </CardContent>
-      </Card>
+      <Card><CardContent className="flex items-center justify-center p-8">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4" />
+          <p className="text-sm">Loading profile...</p>
+        </div>
+      </CardContent></Card>
     );
   }
 
   if (!profile) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center p-8">
-          <div className="text-center">
-            <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-            <p className="text-sm font-medium">Profile not found</p>
-            <p className="text-xs text-muted-foreground mt-1">Your partner profile has not been set up yet. Please contact the admin.</p>
-          </div>
-        </CardContent>
-      </Card>
+      <Card><CardContent className="flex items-center justify-center p-8">
+        <div className="text-center">
+          <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+          <p className="text-sm font-medium">Profile not found</p>
+          <p className="text-xs text-muted-foreground mt-1">Please contact the admin.</p>
+        </div>
+      </CardContent></Card>
     );
   }
 
@@ -193,8 +219,10 @@ export const VendorProfile: React.FC = () => {
             </div>
             <div className="flex items-center gap-2">
               {getStatusBadge(profile.status)}
-              {!editMode && (
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditMode(true)}>Edit</Button>
+              {properties.length > 0 && (
+                <Badge variant="outline" className="text-xs">
+                  <Home className="h-3 w-3 mr-1" />{properties.length} Properties
+                </Badge>
               )}
             </div>
           </div>
@@ -207,18 +235,27 @@ export const VendorProfile: React.FC = () => {
           <TabsTrigger value="business" className="text-xs">Business Details</TabsTrigger>
           <TabsTrigger value="bank" className="text-xs">Bank Details</TabsTrigger>
           <TabsTrigger value="documents" className="text-xs">Documents</TabsTrigger>
+          <TabsTrigger value="properties" className="text-xs">Properties</TabsTrigger>
         </TabsList>
 
         <TabsContent value="basic" className="space-y-3">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2"><User className="h-4 w-4" />Basic Information</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2"><User className="h-4 w-4" />Basic Information</CardTitle>
+                <div className="flex items-center gap-2">
+                  <SectionBadge section="basic_info" />
+                  {!isSectionLocked('basic_info') && !editMode && (
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditMode(true)}>Edit</Button>
+                  )}
+                </div>
+              </div>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs">Business Name</Label>
-                  {editMode ? (
+                  {editMode && !isSectionLocked('basic_info') ? (
                     <Input className="h-8 text-xs" value={formData.businessName || ''} onChange={(e) => setFormData({...formData, businessName: e.target.value})} />
                   ) : (
                     <p className="mt-0.5 text-sm font-medium">{profile.businessName || '—'}</p>
@@ -226,7 +263,7 @@ export const VendorProfile: React.FC = () => {
                 </div>
                 <div>
                   <Label className="text-xs">Contact Person</Label>
-                  {editMode ? (
+                  {editMode && !isSectionLocked('basic_info') ? (
                     <Input className="h-8 text-xs" value={formData.contactPerson || ''} onChange={(e) => setFormData({...formData, contactPerson: e.target.value})} />
                   ) : (
                     <p className="mt-0.5 text-sm font-medium">{profile.contactPerson || '—'}</p>
@@ -238,7 +275,7 @@ export const VendorProfile: React.FC = () => {
                 </div>
                 <div>
                   <Label className="text-xs flex items-center gap-1"><Phone className="h-3 w-3" />Phone</Label>
-                  {editMode ? (
+                  {editMode && !isSectionLocked('basic_info') ? (
                     <Input className="h-8 text-xs" value={formData.phone || ''} onChange={(e) => setFormData({...formData, phone: e.target.value})} />
                   ) : (
                     <p className="mt-0.5 text-sm font-medium">{profile.phone || '—'}</p>
@@ -248,7 +285,7 @@ export const VendorProfile: React.FC = () => {
 
               <div>
                 <Label className="text-xs flex items-center gap-1"><MapPin className="h-3 w-3" />Address</Label>
-                {editMode ? (
+                {editMode && !isSectionLocked('basic_info') ? (
                   <div className="mt-1 space-y-2">
                     <Input className="h-8 text-xs" placeholder="Street" value={formData.address?.street || ''} onChange={(e) => setFormData({...formData, address: {...formData.address, street: e.target.value}})} />
                     <div className="grid grid-cols-2 gap-2">
@@ -273,11 +310,9 @@ export const VendorProfile: React.FC = () => {
                 Joined on {new Date(profile.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
               </div>
 
-              {editMode && (
+              {editMode && !isSectionLocked('basic_info') && (
                 <div className="flex gap-2 pt-2 border-t">
-                  <Button size="sm" className="h-7 text-xs" onClick={handleUpdate} disabled={updating}>
-                    {updating ? 'Saving...' : 'Save Changes'}
-                  </Button>
+                  <Button size="sm" className="h-7 text-xs" onClick={handleUpdate} disabled={updating}>{updating ? 'Saving...' : 'Save Changes'}</Button>
                   <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditMode(false)}>Cancel</Button>
                 </div>
               )}
@@ -288,7 +323,15 @@ export const VendorProfile: React.FC = () => {
         <TabsContent value="business" className="space-y-3">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2"><FileText className="h-4 w-4" />Business Details</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2"><FileText className="h-4 w-4" />Business Details</CardTitle>
+                <div className="flex items-center gap-2">
+                  <SectionBadge section="business_details" />
+                  {!isSectionLocked('business_details') && !editMode && (
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditMode(true)}>Edit</Button>
+                  )}
+                </div>
+              </div>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -296,40 +339,26 @@ export const VendorProfile: React.FC = () => {
                   <Label className="text-xs">Business Type</Label>
                   <p className="mt-0.5 text-sm font-medium capitalize">{profile.businessType || '—'}</p>
                 </div>
-                <div>
-                  <Label className="text-xs">GST Number</Label>
-                  {editMode ? (
-                    <Input className="h-8 text-xs" value={formData.businessDetails?.gstNumber || ''} onChange={(e) => setFormData({...formData, businessDetails: {...formData.businessDetails, gstNumber: e.target.value}})} />
-                  ) : (
-                    <p className="mt-0.5 text-sm font-medium">{profile.businessDetails?.gstNumber || 'Not provided'}</p>
-                  )}
-                </div>
-                <div>
-                  <Label className="text-xs">PAN Number</Label>
-                  {editMode ? (
-                    <Input className="h-8 text-xs" value={formData.businessDetails?.panNumber || ''} onChange={(e) => setFormData({...formData, businessDetails: {...formData.businessDetails, panNumber: e.target.value}})} />
-                  ) : (
-                    <p className="mt-0.5 text-sm font-medium">{profile.businessDetails?.panNumber || 'Not provided'}</p>
-                  )}
-                </div>
-                <div>
-                  <Label className="text-xs">Aadhar Number</Label>
-                  {editMode ? (
-                    <Input className="h-8 text-xs" value={formData.businessDetails?.aadharNumber || ''} onChange={(e) => setFormData({...formData, businessDetails: {...formData.businessDetails, aadharNumber: e.target.value}})} />
-                  ) : (
-                    <p className="mt-0.5 text-sm font-medium">{profile.businessDetails?.aadharNumber || 'Not provided'}</p>
-                  )}
-                </div>
+                {['gstNumber', 'panNumber', 'aadharNumber'].map(key => (
+                  <div key={key}>
+                    <Label className="text-xs capitalize">{key.replace(/([A-Z])/g, ' $1').trim()}</Label>
+                    {editMode && !isSectionLocked('business_details') ? (
+                      <Input className="h-8 text-xs" value={(formData.businessDetails as any)?.[key] || ''} onChange={(e) => setFormData({...formData, businessDetails: {...formData.businessDetails, [key]: e.target.value}})} />
+                    ) : (
+                      <p className="mt-0.5 text-sm font-medium">{(profile.businessDetails as any)?.[key] || 'Not provided'}</p>
+                    )}
+                  </div>
+                ))}
               </div>
               <div>
                 <Label className="text-xs">Business Description</Label>
-                {editMode ? (
+                {editMode && !isSectionLocked('business_details') ? (
                   <Textarea className="text-xs min-h-[60px]" value={formData.businessDetails?.description || ''} onChange={(e) => setFormData({...formData, businessDetails: {...formData.businessDetails, description: e.target.value}})} />
                 ) : (
                   <p className="mt-0.5 text-sm">{profile.businessDetails?.description || 'No description'}</p>
                 )}
               </div>
-              {editMode && (
+              {editMode && !isSectionLocked('business_details') && (
                 <div className="flex gap-2 pt-2 border-t">
                   <Button size="sm" className="h-7 text-xs" onClick={handleUpdate} disabled={updating}>{updating ? 'Saving...' : 'Save'}</Button>
                   <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditMode(false)}>Cancel</Button>
@@ -342,7 +371,15 @@ export const VendorProfile: React.FC = () => {
         <TabsContent value="bank" className="space-y-3">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2"><CreditCard className="h-4 w-4" />Bank Details</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2"><CreditCard className="h-4 w-4" />Bank Details</CardTitle>
+                <div className="flex items-center gap-2">
+                  <SectionBadge section="bank_details" />
+                  {!isSectionLocked('bank_details') && !editMode && (
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditMode(true)}>Edit</Button>
+                  )}
+                </div>
+              </div>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -355,7 +392,7 @@ export const VendorProfile: React.FC = () => {
                 ].map(({ key, label }) => (
                   <div key={key}>
                     <Label className="text-xs">{label}</Label>
-                    {editMode ? (
+                    {editMode && !isSectionLocked('bank_details') ? (
                       <Input className="h-8 text-xs" value={(formData.bankDetails as any)?.[key] || ''} onChange={(e) => setFormData({...formData, bankDetails: {...formData.bankDetails, [key]: e.target.value}})} />
                     ) : (
                       <p className="mt-0.5 text-sm font-medium">
@@ -367,7 +404,7 @@ export const VendorProfile: React.FC = () => {
                   </div>
                 ))}
               </div>
-              {editMode && (
+              {editMode && !isSectionLocked('bank_details') && (
                 <div className="flex gap-2 pt-2 border-t">
                   <Button size="sm" className="h-7 text-xs" onClick={handleUpdate} disabled={updating}>{updating ? 'Saving...' : 'Save'}</Button>
                   <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditMode(false)}>Cancel</Button>
@@ -382,11 +419,15 @@ export const VendorProfile: React.FC = () => {
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm flex items-center gap-2"><FileText className="h-4 w-4" />Business Documents</CardTitle>
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => fileInputRef.current?.click()} disabled={uploadingDoc}>
-                  <Upload className="h-3 w-3 mr-1" />
-                  {uploadingDoc ? 'Uploading...' : 'Upload'}
-                </Button>
-                <input ref={fileInputRef} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" className="hidden" onChange={handleDocUpload} />
+                <div className="flex items-center gap-2">
+                  <SectionBadge section="documents" />
+                  {!isSectionLocked('documents') && (
+                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => fileInputRef.current?.click()} disabled={uploadingDoc}>
+                      <Upload className="h-3 w-3 mr-1" />{uploadingDoc ? 'Uploading...' : 'Upload'}
+                    </Button>
+                  )}
+                  <input ref={fileInputRef} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" className="hidden" onChange={handleDocUpload} />
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -405,9 +446,46 @@ export const VendorProfile: React.FC = () => {
                       <a href={doc.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate flex-1">
                         {doc.name}
                       </a>
-                      <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-destructive hover:text-destructive ml-2" onClick={() => handleDocDelete(doc.name)}>
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
+                      {!isSectionLocked('documents') && (
+                        <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-destructive hover:text-destructive ml-2" onClick={() => handleDocDelete(doc.name)}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="properties" className="space-y-3">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2"><Home className="h-4 w-4" />My Properties</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {properties.length === 0 ? (
+                <div className="text-center py-8">
+                  <Building className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
+                  <p className="text-xs text-muted-foreground">No properties linked yet</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {properties.map((p) => (
+                    <div key={p.id} className="flex items-center justify-between py-2 px-3 bg-muted/30 rounded">
+                      <div>
+                        <span className="text-sm font-medium">{p.name}</span>
+                        <Badge variant="outline" className="ml-2 text-[9px]">{p.type}</Badge>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {p.type === 'Reading Room' && p.capacity > 0 && (
+                          <span className="text-xs text-muted-foreground">{p.capacity} seats</span>
+                        )}
+                        <Badge className={p.is_active ? 'bg-emerald-100 text-emerald-700 text-[10px]' : 'bg-red-100 text-red-700 text-[10px]'}>
+                          {p.is_active ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </div>
                     </div>
                   ))}
                 </div>
