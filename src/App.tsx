@@ -34,6 +34,8 @@ const VendorRegister = lazy(() => import("./pages/vendor/VendorRegister"));
 const VendorEmployees = lazy(() => import("./pages/vendor/VendorEmployees"));
 const VendorPayouts = lazy(() => import("./components/vendor/VendorPayouts"));
 const AdminPayouts = lazy(() => import("./pages/admin/AdminPayouts"));
+const PartnerSettlements = lazy(() => import("./pages/admin/PartnerSettlements"));
+const PartnerEarnings = lazy(() => import("./pages/partner/PartnerEarnings"));
 const VendorApproval = lazy(() => import("./components/admin/VendorApproval"));
 
 const DepositAndRestrictionManagement = lazy(() => import("./pages/admin/DepositAndRestrictionManagement"));
@@ -145,6 +147,7 @@ function App() {
               <Route path="hostels" element={<AdminHostels />} />
               <Route path="employees" element={<VendorEmployees />} />
               <Route path="payouts" element={<AdminPayouts />} />
+              <Route path="settlements" element={<PartnerSettlements />} />
               <Route path="vendorpayouts" element={<VendorPayouts />} />
               <Route path="vendors" element={<VendorApproval />} />
               <Route path="deposits-restrictions" element={<DepositAndRestrictionManagement />} />
@@ -198,6 +201,7 @@ function App() {
               <Route path="hostels" element={<AdminHostels />} />
               <Route path="employees" element={<VendorEmployees />} />
               <Route path="vendorpayouts" element={<VendorPayouts />} />
+              <Route path="earnings" element={<PartnerEarnings />} />
               <Route path="deposits-restrictions" element={<DepositAndRestrictionManagement />} />
               <Route path="seats-available-map" element={<VendorSeats />} />
               <Route path="hostels/:hostelId/rooms" element={<HostelRoomView />} />
