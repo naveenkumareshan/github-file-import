@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import React, { lazy, Suspense } from "react";
+import React, { lazy, Suspense, useEffect } from "react";
+import { hideSplashScreen } from "./utils/splashScreen";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
@@ -101,6 +102,10 @@ const StudentSuspense = ({ children }: { children: React.ReactNode }) => (
 const queryClient = new QueryClient();
 
 function App() {
+  useEffect(() => {
+    hideSplashScreen();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
     <AuthProvider>
