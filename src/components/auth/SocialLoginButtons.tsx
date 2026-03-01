@@ -17,11 +17,14 @@ export function SocialLoginButtons({ onLoginSuccess, onLoginError }: SocialLogin
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     try {
-      const { error } = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin + '/student/login',
       });
 
-      if (error) {
+      if (result.redirected) return; // Page is navigating to Google
+
+      if (result.error) {
+        const error = result.error;
         toast({
           title: "Login Failed",
           description: "Failed to login with Google. Please try again.",
