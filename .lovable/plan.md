@@ -1,35 +1,82 @@
 
 
-## Fix "Floor Plan" Rename and Sharing Type Selection
+## Restructure Bed Management: Floor-wise Room Selector with Per-Room Layouts
 
-### Problem 1: "Floor Plan" label is confusing
-All references to "Floor Plan" should be renamed to "Layout Plan" across the bed management page.
+### Current Issues
+- The page has a flat view toggle between "Box Grid" and "Layout Plan" -- user wants both visible together
+- Room selection is scattered -- no clear floor-first, then room hierarchy in the main content area
+- Layout plan is global (one view) rather than per-room
+- Adding beds requires a separate dialog with room picker instead of being contextual to the selected room
 
-### Problem 2: Sharing Type not selectable when adding beds
-The Add Beds dialog loads sharing options from the `hostel_sharing_options` table filtered by `room_id`. But since we removed the auto-creation of sharing options during room creation, no `hostel_sharing_options` records exist for new rooms -- so the dropdown is always empty.
+### New Layout Structure
 
-**Fix**: Change the Add Beds dialog to use the hostel-level `hostel_sharing_types` (which the admin has already created) instead of room-level `hostel_sharing_options`. When beds are added, auto-create the corresponding `hostel_sharing_options` record for that room if one doesn't already exist.
+```text
++-------------------------------------------------------+
+| Header + Config Panel (Categories/Sharing/Floors/Rooms)|
++-------------------------------------------------------+
+| Floor Tabs: [Ground Floor] [First Floor] [Second Floor]|
++-------------------------------------------------------+
+| Room Pills: [Room 101] [Room 102] [Room 103]  + Add   |
++-------------------------------------------------------+
+| [+ Add Beds]                                           |
++-------------------------------------------------------+
+| Box Grid (beds as cards)          | Room Stats         |
+| Bed #1  Bed #2  Bed #3  Bed #4   | 4/6 available      |
+| Bed #5  Bed #6                    | 67% occupancy      |
++-------------------------------------------------------+
+| Layout Plan (per-room image + draggable bed markers)   |
+| [Upload Layout Image]  [Save Layout]                   |
+| +---------------------------------------------------+ |
+| | Room layout canvas with bed positions              | |
+| +---------------------------------------------------+ |
++-------------------------------------------------------+
+| Legend: Available | Occupied | Blocked                  |
++-------------------------------------------------------+
+```
 
----
+### Changes to `src/pages/admin/HostelBedManagementPage.tsx`
 
-### File: `src/pages/admin/HostelBedManagementPage.tsx`
+**1. Replace the view mode toggle with a unified view**
+- Remove the `viewMode` state and the toggle buttons (lines 716-731)
+- Both Box Grid and Layout Plan are shown together, stacked vertically, for the currently selected room
 
-**Rename "Floor Plan" to "Layout Plan"** (3 locations):
-- Line 693: Button label `Floor Plan` -> `Layout Plan`
-- Line 821: Empty state text "Select a room to view the floor plan" -> "Select a room to view the layout plan"
-- Comment on line 337/46 referencing "Floor plan" -> "Layout plan"
+**2. Add floor tabs as the primary navigation in the content area**
+- Use `floors` array to render floor tabs (not `floorKeys` from `floorData`)
+- Add a `selectedFloorId` state to track which floor tab is active
+- Default to the first floor on load
 
-**Fix sharing type in Add Beds dialog**:
-1. Replace `loadAddDialogSharingOptions` (lines 287-294): Instead of querying `hostel_sharing_options` by room, populate the dropdown directly from the already-loaded `sharingTypes` state (hostel-level sharing types).
-2. Update `addDialogSharingOptions` to be populated from `sharingTypes` array.
-3. Update `handleAddBeds` (lines 302-335): Before inserting beds, look up or auto-create a `hostel_sharing_options` record for the selected room + sharing type combo. Use the resulting ID as the `sharing_option_id` for each bed. Also set `sharing_type_id` on each bed.
-4. Update the Add Beds dialog UI (lines 892-901): Display sharing types with their name and capacity instead of `s.type`.
+**3. Add room pills row below floor tabs**
+- Filter `rooms` by `selectedFloorId` to show only rooms on the selected floor
+- Show room pills (already exists in config Rooms tab -- replicate as navigation pills in the content area)
+- Include an inline "+ Add Room" button
+- Selecting a room sets `selectedRoomId`
+
+**4. Show Box Grid for selected room only**
+- Instead of showing all rooms on a floor in the grid, show only the beds for the currently selected room
+- Keep the same bed card UI (status colors, badges, click to edit)
+
+**5. Show Layout Plan below the Box Grid for the same room**
+- Always show the `HostelBedPlanDesigner` for the selected room below the grid
+- Each room has its own `layout_image`, `room_width`, `room_height` -- already stored per room
+- Load designer data whenever `selectedRoomId` changes (remove the `viewMode === 'floorplan'` guard)
+
+**6. Update Add Beds button**
+- The "Add Beds" button pre-fills the selected floor's rooms and the currently selected room
+- Remove the room selector from the Add Beds dialog since the room is already selected contextually (or keep it but default to current room)
+
+**7. State changes**
+- Add: `selectedFloorId` state
+- Remove: `viewMode` state
+- Update the `useEffect` for designer data to trigger on `selectedRoomId` change (remove `viewMode` condition)
 
 ### Summary
 
 | Change | Detail |
 |--------|--------|
-| Rename "Floor Plan" | Change to "Layout Plan" in 3 places |
-| Fix sharing dropdown | Use hostel-level sharing types instead of empty room-level options |
-| Auto-create sharing option | Create `hostel_sharing_options` record on-the-fly when adding beds |
+| Remove view mode toggle | Show both grid + layout together |
+| Add floor tabs in content | Primary navigation by floor |
+| Add room pills row | Secondary navigation by room within floor |
+| Box grid = single room | Show beds for selected room only |
+| Layout plan always visible | Per-room layout shown below grid |
+| Auto-select first room | When floor changes, select first room on that floor |
 
