@@ -1,91 +1,68 @@
 
 
-## Fix Deployment: Remove VitePWA Plugin Causing Build Failure
+## Fix Login and Google Auth Issues
 
-### Root Cause Analysis
+### Problem 1: Email/Password Login Has Stale Closure Bug
+In `AuthContext.tsx`, the `login` function's `checkUser` polling references the `user` state variable from the React closure. Since React state updates don't mutate the captured variable, `user` is always `null` inside that closure. The login "succeeds" only after the 5-second fallback timeout, often causing the UI to show errors or appear broken.
 
-The build consistently completes all 3869 module transforms and chunk generation successfully, then **fails during the VitePWA plugin's post-build service worker generation step** (workbox `generateSW`). The actual error is truncated in the build log, but the failure always occurs after "computing gzip size..." -- exactly when VitePWA runs its `closeBundle` hook to generate the service worker.
+**Fix:** Replace the polling mechanism with a proper approach using a ref or by simply not waiting -- the `onAuthStateChange` listener already handles setting the user state. The login function just needs to confirm Supabase auth succeeded and return.
 
-The project already has a `firebase-messaging-sw.js` service worker in `public/`, creating a potential conflict with VitePWA's auto-generated service worker.
+### Problem 2: Google OAuth Post-Redirect Navigation
+After Google OAuth redirect, the page reloads and `onAuthStateChange` picks up the session. But there's no logic to redirect the user to the dashboard after an OAuth login lands back on the login page.
 
-### Fix Strategy
+**Fix:** Add a `useEffect` in `StudentLogin` that redirects authenticated users away from the login page.
 
-**1. Remove VitePWA plugin from `vite.config.ts`**
-- Strip out the entire `VitePWA(...)` plugin call and its configuration
-- Keep the rest of the Vite config (aliases, build options, proxy, etc.)
-- Remove the `import { VitePWA }` line
-
-**2. Add a static `manifest.webmanifest` to `public/`**
-- Move the PWA manifest from the VitePWA config into a standalone `public/manifest.webmanifest` file
-- Add a `<link rel="manifest">` tag in `index.html` to reference it
-- This preserves the "Add to Home Screen" / PWA install capability without needing the plugin
-
-**3. Add service worker unregister script**
-- Add a small inline script in `index.html` to unregister any previously cached VitePWA service workers
-- This ensures users' browsers don't serve old cached builds
-- The `firebase-messaging-sw.js` (for push notifications) remains unaffected
-
-**4. Remove unused `src/routes.tsx`**
-- This file creates a separate `createBrowserRouter` that is never used (App.tsx uses `<BrowserRouter>` with `<Routes>`)
-- Removing dead code keeps the codebase clean
-
-### Files to Change
+### Files to Edit
 
 | File | Change |
 |------|--------|
-| `vite.config.ts` | Remove VitePWA plugin import and configuration entirely |
-| `public/manifest.webmanifest` | Create static PWA manifest (moved from VitePWA config) |
-| `index.html` | Add manifest link + SW unregister script to clear old cache |
-| `src/routes.tsx` | Delete unused file |
+| `src/contexts/AuthContext.tsx` | Fix login function: remove stale closure polling, just return success after `signInWithPassword` succeeds |
+| `src/pages/StudentLogin.tsx` | Add useEffect to redirect already-authenticated users to dashboard |
 
 ### Technical Details
 
-**vite.config.ts** -- simplified to:
+**AuthContext.tsx login function fix:**
 ```typescript
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react-swc";
-import path from "path";
-import { componentTagger } from "lovable-tagger";
-
-export default defineConfig(({ mode }) => ({
-  server: {
-    host: "::",
-    port: 8080,
-  },
-  build: {
-    chunkSizeWarningLimit: 2000,
-  },
-  plugins: [
-    react(),
-    mode === 'development' && componentTagger(),
-  ].filter(Boolean),
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-    },
-  },
-}));
-```
-
-**index.html** additions:
-```html
-<link rel="manifest" href="/manifest.webmanifest" />
-<script>
-  // Unregister old VitePWA service workers
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then(regs => {
-      regs.forEach(r => {
-        if (r.active && r.active.scriptURL.includes('sw.js')) r.unregister();
-      });
-    });
+const login = async (email, password) => {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) return { success: false, error: error.message };
+  
+  if (data.user) {
+    // Check if user is active
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_active')
+      .eq('id', data.user.id)
+      .single();
+    
+    if (profile?.is_active === false) {
+      await supabase.auth.signOut();
+      return { success: false, error: 'Account deactivated.' };
+    }
+    
+    // Build user immediately instead of waiting for onAuthStateChange
+    const appUser = await buildUser(data.user);
+    setUser(appUser);
+    return { success: true };
   }
-</script>
+  
+  return { success: false, error: 'Login failed.' };
+};
 ```
 
-### What This Achieves
-- Build will succeed (no more VitePWA generateSW failure)
-- PWA install capability preserved via static manifest
-- Old cached service workers cleared from users' browsers
-- Firebase push notifications continue working via firebase-messaging-sw.js
-- Clean production deployment with fresh build
+**StudentLogin.tsx redirect fix:**
+```typescript
+useEffect(() => {
+  if (user) {
+    navigate(redirectPath, { replace: true });
+  }
+}, [user]);
+```
+
+This ensures that after Google OAuth redirects back, the authenticated user is sent to the dashboard automatically.
+
+### Expected Result
+- Email/password login works instantly without 5-second delay
+- Google OAuth login redirects to dashboard after authentication completes
+- No more "fetch failed" errors caused by the auth lock timeout
 
