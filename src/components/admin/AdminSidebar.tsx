@@ -183,7 +183,7 @@ export function AdminSidebar() {
       subItems: [
         { title: 'All Users', url: '/admin/students', icon: Users, roles: ['admin', 'vendor', 'vendor_employee'] },
         { title: 'Create User', url: '/admin/students-create', icon: Plus, roles: ['admin','vendor'] },
-        { title: 'Import Users', url: '/admin/students-import', icon: Import, roles: ['admin','vendor'] },
+        { title: 'Import Users', url: '/admin/students-import', icon: Import, roles: ['admin'] },
         {
           title: 'Coupons',
           url: '/admin/coupons',
@@ -338,6 +338,13 @@ export function AdminSidebar() {
           {
             title: 'Booking Reports',
             url: '/admin/reports',
+            icon: BarChart2,
+            roles: ['vendor', 'vendor_employee'],
+            permissions: ['view_reports']
+          },
+          {
+            title: 'Hostel Reports',
+            url: '/admin/reports?tab=transactions',
             icon: BarChart2,
             roles: ['vendor', 'vendor_employee'],
             permissions: ['view_reports']

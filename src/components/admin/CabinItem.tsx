@@ -32,6 +32,7 @@ interface CabinItemProps {
 
 export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBooking, onManageSeats }: CabinItemProps) {
   const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
 
   const getCategoryBadgeStyle = (category: string) => {
     switch (category) {
@@ -99,15 +100,17 @@ export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBoo
 
           {/* Actions */}
           <div className="border-t pt-3 mt-0.5 flex flex-wrap gap-1.5">
-            <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => onEdit(cabin)}>
-              <Edit className="h-3 w-3 mr-1" />
-              Edit
-            </Button>
+            {isAdmin && (
+              <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => onEdit(cabin)}>
+                <Edit className="h-3 w-3 mr-1" />
+                Edit
+              </Button>
+            )}
             <Button size="sm" className="h-7 px-2 text-xs" onClick={() => onManageSeats(cabin._id)}>
               <Users className="h-3 w-3 mr-1" />
               Seats
             </Button>
-            {onToggleActive && (
+            {isAdmin && onToggleActive && (
               <Button
                 size="sm"
                 variant="outline"

@@ -20,9 +20,7 @@ import {
   Clock,
   XCircle,
   AlertCircle,
-  Upload
 } from 'lucide-react';
-import { VendorDocumentUpload } from './VendorDocumentUpload';
 import { vendorProfileService, VendorProfileData, VendorProfileUpdateData } from '@/api/vendorProfileService';
 
 export const VendorProfile: React.FC = () => {
@@ -41,18 +39,20 @@ export const VendorProfile: React.FC = () => {
       fetchProfile();
     }
   }, []);
+
   const fetchProfile = async () => {
     try {
       const response = await vendorProfileService.getProfile();
       if (response.success && response.data) {
-        setProfile(response.data?.data);
+        const profileData = response.data as VendorProfileData;
+        setProfile(profileData);
         setFormData({
-          businessName: response.data?.data.businessName,
-          contactPerson: response.data?.data.contactPerson,
-          phone: response.data?.data.phone,
-          address: response.data?.data.address,
-          businessDetails: response.data?.data.businessDetails,
-          bankDetails: response.data?.data.bankDetails
+          businessName: profileData.businessName,
+          contactPerson: profileData.contactPerson,
+          phone: profileData.phone,
+          address: profileData.address,
+          businessDetails: { description: profileData.businessDetails?.description },
+          bankDetails: profileData.bankDetails
         });
       } else {
         toast({
@@ -76,8 +76,8 @@ export const VendorProfile: React.FC = () => {
     setUpdating(true);
     try {
       const response = await vendorProfileService.updateProfile(formData);
-     if (response.success && response.data) {
-        setProfile(response.data?.data);
+      if (response.success && response.data) {
+        setProfile(response.data as VendorProfileData);
         setEditMode(false);
         toast({
           title: "Success",
@@ -156,12 +156,6 @@ export const VendorProfile: React.FC = () => {
             </div>
             <div className="flex items-center gap-2">
               {getStatusBadge(profile.status)}
-              {/* <Button 
-                variant={editMode ? "outline" : "default"}
-                onClick={() => setEditMode(!editMode)}
-              >
-                {editMode ? 'Cancel' : 'Edit Profile'}
-              </Button> */}
             </div>
           </div>
         </CardHeader>
@@ -172,7 +166,6 @@ export const VendorProfile: React.FC = () => {
           <TabsTrigger value="basic">Basic Information</TabsTrigger>
           <TabsTrigger value="business">Business Details</TabsTrigger>
           <TabsTrigger value="bank">Bank Details</TabsTrigger>
-          <TabsTrigger value="documents">Documents</TabsTrigger>
         </TabsList>
 
         <TabsContent value="basic" className="space-y-4">
@@ -481,9 +474,6 @@ export const VendorProfile: React.FC = () => {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
-         <TabsContent value="documents" className="space-y-4">          
-          <VendorDocumentUpload />
         </TabsContent>
       </Tabs>
     </div>
