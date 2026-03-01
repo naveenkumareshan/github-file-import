@@ -1,0 +1,1 @@
+ALTER TABLE partners ADD COLUMN IF NOT EXISTS document_approvals jsonb DEFAULT '{}';

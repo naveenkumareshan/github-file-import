@@ -1585,6 +1585,7 @@ export type Database = {
           commission_settings: Json
           contact_person: string
           created_at: string
+          document_approvals: Json | null
           email: string
           id: string
           is_active: boolean
@@ -1603,6 +1604,7 @@ export type Database = {
           commission_settings?: Json
           contact_person?: string
           created_at?: string
+          document_approvals?: Json | null
           email?: string
           id?: string
           is_active?: boolean
@@ -1621,6 +1623,7 @@ export type Database = {
           commission_settings?: Json
           contact_person?: string
           created_at?: string
+          document_approvals?: Json | null
           email?: string
           id?: string
           is_active?: boolean

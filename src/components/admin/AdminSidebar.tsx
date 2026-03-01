@@ -26,15 +26,12 @@ import {
   Plus,
   Settings, 
   Bed,
-  MapPin,
   CreditCard,
   Mail,
   MessageSquare,
   LogOut,
-  TicketPercent,
   Import,
   User,
-  Currency,
   Users2,
   Wallet,
   Map,
@@ -45,8 +42,6 @@ import {
   HomeIcon,
   Star,
   BarChart2,
-  ArrowLeftRight,
-  BookOpen,
   UserCheck,
   ClipboardCheck
 } from 'lucide-react';
@@ -96,12 +91,13 @@ export function AdminSidebar() {
       url: `${routePrefix}/operations`,
       icon: ClipboardCheck,
       roles: ['admin', 'vendor', 'vendor_employee'],
-      permissions: ['view_dashboard']
+      permissions: ['view_operations']
     }
   ];
 
+  // Reading Rooms section
   if (user?.role === 'admin' || hasPermission('view_bookings')) {
-    const readingRoomSubItems = [];
+    const readingRoomSubItems: MenuItem[] = [];
 
     if (user?.role === 'admin' || hasPermission('seats_available_map')) {
       readingRoomSubItems.push({
@@ -113,13 +109,13 @@ export function AdminSidebar() {
       });
     }
 
-    if (user?.role === 'admin' || hasPermission('view_bookings')) {
+    if (user?.role === 'admin' || hasPermission('view_due_management')) {
       readingRoomSubItems.push({
         title: 'Due Management',
         url: `${routePrefix}/due-management`,
         icon: Wallet,
         roles: ['admin', 'vendor', 'vendor_employee'],
-        permissions: ['view_bookings']
+        permissions: ['view_due_management']
       });
     }
     
@@ -136,20 +132,20 @@ export function AdminSidebar() {
         url: `${routePrefix}/receipts`,
         icon: CreditCard,
         roles: ['admin', 'vendor', 'vendor_employee'],
-        permissions: ['view_bookings']
+        permissions: ['view_receipts']
       });
     }
     
-    if (user?.role === 'admin' || user?.role=='vendor') {
+    if (user?.role === 'admin' || user?.role === 'vendor' || hasPermission('view_key_deposits')) {
       readingRoomSubItems.push({
         title: 'Key Deposits',
         url: `${routePrefix}/deposits-restrictions`,
         icon: Wallet,
-        roles: ['admin','vendor']
+        roles: ['admin', 'vendor', 'vendor_employee'],
+        permissions: ['view_key_deposits']
       });
     }
 
-    // Add Manage Rooms and Reviews (moved from old "Reading Rooms" section)
     if (user?.role === 'admin' || hasPermission('view_reading_rooms')) {
       if (!isPartner) {
         readingRoomSubItems.push({
@@ -164,7 +160,7 @@ export function AdminSidebar() {
           url: '/admin/reviews?module=Reading Room',
           icon: Star,
           roles: ['admin', 'vendor', 'vendor_employee'],
-          permissions: ['manage_reviews']
+          permissions: ['view_reviews']
         });
       }
     }
@@ -180,25 +176,7 @@ export function AdminSidebar() {
     }
   }
 
-  if (user?.role === 'admin' ||  hasPermission('manage_students')) {
-    menuItems.push({
-      title: 'Users',
-      icon: Users,
-      roles: ['admin', 'vendor', 'vendor_employee'],
-      subItems: [
-        { title: 'All Users', url: `${routePrefix}/students`, icon: Users, roles: ['admin', 'vendor', 'vendor_employee'] },
-        { title: 'Create User', url: `${routePrefix}/students-create`, icon: Plus, roles: ['admin','vendor'] },
-        { title: 'Import Users', url: '/admin/students-import', icon: Import, roles: ['admin'] },
-        {
-          title: 'Coupons',
-          url: `${routePrefix}/coupons`,
-          icon: TicketPlus,
-          roles: ['admin', 'vendor', 'vendor_employee']
-        },
-      ],
-    });
-  }
-
+  // ===== HOSTELS SECTION (moved ABOVE Users) =====
   if (user?.role === 'admin' || hasPermission('view_reading_rooms')) {
     const hostelSubItems: MenuItem[] = [
       {
@@ -206,14 +184,14 @@ export function AdminSidebar() {
         url: `${routePrefix}/hostel-bed-map`,
         icon: Bed,
         roles: ['admin', 'vendor', 'vendor_employee'],
-        permissions: ['view_reading_rooms']
+        permissions: ['view_bed_map']
       },
       {
         title: 'Due Management',
         url: `${routePrefix}/hostel-due-management`,
         icon: Wallet,
         roles: ['admin', 'vendor', 'vendor_employee'],
-        permissions: ['view_reading_rooms']
+        permissions: ['view_hostel_due_management']
       },
       ...(!isPartner ? [{
         title: 'Manage Hostels',
@@ -227,32 +205,31 @@ export function AdminSidebar() {
         url: `${routePrefix}/hostel-bookings`,
         icon: Calendar,
         roles: ['admin', 'vendor', 'vendor_employee'],
-        permissions: ['view_reading_rooms']
+        permissions: ['view_hostel_bookings']
       },
       {
         title: 'Hostel Receipts',
         url: `${routePrefix}/hostel-receipts`,
         icon: CreditCard,
         roles: ['admin', 'vendor', 'vendor_employee'],
-        permissions: ['view_reading_rooms']
+        permissions: ['view_hostel_receipts']
       },
       {
         title: 'Hostel Deposits',
         url: `${routePrefix}/hostel-deposits`,
         icon: Wallet,
         roles: ['admin', 'vendor', 'vendor_employee'],
-        permissions: ['view_reading_rooms']
+        permissions: ['view_hostel_deposits']
       },
       ...(!isPartner ? [{
         title: 'Reviews',
         url: '/admin/reviews?module=Hostel',
         icon: Star,
         roles: ['admin', 'vendor', 'vendor_employee'],
-        permissions: ['manage_reviews']
+        permissions: ['view_reviews']
       }] : []) as MenuItem[],
     ];
 
-    // Admin-only: Hostel Approvals
     if (user?.role === 'admin') {
       hostelSubItems.splice(1, 0, {
         title: 'Approvals',
@@ -271,6 +248,27 @@ export function AdminSidebar() {
     });
   }
 
+  // ===== USERS SECTION (moved BELOW Hostels) =====
+  if (user?.role === 'admin' || hasPermission('manage_students')) {
+    menuItems.push({
+      title: 'Users',
+      icon: Users,
+      roles: ['admin', 'vendor', 'vendor_employee'],
+      subItems: [
+        { title: 'All Users', url: `${routePrefix}/students`, icon: Users, roles: ['admin', 'vendor', 'vendor_employee'] },
+        { title: 'Create User', url: `${routePrefix}/students-create`, icon: Plus, roles: ['admin', 'vendor'] },
+        { title: 'Import Users', url: '/admin/students-import', icon: Import, roles: ['admin'] },
+        {
+          title: 'Coupons',
+          url: `${routePrefix}/coupons`,
+          icon: TicketPlus,
+          roles: ['admin', 'vendor', 'vendor_employee'],
+          permissions: ['view_coupons']
+        },
+      ],
+    });
+  }
+
   // For partners: add merged Manage Properties and Reviews
   if (isPartner && (user?.role === 'vendor' || hasPermission('view_reading_rooms'))) {
     menuItems.push({
@@ -278,14 +276,14 @@ export function AdminSidebar() {
       url: `${routePrefix}/manage-properties`,
       icon: Building,
       roles: ['vendor', 'vendor_employee'],
-      permissions: ['view_reading_rooms']
+      permissions: ['view_manage_properties']
     });
     menuItems.push({
       title: 'Reviews',
       url: `${routePrefix}/reviews`,
       icon: Star,
       roles: ['vendor', 'vendor_employee'],
-      permissions: ['manage_reviews']
+      permissions: ['view_reviews']
     });
   }
 
@@ -351,12 +349,12 @@ export function AdminSidebar() {
   } else {
     const vendorMenuItems: MenuItem[] = [];
 
-    // Complaints for vendors
     vendorMenuItems.push({
       title: 'Complaints',
       icon: MessageSquare,
       roles: ['vendor', 'vendor_employee'],
-      url: `${routePrefix}/complaints`
+      url: `${routePrefix}/complaints`,
+      permissions: ['view_complaints']
     });
 
     if (hasPermission('view_reports')) {
