@@ -64,7 +64,7 @@ const AdminLayout: React.FC = () => {
             </header>
 
             <main className="flex-1 p-3 sm:p-6 bg-muted/10 min-h-full overflow-x-hidden">
-              <Outlet />
+              <Outlet key={location.pathname} />
             </main>
           </SidebarInset>
         </div>
