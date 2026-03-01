@@ -143,10 +143,10 @@ export default function SeatTransferManagement() {
       
       if (response.success) {
         // Filter for only completed bookings with seats (transferable bookings)
-        const transferableBookings = (response.data || []).filter((booking: Booking) => 
+        const transferableBookings = (response.data || []).filter((booking: any) => 
           booking.status === 'completed' && booking.seatId
         );
-        setBookings(transferableBookings);
+        setBookings(transferableBookings as any);
         setTotalCount(response.totalDocs);
         // setTotalPages(Math.ceil(transferableBookings.length / itemsPerPage));
         setTotalPages(Math.ceil(response.totalPages));
@@ -273,13 +273,13 @@ export default function SeatTransferManagement() {
         throw new Error(response.error);
       }
 
-      const transferableBookings = (response.data || []).filter((booking: Booking) => 
+      const transferableBookings = (response.data || []).filter((booking: any) => 
         booking.status === 'completed' && booking.seatId
       );
 
       const csvContent = [
         ['Booking ID', 'Student Name', 'Email', 'Reading Room', 'Seat', 'Start Date', 'End Date', 'Status', 'Amount'].join(','),
-        ...transferableBookings.map((booking: Booking) => [
+        ...transferableBookings.map((booking: any) => [
           booking.bookingId || booking._id,
           booking.userId.name,
           booking.userId.email,
@@ -459,7 +459,7 @@ export default function SeatTransferManagement() {
                         </div>
                         
                         <div className="space-y-2">
-                        <Label htmlFor="target-cabin">Target Reading Room</Label>
+                        <label htmlFor="target-cabin" className="text-sm font-medium">Target Reading Room</label>
                           <Select value={targetCabin?._id} onValueChange={handleCabinChange}>
                             <SelectTrigger>
                               <SelectValue placeholder="Select target reading room" />
@@ -476,7 +476,7 @@ export default function SeatTransferManagement() {
                         
                         {targetCabin && (
                           <div className="space-y-2">
-                            <Label htmlFor="target-seat">Select Floor</Label>
+                            <label htmlFor="target-seat" className="text-sm font-medium">Select Floor</label>
                             <Select value={selectedfloor} onValueChange={handleFloorChange}>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select available seat" />
@@ -497,7 +497,7 @@ export default function SeatTransferManagement() {
 
                         {targetCabin && selectedfloor && (
                           <div className="space-y-2">
-                            <Label htmlFor="target-seat">Available Seats</Label>
+                            <label htmlFor="target-seat" className="text-sm font-medium">Available Seats</label>
                             <Select value={targetSeat} onValueChange={setTargetSeat}>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select available seat" />

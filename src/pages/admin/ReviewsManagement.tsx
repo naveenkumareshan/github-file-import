@@ -52,7 +52,7 @@ const ReviewManagement: React.FC = () => {
       ]);
 
       if (reviewsResponse.success) {
-        setReviews(reviewsResponse.data as Review[]);
+        setReviews(reviewsResponse.data as unknown as Review[]);
         setTotalCount(reviewsResponse.total || 0);
         setTotalPages(reviewsResponse.totalPages || 0);
       }

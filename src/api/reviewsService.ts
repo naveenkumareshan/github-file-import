@@ -84,7 +84,7 @@ export const reviewsService = {
       .in('booking_id', bookingIds);
 
     if (error) throw error;
-    return (data || []) as Array<{ id: string; booking_id: string; status: string }>;
+    return ((data || []) as any) as Array<{ id: string; booking_id: string; status: string }>;
   },
 
   getAdminReviews: async (statusFilter?: string, cabinId?: string, page = 1, limit = 10) => {

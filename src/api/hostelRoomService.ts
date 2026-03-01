@@ -51,7 +51,7 @@ export const hostelRoomService = {
     // Insert the room
     const { data: room, error: roomError } = await supabase
       .from('hostel_rooms')
-      .insert({ ...roomData, hostel_id: hostelId })
+      .insert({ ...roomData, hostel_id: hostelId } as any)
       .select()
       .single();
     if (roomError) throw roomError;
@@ -94,7 +94,7 @@ export const hostelRoomService = {
   updateRoom: async (roomId: string, roomData: Partial<HostelRoomData>) => {
     const { data, error } = await supabase
       .from('hostel_rooms')
-      .update(roomData)
+      .update(roomData as any)
       .eq('id', roomId)
       .select()
       .single();

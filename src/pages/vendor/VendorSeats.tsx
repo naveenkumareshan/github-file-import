@@ -148,7 +148,7 @@ const VendorSeats: React.FC = () => {
       setLoading(true);
       const res = await vendorSeatsService.getVendorCabins();
       if (res.success && res.data) {
-        setCabins(res.data.data);
+        setCabins(res.data.data as any);
       }
       setLoading(false);
     })();
@@ -533,7 +533,7 @@ const VendorSeats: React.FC = () => {
         seatNumber: selectedSeat.number,
         startDate: format(bookingStartDate, 'yyyy-MM-dd'),
         endDate: format(computedEndDate, 'yyyy-MM-dd'),
-        duration: bookingPlan === 'monthly' ? '1 Month' : bookingPlan === '15days' ? '15 Days' : `${customDays} Days`,
+        duration: (bookingPlan as any) === 'monthly' ? '1 Month' : (bookingPlan as any) === '15days' ? '15 Days' : `${(customDays as any) || 0} Days`,
         seatAmount: parseFloat(bookingPrice) || 0,
         discountAmount: parseFloat(discountAmount) || 0,
         discountReason,
@@ -1214,7 +1214,7 @@ const VendorSeats: React.FC = () => {
                   <div>
                     <Label className="text-xs font-medium text-muted-foreground">Duration Type</Label>
                     <div className="flex gap-1 mt-1">
-                      {(selectedCabinInfo?.allowedDurations || selectedCabinInfo?.allowed_durations || ['daily', 'weekly', 'monthly']).map((dur: string) => (
+                      {((selectedCabinInfo as any)?.allowedDurations || (selectedCabinInfo as any)?.allowed_durations || ['daily', 'weekly', 'monthly']).map((dur: string) => (
                         <button
                           key={dur}
                           type="button"

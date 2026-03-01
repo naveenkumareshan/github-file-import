@@ -43,8 +43,9 @@ const RevenueReportsComponent: React.FC<RevenueReportsProps> = ({ dateRange }) =
           // const revenueByCategory = new Map();
           // let total = 0;
           setTotalRevenue(response.data.totalRevenue);
-          setAverageBookingValue(response.data.bookingCount ? response.data.totalRevenue / response.data.bookingCount : 0);
-          setBookingsCount(response.data.bookingCount);
+          const bCount = (response.data as any).bookingCount || response.data.count || 0;
+          setAverageBookingValue(bCount ? response.data.totalRevenue / bCount : 0);
+          setBookingsCount(bCount);
         }
       } catch (error) {
         console.error('Error fetching revenue data:', error);

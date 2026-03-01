@@ -23,7 +23,19 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
-import { adminRoomsService, RoomData } from '@/api/adminRoomsService';
+import { adminRoomsService } from '@/api/adminRoomsService';
+
+interface RoomData {
+  name: string;
+  description: string;
+  price: number;
+  category: string;
+  capacity: number;
+  amenities: string[];
+  isActive: boolean;
+  serialNumber: string;
+  imageSrc: string;
+}
 import { ImageUpload } from '@/components/ImageUpload';
 
 // Define the form schema with Zod
@@ -87,7 +99,7 @@ export function RoomForm({ initialData, onSuccess, roomId }: RoomFormProps) {
     try {
       if (isEditing && roomId) {
         // Ensure all required fields are present for update
-        await adminRoomsService.updateRoom(roomId, values);
+        await (adminRoomsService as any).updateRoom(roomId, values);
         toast({
           title: "Room updated",
           description: "Room has been successfully updated"
@@ -105,7 +117,7 @@ export function RoomForm({ initialData, onSuccess, roomId }: RoomFormProps) {
           serialNumber: values.serialNumber,
           imageSrc: values.imageSrc
         };
-        await adminRoomsService.createRoom(roomData);
+        await (adminRoomsService as any).createRoom(roomData);
         toast({
           title: "Room created",
           description: "New room has been successfully created"
@@ -148,7 +160,7 @@ export function RoomForm({ initialData, onSuccess, roomId }: RoomFormProps) {
     }
     
     try {
-      const result = await adminRoomsService.uploadRoomImage(roomId, fileOrUrl);
+      const result = await (adminRoomsService as any).uploadRoomImage(roomId, fileOrUrl);
       if (result.success) {
         form.setValue('imageSrc', result.data.url);
         toast({

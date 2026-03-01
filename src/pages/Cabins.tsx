@@ -61,9 +61,7 @@ const Cabins = () => {
               openingTime: cabin.opening_time || undefined,
               closingTime: cabin.closing_time || undefined,
               workingDays: cabin.working_days || undefined,
-              is24Hours: cabin.is_24_hours || false,
-              slotsEnabled: cabin.slots_enabled || false,
-            })) : [];
+            } as any)) : [];
           
           // Fetch rating stats for all cabins
           const cabinIds = transformedCabins.map(c => c._id).filter(Boolean) as string[];

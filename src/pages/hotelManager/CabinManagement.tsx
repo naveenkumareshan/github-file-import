@@ -107,7 +107,7 @@ const CabinManagement = () => {
           )
         );
       } else {
-        throw new Error(response.error || `Failed to ${isActive ? 'activate' : 'deactivate'} cabin`);
+        throw new Error((response as any).error || `Failed to ${isActive ? 'activate' : 'deactivate'} cabin`);
       }
     } catch (error) {
       console.error('Error toggling cabin status:', error);

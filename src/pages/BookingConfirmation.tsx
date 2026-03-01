@@ -32,10 +32,10 @@ const BookingConfirmation = () => {
         setLoading(true);
         
         // Fetch booking details
-        const response = await hostelService.getBookingById(bookingId);
+        const response = await hostelService.getBookingById(bookingId) as any;
         
-        if (response.success) {
-          setBooking(response.data);
+        if (response) {
+          setBooking(response);
         } else {
           setError('Failed to load booking details');
           toast({

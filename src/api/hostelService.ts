@@ -80,7 +80,7 @@ export const hostelService = {
     const { data: { user } } = await supabase.auth.getUser();
     const { data, error } = await supabase
       .from('hostels')
-      .insert({ ...hostelData, created_by: user?.id })
+      .insert({ ...hostelData, created_by: user?.id } as any)
       .select()
       .single();
     if (error) throw error;
@@ -90,7 +90,7 @@ export const hostelService = {
   updateHostel: async (hostelId: string, hostelData: Partial<HostelData>) => {
     const { data, error } = await supabase
       .from('hostels')
-      .update(hostelData)
+      .update(hostelData as any)
       .eq('id', hostelId)
       .select()
       .single();

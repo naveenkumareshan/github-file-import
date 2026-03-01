@@ -107,7 +107,7 @@ export const HostelRoomForm: React.FC<HostelRoomFormProps> = ({
   const [beds, setBeds] = useState<Array<{number: number; bedType: string; sharingType: string}>>([]);
 
   // Convert initialData.sharingOptions to ensure it has all required properties
-  const initialSharingOptions = (initialData?.sharingOptions as any[])?.map(option => ({
+  const initialSharingOptions = ((initialData as any)?.sharingOptions as any[])?.map(option => ({
     type: option.type,
     capacity: option.capacity,
     count: option.count,
@@ -116,18 +116,19 @@ export const HostelRoomForm: React.FC<HostelRoomFormProps> = ({
     available: option.available || 0
   })) || [];
 
+  const initData = initialData as any;
   const defaultValues: RoomFormValues = {
-    name: initialData?.name || '',
-    roomNumber: initialData?.roomNumber || '',
-    description: initialData?.description || '',
-    floor: initialData?.floor || '',
-    category: initialData?.category || 'standard',
-    basePrice: initialData?.basePrice || 0,
-    maxCapacity: initialData?.maxCapacity || 0,
-    isActive: initialData?.isActive !== undefined ? initialData.isActive : true,
-    imageSrc: initialData?.imageSrc || '',
-    images: initialData?.images || [],
-    amenities: initialData?.amenities || [],
+    name: initData?.name || '',
+    roomNumber: initData?.roomNumber || initData?.room_number || '',
+    description: initData?.description || '',
+    floor: String(initData?.floor || ''),
+    category: initData?.category || 'standard',
+    basePrice: initData?.basePrice || 0,
+    maxCapacity: initData?.maxCapacity || 0,
+    isActive: initData?.isActive !== undefined ? initData.isActive : (initData?.is_active !== undefined ? initData.is_active : true),
+    imageSrc: initData?.imageSrc || initData?.image_url || '',
+    images: initData?.images || [],
+    amenities: initData?.amenities || [],
     sharingOptions: initialSharingOptions.length > 0 
       ? initialSharingOptions 
       : [{ type: '2-sharing', capacity: 2, count: 1, price: 0 }],
@@ -261,7 +262,7 @@ export const HostelRoomForm: React.FC<HostelRoomFormProps> = ({
       let response;
       
       // Ensure all form data has required properties before submission
-      const roomData: HostelRoomData = {
+      const roomData: any = {
         name: data.name,
         roomNumber: data.roomNumber,
         description: data.description,
@@ -704,7 +705,7 @@ export const HostelRoomForm: React.FC<HostelRoomFormProps> = ({
                   <div></div>
                 </div>
                 <div className="space-y-1 max-h-64 overflow-y-auto">
-                  {(initialData?.sharingOptions as any[])?.map((option, index) => (
+                  {((initialData as any)?.sharingOptions as any[])?.map((option, index) => (
                       <div>
                          {(option.bedIds as any[])?.map((bed, bedIndex) => (
                         <div key={bedIndex} className="grid grid-cols-6 gap-2 items-center py-1 border-b border-dashed">

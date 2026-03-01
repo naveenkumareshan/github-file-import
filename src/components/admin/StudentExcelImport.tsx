@@ -173,7 +173,7 @@ function excelDateToJSEndOfDay(serial: number): Date {
     try {
       const response = await adminCabinsService.getAllCabins();
       if (response.success) {
-        setCabins(response.data);
+        setCabins(response.data as any);
       }
     } catch (error) {
       console.error('Error fetching cabins:', error);

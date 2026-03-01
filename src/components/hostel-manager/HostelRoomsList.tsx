@@ -27,10 +27,10 @@ export const HostelRoomsList = () => {
     
     try {
       setLoading(true);
-      const response = await hostelRoomService.getHostelRooms(hostelId);
+      const response = await hostelRoomService.getHostelRooms(hostelId) as any;
       
-      if (response.success) {
-        setRooms(response.data || []);
+      if (Array.isArray(response)) {
+        setRooms(response as any || []);
       } else {
         toast({
           title: "Error",
@@ -69,15 +69,17 @@ export const HostelRoomsList = () => {
     navigate(`/manager/hostels/${hostelId}/rooms/${roomId}`);
   };
 
-  const calculateTotalBeds = (room: HostelRoomData) => {
-    return room.sharingOptions.reduce((total, option) => {
-      return total + option.capacity * option.count;
+  const calculateTotalBeds = (room: any) => {
+    const options = room.sharingOptions || room.hostel_sharing_options || [];
+    return options.reduce((total: number, option: any) => {
+      return total + (option.capacity || 0) * (option.count || option.total_beds || 1);
     }, 0);
   };
 
-  const calculateOccupancyRate = (room: HostelRoomData) => {
+  const calculateOccupancyRate = (room: any) => {
     const totalBeds = calculateTotalBeds(room);
-    const availableBeds = room.sharingOptions.reduce((total, option) => {
+    const options = room.sharingOptions || room.hostel_sharing_options || [];
+    const availableBeds = options.reduce((total: number, option: any) => {
       return total + (option.available || 0);
     }, 0);
     
@@ -121,13 +123,13 @@ export const HostelRoomsList = () => {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {rooms.map((room) => (
-            <Card key={room._id} className="overflow-hidden">
-              {room.imageSrc && (
+          {rooms.map((room: any) => (
+            <Card key={room._id || room.id} className="overflow-hidden">
+              {(room.imageSrc || room.image_url) && (
                 <div className="w-full h-48 overflow-hidden">
                   <img 
-                    src={room.imageSrc} 
-                    alt={room.name} 
+                    src={room.imageSrc || room.image_url} 
+                    alt={room.name || room.room_number} 
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -135,11 +137,11 @@ export const HostelRoomsList = () => {
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div>
-                    <CardTitle>{room.name}</CardTitle>
-                    <CardDescription>Room #{room.roomNumber}, {room.floor} floor</CardDescription>
+                    <CardTitle>{room.name || room.room_number}</CardTitle>
+                    <CardDescription>Room #{room.roomNumber || room.room_number}, {room.floor} floor</CardDescription>
                   </div>
-                  <Badge variant={room.isActive ? "default" : "outline"}>
-                    {room.isActive ? "Active" : "Inactive"}
+                  <Badge variant={(room.isActive ?? room.is_active) ? "default" : "outline"}>
+                    {(room.isActive ?? room.is_active) ? "Active" : "Inactive"}
                   </Badge>
                 </div>
               </CardHeader>
@@ -162,7 +164,7 @@ export const HostelRoomsList = () => {
                     <div className="flex flex-col items-center p-2 bg-muted rounded-md">
                       <DollarSign className="h-5 w-5 mb-1 text-primary" />
                       <span className="text-xs text-muted-foreground">Base Price</span>
-                      <span className="font-medium text-sm">₹{room.basePrice}</span>
+                      <span className="font-medium text-sm">₹{room.basePrice || 0}</span>
                     </div>
                   </div>
                   

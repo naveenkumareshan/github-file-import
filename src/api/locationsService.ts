@@ -90,7 +90,7 @@ export const locationsService = {
 
   updateState: async (id: string, updates: Partial<State>) => {
     try {
-      const { data, error } = await supabase.from('states').update(updates).eq('id', id).select().single();
+      const { data, error } = await supabase.from('states').update(updates as any).eq('id', id).select().single();
       if (error) throw error;
       return { success: true, data };
     } catch (error: any) {
@@ -139,7 +139,7 @@ export const locationsService = {
 
   updateCity: async (id: string, updates: Partial<City>) => {
     try {
-      const { data, error } = await supabase.from('cities').update(updates).eq('id', id).select().single();
+      const { data, error } = await supabase.from('cities').update(updates as any).eq('id', id).select().single();
       if (error) throw error;
       return { success: true, data };
     } catch (error: any) {
@@ -188,7 +188,7 @@ export const locationsService = {
 
   updateArea: async (id: string, updates: Partial<Area>) => {
     try {
-      const { data, error } = await supabase.from('areas').update(updates).eq('id', id).select().single();
+      const { data, error } = await supabase.from('areas').update(updates as any).eq('id', id).select().single();
       if (error) throw error;
       return { success: true, data };
     } catch (error: any) {

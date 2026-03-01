@@ -24,7 +24,7 @@ useEffect(() => {
     try {
       const response = await adminBookingsService.getActiveResidents();
       if (response.success) {
-        setActiveResidents(response.data);
+        setActiveResidents(response.data as any);
       }
     } catch (error) {
       console.error('Error fetching active residents:', error);

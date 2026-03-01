@@ -21,14 +21,15 @@ export const SharingBedsList: React.FC<SharingBedsListProps> = ({ roomId }) => {
   const fetchRoomData = async () => {
     try {
       setLoading(true);
-      const response = await hostelRoomService.getRoom(roomId);
+      const response = await hostelRoomService.getRoom(roomId) as any;
       
-      if (response.success) {
-        setRoom(response.data);
+      if (response) {
+        setRoom(response);
         
         // Set active tab to first sharing option
-        if (response.data.sharingOptions && response.data.sharingOptions.length > 0 && !activeTab) {
-          setActiveTab(response.data.sharingOptions[0].type);
+        const sharingOpts = response.hostel_sharing_options || response.sharingOptions || [];
+        if (sharingOpts.length > 0 && !activeTab) {
+          setActiveTab(sharingOpts[0].type);
         }
       } else {
         toast({

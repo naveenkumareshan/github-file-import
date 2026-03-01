@@ -54,7 +54,7 @@ export const adminUsersService = {
         const { data: roleRows, error: roleError } = await supabase
           .from('user_roles')
           .select('user_id')
-          .eq('role', role);
+          .eq('role', role as any);
         if (roleError) throw roleError;
         roleUserIds = (roleRows || []).map(r => r.user_id);
         if (roleUserIds.length === 0) {

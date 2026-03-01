@@ -105,7 +105,7 @@ const DateBasedSeatMapComponent: React.FC<DateBasedSeatMapProps> = ({
             );
 
           if (availabilityResponse.success) {
-            setSeatAvailability(availabilityResponse.data);
+            setSeatAvailability(availabilityResponse.data as any);
           }
         }
       }

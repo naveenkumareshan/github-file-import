@@ -25,10 +25,10 @@ export const ManagerDashboard = () => {
       setLoading(true);
       
       // Get hostels managed by the current user
-      const hostelsResponse = await hostelService.getUserHostels();
+      const hostelsResponse = await hostelService.getUserHostels() as any;
       
-      if (hostelsResponse.success && hostelsResponse.data) {
-        const hostels = hostelsResponse.data;
+      if (Array.isArray(hostelsResponse)) {
+        const hostels = hostelsResponse;
         
         // Calculate basic statistics
         const totalRooms = 0;
