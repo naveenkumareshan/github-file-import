@@ -1,38 +1,65 @@
 
 
-## Create a Native Mobile App with Capacitor
+## Add Splash Screen and App Icon for Native App
 
-Capacitor will wrap your existing web app into a native shell that can be published to the Apple App Store and Google Play Store.
+The Capacitor setup from the previous step wasn't saved, so this plan includes the full Capacitor setup plus splash screen configuration.
 
-### What I'll Do
+### Step 1: Install Capacitor Dependencies
 
-1. **Install Capacitor dependencies** - Add `@capacitor/core`, `@capacitor/cli`, `@capacitor/ios`, and `@capacitor/android` to your project.
+Add to `package.json`:
+- `@capacitor/core`
+- `@capacitor/cli` (dev dependency)
+- `@capacitor/ios`
+- `@capacitor/android`
+- `@capacitor/splash-screen`
 
-2. **Initialize Capacitor** - Create the Capacitor configuration file with:
-   - App ID: `app.lovable.3eba92fb4507477d8b3685f58b7311e2`
-   - App Name: `inhalestaysbynaveen`
-   - Live reload server pointing to your preview URL for development
+### Step 2: Create `capacitor.config.ts`
 
-### What You'll Need to Do After
+Configure Capacitor with:
+- **appId**: `app.lovable.3eba92fb4507477d8b3685f58b7311e2`
+- **appName**: `inhalestaysbynaveen`
+- **webDir**: `dist`
+- **Live reload server** pointing to the preview URL
+- **Splash screen plugin config**:
+  - `launchAutoHide`: false (so we control when to hide it)
+  - `backgroundColor`: `#0f172a` (matches the app's dark theme)
+  - `showSpinner`: true
+  - `androidSpinnerStyle`: `large`
+  - `splashFullScreen`: true
+  - `splashImmersive`: true
 
-Once I set things up in the code, you'll need to follow these steps on your computer:
+### Step 3: Create Splash Screen Initialization
 
-1. **Export to GitHub** - Click your project name (top left) -> Settings -> GitHub tab -> Connect and transfer the project
-2. **Clone and install** - Pull the project from GitHub and run `npm install`
-3. **Add platforms**:
-   - For Android: `npx cap add android`
-   - For iPhone: `npx cap add ios`
-4. **Build and sync**:
-   - `npm run build`
-   - `npx cap sync`
-5. **Run the app**:
-   - Android: `npx cap run android` (requires Android Studio)
-   - iPhone: `npx cap run ios` (requires a Mac with Xcode)
+Create `src/utils/splashScreen.ts` that:
+- Imports `SplashScreen` from `@capacitor/splash-screen`
+- Checks if running on a native platform (`Capacitor.isNativePlatform()`)
+- Hides the splash screen after the app mounts (with a short delay for smooth transition)
 
-### Requirements
-- **For Android**: Install [Android Studio](https://developer.android.com/studio)
-- **For iPhone**: You need a Mac with [Xcode](https://developer.apple.com/xcode/) installed
+### Step 4: Integrate in `App.tsx`
 
-### Useful Resource
-For a detailed walkthrough, check out this guide: [Building mobile apps with Lovable](https://docs.lovable.dev/tips-tricks/mobile-app)
+Call the splash screen hide function in the main `App` component's `useEffect`.
+
+### Step 5: User Instructions for Icons
+
+After code changes, provide instructions for generating native splash screen and app icon assets:
+
+1. Export to GitHub and clone the repo
+2. Install dependencies with `npm install`
+3. Add platforms: `npx cap add android` / `npx cap add ios`
+4. Use the existing `public/pwa-512x512.png` as the base icon
+5. Use `@capacitor/assets` tool to auto-generate all required splash screen and icon sizes:
+   ```
+   npx @capacitor/assets generate --iconBackgroundColor #0f172a --splashBackgroundColor #0f172a
+   ```
+6. Run `npm run build && npx cap sync`
+7. Run `npx cap run android` or `npx cap run ios`
+
+### Files to Create/Edit
+
+| File | Action |
+|------|--------|
+| `package.json` | Add Capacitor + splash-screen dependencies |
+| `capacitor.config.ts` | Create with app config + splash screen plugin settings |
+| `src/utils/splashScreen.ts` | Create splash screen hide logic |
+| `src/App.tsx` | Add splash screen initialization on mount |
 
