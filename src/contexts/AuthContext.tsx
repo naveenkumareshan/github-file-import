@@ -133,18 +133,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return { success: false, error: 'Your account has been deactivated. Please contact admin.' };
         }
 
-        // Wait for onAuthStateChange to populate user state
-        await new Promise<void>((resolve) => {
-          const checkUser = () => {
-            if (user !== null) {
-              resolve();
-            } else {
-              setTimeout(checkUser, 100);
-            }
-          };
-          setTimeout(checkUser, 200);
-          setTimeout(resolve, 5000);
-        });
+        // Build user immediately instead of waiting for onAuthStateChange
+        const appUser = await buildUser(data.user);
+        setUser(appUser);
         return { success: true };
       }
 

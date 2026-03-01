@@ -43,6 +43,13 @@ const StudentLogin = () => {
     }
   }, [location]);
 
+  // Redirect authenticated users (handles Google OAuth return)
+  useEffect(() => {
+    if (user) {
+      navigate(redirectPath, { replace: true });
+    }
+  }, [user, redirectPath, navigate]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
