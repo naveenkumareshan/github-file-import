@@ -54,7 +54,7 @@ const AdminLayout: React.FC = () => {
               className="flex h-13 shrink-0 items-center gap-2 border-b px-3 sm:px-4 sticky top-0 z-10"
               style={{ background: 'linear-gradient(90deg, hsl(var(--primary) / 0.04) 0%, hsl(var(--background)) 60%)' }}
             >
-              <SidebarTrigger className="-ml-1" />
+              <SidebarTrigger className="-ml-1" style={{ paddingTop: 'env(safe-area-inset-top)' }} />
               <div className="mx-2 h-4 w-px bg-border hidden sm:block" />
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0 truncate">
                 <span className="hidden sm:inline">{user?.role === "admin" ? "Admin" : user?.role === "vendor_employee" ? "Employee" : "Partner"} Panel</span>

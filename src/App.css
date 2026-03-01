@@ -1,5 +1,8 @@
 #root {
   background-color: hsl(220, 20%, 98%) !important;
   overflow-x: hidden;
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
