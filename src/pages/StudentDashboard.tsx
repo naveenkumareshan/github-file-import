@@ -101,7 +101,7 @@ const BookingReceiptCard: React.FC<ReceiptCardProps> = ({ booking, formatDate, i
       <div className="border-t border-dashed mx-4" />
 
       {/* Stats row */}
-      <div className="grid grid-cols-3 divide-x px-0">
+      <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x px-0">
         <div className="px-4 py-3">
           <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Period</p>
           <p className="text-[12px] font-medium text-foreground">
@@ -351,7 +351,7 @@ const StudentDashboard: React.FC = () => {
               
               <CardContent>
                 {/* Summary Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
                   <Card>
                     <CardContent className="p-6">
                       <div className="flex items-center justify-between">

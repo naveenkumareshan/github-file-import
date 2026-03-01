@@ -96,8 +96,8 @@ export default function Hostels() {
     <div className="min-h-screen bg-background">
       {/* Sticky header */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
-        <div className="px-3 pt-3 pb-2 max-w-lg mx-auto">
-          <h1 className="text-[16px] font-semibold mb-2">Find Your Hostel</h1>
+        <div className="px-3 pt-3 pb-2 max-w-lg lg:max-w-5xl mx-auto">
+          <h1 className="text-[16px] font-semibold mb-2 lg:text-xl">Find Your Hostel</h1>
 
           {/* Search bar */}
           <div className="relative mb-2">
@@ -149,7 +149,7 @@ export default function Hostels() {
       </div>
 
       {/* Results */}
-      <div className="px-3 py-3 max-w-lg mx-auto">
+      <div className="px-3 py-3 max-w-lg lg:max-w-5xl mx-auto">
         {loading ? (
           <div className="space-y-2.5">
             {[...Array(4)].map((_, i) => (
@@ -176,8 +176,9 @@ export default function Hostels() {
             </p>
           </div>
         ) : (
-          <div className="space-y-2.5">
-            <p className="text-[11px] text-muted-foreground">{filteredHostels.length} hostels found</p>
+          <div>
+            <p className="text-[11px] text-muted-foreground mb-2.5">{filteredHostels.length} hostels found</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
             {filteredHostels.map((hostel) => (
               <div
                 key={hostel.id}
@@ -235,6 +236,7 @@ export default function Hostels() {
                 </div>
               </div>
             ))}
+            </div>
           </div>
         )}
       </div>
