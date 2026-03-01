@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,10 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { hostelBedCategoryService, HostelBedCategory } from '@/api/hostelBedCategoryService';
@@ -97,6 +101,9 @@ const HostelBedManagementPage = () => {
   const [detailsBedId, setDetailsBedId] = useState<string | null>(null);
   const [detailsBedNumber, setDetailsBedNumber] = useState(0);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+
+  // Delete confirmation dialog
+  const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'bed' | 'room' | 'floor'; id: string; name: string } | null>(null);
 
   useEffect(() => {
     if (hostelId) fetchAll();
@@ -200,45 +207,48 @@ const HostelBedManagementPage = () => {
     }
   };
 
+  // Reusable function to load designer data for a room
+  const loadDesignerData = useCallback(async (roomId: string) => {
+    if (!roomId) return;
+    const room = rooms.find(r => r.id === roomId);
+    setRoomLayout(room);
+    setLayoutImage(room?.layout_image || null);
+    setLayoutImageOpacity(room?.layout_image_opacity ?? 30);
+
+    const { data: opts } = await supabase
+      .from('hostel_sharing_options')
+      .select('id, type, price_monthly')
+      .eq('room_id', roomId)
+      .eq('is_active', true);
+    setSharingOptions(opts || []);
+
+    const { data: beds } = await supabase
+      .from('hostel_beds')
+      .select('*, hostel_sharing_options(type, price_monthly)')
+      .eq('room_id', roomId)
+      .order('bed_number');
+
+    const { data: bookings } = await supabase
+      .from('hostel_bookings')
+      .select('bed_id, profiles:user_id(name)')
+      .eq('hostel_id', hostelId)
+      .in('status', ['confirmed', 'pending']);
+
+    const bookingMap = new Map<string, string>();
+    bookings?.forEach((b: any) => bookingMap.set(b.bed_id, b.profiles?.name || 'Occupied'));
+
+    setDesignerBeds((beds || []).map(b => ({
+      id: b.id, bed_number: b.bed_number, position_x: b.position_x || 0, position_y: b.position_y || 0,
+      is_available: b.is_available, is_blocked: b.is_blocked, category: b.category, price_override: b.price_override,
+      sharing_option_id: b.sharing_option_id, sharingType: b.hostel_sharing_options?.type,
+      sharingPrice: b.hostel_sharing_options?.price_monthly, occupantName: bookingMap.get(b.id),
+    })));
+  }, [rooms, hostelId]);
+
   // Load designer beds when room changes
   useEffect(() => {
     if (!selectedRoomId) return;
-    const loadDesignerData = async () => {
-      const room = rooms.find(r => r.id === selectedRoomId);
-      setRoomLayout(room);
-      setLayoutImage(room?.layout_image || null);
-      setLayoutImageOpacity(room?.layout_image_opacity ?? 30);
-
-      const { data: opts } = await supabase
-        .from('hostel_sharing_options')
-        .select('id, type, price_monthly')
-        .eq('room_id', selectedRoomId)
-        .eq('is_active', true);
-      setSharingOptions(opts || []);
-
-      const { data: beds } = await supabase
-        .from('hostel_beds')
-        .select('*, hostel_sharing_options(type, price_monthly)')
-        .eq('room_id', selectedRoomId)
-        .order('bed_number');
-
-      const { data: bookings } = await supabase
-        .from('hostel_bookings')
-        .select('bed_id, profiles:user_id(name)')
-        .eq('hostel_id', hostelId)
-        .in('status', ['confirmed', 'pending']);
-
-      const bookingMap = new Map<string, string>();
-      bookings?.forEach((b: any) => bookingMap.set(b.bed_id, b.profiles?.name || 'Occupied'));
-
-      setDesignerBeds((beds || []).map(b => ({
-        id: b.id, bed_number: b.bed_number, position_x: b.position_x || 0, position_y: b.position_y || 0,
-        is_available: b.is_available, is_blocked: b.is_blocked, category: b.category, price_override: b.price_override,
-        sharing_option_id: b.sharing_option_id, sharingType: b.hostel_sharing_options?.type,
-        sharingPrice: b.hostel_sharing_options?.price_monthly, occupantName: bookingMap.get(b.id),
-      })));
-    };
-    loadDesignerData();
+    loadDesignerData(selectedRoomId);
   }, [selectedRoomId]);
 
   const handleGridBedClick = (bed: any) => {
@@ -285,16 +295,80 @@ const HostelBedManagementPage = () => {
     } finally { setSaving(false); }
   };
 
-  const handleDeleteBed = async (bedId: string) => {
+  // Trigger delete confirmation for a bed
+  const requestDeleteBed = (bedId: string, bedNumber: number, occupantName?: string) => {
+    if (occupantName) {
+      toast({ title: 'Cannot delete', description: 'This bed is currently occupied. Remove the booking first.', variant: 'destructive' });
+      return;
+    }
+    setDeleteConfirm({ type: 'bed', id: bedId, name: `Bed #${bedNumber}` });
+  };
+
+  const executeDeleteBed = async (bedId: string) => {
     try {
       const { error } = await supabase.from('hostel_beds').delete().eq('id', bedId);
       if (error) throw error;
       toast({ title: 'Bed deleted' });
       setEditDialogOpen(false);
+      await fetchAll();
+      if (selectedRoomId) loadDesignerData(selectedRoomId);
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  // Trigger delete confirmation for a room (with dependency check)
+  const requestDeleteRoom = async (roomId: string, roomNumber: string) => {
+    // Check if room has beds
+    const { count } = await supabase.from('hostel_beds').select('id', { count: 'exact', head: true }).eq('room_id', roomId);
+    if (count && count > 0) {
+      toast({ title: 'Cannot delete room', description: `Delete all ${count} bed(s) in this room first.`, variant: 'destructive' });
+      return;
+    }
+    setDeleteConfirm({ type: 'room', id: roomId, name: `Room ${roomNumber}` });
+  };
+
+  const executeDeleteRoom = async (roomId: string) => {
+    try {
+      const { error } = await supabase.from('hostel_rooms').update({ is_active: false } as any).eq('id', roomId);
+      if (error) throw error;
+      toast({ title: 'Room deleted (existing bookings preserved)' });
+      if (selectedRoomId === roomId) setSelectedRoomId('');
       fetchAll();
     } catch (e: any) {
       toast({ title: 'Error', description: e.message, variant: 'destructive' });
     }
+  };
+
+  // Trigger delete confirmation for a floor (with dependency check)
+  const requestDeleteFloor = async (floorId: string, floorName: string) => {
+    const floorRoomsList = rooms.filter(r => r.floor_id === floorId);
+    if (floorRoomsList.length > 0) {
+      toast({ title: 'Cannot delete floor', description: `Delete all ${floorRoomsList.length} room(s) on this floor first.`, variant: 'destructive' });
+      return;
+    }
+    setDeleteConfirm({ type: 'floor', id: floorId, name: floorName });
+  };
+
+  const executeDeleteFloor = async (floorId: string) => {
+    const result = await hostelFloorService.deleteFloor(floorId);
+    if (result.success) {
+      toast({ title: 'Floor removed' });
+      if (hostelId) {
+        const floorResult = await hostelFloorService.getFloors(hostelId);
+        if (floorResult.success) setFloors(floorResult.data);
+      }
+    }
+  };
+
+  // Execute confirmed delete
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirm) return;
+    const { type, id } = deleteConfirm;
+    setDeleteConfirm(null);
+    if (type === 'bed') await executeDeleteBed(id);
+    else if (type === 'room') await executeDeleteRoom(id);
+    else if (type === 'floor') await executeDeleteFloor(id);
   };
 
   const loadAddDialogSharingOptions = (_roomId: string) => {
@@ -366,7 +440,9 @@ const HostelBedManagementPage = () => {
       toast({ title: `${count} bed(s) added` });
       setAddBedDialogOpen(false);
       setAddCount('1'); setAddCategory(''); setAddAmenities([]); setAddRoomIdInDialog(''); setAddPrice('');
-      fetchAll();
+      await fetchAll();
+      // Sync layout plan
+      if (targetRoomId) loadDesignerData(targetRoomId);
     } catch (e: any) {
       toast({ title: 'Error', description: e.message, variant: 'destructive' });
     } finally { setSaving(false); }
@@ -467,17 +543,6 @@ const HostelBedManagementPage = () => {
     } finally { setSaving(false); }
   };
 
-  const handleDeleteFloor = async (id: string) => {
-    const result = await hostelFloorService.deleteFloor(id);
-    if (result.success) {
-      toast({ title: 'Floor removed' });
-      if (hostelId) {
-        const floorResult = await hostelFloorService.getFloors(hostelId);
-        if (floorResult.success) setFloors(floorResult.data);
-      }
-    }
-  };
-
   const handleAddSharingType = async () => {
     if (!newSharingName.trim() || !hostelId) return;
     setSaving(true);
@@ -525,18 +590,6 @@ const HostelBedManagementPage = () => {
     } catch (e: any) {
       toast({ title: 'Error', description: e.message, variant: 'destructive' });
     } finally { setSaving(false); }
-  };
-
-  const handleDeleteRoom = async (roomId: string) => {
-    try {
-      const { error } = await supabase.from('hostel_rooms').update({ is_active: false } as any).eq('id', roomId);
-      if (error) throw error;
-      toast({ title: 'Room deleted (existing bookings preserved)' });
-      if (selectedRoomId === roomId) setSelectedRoomId('');
-      fetchAll();
-    } catch (e: any) {
-      toast({ title: 'Error', description: e.message, variant: 'destructive' });
-    }
   };
 
   const handleRenameRoom = async (roomId: string) => {
@@ -643,7 +696,7 @@ const HostelBedManagementPage = () => {
                   <div key={floor.id} className="flex items-center gap-1 border rounded px-2 py-1 text-xs">
                     <span className="font-medium">{floor.name}</span>
                     <span className="text-muted-foreground">(Order: {floor.floor_order})</span>
-                    <Button variant="ghost" size="icon" className="h-5 w-5 ml-1" onClick={() => handleDeleteFloor(floor.id)}><Trash2 className="h-3 w-3" /></Button>
+                    <Button variant="ghost" size="icon" className="h-5 w-5 ml-1" onClick={() => requestDeleteFloor(floor.id, floor.name)}><Trash2 className="h-3 w-3" /></Button>
                   </div>
                 ))}
                 {floors.length === 0 && <span className="text-xs text-muted-foreground">No floors yet</span>}
@@ -720,7 +773,7 @@ const HostelBedManagementPage = () => {
                           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setRenameRoomId(room.id); setRenameRoomValue(room.room_number); }}>
                             <Pencil className="h-3 w-3" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDeleteRoom(room.id)}>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => requestDeleteRoom(room.id, room.room_number)}>
                             <Trash2 className="h-3 w-3" />
                           </Button>
                         </>
@@ -775,7 +828,7 @@ const HostelBedManagementPage = () => {
             </div>
           )}
 
-          {/* ═══ Box Grid for selected room ═══ */}
+          {/* ═══ Compact Bed Grid for selected room ═══ */}
           {selectedRoomId && selectedRoomBeds.length > 0 ? (
             <div className="border rounded-xl p-4 bg-card">
               <div className="flex items-center justify-between mb-3">
@@ -792,54 +845,57 @@ const HostelBedManagementPage = () => {
                   : 0}
                 className="h-1.5 mb-3"
               />
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+              <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-1.5">
                 {selectedRoomBeds.map((bed: any) => {
                   const isAvail = bed.is_available && !bed.is_blocked;
                   const isBlocked = bed.is_blocked;
                   let statusColor = 'border-emerald-400 bg-emerald-50/50';
-                  let statusText = 'Available';
                   let statusDot = 'bg-emerald-500';
                   if (isBlocked) {
                     statusColor = 'border-destructive/30 bg-destructive/5';
-                    statusText = 'Blocked';
                     statusDot = 'bg-destructive';
                   } else if (!isAvail) {
                     statusColor = 'border-blue-400 bg-blue-50/50';
-                    statusText = 'Occupied';
                     statusDot = 'bg-blue-500';
                   }
                   const bedPrice = bed.price_override || bed.sharingPrice || 0;
                   return (
-                    <button
+                    <div
                       key={bed.id}
-                      className={`flex flex-col items-start rounded-lg border p-3 text-left cursor-pointer transition-all hover:shadow-md ${statusColor}`}
-                      onClick={() => handleGridBedClick(bed)}
+                      className={`relative rounded-lg border p-2 text-left transition-all hover:shadow-md ${statusColor}`}
                     >
-                      <div className="flex items-center justify-between w-full mb-1.5">
-                        <div className="flex items-center gap-1.5">
-                          <BedDouble className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-bold text-sm">Bed #{bed.bed_number}</span>
-                        </div>
+                      {/* Header: bed number + status dot + action icons */}
+                      <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center gap-1">
                           <div className={`w-2 h-2 rounded-full ${statusDot}`} />
-                          <span className="text-[10px] text-muted-foreground">{statusText}</span>
+                          <span className="font-bold text-xs">#{bed.bed_number}</span>
+                        </div>
+                        <div className="flex items-center gap-0">
+                          <button
+                            className="p-0.5 rounded hover:bg-muted"
+                            onClick={(e) => { e.stopPropagation(); handleGridBedClick(bed); }}
+                            title="Edit bed"
+                          >
+                            <Pencil className="h-3 w-3 text-muted-foreground" />
+                          </button>
+                          <button
+                            className="p-0.5 rounded hover:bg-destructive/10"
+                            onClick={(e) => { e.stopPropagation(); requestDeleteBed(bed.id, bed.bed_number, bed.occupantName); }}
+                            title="Delete bed"
+                          >
+                            <Trash2 className="h-3 w-3 text-destructive" />
+                          </button>
                         </div>
                       </div>
-                      <div className="flex flex-wrap gap-1 mb-1.5">
-                        {bed.category && <Badge variant="outline" className="text-[9px] px-1.5 py-0">{bed.category}</Badge>}
-                        {bed.sharingType && <Badge variant="secondary" className="text-[9px] px-1.5 py-0">{bed.sharingType}</Badge>}
+                      {/* Badges */}
+                      <div className="flex flex-wrap gap-0.5 mb-1">
+                        {bed.category && <Badge variant="outline" className="text-[8px] px-1 py-0 leading-tight">{bed.category}</Badge>}
+                        {bed.sharingType && <Badge variant="secondary" className="text-[8px] px-1 py-0 leading-tight">{bed.sharingType}</Badge>}
                       </div>
-                      <span className="text-xs font-semibold text-primary">{formatCurrency(bedPrice)}/mo</span>
-                      {bed.occupantName && <span className="text-[10px] text-muted-foreground mt-0.5">👤 {bed.occupantName}</span>}
-                      {bed.amenities?.length > 0 && (
-                        <div className="flex flex-wrap gap-0.5 mt-1">
-                          {bed.amenities.slice(0, 3).map((a: string) => (
-                            <span key={a} className="text-[8px] bg-muted px-1 py-0.5 rounded">{a}</span>
-                          ))}
-                          {bed.amenities.length > 3 && <span className="text-[8px] text-muted-foreground">+{bed.amenities.length - 3}</span>}
-                        </div>
-                      )}
-                    </button>
+                      {/* Price */}
+                      <span className="text-[10px] font-semibold text-primary">{formatCurrency(bedPrice)}/mo</span>
+                      {bed.occupantName && <span className="block text-[9px] text-muted-foreground truncate">👤 {bed.occupantName}</span>}
+                    </div>
                   );
                 })}
               </div>
@@ -955,7 +1011,7 @@ const HostelBedManagementPage = () => {
             <Button variant="outline" size="sm" onClick={() => { setDetailsBedId(editBed?.id); setDetailsBedNumber(editBed?.bed_number || 0); setDetailsDialogOpen(true); }}>
               <Eye className="h-3.5 w-3.5 mr-1" /> View Details
             </Button>
-            <Button variant="destructive" size="sm" onClick={() => editBed && handleDeleteBed(editBed.id)} disabled={saving || editBed?.occupantName}>
+            <Button variant="destructive" size="sm" onClick={() => editBed && requestDeleteBed(editBed.id, editBed.bed_number, editBed.occupantName)} disabled={saving || editBed?.occupantName}>
               <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
             </Button>
             <Button size="sm" onClick={handleSaveBed} disabled={saving}>Save</Button>
@@ -1042,6 +1098,26 @@ const HostelBedManagementPage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => { if (!open) setDeleteConfirm(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {deleteConfirm?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteConfirm?.type === 'bed' && 'This bed will be permanently removed. This action cannot be undone.'}
+              {deleteConfirm?.type === 'room' && 'This room will be deactivated. Existing bookings will be preserved.'}
+              {deleteConfirm?.type === 'floor' && 'This floor will be permanently removed. This action cannot be undone.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Bed Details Dialog */}
       <HostelBedDetailsDialog
