@@ -28,6 +28,9 @@ export interface HostelData {
   review_count?: number;
   commission_percentage?: number;
   security_deposit?: number;
+  food_enabled?: boolean;
+  food_price_monthly?: number;
+  food_menu_image?: string;
   advance_booking_enabled?: boolean;
   advance_percentage?: number;
   advance_flat_amount?: number;

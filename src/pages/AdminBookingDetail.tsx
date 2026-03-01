@@ -177,11 +177,13 @@ const AdminBookingDetail = () => {
         startDate: booking.start_date || '',
         endDate: booking.end_date || '',
         duration: booking.booking_duration || '-',
-        seatAmount: booking.total_price || 0,
+        seatAmount: (booking.total_price || 0) - (booking.food_amount || 0),
         discountAmount: 0,
         discountReason: '',
         lockerIncluded: false,
         lockerPrice: 0,
+        foodOpted: booking.food_opted || false,
+        foodAmount: booking.food_amount || 0,
         totalAmount: booking.total_price || 0,
         paymentMethod: booking.payment_method || 'cash',
         transactionId: booking.transaction_id || '',
@@ -246,7 +248,8 @@ const AdminBookingDetail = () => {
   // ── Payment calculations ──
   const totalPrice = bookingType === 'hostel' ? (booking.total_price || 0) : (booking.totalPrice || 0);
   const securityDeposit = bookingType === 'hostel' ? (booking.security_deposit || 0) : 0;
-  const seatPrice = bookingType === 'hostel' ? totalPrice : (booking.seatPrice || 0);
+  const seatPrice = bookingType === 'hostel' ? (totalPrice - (booking.food_amount || 0)) : (booking.seatPrice || 0);
+  const foodAmount = bookingType === 'hostel' ? (booking.food_amount || 0) : 0;
   const lockerAmount = bookingType === 'hostel' ? 0 : (booking.lockerPrice || 0);
   const discountAmount = bookingType === 'hostel' ? 0 : (booking.discountAmount || 0);
 
@@ -378,9 +381,15 @@ const AdminBookingDetail = () => {
             </p>
             <div className="grid grid-cols-3 gap-3 mb-2">
               <div>
-                <p className="text-[11px] text-muted-foreground">{bookingType === 'hostel' ? 'Base Price' : 'Seat Price'}</p>
+                <p className="text-[11px] text-muted-foreground">{bookingType === 'hostel' ? 'Room Rent' : 'Seat Price'}</p>
                 <p className="text-sm font-semibold">₹{seatPrice.toLocaleString()}</p>
               </div>
+              {bookingType === 'hostel' && foodAmount > 0 && (
+                <div>
+                  <p className="text-[11px] text-muted-foreground">Food Charges</p>
+                  <p className="text-sm font-semibold">₹{foodAmount.toLocaleString()}</p>
+                </div>
+              )}
               {bookingType === 'hostel' ? (
                 <div>
                   <p className="text-[11px] text-muted-foreground">Security Deposit</p>

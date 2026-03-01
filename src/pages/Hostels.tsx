@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { hostelService } from '@/api/hostelService';
-import { Search, MapPin, Hotel, Star } from 'lucide-react';
+import { Search, MapPin, Hotel, Star, Utensils } from 'lucide-react';
 import { formatCurrency } from '@/utils/currency';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -245,6 +245,11 @@ export default function Hostels() {
                           <span className="text-[11px] font-semibold text-foreground">{formatCurrency(minPrice)}/mo</span>
                         ) : null;
                       })()}
+                      {hostel.food_enabled && (
+                        <span className="flex items-center gap-0.5 text-[10px] text-orange-600 font-medium">
+                          <Utensils className="h-3 w-3" /> Food
+                        </span>
+                      )}
                     </div>
                     <span className="text-[11px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-lg flex-shrink-0">View Rooms</span>
                   </div>

@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ImageUpload } from "@/components/ImageUpload";
 import { toast } from "@/hooks/use-toast";
-import { ArrowLeft, Building2, Image, IndianRupee, CalendarClock, Sparkles, User, Users, MapPin, ChevronDown } from "lucide-react";
+import { ArrowLeft, Building2, Image, IndianRupee, CalendarClock, Sparkles, User, Users, MapPin, ChevronDown, Utensils, Plus, X } from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LocationSelector } from "../forms/LocationSelector";
@@ -63,7 +63,18 @@ export function HostelEditor({ onSave, onCancel, existingHostel, isAdmin = true 
     coordinates_lng: existingHostel?.coordinates_lng || 0,
     created_by: existingHostel?.created_by || '',
     is_active: existingHostel?.is_active ?? true,
+    food_enabled: existingHostel?.food_enabled ?? false,
+    food_price_monthly: existingHostel?.food_price_monthly ?? 0,
+    food_menu_image: existingHostel?.food_menu_image || '',
   });
+
+  // Food menu items state
+  const [foodMenuItems, setFoodMenuItems] = useState<Record<string, string[]>>({
+    breakfast: [],
+    lunch: [],
+    dinner: [],
+  });
+  const [newFoodItem, setNewFoodItem] = useState<Record<string, string>>({ breakfast: '', lunch: '', dinner: '' });
 
   const [partners, setPartners] = useState<Array<{ id: string; name: string; email: string; phone: string; serial_number: string }>>([]);
   const [selectedPartner, setSelectedPartner] = useState<string>(existingHostel?.created_by || '');
@@ -86,6 +97,28 @@ export function HostelEditor({ onSave, onCancel, existingHostel, isAdmin = true 
     };
     if (isAdmin) fetchPartners();
   }, [isAdmin]);
+
+  // Fetch food menu items for existing hostel
+  useEffect(() => {
+    if (existingHostel?.id) {
+      const fetchFoodMenu = async () => {
+        const { data } = await supabase
+          .from('hostel_food_menu')
+          .select('*')
+          .eq('hostel_id', existingHostel.id)
+          .eq('is_active', true)
+          .order('display_order');
+        if (data) {
+          const grouped: Record<string, string[]> = { breakfast: [], lunch: [], dinner: [] };
+          (data as any[]).forEach((item: any) => {
+            if (grouped[item.meal_type]) grouped[item.meal_type].push(item.item_name);
+          });
+          setFoodMenuItems(grouped);
+        }
+      };
+      fetchFoodMenu();
+    }
+  }, [existingHostel?.id]);
 
   useEffect(() => {
     if (selectedPartner) {
@@ -135,15 +168,50 @@ export function HostelEditor({ onSave, onCancel, existingHostel, isAdmin = true 
     setHostel(prev => ({ ...prev, logo_image: newLogo, images: updatedImages }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!hostel.name) { setValidationError("Hostel name is required"); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
     setValidationError(null);
     setIsSaving(true);
+
+    // Save food menu items if food is enabled and hostel exists
+    if (hostel.food_enabled && existingHostel?.id) {
+      try {
+        // Delete existing items and re-insert
+        await supabase.from('hostel_food_menu').delete().eq('hostel_id', existingHostel.id);
+        const menuInserts: any[] = [];
+        (['breakfast', 'lunch', 'dinner'] as const).forEach(mealType => {
+          foodMenuItems[mealType].forEach((itemName, idx) => {
+            menuInserts.push({
+              hostel_id: existingHostel.id,
+              meal_type: mealType,
+              item_name: itemName,
+              display_order: idx,
+              is_active: true,
+            });
+          });
+        });
+        if (menuInserts.length > 0) {
+          await supabase.from('hostel_food_menu').insert(menuInserts);
+        }
+      } catch (err) { console.error('Error saving food menu:', err); }
+    }
+
     setTimeout(() => {
       onSave({ ...hostel });
       toast({ title: "Hostel Saved", description: `${existingHostel ? "Updated" : "Created"} hostel "${hostel.name}" successfully.` });
       setIsSaving(false);
     }, 500);
+  };
+
+  const addFoodItem = (mealType: string) => {
+    const item = newFoodItem[mealType]?.trim();
+    if (!item) return;
+    setFoodMenuItems(prev => ({ ...prev, [mealType]: [...prev[mealType], item] }));
+    setNewFoodItem(prev => ({ ...prev, [mealType]: '' }));
+  };
+
+  const removeFoodItem = (mealType: string, index: number) => {
+    setFoodMenuItems(prev => ({ ...prev, [mealType]: prev[mealType].filter((_, i) => i !== index) }));
   };
 
   const handleMapLocationChange = (coordinates: { lat: number; lng: number }) => {
@@ -389,14 +457,97 @@ export function HostelEditor({ onSave, onCancel, existingHostel, isAdmin = true 
           </Card>
         </Collapsible>
 
-        {/* Section 5: Amenities */}
+        {/* Section 5: Food Facility */}
         <Collapsible open={openSection === 5} onOpenChange={(isOpen) => setOpenSection(isOpen ? 5 : null)}>
           <Card>
             <CollapsibleTrigger asChild>
               <CardHeader className="py-4 px-4 cursor-pointer group">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <SectionBadge number={5} icon={Sparkles} />
+                    <SectionBadge number={5} icon={Utensils} />
+                    <div><CardTitle className="text-base">Food Facility</CardTitle><CardDescription className="text-xs">Enable food service and manage menu</CardDescription></div>
+                  </div>
+                  <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                </div>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="px-4 pb-4 pt-0 space-y-4">
+                <div className="flex items-center gap-3">
+                  <Switch
+                    checked={hostel.food_enabled}
+                    onCheckedChange={(checked) => setHostel(prev => ({ ...prev, food_enabled: checked }))}
+                  />
+                  <Label className="text-sm font-medium">Offer Food Facility</Label>
+                </div>
+
+                {hostel.food_enabled && (
+                  <div className="space-y-4 pl-2 border-l-2 border-primary/20 ml-2">
+                    <div>
+                      <Label className="text-xs font-medium">Monthly Food Price (₹)</Label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-sm text-muted-foreground">₹</span>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={hostel.food_price_monthly}
+                          onChange={e => setHostel(prev => ({ ...prev, food_price_monthly: Number(e.target.value) || 0 }))}
+                          className="max-w-[180px]"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Food Menu Items */}
+                    {(['breakfast', 'lunch', 'dinner'] as const).map(mealType => (
+                      <div key={mealType}>
+                        <Label className="text-xs font-medium capitalize mb-1 block">{mealType === 'breakfast' ? '🌅 Breakfast' : mealType === 'lunch' ? '☀️ Lunch' : '🌙 Dinner'}</Label>
+                        <div className="flex flex-wrap gap-1.5 mb-1.5">
+                          {foodMenuItems[mealType].map((item, idx) => (
+                            <span key={idx} className="inline-flex items-center gap-1 text-xs bg-muted px-2 py-1 rounded-md">
+                              {item}
+                              <button onClick={() => removeFoodItem(mealType, idx)} className="text-muted-foreground hover:text-destructive"><X className="h-3 w-3" /></button>
+                            </span>
+                          ))}
+                        </div>
+                        <div className="flex gap-1.5">
+                          <Input
+                            className="h-8 text-xs flex-1"
+                            placeholder={`Add ${mealType} item...`}
+                            value={newFoodItem[mealType] || ''}
+                            onChange={e => setNewFoodItem(prev => ({ ...prev, [mealType]: e.target.value }))}
+                            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addFoodItem(mealType); } }}
+                          />
+                          <Button type="button" size="sm" variant="outline" className="h-8 text-xs" onClick={() => addFoodItem(mealType)}>
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Menu Image Upload */}
+                    <div>
+                      <Label className="text-xs font-medium mb-1 block">Upload Menu Image (optional)</Label>
+                      <ImageUpload
+                        onUpload={(url) => setHostel(prev => ({ ...prev, food_menu_image: url }))}
+                        onRemove={() => setHostel(prev => ({ ...prev, food_menu_image: '' }))}
+                        existingImages={hostel.food_menu_image ? [hostel.food_menu_image] : []}
+                      />
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+
+        {/* Section 6: Amenities */}
+        <Collapsible open={openSection === 6} onOpenChange={(isOpen) => setOpenSection(isOpen ? 6 : null)}>
+          <Card>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="py-4 px-4 cursor-pointer group">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <SectionBadge number={6} icon={Sparkles} />
                     <div><CardTitle className="text-base">Amenities</CardTitle><CardDescription className="text-xs">Select available facilities</CardDescription></div>
                   </div>
                   <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
@@ -418,14 +569,14 @@ export function HostelEditor({ onSave, onCancel, existingHostel, isAdmin = true 
           </Card>
         </Collapsible>
 
-        {/* Section 6: Contact */}
-        <Collapsible open={openSection === 6} onOpenChange={(isOpen) => setOpenSection(isOpen ? 6 : null)}>
+        {/* Section 7: Contact */}
+        <Collapsible open={openSection === 7} onOpenChange={(isOpen) => setOpenSection(isOpen ? 7 : null)}>
           <Card>
             <CollapsibleTrigger asChild>
               <CardHeader className="py-4 px-4 cursor-pointer group">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <SectionBadge number={6} icon={User} />
+                    <SectionBadge number={7} icon={User} />
                     <div><CardTitle className="text-base">Contact</CardTitle><CardDescription className="text-xs">Email and phone for this hostel</CardDescription></div>
                   </div>
                   <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
@@ -449,14 +600,14 @@ export function HostelEditor({ onSave, onCancel, existingHostel, isAdmin = true 
           </Card>
         </Collapsible>
 
-        {/* Section 7: Partner Assignment */}
-        <Collapsible open={openSection === 7} onOpenChange={(isOpen) => setOpenSection(isOpen ? 7 : null)}>
+        {/* Section 8: Partner Assignment */}
+        <Collapsible open={openSection === 8} onOpenChange={(isOpen) => setOpenSection(isOpen ? 8 : null)}>
           <Card>
             <CollapsibleTrigger asChild>
               <CardHeader className="py-4 px-4 cursor-pointer group">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <SectionBadge number={7} icon={Users} />
+                    <SectionBadge number={8} icon={Users} />
                     <div><CardTitle className="text-base">Partner Assignment</CardTitle><CardDescription className="text-xs">{isAdmin ? "Select or assign a partner" : "Your partner details"}</CardDescription></div>
                   </div>
                   <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
@@ -493,14 +644,14 @@ export function HostelEditor({ onSave, onCancel, existingHostel, isAdmin = true 
           </Card>
         </Collapsible>
 
-        {/* Section 8: Location */}
-        <Collapsible open={openSection === 8} onOpenChange={(isOpen) => setOpenSection(isOpen ? 8 : null)}>
+        {/* Section 9: Location */}
+        <Collapsible open={openSection === 9} onOpenChange={(isOpen) => setOpenSection(isOpen ? 9 : null)}>
           <Card>
             <CollapsibleTrigger asChild>
               <CardHeader className="py-4 px-4 cursor-pointer group">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <SectionBadge number={8} icon={MapPin} />
+                    <SectionBadge number={9} icon={MapPin} />
                     <div><CardTitle className="text-base">Location</CardTitle><CardDescription className="text-xs">Address, state/city/area, and map coordinates</CardDescription></div>
                   </div>
                   <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />

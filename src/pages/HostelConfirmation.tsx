@@ -131,6 +131,13 @@ const HostelConfirmation = () => {
                   <p className="font-medium">{formatDate(booking?.end_date)}</p>
                 </div>
 
+                {booking?.food_opted && (
+                  <div className="bg-muted/30 p-4 rounded-md">
+                    <p className="text-sm text-muted-foreground mb-1">Food Plan</p>
+                    <p className="font-medium">Opted — {formatCurrency(booking.food_amount || 0)}</p>
+                  </div>
+                )}
+
                 <div className={`p-4 rounded-md ${
                   booking?.payment_status === "completed" || booking?.payment_status === "advance_paid"
                     ? "bg-green-100 dark:bg-green-900/30"
