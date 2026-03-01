@@ -1,50 +1,48 @@
 
 
-## Make Study Rooms and Hostels Card Layouts Consistent
+## Make Hostel and Study Room Listing Cards Consistent + Add Starting Price
 
-Currently the two listing pages have different card styles:
-- **Hostels** (`/hostels`): Compact horizontal cards (small thumbnail on the left, details on the right) -- matches the mobile-first design
-- **Study Rooms** (`/cabins`): Large vertical grid cards (big image on top, details below) -- desktop-style, inconsistent on mobile
+### Problem
+The listing cards on `/cabins` and `/hostels` have inconsistent layouts:
+- **Study Rooms**: Shows category badge, price (₹900/mo), rating/New badge, and "Book" action
+- **Hostels**: Shows gender badge, description text, NO price, and "View Rooms" action
 
-The fix is to update the **Cabins page** to use the same compact horizontal card layout as Hostels, matching the mobile-first design language used elsewhere.
-
----
+The hostel cards are missing a starting price, and the bottom row shows different information.
 
 ### Changes
 
-**1. `src/pages/Cabins.tsx` - Replace desktop layout with mobile-first layout**
+**1. `src/api/hostelService.ts` - Fetch min price with hostel listings**
 
-Remove the hero banner section and desktop-style container layout. Replace with the same sticky-header + compact-list pattern used on the Hostels page:
-- Sticky header with title and category filter pills
-- Compact horizontal card list (thumbnail left, content right)
-- Same spacing, typography, and rounded-card style as Hostels
+Update `getAllHostels` query to also select related sharing options so we can compute a minimum price on the client side:
+```
+.select('*, states(name), cities(name), areas(name), hostel_rooms(hostel_sharing_options(price_monthly))')
+```
+This joins rooms and sharing options so each hostel object includes nested price data.
 
-**2. `src/components/cabins/CabinsGrid.tsx` - Rewrite to use horizontal card layout**
+**2. `src/pages/Hostels.tsx` - Unify hostel cards to match study room card layout**
 
-Replace the current grid of large `CabinCard` components with inline horizontal cards matching the Hostels pattern:
-- Each card: 80x80px thumbnail on left, name/location/amenities/price on right
-- Category badge on thumbnail
-- Rating or "New" badge
-- "Book" action pill on bottom-right
-- Uses `Link` to `/book-seat/{serial_number}`
-- Responsive: single column on mobile, 2-3 columns on larger screens
+Restructure each hostel card's bottom row to match the study room pattern:
+- Replace the description line with a **starting price** (computed as the minimum `price_monthly` from the nested sharing options): `₹X/mo`
+- Show rating or "New" badge (using `hostel.average_rating` and `hostel.review_count`) -- same as study rooms
+- Keep "View Rooms" action pill (analogous to "Book" on study rooms)
 
-**3. No changes to `src/components/CabinCard.tsx`**
-
-The original CabinCard component will be kept as-is since it may be used elsewhere (e.g., admin views). The CabinsGrid will simply stop importing it and render its own inline cards.
-
-### Result
-
-Both Study Rooms and Hostels pages will have:
-- Same sticky header pattern
-- Same compact horizontal card layout
-- Same typography scale (13px names, 11px details, 10px tags)
-- Same rounded-2xl card styling with hover effects
-- Consistent mobile-first experience
+The updated bottom section of each card will look like:
+```
+[Star 4.2 (5)]  ₹3,000/mo          View Rooms
+```
+Instead of the current:
+```
+Premium men's paying gues...          View Rooms
+```
 
 ### Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/pages/Cabins.tsx` | Replace hero banner with sticky header; simplify layout |
-| `src/components/cabins/CabinsGrid.tsx` | Replace vertical grid cards with horizontal compact cards matching Hostels |
+| `src/api/hostelService.ts` | Add `hostel_rooms(hostel_sharing_options(price_monthly))` to the `getAllHostels` select query |
+| `src/pages/Hostels.tsx` | Compute min price from nested data; replace description row with price + rating row matching study room cards |
+
+### No Changes Needed
+- Detail pages (`BookSeat.tsx` and `HostelRoomDetails.tsx`) are already consistent with each other -- both use the same hero, chips, and amenities pattern.
+- Study room cards (`CabinsGrid.tsx`) are already the reference design and stay as-is.
+
