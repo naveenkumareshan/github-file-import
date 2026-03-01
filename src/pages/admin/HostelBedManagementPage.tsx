@@ -10,15 +10,19 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { hostelBedCategoryService, HostelBedCategory } from '@/api/hostelBedCategoryService';
 import { formatCurrency } from '@/utils/currency';
-import { ArrowLeft, Plus, Trash2, Pencil, BedDouble, MapPin, CalendarDays, ArrowRight, Lock, Unlock, Settings, Layers, Eye, LayoutGrid, Map as MapIcon } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Pencil, BedDouble, MapPin, Lock, Unlock, Settings, Layers, Eye, LayoutGrid, Map as MapIcon } from 'lucide-react';
 import { HostelBedPlanDesigner, DesignerBed } from '@/components/hostels/HostelBedPlanDesigner';
-import { DateBasedBedMap } from '@/components/hostels/DateBasedBedMap';
-import HostelBedTransferManagement from '@/components/admin/HostelBedTransferManagement';
 import { HostelBedDetailsDialog } from '@/components/admin/HostelBedDetailsDialog';
+
+const AMENITY_OPTIONS = [
+  'Attached Washroom', 'Study Table', 'Wardrobe', 'Bookshelf',
+  'Power Socket', 'Fan', 'AC', 'Window Side',
+];
 
 type ViewMode = 'grid' | 'floorplan';
 
@@ -33,7 +37,6 @@ const HostelBedManagementPage = () => {
   const [categories, setCategories] = useState<HostelBedCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
-  const [activeTab, setActiveTab] = useState('bedmap');
 
   // Floor plan designer state
   const [designerBeds, setDesignerBeds] = useState<DesignerBed[]>([]);
@@ -53,13 +56,17 @@ const HostelBedManagementPage = () => {
   const [editCategory, setEditCategory] = useState('');
   const [editPriceOverride, setEditPriceOverride] = useState('');
   const [editBlockReason, setEditBlockReason] = useState('');
+  const [editAmenities, setEditAmenities] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   // Add bed dialog
   const [addBedDialogOpen, setAddBedDialogOpen] = useState(false);
+  const [addRoomIdInDialog, setAddRoomIdInDialog] = useState('');
   const [addSharingOptionId, setAddSharingOptionId] = useState('');
   const [addCount, setAddCount] = useState('1');
   const [addCategory, setAddCategory] = useState('');
+  const [addAmenities, setAddAmenities] = useState<string[]>([]);
+  const [addDialogSharingOptions, setAddDialogSharingOptions] = useState<any[]>([]);
 
   // Category dialog
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
@@ -78,15 +85,12 @@ const HostelBedManagementPage = () => {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      // Fetch hostel
       const { data: h } = await supabase.from('hostels').select('*').eq('id', hostelId).single();
       setHostel(h);
 
-      // Fetch categories
       const catResult = await hostelBedCategoryService.getCategories(hostelId!);
       if (catResult.success) setCategories(catResult.data);
 
-      // Fetch rooms
       const { data: roomsData } = await supabase
         .from('hostel_rooms')
         .select('id, room_number, floor, category, room_width, room_height, layout_image, layout_image_opacity')
@@ -100,7 +104,6 @@ const HostelBedManagementPage = () => {
         setSelectedRoomId(roomsData[0].id);
       }
 
-      // Build floor data for grid view
       if (roomsData?.length) {
         const roomIds = roomsData.map(r => r.id);
 
@@ -133,6 +136,7 @@ const HostelBedManagementPage = () => {
             id: b.id, bed_number: b.bed_number, is_available: b.is_available, is_blocked: b.is_blocked,
             block_reason: b.block_reason, room_id: b.room_id, sharing_option_id: b.sharing_option_id,
             category: b.category, price_override: b.price_override, position_x: b.position_x, position_y: b.position_y,
+            amenities: b.amenities || [],
             sharingType: b.hostel_sharing_options?.type || '', sharingPrice: b.hostel_sharing_options?.price_monthly || 0,
             occupantName: bookingMap.get(b.id) || undefined,
           }));
@@ -194,6 +198,7 @@ const HostelBedManagementPage = () => {
     setEditCategory(bed.category || '');
     setEditPriceOverride(bed.price_override?.toString() || '');
     setEditBlockReason(bed.block_reason || '');
+    setEditAmenities(bed.amenities || []);
     setEditDialogOpen(true);
   };
 
@@ -204,6 +209,7 @@ const HostelBedManagementPage = () => {
       const { error } = await supabase.from('hostel_beds').update({
         category: editCategory || null,
         price_override: editPriceOverride ? Number(editPriceOverride) : null,
+        amenities: editAmenities,
       }).eq('id', editBed.id);
       if (error) throw error;
       toast({ title: 'Bed updated' });
@@ -243,21 +249,44 @@ const HostelBedManagementPage = () => {
     }
   };
 
+  // Load sharing options for the selected room in add dialog
+  const loadAddDialogSharingOptions = async (roomId: string) => {
+    const { data } = await supabase
+      .from('hostel_sharing_options')
+      .select('*')
+      .eq('room_id', roomId)
+      .eq('is_active', true);
+    setAddDialogSharingOptions(data || []);
+  };
+
+  const handleAddRoomChange = (roomId: string) => {
+    setAddRoomIdInDialog(roomId);
+    setAddSharingOptionId('');
+    loadAddDialogSharingOptions(roomId);
+  };
+
   const handleAddBeds = async () => {
-    if (!selectedRoomId || !addSharingOptionId || !addCount) return;
+    const targetRoomId = addRoomIdInDialog || selectedRoomId;
+    if (!targetRoomId || !addSharingOptionId || !addCount) return;
     setSaving(true);
     try {
       const { data: existing } = await supabase
         .from('hostel_beds')
         .select('bed_number')
-        .eq('room_id', selectedRoomId)
+        .eq('room_id', targetRoomId)
         .order('bed_number', { ascending: false })
         .limit(1);
       let startNum = (existing?.[0]?.bed_number || 0) + 1;
       const count = parseInt(addCount);
       const beds = [];
       for (let i = 0; i < count; i++) {
-        beds.push({ room_id: selectedRoomId, sharing_option_id: addSharingOptionId, bed_number: startNum + i, category: addCategory || null });
+        beds.push({
+          room_id: targetRoomId,
+          sharing_option_id: addSharingOptionId,
+          bed_number: startNum + i,
+          category: addCategory || null,
+          amenities: addAmenities,
+        });
       }
       const { error } = await supabase.from('hostel_beds').insert(beds);
       if (error) throw error;
@@ -265,6 +294,8 @@ const HostelBedManagementPage = () => {
       setAddBedDialogOpen(false);
       setAddCount('1');
       setAddCategory('');
+      setAddAmenities([]);
+      setAddRoomIdInDialog('');
       fetchAll();
     } catch (e: any) {
       toast({ title: 'Error', description: e.message, variant: 'destructive' });
@@ -276,12 +307,10 @@ const HostelBedManagementPage = () => {
     if (!selectedRoomId) return;
     setIsSaving(true);
     try {
-      // Save room layout settings
       await supabase.from('hostel_rooms').update({
         layout_image: layoutImage, layout_image_opacity: layoutImageOpacity,
       }).eq('id', selectedRoomId);
 
-      // Save bed positions
       const updates = designerBeds.map(b =>
         supabase.from('hostel_beds').update({ position_x: b.position_x, position_y: b.position_y }).eq('id', b.id)
       );
@@ -356,6 +385,10 @@ const HostelBedManagementPage = () => {
     }
   };
 
+  const toggleAmenity = (amenity: string, list: string[], setList: React.Dispatch<React.SetStateAction<string[]>>) => {
+    setList(prev => prev.includes(amenity) ? prev.filter(a => a !== amenity) : [...prev, amenity]);
+  };
+
   const floors = Object.keys(floorData).map(Number).sort();
 
   if (loading && !hostel) {
@@ -407,139 +440,126 @@ const HostelBedManagementPage = () => {
         </div>
       </div>
 
-      {/* Main Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full max-w-lg grid-cols-3">
-          <TabsTrigger value="bedmap" className="flex items-center gap-1"><BedDouble className="h-3.5 w-3.5" />Bed Map</TabsTrigger>
-          <TabsTrigger value="availability" className="flex items-center gap-1"><CalendarDays className="h-3.5 w-3.5" />Date Availability</TabsTrigger>
-          <TabsTrigger value="transfer" className="flex items-center gap-1"><ArrowRight className="h-3.5 w-3.5" />Transfer</TabsTrigger>
-        </TabsList>
+      {/* View toggle + Add Beds button */}
+      <div className="flex items-center gap-2 mb-4">
+        <div className="flex bg-muted rounded-lg p-0.5">
+          <button className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${viewMode === 'grid' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground'}`} onClick={() => setViewMode('grid')}>
+            <LayoutGrid className="h-3.5 w-3.5 inline mr-1" />Box Grid
+          </button>
+          <button className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${viewMode === 'floorplan' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground'}`} onClick={() => setViewMode('floorplan')}>
+            <MapIcon className="h-3.5 w-3.5 inline mr-1" />Floor Plan
+          </button>
+        </div>
+        <Button size="sm" variant="outline" onClick={() => {
+          setAddSharingOptionId(''); setAddCategory(''); setAddAmenities([]);
+          setAddRoomIdInDialog(selectedRoomId);
+          loadAddDialogSharingOptions(selectedRoomId);
+          setAddBedDialogOpen(true);
+        }}><Plus className="h-3.5 w-3.5 mr-1" />Add Beds</Button>
+      </div>
 
-        <TabsContent value="bedmap" className="pt-4">
-          {/* View toggle + Add Beds button */}
-          <div className="flex items-center gap-2 mb-4">
-            <div className="flex bg-muted rounded-lg p-0.5">
-              <button className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${viewMode === 'grid' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground'}`} onClick={() => setViewMode('grid')}>
-                <LayoutGrid className="h-3.5 w-3.5 inline mr-1" />Box Grid
-              </button>
-              <button className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${viewMode === 'floorplan' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground'}`} onClick={() => setViewMode('floorplan')}>
-                <MapIcon className="h-3.5 w-3.5 inline mr-1" />Floor Plan
-              </button>
-            </div>
-            <Button size="sm" variant="outline" onClick={() => { setAddSharingOptionId(''); setAddCategory(''); setAddBedDialogOpen(true); }}><Plus className="h-3.5 w-3.5 mr-1" />Add Beds</Button>
-          </div>
-
-          {viewMode === 'grid' ? (
-            /* Box Grid View */
-            <div>
-              {floors.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground"><Layers className="h-10 w-10 mx-auto mb-2 opacity-50" /><p>No rooms configured</p></div>
-              ) : (
-                <Tabs defaultValue={String(floors[0])}>
-                  <TabsList className="mb-4">
-                    {floors.map(floor => <TabsTrigger key={floor} value={String(floor)}><Layers className="h-3.5 w-3.5 mr-1" />Floor {floor}</TabsTrigger>)}
-                  </TabsList>
-                  {floors.map(floor => (
-                    <TabsContent key={floor} value={String(floor)}>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {floorData[floor].map(room => {
-                          const totalBeds = room.beds.length;
-                          const availBeds = room.beds.filter((b: any) => b.is_available && !b.is_blocked).length;
-                          const pct = totalBeds > 0 ? ((totalBeds - availBeds) / totalBeds) * 100 : 0;
-                          return (
-                            <div key={room.roomId} className="border rounded-xl p-4 bg-card">
-                              <div className="flex items-center justify-between mb-3">
-                                <div><span className="font-semibold text-sm">Room {room.roomNumber}</span><Badge variant="outline" className="ml-2 text-[10px]">{room.roomCategory}</Badge></div>
-                                <span className="text-xs text-muted-foreground">{availBeds}/{totalBeds} available</span>
-                              </div>
-                              <Progress value={pct} className="h-1.5 mb-3" />
-                              <TooltipProvider>
-                                <div className="grid grid-cols-5 sm:grid-cols-6 gap-2">
-                                  {room.beds.map((bed: any) => {
-                                    const isAvail = bed.is_available && !bed.is_blocked;
-                                    const isBlocked = bed.is_blocked;
-                                    let bgClass = 'bg-emerald-50 border-emerald-400 text-emerald-800 hover:bg-emerald-100';
-                                    if (isBlocked) bgClass = 'bg-destructive/10 border-destructive/30 text-destructive';
-                                    else if (!isAvail) bgClass = 'bg-blue-50 border-blue-400 text-blue-800';
-                                    return (
-                                      <Tooltip key={bed.id}>
-                                        <TooltipTrigger asChild>
-                                          <button className={`flex flex-col items-center justify-center rounded-lg border p-2 text-[10px] font-bold cursor-pointer ${bgClass}`} onClick={() => handleGridBedClick(bed)}>
-                                            <BedDouble className="h-3.5 w-3.5 mb-0.5" />
-                                            {bed.bed_number}
-                                            {bed.category && <span className="text-[8px] font-normal opacity-70 mt-0.5">{bed.category}</span>}
-                                          </button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          <div className="text-xs space-y-0.5">
-                                            <p className="font-bold">Bed #{bed.bed_number}</p>
-                                            {bed.sharingType && <p>Type: {bed.sharingType}</p>}
-                                            {bed.category && <p>Category: {bed.category}</p>}
-                                            <p>Price: {bed.price_override ? formatCurrency(bed.price_override) : formatCurrency(bed.sharingPrice || 0)}/mo</p>
-                                            <p>{isBlocked ? '🚫 Blocked' : isAvail ? '✅ Available' : '👤 Occupied'}</p>
-                                            {bed.occupantName && <p>Guest: {bed.occupantName}</p>}
-                                          </div>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    );
-                                  })}
-                                </div>
-                              </TooltipProvider>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </TabsContent>
-                  ))}
-                </Tabs>
-              )}
-              {/* Legend */}
-              <div className="flex items-center justify-center gap-4 text-[11px] pt-3 border-t mt-4">
-                <div className="flex items-center gap-1"><div className="w-3 h-3 rounded border border-emerald-400 bg-emerald-50" /><span>Available</span></div>
-                <div className="flex items-center gap-1"><div className="w-3 h-3 rounded border border-blue-400 bg-blue-50" /><span>Occupied</span></div>
-                <div className="flex items-center gap-1"><div className="w-3 h-3 rounded border border-destructive/30 bg-destructive/10" /><span>Blocked</span></div>
-              </div>
-            </div>
+      {viewMode === 'grid' ? (
+        /* Box Grid View */
+        <div>
+          {floors.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground"><Layers className="h-10 w-10 mx-auto mb-2 opacity-50" /><p>No rooms configured</p></div>
           ) : (
-            /* Floor Plan View */
-            selectedRoomId && roomLayout ? (
-              <HostelBedPlanDesigner
-                roomId={selectedRoomId}
-                roomWidth={roomLayout?.room_width || 800}
-                roomHeight={roomLayout?.room_height || 600}
-                beds={designerBeds}
-                onBedsChange={setDesignerBeds}
-                onBedSelect={bed => {
-                  setSelectedDesignerBed(bed);
-                  if (bed) handleGridBedClick(bed);
-                }}
-                selectedBed={selectedDesignerBed}
-                onSave={handleSaveLayout}
-                onDeleteBed={handleDeleteDesignerBed}
-                onPlaceBed={handlePlaceBed}
-                onBedMove={handleBedMove}
-                layoutImage={layoutImage}
-                layoutImageOpacity={layoutImageOpacity}
-                onLayoutImageChange={setLayoutImage}
-                onLayoutImageOpacityChange={setLayoutImageOpacity}
-                isSaving={isSaving}
-                sharingOptions={sharingOptions}
-                categories={categories}
-              />
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">Select a room to view the floor plan</div>
-            )
+            <Tabs defaultValue={String(floors[0])}>
+              <TabsList className="mb-4">
+                {floors.map(floor => <TabsTrigger key={floor} value={String(floor)}><Layers className="h-3.5 w-3.5 mr-1" />Floor {floor}</TabsTrigger>)}
+              </TabsList>
+              {floors.map(floor => (
+                <TabsContent key={floor} value={String(floor)}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {floorData[floor].map(room => {
+                      const totalBeds = room.beds.length;
+                      const availBeds = room.beds.filter((b: any) => b.is_available && !b.is_blocked).length;
+                      const pct = totalBeds > 0 ? ((totalBeds - availBeds) / totalBeds) * 100 : 0;
+                      return (
+                        <div key={room.roomId} className="border rounded-xl p-4 bg-card">
+                          <div className="flex items-center justify-between mb-3">
+                            <div><span className="font-semibold text-sm">Room {room.roomNumber}</span><Badge variant="outline" className="ml-2 text-[10px]">{room.roomCategory}</Badge></div>
+                            <span className="text-xs text-muted-foreground">{availBeds}/{totalBeds} available</span>
+                          </div>
+                          <Progress value={pct} className="h-1.5 mb-3" />
+                          <TooltipProvider>
+                            <div className="grid grid-cols-5 sm:grid-cols-6 gap-2">
+                              {room.beds.map((bed: any) => {
+                                const isAvail = bed.is_available && !bed.is_blocked;
+                                const isBlocked = bed.is_blocked;
+                                let bgClass = 'bg-emerald-50 border-emerald-400 text-emerald-800 hover:bg-emerald-100';
+                                if (isBlocked) bgClass = 'bg-destructive/10 border-destructive/30 text-destructive';
+                                else if (!isAvail) bgClass = 'bg-blue-50 border-blue-400 text-blue-800';
+                                return (
+                                  <Tooltip key={bed.id}>
+                                    <TooltipTrigger asChild>
+                                      <button className={`flex flex-col items-center justify-center rounded-lg border p-2 text-[10px] font-bold cursor-pointer ${bgClass}`} onClick={() => handleGridBedClick(bed)}>
+                                        <BedDouble className="h-3.5 w-3.5 mb-0.5" />
+                                        {bed.bed_number}
+                                        {bed.category && <span className="text-[8px] font-normal opacity-70 mt-0.5">{bed.category}</span>}
+                                      </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <div className="text-xs space-y-0.5">
+                                        <p className="font-bold">Bed #{bed.bed_number}</p>
+                                        {bed.sharingType && <p>Type: {bed.sharingType}</p>}
+                                        {bed.category && <p>Category: {bed.category}</p>}
+                                        <p>Price: {bed.price_override ? formatCurrency(bed.price_override) : formatCurrency(bed.sharingPrice || 0)}/mo</p>
+                                        <p>{isBlocked ? '🚫 Blocked' : isAvail ? '✅ Available' : '👤 Occupied'}</p>
+                                        {bed.occupantName && <p>Guest: {bed.occupantName}</p>}
+                                        {bed.amenities?.length > 0 && <p>Amenities: {bed.amenities.join(', ')}</p>}
+                                      </div>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                );
+                              })}
+                            </div>
+                          </TooltipProvider>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </TabsContent>
+              ))}
+            </Tabs>
           )}
-        </TabsContent>
-
-        <TabsContent value="availability" className="pt-4">
-          {hostelId && <DateBasedBedMap hostelId={hostelId} />}
-        </TabsContent>
-
-        <TabsContent value="transfer" className="pt-4">
-          {hostelId && <HostelBedTransferManagement hostelId={hostelId} />}
-        </TabsContent>
-      </Tabs>
+          {/* Legend */}
+          <div className="flex items-center justify-center gap-4 text-[11px] pt-3 border-t mt-4">
+            <div className="flex items-center gap-1"><div className="w-3 h-3 rounded border border-emerald-400 bg-emerald-50" /><span>Available</span></div>
+            <div className="flex items-center gap-1"><div className="w-3 h-3 rounded border border-blue-400 bg-blue-50" /><span>Occupied</span></div>
+            <div className="flex items-center gap-1"><div className="w-3 h-3 rounded border border-destructive/30 bg-destructive/10" /><span>Blocked</span></div>
+          </div>
+        </div>
+      ) : (
+        /* Floor Plan View */
+        selectedRoomId && roomLayout ? (
+          <HostelBedPlanDesigner
+            roomId={selectedRoomId}
+            roomWidth={roomLayout?.room_width || 800}
+            roomHeight={roomLayout?.room_height || 600}
+            beds={designerBeds}
+            onBedsChange={setDesignerBeds}
+            onBedSelect={bed => {
+              setSelectedDesignerBed(bed);
+              if (bed) handleGridBedClick(bed);
+            }}
+            selectedBed={selectedDesignerBed}
+            onSave={handleSaveLayout}
+            onDeleteBed={handleDeleteDesignerBed}
+            onPlaceBed={handlePlaceBed}
+            onBedMove={handleBedMove}
+            layoutImage={layoutImage}
+            layoutImageOpacity={layoutImageOpacity}
+            onLayoutImageChange={setLayoutImage}
+            onLayoutImageOpacityChange={setLayoutImageOpacity}
+            isSaving={isSaving}
+            sharingOptions={sharingOptions}
+            categories={categories}
+          />
+        ) : (
+          <div className="text-center py-8 text-muted-foreground">Select a room to view the floor plan</div>
+        )
+      )}
 
       {/* Edit Bed Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
@@ -560,6 +580,20 @@ const HostelBedManagementPage = () => {
               <Label>Price Override (₹/month)</Label>
               <Input type="number" value={editPriceOverride} onChange={e => setEditPriceOverride(e.target.value)} placeholder="Uses sharing option price" className="mt-1" />
               {editBed && <p className="text-xs text-muted-foreground mt-1">Default: {formatCurrency(editBed.sharingPrice || 0)}/mo</p>}
+            </div>
+            <div>
+              <Label>Amenities</Label>
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                {AMENITY_OPTIONS.map(amenity => (
+                  <label key={amenity} className="flex items-center gap-2 text-xs cursor-pointer">
+                    <Checkbox
+                      checked={editAmenities.includes(amenity)}
+                      onCheckedChange={() => toggleAmenity(amenity, editAmenities, setEditAmenities)}
+                    />
+                    {amenity}
+                  </label>
+                ))}
+              </div>
             </div>
             <Separator />
             <div>
@@ -585,19 +619,27 @@ const HostelBedManagementPage = () => {
       {/* Add Beds Dialog */}
       <Dialog open={addBedDialogOpen} onOpenChange={setAddBedDialogOpen}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Add Beds to Room</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Add Beds</DialogTitle></DialogHeader>
           <div className="space-y-4">
+            <div>
+              <Label>Room</Label>
+              <Select value={addRoomIdInDialog} onValueChange={handleAddRoomChange}>
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Select room" /></SelectTrigger>
+                <SelectContent>
+                  {rooms.map(room => (
+                    <SelectItem key={room.id} value={room.id}>Room {room.room_number} (F{room.floor})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div>
               <Label>Sharing Option</Label>
               <Select value={addSharingOptionId} onValueChange={setAddSharingOptionId}>
                 <SelectTrigger className="mt-1"><SelectValue placeholder="Select sharing type" /></SelectTrigger>
                 <SelectContent>
-                  {(() => {
-                    const room = Object.values(floorData).flat().find(r => r.roomId === selectedRoomId);
-                    return room?.sharingOptions?.map((s: any) => (
-                      <SelectItem key={s.id} value={s.id}>{s.type} ({formatCurrency(s.price_monthly)}/mo)</SelectItem>
-                    )) || [];
-                  })()}
+                  {addDialogSharingOptions.map((s: any) => (
+                    <SelectItem key={s.id} value={s.id}>{s.type} ({formatCurrency(s.price_monthly)}/mo)</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -610,6 +652,20 @@ const HostelBedManagementPage = () => {
                   {categories.map(cat => <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>)}
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label>Amenities</Label>
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                {AMENITY_OPTIONS.map(amenity => (
+                  <label key={amenity} className="flex items-center gap-2 text-xs cursor-pointer">
+                    <Checkbox
+                      checked={addAmenities.includes(amenity)}
+                      onCheckedChange={() => toggleAmenity(amenity, addAmenities, setAddAmenities)}
+                    />
+                    {amenity}
+                  </label>
+                ))}
+              </div>
             </div>
             <div>
               <Label>Number of beds</Label>
