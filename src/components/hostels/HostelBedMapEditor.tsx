@@ -12,7 +12,8 @@ import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { hostelBedCategoryService, HostelBedCategory } from '@/api/hostelBedCategoryService';
-import { BedDouble, Plus, Trash2, Layers, Settings, Lock, Unlock, X } from 'lucide-react';
+import { BedDouble, Plus, Trash2, Layers, Settings, Lock, Unlock, X, CheckSquare } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { formatCurrency } from '@/utils/currency';
 
 interface HostelBedMapEditorProps {
@@ -58,16 +59,23 @@ export const HostelBedMapEditor: React.FC<HostelBedMapEditorProps> = ({ hostelId
   const [editCategory, setEditCategory] = useState<string>('');
   const [editPriceOverride, setEditPriceOverride] = useState<string>('');
   const [editBlockReason, setEditBlockReason] = useState('');
+  const [editAmenities, setEditAmenities] = useState<string[]>([]);
 
   // Add bed form state
   const [addRoomId, setAddRoomId] = useState('');
   const [addSharingOptionId, setAddSharingOptionId] = useState('');
   const [addCount, setAddCount] = useState('1');
   const [addCategory, setAddCategory] = useState<string>('');
+  const [addAmenities, setAddAmenities] = useState<string[]>([]);
 
   // Category form state
   const [newCatName, setNewCatName] = useState('');
   const [newCatPrice, setNewCatPrice] = useState('0');
+
+  const BED_AMENITY_OPTIONS = [
+    'Attached Washroom', 'Study Table', 'Wardrobe', 'Bookshelf',
+    'Power Socket', 'Fan', 'AC', 'Window Side'
+  ];
 
   const fetchData = async () => {
     setLoading(true);
@@ -130,6 +138,7 @@ export const HostelBedMapEditor: React.FC<HostelBedMapEditorProps> = ({ hostelId
             sharing_option_id: b.sharing_option_id,
             category: (b as any).category || null,
             price_override: (b as any).price_override || null,
+            amenities: (b as any).amenities || [],
             sharingType: (b as any).hostel_sharing_options?.type || '',
             sharingPrice: (b as any).hostel_sharing_options?.price_monthly || 0,
             occupantName: bookingMap.get(b.id) || undefined,
@@ -160,6 +169,7 @@ export const HostelBedMapEditor: React.FC<HostelBedMapEditorProps> = ({ hostelId
     setEditCategory(bed.category || '');
     setEditPriceOverride(bed.price_override?.toString() || '');
     setEditBlockReason(bed.block_reason || '');
+    setEditAmenities((bed as any).amenities || []);
     setEditDialogOpen(true);
   };
 
@@ -170,6 +180,7 @@ export const HostelBedMapEditor: React.FC<HostelBedMapEditorProps> = ({ hostelId
       const updates: any = {
         category: editCategory || null,
         price_override: editPriceOverride ? Number(editPriceOverride) : null,
+        amenities: editAmenities,
       };
       const { error } = await supabase
         .from('hostel_beds')
@@ -250,6 +261,7 @@ export const HostelBedMapEditor: React.FC<HostelBedMapEditorProps> = ({ hostelId
           sharing_option_id: addSharingOptionId,
           bed_number: startNum + i,
           category: addCategory || null,
+          amenities: addAmenities,
         });
       }
 
@@ -259,6 +271,7 @@ export const HostelBedMapEditor: React.FC<HostelBedMapEditorProps> = ({ hostelId
       setAddBedDialogOpen(false);
       setAddCount('1');
       setAddCategory('');
+      setAddAmenities([]);
       fetchData();
     } catch (e: any) {
       toast({ title: 'Error', description: e.message, variant: 'destructive' });
@@ -428,6 +441,23 @@ export const HostelBedMapEditor: React.FC<HostelBedMapEditorProps> = ({ hostelId
               <Input type="number" value={editPriceOverride} onChange={e => setEditPriceOverride(e.target.value)} placeholder="Uses sharing option price" className="mt-1" />
               {selectedBed && <p className="text-xs text-muted-foreground mt-1">Default: {formatCurrency(selectedBed.sharingPrice || 0)}/mo</p>}
             </div>
+            {/* Amenities */}
+            <div>
+              <Label>Amenities</Label>
+              <div className="flex flex-wrap gap-2 mt-1.5">
+                {BED_AMENITY_OPTIONS.map(amenity => (
+                  <label key={amenity} className="flex items-center gap-1.5 text-xs cursor-pointer">
+                    <Checkbox
+                      checked={editAmenities.includes(amenity)}
+                      onCheckedChange={(checked) => {
+                        setEditAmenities(prev => checked ? [...prev, amenity] : prev.filter(a => a !== amenity));
+                      }}
+                    />
+                    {amenity}
+                  </label>
+                ))}
+              </div>
+            </div>
             <Separator />
             <div>
               <Label>Block Reason</Label>
@@ -486,6 +516,23 @@ export const HostelBedMapEditor: React.FC<HostelBedMapEditorProps> = ({ hostelId
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            {/* Amenities for new beds */}
+            <div>
+              <Label>Amenities</Label>
+              <div className="flex flex-wrap gap-2 mt-1.5">
+                {BED_AMENITY_OPTIONS.map(amenity => (
+                  <label key={amenity} className="flex items-center gap-1.5 text-xs cursor-pointer">
+                    <Checkbox
+                      checked={addAmenities.includes(amenity)}
+                      onCheckedChange={(checked) => {
+                        setAddAmenities(prev => checked ? [...prev, amenity] : prev.filter(a => a !== amenity));
+                      }}
+                    />
+                    {amenity}
+                  </label>
+                ))}
+              </div>
             </div>
             <div>
               <Label>Number of beds</Label>

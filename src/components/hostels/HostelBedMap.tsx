@@ -12,6 +12,7 @@ interface HostelBedMapProps {
   readOnly?: boolean;
   sharingFilter?: string;
   categoryFilter?: string;
+  roomFilter?: string;
   startDate?: string;
   endDate?: string;
 }
@@ -23,6 +24,7 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
   readOnly = true,
   sharingFilter,
   categoryFilter,
+  roomFilter,
   startDate,
   endDate,
 }) => {
@@ -116,6 +118,7 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
               price: (b as any).hostel_sharing_options?.price_monthly || 0,
               category: (b as any).category || null,
               price_override: (b as any).price_override || null,
+              amenities: (b as any).amenities || [],
               occupantName: bookingMap.get(b.id) || undefined,
             }));
 
@@ -179,6 +182,7 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
               readOnly={readOnly}
               sharingFilter={sharingFilter}
               categoryFilter={categoryFilter}
+              roomFilter={roomFilter}
             />
           </TabsContent>
         ))}

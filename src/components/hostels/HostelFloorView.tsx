@@ -22,6 +22,7 @@ interface BedData {
   price?: number;
   category?: string | null;
   price_override?: number | null;
+  amenities?: string[];
   occupantName?: string;
 }
 
@@ -40,6 +41,7 @@ interface HostelFloorViewProps {
   readOnly?: boolean;
   sharingFilter?: string;
   categoryFilter?: string;
+  roomFilter?: string;
 }
 
 export const HostelFloorView: React.FC<HostelFloorViewProps> = ({
@@ -50,7 +52,11 @@ export const HostelFloorView: React.FC<HostelFloorViewProps> = ({
   readOnly = false,
   sharingFilter,
   categoryFilter,
+  roomFilter,
 }) => {
+  const filteredRooms = roomFilter && roomFilter !== 'all'
+    ? rooms.filter(r => r.roomId === roomFilter)
+    : rooms;
   return (
     <div className="space-y-4">
       <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
@@ -58,7 +64,7 @@ export const HostelFloorView: React.FC<HostelFloorViewProps> = ({
       </h3>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {rooms.map((room) => {
+        {filteredRooms.map((room) => {
           const totalBeds = room.beds.length;
           const availableBeds = room.beds.filter(b => b.is_available && !b.is_blocked).length;
           const occupancyPercent = totalBeds > 0 ? ((totalBeds - availableBeds) / totalBeds) * 100 : 0;
@@ -138,6 +144,9 @@ export const HostelFloorView: React.FC<HostelFloorViewProps> = ({
                               {isDisabledByFilter ? '⚪ Filtered out' : isBlocked ? '🚫 Blocked' : isAvailable ? '✅ Available' : '👤 Occupied'}
                             </p>
                             {bed.occupantName && <p>Guest: {bed.occupantName}</p>}
+                            {bed.amenities && bed.amenities.length > 0 && (
+                              <p>🏷️ {bed.amenities.join(', ')}</p>
+                            )}
                           </div>
                         </TooltipContent>
                       </Tooltip>
