@@ -703,6 +703,7 @@ export type Database = {
           price_override: number | null
           room_id: string
           sharing_option_id: string
+          sharing_type_id: string | null
         }
         Insert: {
           amenities?: string[]
@@ -718,6 +719,7 @@ export type Database = {
           price_override?: number | null
           room_id: string
           sharing_option_id: string
+          sharing_type_id?: string | null
         }
         Update: {
           amenities?: string[]
@@ -733,6 +735,7 @@ export type Database = {
           price_override?: number | null
           room_id?: string
           sharing_option_id?: string
+          sharing_type_id?: string | null
         }
         Relationships: [
           {
@@ -747,6 +750,13 @@ export type Database = {
             columns: ["sharing_option_id"]
             isOneToOne: false
             referencedRelation: "hostel_sharing_options"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hostel_beds_sharing_type_id_fkey"
+            columns: ["sharing_type_id"]
+            isOneToOne: false
+            referencedRelation: "hostel_sharing_types"
             referencedColumns: ["id"]
           },
         ]
@@ -1029,6 +1039,41 @@ export type Database = {
           },
         ]
       }
+      hostel_floors: {
+        Row: {
+          created_at: string
+          floor_order: number
+          hostel_id: string
+          id: string
+          is_active: boolean
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          floor_order?: number
+          hostel_id: string
+          id?: string
+          is_active?: boolean
+          name: string
+        }
+        Update: {
+          created_at?: string
+          floor_order?: number
+          hostel_id?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hostel_floors_hostel_id_fkey"
+            columns: ["hostel_id"]
+            isOneToOne: false
+            referencedRelation: "hostels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hostel_receipts: {
         Row: {
           amount: number
@@ -1103,9 +1148,11 @@ export type Database = {
         Row: {
           amenities: string[] | null
           category: string
+          category_id: string | null
           created_at: string
           description: string | null
           floor: number
+          floor_id: string | null
           hostel_id: string
           id: string
           image_url: string | null
@@ -1116,13 +1163,16 @@ export type Database = {
           room_height: number
           room_number: string
           room_width: number
+          sharing_type_id: string | null
         }
         Insert: {
           amenities?: string[] | null
           category?: string
+          category_id?: string | null
           created_at?: string
           description?: string | null
           floor?: number
+          floor_id?: string | null
           hostel_id: string
           id?: string
           image_url?: string | null
@@ -1133,13 +1183,16 @@ export type Database = {
           room_height?: number
           room_number?: string
           room_width?: number
+          sharing_type_id?: string | null
         }
         Update: {
           amenities?: string[] | null
           category?: string
+          category_id?: string | null
           created_at?: string
           description?: string | null
           floor?: number
+          floor_id?: string | null
           hostel_id?: string
           id?: string
           image_url?: string | null
@@ -1150,13 +1203,35 @@ export type Database = {
           room_height?: number
           room_number?: string
           room_width?: number
+          sharing_type_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "hostel_rooms_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "hostel_bed_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hostel_rooms_floor_id_fkey"
+            columns: ["floor_id"]
+            isOneToOne: false
+            referencedRelation: "hostel_floors"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "hostel_rooms_hostel_id_fkey"
             columns: ["hostel_id"]
             isOneToOne: false
             referencedRelation: "hostels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hostel_rooms_sharing_type_id_fkey"
+            columns: ["sharing_type_id"]
+            isOneToOne: false
+            referencedRelation: "hostel_sharing_types"
             referencedColumns: ["id"]
           },
         ]
@@ -1201,6 +1276,41 @@ export type Database = {
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "hostel_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hostel_sharing_types: {
+        Row: {
+          capacity: number
+          created_at: string
+          hostel_id: string
+          id: string
+          is_active: boolean
+          name: string
+        }
+        Insert: {
+          capacity?: number
+          created_at?: string
+          hostel_id: string
+          id?: string
+          is_active?: boolean
+          name: string
+        }
+        Update: {
+          capacity?: number
+          created_at?: string
+          hostel_id?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hostel_sharing_types_hostel_id_fkey"
+            columns: ["hostel_id"]
+            isOneToOne: false
+            referencedRelation: "hostels"
             referencedColumns: ["id"]
           },
         ]
