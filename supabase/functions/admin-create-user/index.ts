@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { name, email, phone, password, role } = await req.json();
+    const { name, email, phone, password, role, businessName, businessType, city, state } = await req.json();
 
     if (!name || !email || !password || !role) {
       return new Response(
@@ -125,6 +125,35 @@ Deno.serve(async (req) => {
       .from("profiles")
       .update(updateData)
       .eq("id", userId);
+
+    // If role is vendor, create a partner record
+    if (role === "vendor") {
+      const partnerData: any = {
+        user_id: userId,
+        business_name: businessName || name,
+        business_type: businessType || "individual",
+        contact_person: name,
+        email,
+        phone: phone || "",
+        status: "approved",
+        address: {
+          street: "",
+          city: city || "",
+          state: state || "",
+          pincode: "",
+          country: "India",
+        },
+      };
+
+      const { error: partnerError } = await supabaseAdmin
+        .from("partners")
+        .insert(partnerData);
+
+      if (partnerError) {
+        console.error("Failed to create partner record:", partnerError);
+        // Don't fail the whole operation - user is created, partner record can be added later
+      }
+    }
 
     return new Response(
       JSON.stringify({ userId, email, role }),

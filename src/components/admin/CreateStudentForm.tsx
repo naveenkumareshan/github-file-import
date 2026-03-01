@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { toast } from '@/hooks/use-toast';
 import { UserPlus, Copy, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { FunctionsHttpError } from '@supabase/supabase-js';
 
 interface CreateStudentFormProps {
   onStudentCreated?: () => void;
@@ -21,6 +22,12 @@ const ROLE_OPTIONS = [
   { value: 'vendor_employee', label: 'Employee' },
 ];
 
+const BUSINESS_TYPE_OPTIONS = [
+  { value: 'individual', label: 'Individual' },
+  { value: 'company', label: 'Company' },
+  { value: 'partnership', label: 'Partnership' },
+];
+
 const CreateStudentForm: React.FC<CreateStudentFormProps> = ({ onStudentCreated }) => {
   const [formData, setFormData] = useState({
     name: '',
@@ -29,6 +36,10 @@ const CreateStudentForm: React.FC<CreateStudentFormProps> = ({ onStudentCreated 
     password: '',
     gender: '',
     role: 'student',
+    businessName: '',
+    businessType: 'individual',
+    city: '',
+    state: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [credentialsDialog, setCredentialsDialog] = useState<{ email: string; password: string; role: string } | null>(null);
@@ -40,6 +51,19 @@ const CreateStudentForm: React.FC<CreateStudentFormProps> = ({ onStudentCreated 
 
   const needsPassword = formData.role !== 'student';
   const showGender = formData.role === 'student';
+  const showPartnerFields = formData.role === 'vendor';
+
+  const extractErrorMessage = async (error: any): Promise<string> => {
+    if (error instanceof FunctionsHttpError) {
+      try {
+        const errorData = await error.context.json();
+        return errorData?.error || error.message;
+      } catch {
+        return error.message;
+      }
+    }
+    return error?.message || "Failed to create user. This email may already be registered.";
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,32 +81,42 @@ const CreateStudentForm: React.FC<CreateStudentFormProps> = ({ onStudentCreated 
       }
 
       if (formData.role === 'student') {
-        // Use existing create-student edge function
         const { data, error } = await supabase.functions.invoke('create-student', {
           body: { name: formData.name, email: formData.email, phone: formData.phone },
         });
-        if (error) throw error;
+        if (error) {
+          const msg = await extractErrorMessage(error);
+          throw new Error(msg);
+        }
         if (data?.error) throw new Error(data.error);
 
         toast({ title: "Student Created", description: `Student ${formData.name} has been created.` });
       } else {
-        // Use new admin-create-user edge function
-        const { data, error } = await supabase.functions.invoke('admin-create-user', {
-          body: {
-            name: formData.name,
-            email: formData.email,
-            phone: formData.phone,
-            password: formData.password,
-            role: formData.role,
-          },
-        });
-        if (error) throw error;
+        const body: any = {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          password: formData.password,
+          role: formData.role,
+        };
+
+        if (showPartnerFields) {
+          body.businessName = formData.businessName;
+          body.businessType = formData.businessType;
+          body.city = formData.city;
+          body.state = formData.state;
+        }
+
+        const { data, error } = await supabase.functions.invoke('admin-create-user', { body });
+        if (error) {
+          const msg = await extractErrorMessage(error);
+          throw new Error(msg);
+        }
         if (data?.error) throw new Error(data.error);
 
         const roleLabel = ROLE_OPTIONS.find(r => r.value === formData.role)?.label || formData.role;
         toast({ title: `${roleLabel} Created`, description: `${formData.name} has been created successfully.` });
 
-        // Show credentials dialog for non-student roles
         setCredentialsDialog({
           email: formData.email,
           password: formData.password,
@@ -90,13 +124,12 @@ const CreateStudentForm: React.FC<CreateStudentFormProps> = ({ onStudentCreated 
         });
       }
 
-      // Reset form
-      setFormData({ name: '', email: '', phone: '', password: '', gender: '', role: formData.role });
+      setFormData({ name: '', email: '', phone: '', password: '', gender: '', role: formData.role, businessName: '', businessType: 'individual', city: '', state: '' });
       onStudentCreated?.();
     } catch (error: any) {
       toast({
         title: "Creation Failed",
-        description: error?.message || "Failed to create user. This email may already be registered.",
+        description: error?.message || "Failed to create user.",
         variant: "destructive",
       });
     } finally {
@@ -135,7 +168,7 @@ const CreateStudentForm: React.FC<CreateStudentFormProps> = ({ onStudentCreated 
           <form onSubmit={handleSubmit} className="space-y-3">
             <div className="space-y-1">
               <Label className="text-xs">Role *</Label>
-              <Select value={formData.role} onValueChange={(v) => setFormData({ ...formData, role: v, password: '', gender: '' })}>
+              <Select value={formData.role} onValueChange={(v) => setFormData({ ...formData, role: v, password: '', gender: '', businessName: '', businessType: 'individual', city: '', state: '' })}>
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue />
                 </SelectTrigger>
@@ -182,6 +215,38 @@ const CreateStudentForm: React.FC<CreateStudentFormProps> = ({ onStudentCreated 
                   </SelectContent>
                 </Select>
               </div>
+            )}
+
+            {showPartnerFields && (
+              <>
+                <div className="space-y-1">
+                  <Label className="text-xs">Business Name</Label>
+                  <Input name="businessName" placeholder="Business name (optional)" value={formData.businessName} onChange={handleChange} className="h-8 text-xs" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Business Type</Label>
+                  <Select value={formData.businessType} onValueChange={(v) => setFormData({ ...formData, businessType: v })}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {BUSINESS_TYPE_OPTIONS.map(bt => (
+                        <SelectItem key={bt.value} value={bt.value} className="text-xs">{bt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">City</Label>
+                    <Input name="city" placeholder="City" value={formData.city} onChange={handleChange} className="h-8 text-xs" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">State</Label>
+                    <Input name="state" placeholder="State" value={formData.state} onChange={handleChange} className="h-8 text-xs" />
+                  </div>
+                </div>
+              </>
             )}
 
             <Button type="submit" className="w-full h-8 text-xs" disabled={isSubmitting}>

@@ -1575,6 +1575,63 @@ export type Database = {
           },
         ]
       }
+      partners: {
+        Row: {
+          address: Json
+          bank_details: Json
+          business_details: Json
+          business_name: string
+          business_type: string
+          commission_settings: Json
+          contact_person: string
+          created_at: string
+          email: string
+          id: string
+          is_active: boolean
+          phone: string
+          serial_number: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: Json
+          bank_details?: Json
+          business_details?: Json
+          business_name?: string
+          business_type?: string
+          commission_settings?: Json
+          contact_person?: string
+          created_at?: string
+          email?: string
+          id?: string
+          is_active?: boolean
+          phone?: string
+          serial_number?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: Json
+          bank_details?: Json
+          business_details?: Json
+          business_name?: string
+          business_type?: string
+          commission_settings?: Json
+          contact_person?: string
+          created_at?: string
+          email?: string
+          id?: string
+          is_active?: boolean
+          phone?: string
+          serial_number?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           address: string | null
