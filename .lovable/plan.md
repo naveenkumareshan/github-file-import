@@ -1,69 +1,50 @@
 
 
-## Replace UUID URLs with Clean Serial Numbers
+## Make Study Rooms and Hostels Card Layouts Consistent
 
-Currently, student-facing pages show ugly UUIDs in the URL bar (e.g., `/book-seat/5de17f48-a577-4aeb-bd5e-316be04dcc95`). This plan replaces them with the existing `serial_number` field (e.g., `/book-seat/IS-ROOM-2026-00004`).
+Currently the two listing pages have different card styles:
+- **Hostels** (`/hostels`): Compact horizontal cards (small thumbnail on the left, details on the right) -- matches the mobile-first design
+- **Study Rooms** (`/cabins`): Large vertical grid cards (big image on top, details below) -- desktop-style, inconsistent on mobile
 
-### Affected Student-Facing Routes
-
-| Current URL | New URL |
-|---|---|
-| `/book-seat/5de17f48-...` | `/book-seat/IS-ROOM-2026-00004` |
-| `/hostels/a1b2c3d4-...` | `/hostels/IS-INSH-2026-00001` |
-| `/hostels/:id/rooms` | `/hostels/IS-INSH-2026-00001/rooms` |
-| `/book-confirmation/:bookingId` | (kept as UUID - internal reference) |
-| `/booking-confirmation/:bookingId` | (kept as UUID - internal reference) |
-
-Booking confirmations will keep UUIDs since those are one-time pages and the IDs are not user-meaningful.
+The fix is to update the **Cabins page** to use the same compact horizontal card layout as Hostels, matching the mobile-first design language used elsewhere.
 
 ---
 
 ### Changes
 
-**1. API: Add lookup-by-serial-number methods**
+**1. `src/pages/Cabins.tsx` - Replace desktop layout with mobile-first layout**
 
-- **`src/api/cabinsService.ts`** -- Add `getCabinBySerialNumber(serialNumber)` that queries `cabins` table with `.eq('serial_number', serialNumber)`.
-- **`src/api/hostelService.ts`** -- Add `getHostelBySerialNumber(serialNumber)` that queries `hostels` table with `.eq('serial_number', serialNumber)`.
+Remove the hero banner section and desktop-style container layout. Replace with the same sticky-header + compact-list pattern used on the Hostels page:
+- Sticky header with title and category filter pills
+- Compact horizontal card list (thumbnail left, content right)
+- Same spacing, typography, and rounded-card style as Hostels
 
-**2. Navigation: Use serial_number instead of UUID when linking**
+**2. `src/components/cabins/CabinsGrid.tsx` - Rewrite to use horizontal card layout**
 
-Update all student-facing navigation to pass `serial_number` instead of `id`:
+Replace the current grid of large `CabinCard` components with inline horizontal cards matching the Hostels pattern:
+- Each card: 80x80px thumbnail on left, name/location/amenities/price on right
+- Category badge on thumbnail
+- Rating or "New" badge
+- "Book" action pill on bottom-right
+- Uses `Link` to `/book-seat/{serial_number}`
+- Responsive: single column on mobile, 2-3 columns on larger screens
 
-- **`src/components/CabinCard.tsx`** -- Change `Link to={/book-seat/${cabin._id}}` to use `cabin.serial_number || cabin._id`
-- **`src/components/search/CabinSearchResults.tsx`** -- Same change for cabin links
-- **`src/components/search/CabinMapView.tsx`** -- Update `navigate(/book-seat/...)` calls
-- **`src/pages/Hostels.tsx`** -- Change `navigate(/hostels/${hostel.id})` to use `hostel.serial_number || hostel.id`
+**3. No changes to `src/components/CabinCard.tsx`**
 
-**3. Detail pages: Resolve serial_number to data**
+The original CabinCard component will be kept as-is since it may be used elsewhere (e.g., admin views). The CabinsGrid will simply stop importing it and render its own inline cards.
 
-- **`src/pages/BookSeat.tsx`** -- Update `fetchCabinDetails` to first try `getCabinBySerialNumber(cabinId)`, falling back to `getCabinById(cabinId)` if it looks like a UUID (for backward compatibility).
-- **`src/pages/HostelRoomDetails.tsx`** -- Same pattern: try serial number lookup first, fall back to UUID.
-- **`src/pages/HostelRooms.tsx`** -- Same pattern for hostel rooms page.
+### Result
 
-**4. Downstream navigation within detail pages**
-
-Some detail pages navigate to sub-pages using the ID. These will be updated to pass along the serial_number:
-- **`src/pages/HostelRooms.tsx`** -- `handleBookRoom` uses `roomId` which comes from the rooms API (these are room-level UUIDs, not hostel-level, and don't have serial numbers -- these stay as UUIDs since they're internal references).
-
-### Backward Compatibility
-
-The detail pages will detect whether the URL parameter is a UUID or serial number:
-- If it matches UUID format (`/^[0-9a-f]{8}-/`), use the existing `getById` method
-- Otherwise, use the new `getBySerialNumber` method
-
-This ensures any bookmarked or shared old-format links still work.
+Both Study Rooms and Hostels pages will have:
+- Same sticky header pattern
+- Same compact horizontal card layout
+- Same typography scale (13px names, 11px details, 10px tags)
+- Same rounded-2xl card styling with hover effects
+- Consistent mobile-first experience
 
 ### Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/api/cabinsService.ts` | Add `getCabinBySerialNumber` method |
-| `src/api/hostelService.ts` | Add `getHostelBySerialNumber` method |
-| `src/components/CabinCard.tsx` | Use serial_number in link |
-| `src/components/search/CabinSearchResults.tsx` | Use serial_number in link |
-| `src/components/search/CabinMapView.tsx` | Use serial_number in navigation |
-| `src/pages/Hostels.tsx` | Use serial_number in navigation |
-| `src/pages/BookSeat.tsx` | Resolve serial_number to cabin data |
-| `src/pages/HostelRoomDetails.tsx` | Resolve serial_number to hostel data |
-| `src/pages/HostelRooms.tsx` | Resolve serial_number to hostel data |
-
+| `src/pages/Cabins.tsx` | Replace hero banner with sticky header; simplify layout |
+| `src/components/cabins/CabinsGrid.tsx` | Replace vertical grid cards with horizontal compact cards matching Hostels |
