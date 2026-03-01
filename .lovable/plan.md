@@ -1,72 +1,34 @@
 
 
-## Restructure Bed Management -- Clean Hierarchy with Room-like Bed Cards
+## Clean Up Add Room Dialog and Bed Grid Hierarchy
 
-### Changes Overview
+### Problems Identified
 
-1. **Categories Tab**: Remove price adjustment field -- categories are just labels (AC/Non-AC). Price is set per bed only.
-2. **Rooms Tab**: Remove price field from Add Room dialog. Add delete button per room (soft-delete: sets `is_active=false`, existing bookings untouched). Remove "Legacy Rooms" section entirely. Add rename/edit option per room.
-3. **Add Beds dialog**: Include price field, category selector, sharing type selector, and amenities picker -- all per-bed configuration.
-4. **Bed Grid display**: Change beds from tiny square icons to room-style cards showing bed number, category badge, sharing type badge, price, amenities, and status -- matching the room card layout pattern.
-5. **Floors Tab**: After floor selection, allow renaming rooms/flats. Room layout image upload and bed placement remain in Floor Plan view.
+1. **Add Room dialog** (lines 987-1005): Shows Category and Sharing Type selectors that should not be there -- these are per-bed settings, not per-room.
+2. **Bed grid** (line 756): Shows legacy `room.roomCategory` (e.g., "premium", "standard") as badges on room cards -- these legacy labels should be removed.
+3. **Floor grouping** (line 164-165): Falls back to `Floor ${room.floor}` when no `floor_id` is set, creating phantom "Floor 2" entries from the old integer `floor` column. Rooms without a proper `floor_id` should be grouped under "Unassigned" instead.
+4. **Room cards** show `categoryName` and `sharingTypeName` badges (lines 754-756) -- since category and sharing type are now per-bed, these room-level badges should be removed.
 
----
-
-### Detailed File Changes
+### Changes
 
 **File: `src/pages/admin/HostelBedManagementPage.tsx`**
 
-**Categories Tab (lines 555-573)**
-- Remove the `newCatPrice` input and `+Rs` display on category pills
-- Category creation only needs a name
-- Update `handleAddCategory` to pass `0` for price_adjustment always
+1. **Add Room Dialog** (lines 986-1006): Remove the Category selector and Sharing Type selector fields entirely. Room creation only needs: Floor + Room Number/Name + Description. Remove `newRoomCategoryId` and `newRoomSharingTypeId` state variables and their usage in `handleAddRoom`.
 
-**Rooms Tab (lines 620-675)**
-- Remove price field from Add Room dialog (lines 949-952)
-- Remove `newRoomPrice` state variable
-- Remove price from `hostel_sharing_options` insert in `handleAddRoom`
-- Add a delete button next to each room pill (trash icon)
-- Add `handleDeleteRoom` function: sets `is_active = false` on the room (keeps bookings intact)
-- Add rename button (pencil icon) next to each room with inline edit or small dialog
-- Remove the "Legacy Rooms" section entirely (lines 657-673)
+2. **handleAddRoom** (lines 476-524): Remove `category_id`, `sharing_type_id`, `category` from the insert. Remove the auto-create sharing option logic (lines 494-513) since sharing type is per-bed now.
 
-**Bed Grid View (lines 726-757)**
-- Replace the small `grid-cols-5 sm:grid-cols-6` icon grid with `grid-cols-1 md:grid-cols-2` card layout
-- Each bed card shows:
-  - Bed number (bold)
-  - Category badge (e.g., "AC") 
-  - Sharing type badge (e.g., "Single")
-  - Price display
-  - Amenities as small chips
-  - Status indicator (Available/Occupied/Blocked)
-  - Click to edit
+3. **Room card badges** (lines 754-756): Remove `categoryName` and `sharingTypeName` badges from room cards in the grid view. Also remove the legacy `room.roomCategory` badge fallback.
 
-**Add Beds Dialog (lines 854-909)**
-- Add a **Price (per month)** field for setting bed price at creation
-- This price is stored as `price_override` on the bed
-- Category, sharing type selector, amenities already exist -- keep them
-- Add `addPrice` state variable
+4. **Floor grouping fallback** (lines 163-165): Change the fallback from `Floor ${room.floor}` to `Unassigned` so phantom floor tabs don't appear. Only rooms with a proper `floor_id` get grouped under named floors.
 
-**Edit Bed Dialog (lines 802-852)**
-- Already has price override, category, amenities -- no structural changes needed
-
-**Add Room Dialog (lines 911-962)**
-- Remove Price field
-- Add a note: "Beds and pricing are configured after room creation"
-
-### Database Note
-- No schema changes needed. `hostel_bed_categories.price_adjustment` column stays but is always set to 0
-- Room deletion is soft-delete via existing `is_active` column
-- Bed price uses existing `price_override` column
+5. **State cleanup**: Remove `newRoomCategoryId` and `newRoomSharingTypeId` state declarations (lines 92-93) and their reset in `handleAddRoom` (line 518).
 
 ### Summary
 
-| Change | Location |
-|--------|----------|
-| Remove price from categories | Categories tab + handleAddCategory |
-| Remove price from rooms, add delete + rename | Rooms tab + Add Room dialog |
-| Remove legacy rooms section | Rooms tab |
-| Add price field to Add Beds dialog | Add Beds dialog |
-| Bed cards instead of tiny squares | Grid view bed rendering |
-| Rename room option | Room pills in Rooms tab |
+| Change | Detail |
+|--------|--------|
+| Remove Category from Add Room | Delete selector + state + insert logic |
+| Remove Sharing Type from Add Room | Delete selector + state + auto-sharing-option creation |
+| Remove legacy badges on room cards | Delete categoryName, sharingTypeName, roomCategory badges |
+| Fix phantom floor tabs | Fallback to "Unassigned" instead of "Floor N" |
 
