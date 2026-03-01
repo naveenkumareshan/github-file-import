@@ -289,7 +289,7 @@ const ReviewManagement: React.FC = () => {
                 <p className="text-xs text-muted-foreground mb-3">{review.comment}</p>
 
                 <div className="flex gap-1.5">
-                  {review.status !== 'approved' && (
+                  {user?.role === 'admin' && review.status !== 'approved' && (
                     <Button
                       size="sm"
                       variant="outline"
@@ -300,7 +300,7 @@ const ReviewManagement: React.FC = () => {
                       Approve
                     </Button>
                   )}
-                  {review.status !== 'rejected' && (
+                  {user?.role === 'admin' && review.status !== 'rejected' && (
                     <Button
                       size="sm"
                       variant="outline"
@@ -311,24 +311,28 @@ const ReviewManagement: React.FC = () => {
                       Reject
                     </Button>
                   )}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleEdit(review)}
-                    className="h-7 text-xs"
-                  >
-                    <Edit className="h-3 w-3 mr-1" />
-                    Edit
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleDelete(review.id)}
-                    className="h-7 text-xs text-red-600 border-red-200 hover:bg-red-50"
-                  >
-                    <Trash2 className="h-3 w-3 mr-1" />
-                    Delete
-                  </Button>
+                  {user?.role === 'admin' && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleEdit(review)}
+                      className="h-7 text-xs"
+                    >
+                      <Edit className="h-3 w-3 mr-1" />
+                      Edit
+                    </Button>
+                  )}
+                  {user?.role === 'admin' && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDelete(review.id)}
+                      className="h-7 text-xs text-red-600 border-red-200 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-3 w-3 mr-1" />
+                      Delete
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>

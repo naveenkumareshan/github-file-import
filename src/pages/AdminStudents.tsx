@@ -61,10 +61,15 @@ interface Student {
   serialNumber?: string;
 }
 
-const ROLE_TABS = [
+const ALL_ROLE_TABS = [
   { label: "Students", value: "student" },
   { label: "Partners", value: "vendor" },
   { label: "Admins", value: "admin" },
+  { label: "Employees", value: "vendor_employee" },
+] as const;
+
+const PARTNER_ROLE_TABS = [
+  { label: "Students", value: "student" },
   { label: "Employees", value: "vendor_employee" },
 ] as const;
 
@@ -255,6 +260,7 @@ const AdminStudents = () => {
     }
   };
 
+  const ROLE_TABS = user?.role === 'admin' ? ALL_ROLE_TABS : PARTNER_ROLE_TABS;
   const currentTabLabel = ROLE_TABS.find(t => t.value === role)?.label || "Users";
   const isPartnerTab = role === 'vendor';
 

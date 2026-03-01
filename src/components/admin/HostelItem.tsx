@@ -19,6 +19,7 @@ interface HostelItemProps {
 export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePackages, onToggleActive, onToggleBooking }: HostelItemProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const isAdmin = user?.role === 'admin';
 
   const getGenderBadgeStyle = (gender: string) => {
     switch (gender) {
@@ -87,16 +88,20 @@ export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePac
 
           {/* Actions */}
           <div className="border-t pt-3 mt-0.5 flex flex-wrap gap-1.5">
-            <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => onEdit(hostel)}>
-              <Edit className="h-3 w-3 mr-1" />Edit
-            </Button>
+            {isAdmin && (
+              <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => onEdit(hostel)}>
+                <Edit className="h-3 w-3 mr-1" />Edit
+              </Button>
+            )}
             <Button size="sm" className="h-7 px-2 text-xs" onClick={() => navigate(`/admin/hostels/${hostel.id}/beds`)}>
               <Bed className="h-3 w-3 mr-1" />Beds
             </Button>
-            <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => onManagePackages(hostel)}>
-              <Package className="h-3 w-3 mr-1" />Packages
-            </Button>
-            {onToggleActive && (
+            {isAdmin && (
+              <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => onManagePackages(hostel)}>
+                <Package className="h-3 w-3 mr-1" />Packages
+              </Button>
+            )}
+            {isAdmin && onToggleActive && (
               <Button
                 size="sm"
                 variant="outline"

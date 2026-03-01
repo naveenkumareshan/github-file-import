@@ -382,7 +382,7 @@ const RoomManagement = () => {
             Configure and manage your reading room inventory.
           </p>
         </div>
-        {!showEditor && (
+        {!showEditor && isAdmin && (
           <Button onClick={handleNewCabin} className="flex items-center gap-2">
             <Plus className="h-4 w-4" />
             Add New Room

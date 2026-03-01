@@ -135,9 +135,11 @@ const HostelManagement = () => {
             <h1 className="text-lg font-semibold tracking-tight">Manage Hostels</h1>
             <p className="text-xs text-muted-foreground mt-0.5">View and manage all hostels and their rooms.</p>
           </div>
-          <Button onClick={handleAddHostel} size="sm" className="flex items-center gap-1.5">
-            <Plus className="h-4 w-4" /> Add Hostel
-          </Button>
+          {user?.role === 'admin' && (
+            <Button onClick={handleAddHostel} size="sm" className="flex items-center gap-1.5">
+              <Plus className="h-4 w-4" /> Add Hostel
+            </Button>
+          )}
         </div>
 
         {/* Search */}
@@ -166,7 +168,7 @@ const HostelManagement = () => {
             <Building2 className="h-10 w-10 text-muted-foreground/30 mb-3" />
             <p className="text-sm font-medium">{searchQuery ? 'No hostels match your search' : 'No Hostels Found'}</p>
             <p className="text-xs text-muted-foreground mb-4">{searchQuery ? 'Try a different search term' : 'Start by adding your first hostel.'}</p>
-            {!searchQuery && <Button onClick={handleAddHostel} size="sm"><Plus className="h-4 w-4 mr-1" /> Add Hostel</Button>}
+            {!searchQuery && user?.role === 'admin' && <Button onClick={handleAddHostel} size="sm"><Plus className="h-4 w-4 mr-1" /> Add Hostel</Button>}
           </div>
         ) : (
           <>
