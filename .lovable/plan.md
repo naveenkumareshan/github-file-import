@@ -1,65 +1,51 @@
 
 
-## Add Splash Screen and App Icon for Native App
+## Fix Mobile Safe Areas for Native App
 
-The Capacitor setup from the previous step wasn't saved, so this plan includes the full Capacitor setup plus splash screen configuration.
+When running as a native app, content collides with the device's **status bar** (top notch/camera area) and the **bottom navigation bar** overlaps with the system's home indicator. This is fixed using CSS safe area insets.
 
-### Step 1: Install Capacitor Dependencies
+---
 
-Add to `package.json`:
-- `@capacitor/core`
-- `@capacitor/cli` (dev dependency)
-- `@capacitor/ios`
-- `@capacitor/android`
-- `@capacitor/splash-screen`
+### Changes
 
-### Step 2: Create `capacitor.config.ts`
+**1. `index.html` - Enable safe area insets**
+- Update the viewport meta tag to include `viewport-fit=cover`:
+  ```
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  ```
+  This tells the browser to extend the app into the safe area zones so we can manually pad them.
 
-Configure Capacitor with:
-- **appId**: `app.lovable.3eba92fb4507477d8b3685f58b7311e2`
-- **appName**: `inhalestaysbynaveen`
-- **webDir**: `dist`
-- **Live reload server** pointing to the preview URL
-- **Splash screen plugin config**:
-  - `launchAutoHide`: false (so we control when to hide it)
-  - `backgroundColor`: `#0f172a` (matches the app's dark theme)
-  - `showSpinner`: true
-  - `androidSpinnerStyle`: `large`
-  - `splashFullScreen`: true
-  - `splashImmersive`: true
+**2. `src/index.css` - Add global safe area padding**
+- Add CSS for the root element to respect safe areas:
+  ```css
+  #root {
+    padding-top: env(safe-area-inset-top);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  ```
+  This prevents content from going under the top status bar/notch on all pages.
 
-### Step 3: Create Splash Screen Initialization
+**3. `src/components/student/MobileAppLayout.tsx` - Safe area on main layout**
+- Add `pt-[env(safe-area-inset-top)]` padding to the root container so content starts below the status bar.
+- Update `pb-16` on the main content to also account for the bottom safe area.
 
-Create `src/utils/splashScreen.ts` that:
-- Imports `SplashScreen` from `@capacitor/splash-screen`
-- Checks if running on a native platform (`Capacitor.isNativePlatform()`)
-- Hides the splash screen after the app mounts (with a short delay for smooth transition)
+**4. `src/components/student/MobileBottomNav.tsx` - Already handled**
+- The bottom nav already uses `paddingBottom: 'env(safe-area-inset-bottom)'` -- this is correct and stays as-is.
 
-### Step 4: Integrate in `App.tsx`
+**5. `src/components/AdminLayout.tsx` - Safe area for admin panel**
+- Add top safe area padding to the admin layout header so it doesn't collide with the status bar on native devices.
 
-Call the splash screen hide function in the main `App` component's `useEffect`.
+**6. `capacitor.config.ts` - Status bar configuration**
+- Add `StatusBar` plugin config to use an overlay-style status bar so the app fills the full screen with proper padding.
 
-### Step 5: User Instructions for Icons
+### Summary of Files
 
-After code changes, provide instructions for generating native splash screen and app icon assets:
-
-1. Export to GitHub and clone the repo
-2. Install dependencies with `npm install`
-3. Add platforms: `npx cap add android` / `npx cap add ios`
-4. Use the existing `public/pwa-512x512.png` as the base icon
-5. Use `@capacitor/assets` tool to auto-generate all required splash screen and icon sizes:
-   ```
-   npx @capacitor/assets generate --iconBackgroundColor #0f172a --splashBackgroundColor #0f172a
-   ```
-6. Run `npm run build && npx cap sync`
-7. Run `npx cap run android` or `npx cap run ios`
-
-### Files to Create/Edit
-
-| File | Action |
+| File | Change |
 |------|--------|
-| `package.json` | Add Capacitor + splash-screen dependencies |
-| `capacitor.config.ts` | Create with app config + splash screen plugin settings |
-| `src/utils/splashScreen.ts` | Create splash screen hide logic |
-| `src/App.tsx` | Add splash screen initialization on mount |
+| `index.html` | Add `viewport-fit=cover` to viewport meta |
+| `src/index.css` | Add safe area padding on `#root` |
+| `src/components/student/MobileAppLayout.tsx` | Add top safe area padding |
+| `src/components/AdminLayout.tsx` | Add top safe area padding to header |
+| `capacitor.config.ts` | Add StatusBar plugin config |
 
