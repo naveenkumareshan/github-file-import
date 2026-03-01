@@ -1,51 +1,54 @@
 
 
-## Fix Google OAuth 404 Error
+## Fix Stale Files on Published App
 
-### Root Cause
-When clicking "Continue with Google", the OAuth flow redirects the user through the authentication process. After completing, the `redirect_uri` is set to `window.location.origin` (e.g., `https://inhalestaysbynaveen.lovable.app`), which lands on the homepage (`/`). The OAuth callback processing via `cloud-auth-js` may not complete properly because the homepage doesn't have authentication redirect logic.
+### Problem
+When the app is published, users see old/cached files instead of the latest version. This is caused by the **Firebase service worker** (`firebase-messaging-sw.js`) caching old assets. The `index.html` script only unregisters service workers with `sw.js` in their URL, but `firebase-messaging-sw.js` slips through and continues serving stale content.
 
-Additionally, the `SocialLoginButtons` component doesn't properly handle the `redirected` state -- when `result.redirected` is `true`, the function continues execution and may show an error toast incorrectly.
+### Solution
 
-### Fix (2 files)
+**1. Update `index.html` to unregister ALL service workers**
+Change the unregister script to remove every registered service worker, not just ones matching `sw.js`. This ensures `firebase-messaging-sw.js` and any other cached workers are cleaned up.
 
-**1. `src/components/auth/SocialLoginButtons.tsx`**
-- Change `redirect_uri` from `window.location.origin` to `window.location.origin + '/student/login'` so the user returns to the login page after OAuth
-- The login page already has the `useEffect` that detects an authenticated user and redirects to the dashboard
-- Add a check for `result.redirected` to avoid showing error toast when the page is simply redirecting to Google
+**2. Add cache-busting headers via `vite.config.ts`**
+Add build output configuration so that generated assets have hashed filenames (Vite does this by default), and ensure `index.html` is not aggressively cached.
 
-**2. `src/pages/StudentLogin.tsx`**
-- Guard the redirect `useEffect` with `authChecked` to avoid premature redirects while auth state is still loading
+**3. Update `firebase-messaging-sw.js` to skip waiting and claim clients**
+Add `self.skipWaiting()` and `self.clients.claim()` so that when a new version is deployed, the new service worker activates immediately instead of waiting.
+
+### Files to Change
+
+| File | Change |
+|------|--------|
+| `index.html` | Update service worker unregister script to match ALL service workers, not just `sw.js` |
+| `public/firebase-messaging-sw.js` | Add `skipWaiting()` and `clients.claim()` to ensure new versions activate immediately |
 
 ### Technical Details
 
-```typescript
-// SocialLoginButtons.tsx - fixed redirect_uri and redirected check
-const result = await lovable.auth.signInWithOAuth("google", {
-  redirect_uri: window.location.origin + '/student/login',
-});
-
-if (result.redirected) return; // Page is navigating to Google, do nothing
-
-if (result.error) {
-  // show error toast
+**index.html** - unregister all service workers:
+```javascript
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(function(regs) {
+    regs.forEach(function(r) { r.unregister(); });
+  });
 }
 ```
 
-```typescript
-// StudentLogin.tsx - guard with authChecked
-const { login, user, authChecked } = useAuth();
-
-useEffect(() => {
-  if (authChecked && user) {
-    navigate(redirectPath, { replace: true });
-  }
-}, [user, authChecked, redirectPath, navigate]);
+**firebase-messaging-sw.js** - add at the top:
+```javascript
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
+  );
+});
 ```
 
+This clears all cached assets on activation and ensures the new service worker takes over immediately.
+
 ### Expected Result
-- Clicking "Continue with Google" redirects to Google consent screen
-- After consent, user returns to `/student/login` where the session is picked up
-- The `useEffect` detects the authenticated user and redirects to dashboard
-- No more 404 error
+- After publishing, users will see the latest version without needing to manually clear their browser cache
+- The Firebase service worker won't hold onto stale files
+- Any previously cached assets are cleaned up on the next visit
 
