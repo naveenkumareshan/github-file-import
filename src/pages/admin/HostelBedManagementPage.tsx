@@ -525,6 +525,18 @@ const HostelBedManagementPage = () => {
   };
 
   const handleDeleteCategory = async (id: string) => {
+    // Check if any beds use this category
+    const cat = categories.find(c => c.id === id);
+    if (cat) {
+      const { count } = await supabase
+        .from('hostel_beds')
+        .select('id', { count: 'exact', head: true })
+        .eq('category', cat.name);
+      if (count && count > 0) {
+        toast({ title: 'Cannot delete', description: `Delete all ${count} bed(s) with category "${cat.name}" first.`, variant: 'destructive' });
+        return;
+      }
+    }
     const result = await hostelBedCategoryService.deleteCategory(id);
     if (result.success) {
       toast({ title: 'Category deleted' });
@@ -566,6 +578,18 @@ const HostelBedManagementPage = () => {
   };
 
   const handleDeleteSharingType = async (id: string) => {
+    // Check if any beds use sharing options of this type
+    const st = sharingTypes.find(s => s.id === id);
+    if (st) {
+      const { count } = await supabase
+        .from('hostel_beds')
+        .select('id', { count: 'exact', head: true })
+        .eq('sharing_type_id', id);
+      if (count && count > 0) {
+        toast({ title: 'Cannot delete', description: `Delete all ${count} bed(s) using sharing type "${st.name}" first.`, variant: 'destructive' });
+        return;
+      }
+    }
     const result = await hostelSharingTypeService.deleteSharingType(id);
     if (result.success) {
       toast({ title: 'Sharing type removed' });

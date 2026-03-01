@@ -35,6 +35,8 @@ import {
   ChevronUp,
   CreditCard,
   IndianRupee,
+  LayoutGrid,
+  Map as MapIcon,
   MapPin,
   Shield,
   Star,
@@ -45,6 +47,7 @@ import { CabinImageSlider } from "@/components/CabinImageSlider";
 import { getImageUrl } from "@/lib/utils";
 import { formatCurrency } from "@/utils/currency";
 import { HostelBedMap } from "@/components/hostels/HostelBedMap";
+import { HostelBedLayoutView } from "@/components/hostels/HostelBedLayoutView";
 import { StayDurationPackages } from "@/components/hostels/StayDurationPackages";
 import { StayPackage, DurationType } from "@/api/hostelStayPackageService";
 
@@ -109,6 +112,9 @@ const HostelRoomDetails = () => {
   const [durationCount, setDurationCount] = useState<number>(1);
   const [showDetails, setShowDetails] = useState(true);
   const [categories, setCategories] = useState<HostelBedCategory[]>([]);
+
+  // Bed view mode toggle
+  const [bedViewMode, setBedViewMode] = useState<'grid' | 'layout'>('grid');
 
   // Check-in date state
   const [checkInDate, setCheckInDate] = useState<Date>(new Date());
@@ -692,21 +698,59 @@ const HostelRoomDetails = () => {
             {/* ═══ 4: Select Your Bed ═══ */}
             <Separator className="my-0" />
             <div className="px-3 pt-2" ref={bedMapRef}>
-              <div className="flex items-center gap-2 mb-1.5">
-                <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">{categories.length > 0 ? 4 : 3}</div>
-                <Label className="text-sm font-semibold text-foreground">Select Your Bed</Label>
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-2">
+                  <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">{categories.length > 0 ? 4 : 3}</div>
+                  <Label className="text-sm font-semibold text-foreground">Select Your Bed</Label>
+                </div>
+                <div className="flex gap-0.5 bg-muted/50 rounded-lg p-0.5">
+                  <button
+                    onClick={() => setBedViewMode('grid')}
+                    className={cn(
+                      "p-1.5 rounded-md transition-all",
+                      bedViewMode === 'grid'
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <LayoutGrid className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setBedViewMode('layout')}
+                    className={cn(
+                      "p-1.5 rounded-md transition-all",
+                      bedViewMode === 'layout'
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <MapIcon className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
 
-              <HostelBedMap
-                hostelId={hostel.id}
-                selectedBedId={selectedBed?.id}
-                onBedSelect={handleBedSelect}
-                readOnly={false}
-                sharingFilter={sharingFilter}
-                categoryFilter={categoryFilter}
-                startDate={format(checkInDate, 'yyyy-MM-dd')}
-                endDate={format(endDate, 'yyyy-MM-dd')}
-              />
+              {bedViewMode === 'grid' ? (
+                <HostelBedMap
+                  hostelId={hostel.id}
+                  selectedBedId={selectedBed?.id}
+                  onBedSelect={handleBedSelect}
+                  readOnly={false}
+                  sharingFilter={sharingFilter}
+                  categoryFilter={categoryFilter}
+                  startDate={format(checkInDate, 'yyyy-MM-dd')}
+                  endDate={format(endDate, 'yyyy-MM-dd')}
+                />
+              ) : (
+                <HostelBedLayoutView
+                  hostelId={hostel.id}
+                  selectedBedId={selectedBed?.id}
+                  onBedSelect={handleBedSelect}
+                  sharingFilter={sharingFilter}
+                  categoryFilter={categoryFilter}
+                  startDate={format(checkInDate, 'yyyy-MM-dd')}
+                  endDate={format(endDate, 'yyyy-MM-dd')}
+                />
+              )}
             </div>
 
             {/* ═══ 4: Choose Package ═══ */}
