@@ -43,7 +43,7 @@ const HostelBedManagementPage = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [configTab, setConfigTab] = useState('categories');
 
-  // Floor plan designer state
+  // Layout plan designer state
   const [designerBeds, setDesignerBeds] = useState<DesignerBed[]>([]);
   const [selectedDesignerBed, setSelectedDesignerBed] = useState<DesignerBed | null>(null);
   const [roomLayout, setRoomLayout] = useState<any>(null);
@@ -284,13 +284,9 @@ const HostelBedManagementPage = () => {
     }
   };
 
-  const loadAddDialogSharingOptions = async (roomId: string) => {
-    const { data } = await supabase
-      .from('hostel_sharing_options')
-      .select('*')
-      .eq('room_id', roomId)
-      .eq('is_active', true);
-    setAddDialogSharingOptions(data || []);
+  const loadAddDialogSharingOptions = (_roomId: string) => {
+    // Use hostel-level sharing types directly instead of room-level sharing options
+    setAddDialogSharingOptions(sharingTypes.map(st => ({ id: st.id, type: st.name, capacity: st.capacity })));
   };
 
   const handleAddRoomChange = (roomId: string) => {
@@ -304,6 +300,38 @@ const HostelBedManagementPage = () => {
     if (!targetRoomId || !addSharingOptionId || !addCount) return;
     setSaving(true);
     try {
+      // addSharingOptionId here is actually a sharing_type_id (hostel-level)
+      const selectedSharingType = sharingTypes.find(st => st.id === addSharingOptionId);
+      if (!selectedSharingType) throw new Error('Invalid sharing type');
+
+      // Look up or auto-create a hostel_sharing_options record for this room + sharing type
+      const { data: existingOpts } = await supabase
+        .from('hostel_sharing_options')
+        .select('id')
+        .eq('room_id', targetRoomId)
+        .eq('type', selectedSharingType.name)
+        .eq('is_active', true)
+        .limit(1);
+
+      let sharingOptionId: string;
+      if (existingOpts && existingOpts.length > 0) {
+        sharingOptionId = existingOpts[0].id;
+      } else {
+        // Auto-create sharing option for this room
+        const { data: newOpt, error: optError } = await supabase
+          .from('hostel_sharing_options')
+          .insert({
+            room_id: targetRoomId,
+            type: selectedSharingType.name,
+            capacity: selectedSharingType.capacity,
+            total_beds: 0,
+          } as any)
+          .select('id')
+          .single();
+        if (optError) throw optError;
+        sharingOptionId = newOpt.id;
+      }
+
       const { data: existing } = await supabase
         .from('hostel_beds')
         .select('bed_number')
@@ -316,14 +344,15 @@ const HostelBedManagementPage = () => {
       for (let i = 0; i < count; i++) {
         beds.push({
           room_id: targetRoomId,
-          sharing_option_id: addSharingOptionId,
+          sharing_option_id: sharingOptionId,
+          sharing_type_id: addSharingOptionId,
           bed_number: startNum + i,
           category: addCategory || null,
           amenities: addAmenities,
           price_override: addPrice ? Number(addPrice) : null,
         });
       }
-      const { error } = await supabase.from('hostel_beds').insert(beds);
+      const { error } = await supabase.from('hostel_beds').insert(beds as any);
       if (error) throw error;
       toast({ title: `${count} bed(s) added` });
       setAddBedDialogOpen(false);
@@ -334,7 +363,7 @@ const HostelBedManagementPage = () => {
     } finally { setSaving(false); }
   };
 
-  // Floor plan save
+  // Layout plan save
   const handleSaveLayout = async () => {
     if (!selectedRoomId) return;
     setIsSaving(true);
@@ -690,7 +719,7 @@ const HostelBedManagementPage = () => {
             <LayoutGrid className="h-3.5 w-3.5 inline mr-1" />Box Grid
           </button>
           <button className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${viewMode === 'floorplan' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground'}`} onClick={() => setViewMode('floorplan')}>
-            <MapIcon className="h-3.5 w-3.5 inline mr-1" />Floor Plan
+            <MapIcon className="h-3.5 w-3.5 inline mr-1" />Layout Plan
           </button>
         </div>
         <Button size="sm" variant="outline" onClick={() => {
@@ -818,7 +847,7 @@ const HostelBedManagementPage = () => {
             categories={categories}
           />
         ) : (
-          <div className="text-center py-8 text-muted-foreground">Select a room to view the floor plan</div>
+          <div className="text-center py-8 text-muted-foreground">Select a room to view the layout plan</div>
         )
       )}
 
@@ -890,12 +919,12 @@ const HostelBedManagementPage = () => {
               </Select>
             </div>
             <div>
-              <Label>Sharing Option</Label>
+              <Label>Sharing Type</Label>
               <Select value={addSharingOptionId} onValueChange={setAddSharingOptionId}>
                 <SelectTrigger className="mt-1"><SelectValue placeholder="Select sharing type" /></SelectTrigger>
                 <SelectContent>
                   {addDialogSharingOptions.map((s: any) => (
-                    <SelectItem key={s.id} value={s.id}>{s.type}</SelectItem>
+                    <SelectItem key={s.id} value={s.id}>{s.type} ({s.capacity})</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
