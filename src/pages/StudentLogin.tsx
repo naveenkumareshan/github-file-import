@@ -21,7 +21,7 @@ import { AlertCircle, Eye, EyeOff } from "lucide-react";
 const StudentLogin = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, user } = useAuth();
+  const { login, user, authChecked } = useAuth();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -45,10 +45,10 @@ const StudentLogin = () => {
 
   // Redirect authenticated users (handles Google OAuth return)
   useEffect(() => {
-    if (user) {
+    if (authChecked && user) {
       navigate(redirectPath, { replace: true });
     }
-  }, [user, redirectPath, navigate]);
+  }, [user, authChecked, redirectPath, navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
