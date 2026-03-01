@@ -1,103 +1,111 @@
 
-# Partner Management Overhaul and Sidebar Reordering
+# Partner Onboarding Link and Unified Property Approvals
 
-## 1. Rebuild Partner Management Page (Admin Side) -- Receipts-style UI
+## Overview
 
-**Current**: `VendorApproval.tsx` uses a `DataTable` component with large text and basic pagination. No option to re-activate a suspended/rejected partner.
-
-**Changes to `src/components/admin/VendorApproval.tsx`**:
-- Replace `DataTable` with a standard `Table` (same pattern as `Receipts.tsx`): compact `text-[11px]` rows, `h-8` filter inputs, S.No. column with `AdminTablePagination`
-- Add compact single-line filter row (status, business type, search) instead of collapsible filter card
-- Add "Activate" button in Actions column for suspended partners (calls `handleStatusUpdate(id, 'approve')`)
-- Add "Documents" tab to `VendorDetailsDialog.tsx` that lists files from `partner-documents` storage bucket for the partner's `user_id`, with per-item approve/reject toggles
-- Add mobile card view using `useIsMobile` hook
-
-**Changes to `src/components/admin/VendorDetailsDialog.tsx`**:
-- Add a "Documents" tab alongside Basic/Business/Bank/Actions
-- Fetch documents from `supabase.storage.from('partner-documents').list(vendor.user_id)`
-- Each document shows a preview link and an "Approve" / "Reject" toggle
-- Add a "Properties" section showing cabins/hostels linked to this partner (query `cabins` and `hostels` tables where `created_by = vendor.user_id`)
-- Show re-activate option for rejected partners (same as suspended -- already exists for suspended)
-
-**Changes to `src/api/vendorApprovalService.ts`**:
-- Add `reactivateVendor` method (updates status back to 'approved')
-- Already has `updateVendorStatus` which handles approve/suspend/reject -- just need to expose "activate" from rejected state too
-
-**Suspension behavior**:
-- When a partner is suspended, set `is_active = false` on their `partners` record AND set `is_booking_active = false` on all their cabins/hostels
-- When partner logs in and status is 'suspended', redirect to a "Contact Admin" page instead of the dashboard
-- Add a check in `AuthContext` or `ProtectedRoute`: if partner's status is suspended, show a blocked message
-
-**Database migration**: Add a trigger or use the service layer to cascade suspension to properties (set `is_booking_active = false` on cabins where `created_by = suspended_partner.user_id`)
-
-## 2. Admin Document Review for Partners
-
-**New fields needed**: Add a `document_approvals` jsonb column to `partners` table to track per-section approval status (e.g., `{ basic_info: 'approved', business_details: 'pending', bank_details: 'approved', documents: 'rejected' }`)
-
-**Database migration**:
-```sql
-ALTER TABLE partners ADD COLUMN IF NOT EXISTS document_approvals jsonb DEFAULT '{}';
-```
-
-**Admin behavior**: In `VendorDetailsDialog`, each tab (Basic Info, Business, Bank, Documents) gets an "Approve" / "Reject" button. Once approved, that section becomes read-only for the partner.
-
-**Partner behavior**: In `VendorProfile.tsx`, check `document_approvals` -- if a section is approved, hide the Edit button for that section. Show a green "Approved" badge. If rejected, show red "Rejected" badge with reason.
-
-## 3. Partner Profile -- Show Linked Properties
-
-**Changes to `src/components/vendor/VendorProfile.tsx`**:
-- Add a new "Properties" tab
-- Fetch cabins from `supabase.from('cabins').select('id, name, total_seats, is_active').eq('created_by', user.id)`
-- Fetch hostels from `supabase.from('hostels').select('id, name, total_beds, is_active').eq('created_by', user.id)`
-- Display a simple list: Property Name, Type (Reading Room/Hostel), Capacity (seats/beds), Status
-
-## 4. Employee Form -- Show ALL Sidebar Menu Options
-
-**Current**: `VendorEmployeeForm.tsx` shows 10 modules. Missing: Hostels, Bed Map, Hostel Bookings, Hostel Receipts, Hostel Deposits, Due Management, Hostel Due Management, Operations, Coupons, Key Deposits, Manage Properties
-
-**Changes to `src/components/vendor/VendorEmployeeForm.tsx`**:
-- Expand `PERMISSION_MODULES` to include ALL sidebar items that a partner has access to:
-  - Dashboard, Operations
-  - Seat Map, Due Management, Bookings, Receipts, Key Deposits (Reading Rooms group)
-  - Bed Map, Hostel Due Management, Hostel Bookings, Hostel Receipts, Hostel Deposits (Hostels group)
-  - Manage Properties, Reviews
-  - Users/Students, Coupons
-  - Employees, Reports, Payouts, Complaints
-- Group them visually with section headers in the table
-
-**Changes to `src/hooks/useVendorEmployeePermissions.ts`**: Ensure all new permission keys are recognized and checked properly in the sidebar
-
-**Changes to `src/components/admin/AdminSidebar.tsx`**: Ensure every sidebar item checks its corresponding permission key for `vendor_employee` role
-
-## 5. Move Hostels Above Users in Sidebar (Both Admin and Partner)
-
-**Current order**: Dashboard > Operations > Reading Rooms > **Users** > **Hostels** > ...
-
-**New order**: Dashboard > Operations > Reading Rooms > **Hostels** > **Users** > ...
-
-**Changes to `src/components/admin/AdminSidebar.tsx`**:
-- Move the Hostels block (lines 202-272) ABOVE the Users block (lines 183-200)
-- This is a pure reorder -- no logic changes
+Two main changes:
+1. Add a partner onboarding/property registration flow -- partners can add new Reading Rooms or Hostels, which go into a "pending approval" state
+2. Create a unified "Property Approvals" page under the Partners sidebar section (admin side) that shows both Reading Rooms and Hostels awaiting approval
 
 ---
 
-## Files to Modify
+## 1. Add `is_approved` to Cabins Table
 
-1. `src/components/admin/VendorApproval.tsx` -- Rebuild with Receipts-style compact table, add activate button
-2. `src/components/admin/VendorDetailsDialog.tsx` -- Add Documents tab, Properties section, activate from rejected
-3. `src/api/vendorApprovalService.ts` -- Add property cascade on suspension
-4. `src/components/vendor/VendorProfile.tsx` -- Add Properties tab, section-level approval display, lock approved sections
-5. `src/api/vendorProfileService.ts` -- Add method to fetch linked properties
-6. `src/components/vendor/VendorEmployeeForm.tsx` -- Expand to ALL sidebar permission modules with grouped sections
-7. `src/components/admin/AdminSidebar.tsx` -- Reorder Hostels above Users
-8. Database migration -- Add `document_approvals` column to `partners`
+Currently only `hostels` has an `is_approved` column. We need to add it to `cabins` as well so that new Reading Rooms created by partners also require approval.
+
+**Database Migration:**
+```sql
+ALTER TABLE cabins ADD COLUMN IF NOT EXISTS is_approved boolean NOT NULL DEFAULT false;
+-- Auto-approve all existing cabins
+UPDATE cabins SET is_approved = true WHERE is_approved = false;
+```
+
+Update RLS: The existing "Anyone can view active cabins" policy should also check `is_approved = true` for public visibility. Partners can still see their own unapproved cabins.
+
+---
+
+## 2. Partner Onboarding Link on Admin Partner Management Page
+
+**Changes to `VendorApproval.tsx`:**
+- Add a "Partner Onboarding Link" button in the header area that generates/copies a shareable link: `https://bookmynook.com/partner/register`
+- This is the existing partner registration flow -- just make it visible and copyable from the admin page
+
+---
+
+## 3. Partner Profile -- "Add New Property" Option
+
+**Changes to `VendorProfile.tsx` (Properties tab):**
+- Add an "Add New Property" button in the Properties tab header
+- Clicking it opens a dialog/form where the partner can choose property type (Reading Room or Hostel) and fill in basic details (name, location, gender for hostels, etc.)
+- On submit, the property is created with `is_approved = false` and `is_active = false`
+- Partner sees it in their Properties tab with a "Pending Approval" badge
+- Once admin approves, it appears in Manage Properties
+
+**Also add to `ManageProperties.tsx`:**
+- Add a small "Add New Property" button at the top of the Manage Properties page for easy access
+
+---
+
+## 4. Unified Property Approvals Page (Admin Side)
+
+**New page: `src/pages/admin/PropertyApprovals.tsx`**
+- Replaces the current `HostelApprovals` page
+- Shows BOTH Reading Rooms and Hostels pending approval in a single tabbed view
+- Tabs: "All Pending", "Reading Rooms", "Hostels"
+- Compact table with: S.No., Property ID, Name, Type (Reading Room/Hostel), Partner Name, Location, Submitted Date, Actions (Approve/Reject)
+- On approval: sets `is_approved = true`, optionally sets commission for hostels
+- On rejection: keeps `is_approved = false`, optionally sends reason
+- Also shows "Approved Properties" section below with all approved properties
+
+**Sidebar changes (`AdminSidebar.tsx`):**
+- Remove "Approvals" from under Hostels sub-menu
+- Add "Property Approvals" as a sub-item under "Partners" (or right below Partners in the admin sidebar)
+
+**Route changes (`App.tsx`):**
+- Replace `/admin/hostel-approvals` route with `/admin/property-approvals` pointing to new `PropertyApprovals` page
+- Keep old route as redirect for backward compatibility
+
+---
+
+## 5. Service Layer Updates
+
+**Changes to `adminCabinsService.ts`:**
+- Add `approveCabin(cabinId, approved)` method
+- Update `getAllCabins` to respect `is_approved` filter
+
+**Changes to `hostelService.ts`:**
+- Already has `approveHostel` -- no changes needed
+
+---
+
+## 6. Manage Properties Visibility
+
+Properties only show in Manage Properties page after admin approval:
+- Update `RoomManagement.tsx` to filter `is_approved = true` (or show unapproved ones with a "Pending" badge for the owner)
+- Similarly for `HostelManagement.tsx`
+
+---
+
+## Files to Create/Modify
+
+### New Files:
+- `src/pages/admin/PropertyApprovals.tsx` -- Unified approval page for both property types
+- Database migration -- Add `is_approved` to cabins
+
+### Modified Files:
+- `src/components/admin/VendorApproval.tsx` -- Add onboarding link button
+- `src/components/vendor/VendorProfile.tsx` -- Add "Add New Property" button and form in Properties tab
+- `src/pages/partner/ManageProperties.tsx` -- Add "Add New Property" button
+- `src/components/admin/AdminSidebar.tsx` -- Move approvals under Partners, remove from Hostels
+- `src/App.tsx` -- Add property-approvals route, update hostel-approvals
+- `src/api/adminCabinsService.ts` -- Add approveCabin method, is_approved filter
+- `src/pages/RoomManagement.tsx` -- Show approval status for partner's unapproved rooms
 
 ## Implementation Order
 
-1. Database migration (add `document_approvals` column)
-2. Reorder sidebar (Hostels above Users) -- quick win
-3. Expand employee permission modules
-4. Rebuild Partner Management page (admin)
-5. Add Documents tab and Properties to VendorDetailsDialog
-6. Update Partner Profile with Properties tab and section locking
-7. Add suspension cascade logic
+1. Database migration (add `is_approved` to cabins)
+2. Create PropertyApprovals page
+3. Update sidebar and routes
+4. Add onboarding link to VendorApproval
+5. Add "Add New Property" to partner profile and manage properties
+6. Update room/hostel management to respect approval status
