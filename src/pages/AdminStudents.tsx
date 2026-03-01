@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { getImageUrl } from "@/lib/utils";
+import { getPublicAppUrl } from "@/utils/appUrl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -226,7 +227,7 @@ const AdminStudents = () => {
   };
 
   const handleCopyLoginInfo = (email: string) => {
-    const loginUrl = `${window.location.origin}/partner/login`;
+    const loginUrl = `${getPublicAppUrl()}/partner/login`;
     const text = `Login URL: ${loginUrl}\nEmail: ${email}`;
     navigator.clipboard.writeText(text);
     setCopiedLogin(true);
@@ -511,7 +512,7 @@ const AdminStudents = () => {
                   <div className="space-y-3">
                     <div className="p-3 border rounded-lg space-y-2">
                       <h4 className="font-medium text-xs mb-1.5">Partner Login Info</h4>
-                      <p><span className="text-muted-foreground">Login URL:</span> <span className="font-mono text-[10px]">{window.location.origin}/partner/login</span></p>
+                      <p><span className="text-muted-foreground">Login URL:</span> <span className="font-mono text-[10px]">{getPublicAppUrl()}/partner/login</span></p>
                       <p><span className="text-muted-foreground">Email:</span> {selectedStudent.email}</p>
                       <Button variant="outline" size="sm" className="h-6 text-[10px] gap-1" onClick={() => handleCopyLoginInfo(selectedStudent.email)}>
                         {copiedLogin ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
