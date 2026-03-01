@@ -48,6 +48,10 @@ export interface VendorProfileUpdateData {
   };
   businessDetails?: {
     description?: string;
+    gstNumber?: string;
+    panNumber?: string;
+    aadharNumber?: string;
+    businessLicense?: string;
   };
   bankDetails?: {
     accountHolderName?: string;

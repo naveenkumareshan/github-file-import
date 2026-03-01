@@ -94,7 +94,8 @@ const RoomManagement = () => {
         page: currentPage,
         limit: itemsPerPage,
         ...(selectedVendor !== 'all' && { vendorId: selectedVendor }),
-        ...(searchQuery && { search: searchQuery })
+        ...(searchQuery && { search: searchQuery }),
+        ...(!isAdmin && user?.id && { partnerUserId: user.id })
       };
       
       const response = await adminCabinsService.getAllCabins(filters);

@@ -29,9 +29,9 @@ export const adminCabinsService = {
     try {
       let query = supabase.from('cabins').select('*');
 
-      // Include inactive cabins for admin
-      if (!filters.includeInactive) {
-        // Still show all for admin by default
+      // Filter by partner's own cabins if partnerUserId is provided
+      if (filters.partnerUserId) {
+        query = query.eq('created_by', filters.partnerUserId);
       }
 
       if (filters.category) {

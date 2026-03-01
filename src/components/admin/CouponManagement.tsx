@@ -100,9 +100,20 @@ export function CouponManagement() {
 
   // Client-side filtering by tab (applicableFor)
   const filteredCoupons = useMemo(() => {
-    if (activeTab === 'all') return coupons;
-    return coupons.filter(c => c.applicableFor?.includes(activeTab));
-  }, [coupons, activeTab]);
+    let filtered = coupons;
+    // Partner-scoped filtering: partners only see their own vendor coupons + global (read-only)
+    if (user?.role === 'vendor') {
+      const partnerId = user.vendorId || user.vendorIds?.[0];
+      filtered = filtered.filter(c => 
+        c.scope === 'global' || 
+        (c.scope === 'vendor' && c.vendorId === partnerId)
+      );
+    }
+    if (activeTab !== 'all') {
+      filtered = filtered.filter(c => c.applicableFor?.includes(activeTab));
+    }
+    return filtered;
+  }, [coupons, activeTab, user]);
 
   const paginatedCoupons = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
@@ -492,12 +503,16 @@ export function CouponManagement() {
                     </TableCell>
                     <TableCell className="py-1.5 px-3">
                       <div className="flex gap-1">
-                        <Button variant="outline" size="sm" className="h-6 w-6 p-0" onClick={() => openEditDialog(coupon)}>
-                          <Edit className="h-3 w-3" />
-                        </Button>
-                        <Button variant="destructive" size="sm" className="h-6 w-6 p-0" onClick={() => handleDeleteCoupon(coupon._id!)}>
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
+                        {(user?.role === 'admin' || (coupon.scope === 'vendor' && coupon.vendorId === (user?.vendorId || user?.vendorIds?.[0]))) && (
+                          <>
+                            <Button variant="outline" size="sm" className="h-6 w-6 p-0" onClick={() => openEditDialog(coupon)}>
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button variant="destructive" size="sm" className="h-6 w-6 p-0" onClick={() => handleDeleteCoupon(coupon._id!)}>
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>

@@ -1,19 +1,48 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Edit, Trash2, Mail, Phone } from 'lucide-react';
+import { Plus, Edit, Eye, Trash2, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { vendorService } from '@/api/vendorService';
-import { VendorEmployee } from '@/types/vendor';
+import { vendorEmployeeService, VendorEmployeeData } from '@/api/vendorEmployeeService';
 import { VendorEmployeeForm } from '@/components/vendor/VendorEmployeeForm';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+
+const PERMISSION_LABELS: Record<string, string> = {
+  view_dashboard: 'Dashboard',
+  view_bookings: 'View Bookings',
+  manage_bookings: 'Manage Bookings',
+  view_reading_rooms: 'View Reading Rooms',
+  manage_reading_rooms: 'Manage Reading Rooms',
+  view_students: 'View Students',
+  manage_students: 'Manage Students',
+  view_reports: 'View Reports',
+  manage_employees: 'Manage Employees',
+  seats_available_map: 'Seat Map',
+  seats_available_edit: 'Seat Map Edit',
+  manage_reviews: 'Manage Reviews',
+  view_payouts: 'View Payouts',
+};
 
 const VendorEmployees: React.FC = () => {
-  const [employees, setEmployees] = useState<VendorEmployee[]>([]);
+  const [employees, setEmployees] = useState<VendorEmployeeData[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [editingEmployee, setEditingEmployee] = useState<VendorEmployee | null>(null);
+  const [editingEmployee, setEditingEmployee] = useState<VendorEmployeeData | null>(null);
+  const [viewingEmployee, setViewingEmployee] = useState<VendorEmployeeData | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -22,49 +51,28 @@ const VendorEmployees: React.FC = () => {
 
   const fetchEmployees = async () => {
     try {
-      const response = await vendorService.getEmployees();
+      setLoading(true);
+      const response = await vendorEmployeeService.getEmployees();
       if (response.success) {
-        setEmployees(response.data?.data || []);
+        setEmployees(response.data || []);
       }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch employees",
-        variant: "destructive"
-      });
+    } catch {
+      toast({ title: "Error", description: "Failed to fetch employees", variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCreateEmployee = () => {
-    setEditingEmployee(null);
-    setShowForm(true);
-  };
-
-  const handleEditEmployee = (employee: VendorEmployee) => {
-    setEditingEmployee(employee);
-    setShowForm(true);
-  };
-
-  const handleDeleteEmployee = async (employeeId: string) => {
+  const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this employee?')) return;
-
     try {
-      const response = await vendorService.deleteEmployee(employeeId);
+      const response = await vendorEmployeeService.deleteEmployee(id);
       if (response.success) {
-        toast({
-          title: "Success",
-          description: "Employee removed successfully"
-        });
+        toast({ title: "Success", description: "Employee removed successfully" });
         fetchEmployees();
       }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to remove employee",
-        variant: "destructive"
-      });
+    } catch {
+      toast({ title: "Error", description: "Failed to remove employee", variant: "destructive" });
     }
   };
 
@@ -74,15 +82,10 @@ const VendorEmployees: React.FC = () => {
     fetchEmployees();
   };
 
-  const handleFormCancel = () => {
-    setShowForm(false);
-    setEditingEmployee(null);
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
+        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -92,87 +95,151 @@ const VendorEmployees: React.FC = () => {
       <VendorEmployeeForm
         employee={editingEmployee || undefined}
         onSubmit={handleFormSubmit}
-        onCancel={handleFormCancel}
+        onCancel={() => { setShowForm(false); setEditingEmployee(null); }}
       />
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Employee Management</h1>
-        <Button onClick={handleCreateEmployee}>
-          <Plus className="mr-2 h-4 w-4" />
+        <div className="flex items-center gap-2">
+          <Users className="h-4 w-4 text-muted-foreground" />
+          <h1 className="text-sm font-semibold">Employee Management</h1>
+          <Badge variant="secondary" className="text-[10px]">{employees.length} employees</Badge>
+        </div>
+        <Button size="sm" className="h-7 text-xs" onClick={() => { setEditingEmployee(null); setShowForm(true); }}>
+          <Plus className="mr-1 h-3.5 w-3.5" />
           Add Employee
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {employees.length > 0 && employees.map((employee) => (
-          <Card key={employee.id} className="hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <CardTitle className="text-lg">{employee.name}</CardTitle>
-                <Badge variant={employee.status === 'active' ? 'default' : 'secondary'}>
-                  {employee.status}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <Mail className="mr-2 h-4 w-4" />
-                  {employee.email}
-                </div>
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <Phone className="mr-2 h-4 w-4" />
-                  {employee.phone}
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <div className="text-sm">
-                  <span className="font-medium">Role: </span>
-                  <Badge variant={employee.role === 'manager' ? 'default' : 'secondary'}>
-                    {employee.role}
-                  </Badge>
-                </div>
-                <div className="text-sm">
-                  <span className="font-medium">Joined: </span>
-                  {new Date(employee.createdAt).toLocaleDateString()}
-                </div>
-              </div>
-
-              <div className="flex justify-end space-x-2">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => handleEditEmployee(employee)}
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => handleDeleteEmployee(employee.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {employees.length === 0 && (
-        <div className="text-center py-12">
-          <div className="text-muted-foreground mb-4">No employees found</div>
-          <Button onClick={handleCreateEmployee}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Your First Employee
-          </Button>
+      {employees.length === 0 ? (
+        <Card>
+          <CardContent className="text-center py-12">
+            <Users className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
+            <p className="text-xs font-medium">No employees found</p>
+            <p className="text-[10px] text-muted-foreground mt-1">Add your first employee to get started</p>
+            <Button size="sm" className="mt-4 h-7 text-xs" onClick={() => setShowForm(true)}>
+              <Plus className="mr-1 h-3.5 w-3.5" /> Add Employee
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="border rounded-lg overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/40">
+                <TableHead className="text-[10px] font-medium uppercase tracking-wider py-2 px-3 w-12">S.No.</TableHead>
+                <TableHead className="text-[10px] font-medium uppercase tracking-wider py-2 px-3">Name</TableHead>
+                <TableHead className="text-[10px] font-medium uppercase tracking-wider py-2 px-3">Contact</TableHead>
+                <TableHead className="text-[10px] font-medium uppercase tracking-wider py-2 px-3">Role</TableHead>
+                <TableHead className="text-[10px] font-medium uppercase tracking-wider py-2 px-3">Salary</TableHead>
+                <TableHead className="text-[10px] font-medium uppercase tracking-wider py-2 px-3">Status</TableHead>
+                <TableHead className="text-[10px] font-medium uppercase tracking-wider py-2 px-3">Permissions</TableHead>
+                <TableHead className="text-[10px] font-medium uppercase tracking-wider py-2 px-3 text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {employees.map((emp, idx) => (
+                <TableRow key={emp.id} className={idx % 2 === 0 ? 'bg-background' : 'bg-muted/10'}>
+                  <TableCell className="text-[11px] py-1.5 px-3 text-muted-foreground">{idx + 1}</TableCell>
+                  <TableCell className="py-1.5 px-3">
+                    <span className="font-medium text-[11px]">{emp.name}</span>
+                  </TableCell>
+                  <TableCell className="py-1.5 px-3">
+                    <div className="text-[10px] text-muted-foreground">{emp.email}</div>
+                    <div className="text-[10px] text-muted-foreground">{emp.phone}</div>
+                  </TableCell>
+                  <TableCell className="py-1.5 px-3">
+                    <Badge variant={emp.role === 'manager' ? 'default' : 'secondary'} className="text-[9px] capitalize">
+                      {emp.role}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-[11px] py-1.5 px-3">
+                    ₹{emp.salary?.toLocaleString() || 0}
+                  </TableCell>
+                  <TableCell className="py-1.5 px-3">
+                    <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium border ${emp.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                      {emp.status}
+                    </span>
+                  </TableCell>
+                  <TableCell className="py-1.5 px-3">
+                    <div className="flex flex-wrap gap-0.5 max-w-[200px]">
+                      {(emp.permissions || []).slice(0, 3).map(p => (
+                        <Badge key={p} variant="outline" className="text-[8px] h-4 px-1">
+                          {PERMISSION_LABELS[p] || p}
+                        </Badge>
+                      ))}
+                      {(emp.permissions || []).length > 3 && (
+                        <Badge variant="outline" className="text-[8px] h-4 px-1">
+                          +{emp.permissions.length - 3}
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-1.5 px-3 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setViewingEmployee(emp)}>
+                        <Eye className="h-3 w-3" />
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setEditingEmployee(emp); setShowForm(true); }}>
+                        <Edit className="h-3 w-3" />
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive hover:text-destructive" onClick={() => handleDelete(emp.id)}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       )}
+
+      {/* View Employee Dialog */}
+      <Dialog open={!!viewingEmployee} onOpenChange={(open) => { if (!open) setViewingEmployee(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-sm">Employee Details</DialogTitle>
+          </DialogHeader>
+          {viewingEmployee && (
+            <div className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 border rounded-lg space-y-1">
+                  <p className="font-medium text-xs mb-1">Personal Info</p>
+                  <p><span className="text-muted-foreground">Name:</span> {viewingEmployee.name}</p>
+                  <p><span className="text-muted-foreground">Email:</span> {viewingEmployee.email}</p>
+                  <p><span className="text-muted-foreground">Phone:</span> {viewingEmployee.phone}</p>
+                </div>
+                <div className="p-3 border rounded-lg space-y-1">
+                  <p className="font-medium text-xs mb-1">Work Info</p>
+                  <p><span className="text-muted-foreground">Role:</span> <Badge variant="secondary" className="text-[9px] capitalize">{viewingEmployee.role}</Badge></p>
+                  <p><span className="text-muted-foreground">Salary:</span> ₹{viewingEmployee.salary?.toLocaleString() || 0}/mo</p>
+                  <p><span className="text-muted-foreground">Status:</span> <Badge variant={viewingEmployee.status === 'active' ? 'success' : 'destructive'} className="text-[9px]">{viewingEmployee.status}</Badge></p>
+                </div>
+              </div>
+              <div className="p-3 border rounded-lg">
+                <p className="font-medium text-xs mb-1.5">Permissions</p>
+                <div className="flex flex-wrap gap-1">
+                  {(viewingEmployee.permissions || []).map(p => (
+                    <Badge key={p} variant="outline" className="text-[9px]">
+                      {PERMISSION_LABELS[p] || p}
+                    </Badge>
+                  ))}
+                  {(viewingEmployee.permissions || []).length === 0 && (
+                    <p className="text-muted-foreground text-[10px]">No permissions assigned</p>
+                  )}
+                </div>
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                Added on {new Date(viewingEmployee.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+              </p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
