@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { hostelService } from '@/api/hostelService';
-import { Search, MapPin, Hotel } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { Search, MapPin, Hotel, Star } from 'lucide-react';
+import { formatCurrency } from '@/utils/currency';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function Hostels() {
@@ -228,9 +228,24 @@ export default function Hostels() {
                   </div>
 
                   <div className="flex items-center justify-between mt-2">
-                    {hostel.description && (
-                      <p className="text-[11px] text-muted-foreground line-clamp-1 flex-1 mr-2">{hostel.description}</p>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {hostel.average_rating > 0 ? (
+                        <span className="flex items-center gap-0.5 text-[11px] text-amber-600 font-medium">
+                          <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
+                          {hostel.average_rating.toFixed(1)}
+                          {hostel.review_count > 0 && <span className="text-muted-foreground">({hostel.review_count})</span>}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] bg-accent text-accent-foreground px-1.5 py-0.5 rounded-md font-medium">New</span>
+                      )}
+                      {(() => {
+                        const prices = hostel.hostel_rooms?.flatMap((r: any) => r.hostel_sharing_options?.map((o: any) => o.price_monthly) || []).filter((p: number) => p > 0) || [];
+                        const minPrice = prices.length > 0 ? Math.min(...prices) : null;
+                        return minPrice ? (
+                          <span className="text-[11px] font-semibold text-foreground">{formatCurrency(minPrice)}/mo</span>
+                        ) : null;
+                      })()}
+                    </div>
                     <span className="text-[11px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-lg flex-shrink-0">View Rooms</span>
                   </div>
                 </div>
