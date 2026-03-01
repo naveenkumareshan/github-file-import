@@ -4,7 +4,7 @@ import { hideSplashScreen } from "./utils/splashScreen";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
-import AdminHostels from "./pages/hotelManager/HostelManagement";
+const AdminHostels = lazy(() => import("./pages/hotelManager/HostelManagement"));
 const SeatManagement = lazy(() => import("./pages/SeatManagement"));
 import PageNotFound from "./pages/NotFound";
 import { ProtectedRoute } from "./components/ProtectedRoute";

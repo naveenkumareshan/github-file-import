@@ -24,8 +24,27 @@ class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
+  private isChunkLoadError(error: Error): boolean {
+    return (
+      error.name === 'ChunkLoadError' ||
+      error.message.includes('Loading chunk') ||
+      error.message.includes('Failed to fetch dynamically imported module') ||
+      error.message.includes('Importing a module script failed')
+    );
+  }
+
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error:', error, errorInfo);
+
+    if (this.isChunkLoadError(error)) {
+      const hasReloaded = sessionStorage.getItem('chunk_error_reload');
+      if (!hasReloaded) {
+        sessionStorage.setItem('chunk_error_reload', '1');
+        window.location.reload();
+        return;
+      }
+      sessionStorage.removeItem('chunk_error_reload');
+    }
   }
 
   public resetError = () => {
