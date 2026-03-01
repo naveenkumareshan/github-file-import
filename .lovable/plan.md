@@ -1,37 +1,23 @@
 
 
-# Unify Hostel Filters to Match Study Rooms UI
+# Add Search Bar Back to Hostels Page
 
-## What's Changing
+## Problem
 
-The Hostels page (`/hostels`) currently has a busy filter area with a search bar, "Near Me" button, gender pills, and city pills all in the sticky header. The Study Rooms page (`/cabins`) has a much cleaner layout: just a title and a single row of category filter pills.
+When unifying the Hostel filters to match Study Rooms, the search bar was mistakenly removed. You want the search functionality to remain -- only the filter pill styling needed to match the Study Rooms page.
 
-We'll simplify the Hostels sticky header to follow the same pattern as Study Rooms.
-
-## Before vs After
-
-| Element | Current (Hostels) | New (Matching Study Rooms) |
-|---------|-------------------|---------------------------|
-| Title | "Find Your Hostel" | "Hostels" |
-| Search bar | Full search input in header | Removed from header |
-| Near Me button | In filter row | Removed |
-| Gender filters | Male / Female / Co-ed pills | Kept as filter pills (same style as category pills in Study Rooms) |
-| City filters | City name pills with Hotel icon | Removed |
-| Layout | Search + 2 rows of pills | Single row of gender filter pills |
-
-The sticky header will contain only:
-1. Title: "Hostels"
-2. One row of filter pills: `All`, `Male`, `Female`, `Co-ed` (matching the rounded-xl, text-[11px], h-8 pill style from Study Rooms)
-
-## Technical Details
+## Change
 
 **File**: `src/pages/Hostels.tsx`
 
-1. Remove the search `Input` from the sticky header
-2. Remove the "Near Me" `Button`
-3. Remove city filter pills
-4. Add an "All" pill to the gender filters (to clear filter), matching Study Rooms' category pill pattern
-5. Keep existing `filteredHostels` logic but remove `searchQuery` and `cityFilter` state since they're no longer needed
-6. Remove `handleFindNearby`, `handleCityChange`, cities state, and related imports
-7. Match the exact same header structure: title + single pill row with identical styling
+1. Add a `searchQuery` state variable
+2. Add a search input with a Search icon in the sticky header, placed between the title and the gender filter pills
+3. Update `filteredHostels` to also filter by search query (matching hostel name, area, or city)
+
+The header layout will be:
+- Title: "Hostels"
+- Search input with search icon (compact, matching the app's mobile-first style)
+- Gender filter pills row (All, Male, Female, Co-ed) -- unchanged from current
+
+The search will do client-side filtering on hostel name, area name, and city name.
 
