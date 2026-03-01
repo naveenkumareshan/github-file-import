@@ -1,107 +1,119 @@
 
+# Partner Data Isolation and Feature Fixes
 
-# Partner Access Restrictions + Profile Fix
-
-## Issues Identified
-
-1. **Partners see ALL properties** -- Reading rooms and hostels from all partners are visible, not just their own
-2. **Partners can edit/delete rooms and hostels** -- They should only have view access + pause/enable booking toggle
-3. **Reviews: partners see Approve/Reject buttons** -- Only admins should see those; partners just view
-4. **Import Users visible to partners** -- Should be hidden from sidebar and page
-5. **All Users page shows everyone** -- Partners should only see their own students/employees
-6. **Partner Profile page broken** -- Uses legacy axios backend (`vendorProfileService`) which calls old MongoDB API (`/vendor/profile`)
-7. **Booking Reports not working for partners** -- Reports page queries all bookings without filtering by partner's properties
+This is a large set of changes to ensure partners only see their own data and have the correct level of access across the entire application.
 
 ---
 
-## Fix Plan
+## Issues and Fixes
 
-### 1. Filter properties to only show partner's own (RoomManagement.tsx + HostelManagement.tsx)
+### 1. Reading Rooms showing all properties to all partners
 
-**Reading Rooms**: The `adminCabinsService.getAllCabins()` already uses Supabase with RLS. The RLS policy for cabins has a "Partners can manage own cabins" policy that filters by `created_by = auth.uid()`. This should already work if the partner is logged in. However, the "Anyone can view active cabins" SELECT policy is also permissive -- which means partners see ALL active cabins too. We need to verify RLS handles this correctly. Since RLS policies are RESTRICTIVE (not permissive), the partner should only see cabins matching ANY of the applicable policies. Since these are restrictive, they require ALL to pass -- but wait, they are marked `Permissive: No` which in Postgres means RESTRICTIVE. Multiple restrictive policies require ALL to be satisfied, so actually partners would only see cabins that are BOTH active AND owned by them. That's correct behavior.
+**Problem**: `adminCabinsService.getAllCabins()` queries `supabase.from('cabins').select('*')` without filtering. RLS has RESTRICTIVE policies for "Anyone can view active cabins" and "Partners can manage own cabins" -- but all restrictive policies with no permissive policies means NO rows are returned. The fact that it works at all suggests the policies may be behaving as permissive. Partners currently see all cabins.
 
-But the issue is the partner may see cabins that aren't theirs if the "Anyone can view active cabins" policy allows it. Looking at the RLS: these policies are **restrictive** (Permissive: No), meaning ALL must pass. So a partner must satisfy BOTH "Anyone can view active cabins" AND "Partners can manage own cabins" for SELECT. This means partners can ONLY see their own active cabins. Good.
+**Fix**: Add explicit `created_by` filter in `adminCabinsService.getAllCabins()` when the logged-in user is not an admin. Pass the user ID from the calling component (RoomManagement.tsx) so the service filters `created_by = userId`.
 
-If partners still see all rooms, it may be because admins are testing with admin accounts. Let me verify by checking if the service adds any extra filtering... The `adminCabinsService` does `supabase.from('cabins').select('*')` with no explicit `created_by` filter -- it relies on RLS. This should be correct.
+**Files**: `src/api/adminCabinsService.ts`, `src/pages/RoomManagement.tsx`
 
-**However**, the issue is likely that the cabins RLS policies are all RESTRICTIVE. Multiple restrictive policies require ALL to pass. So for a vendor:
-- "Anyone can view active cabins" requires `is_active = true`
-- "Partners can manage own cabins" requires `created_by = auth.uid()` or admin
+### 2. Hide Seats/Beds buttons from partners in Manage Rooms/Hostels
 
-This means vendors can only see their own active cabins. If they see inactive ones too, it's through the "Partners can manage own cabins" ALL policy.
+**Problem**: CabinItem shows a "Seats" button and HostelItem shows a "Beds" button for partners. Partners should not have access to seat/bed management -- only view-only + pause/enable.
 
-The actual filtering should work via RLS. But let me double-check -- are all policies restrictive? Yes, `Permissive: No` means restrictive. With multiple restrictive policies, ALL must pass. But that's wrong for this use case -- we want a partner to see cabins if EITHER they own it OR it's active. The current setup means they must satisfy ALL restrictive policies simultaneously.
+**Fix**: In `CabinItem.tsx`, hide the "Seats" button for non-admin users. In `HostelItem.tsx`, hide the "Beds" and "Packages" buttons for non-admin users.
 
-Actually wait -- looking more carefully at Postgres RLS: RESTRICTIVE policies must ALL pass in addition to at least one PERMISSIVE policy passing. If there are NO permissive policies, then the default is to deny access. So with only restrictive policies and no permissive ones, nobody can access anything.
+**Files**: `src/components/admin/CabinItem.tsx`, `src/components/admin/HostelItem.tsx`
 
-This seems like a bug in the existing setup. But since the app is working (admin can see cabins), there must be permissive policies too. Let me re-read: `Permissive: No` -- this is confusing. In the context format, this likely means the policy IS restrictive. But if ALL policies are restrictive and there are no permissive ones, nothing would work.
+### 3. Students/Employees filtering for partners
 
-Let me not overthink this. The key action items are clear:
+**Problem**: Partners see ALL students/employees instead of only those related to their properties. Also, partners should not be able to view full student details -- only name, phone, email, and related bookings.
 
-**For Room Management page**: Add role check -- if partner, hide "Add New Room", "Edit", "Delete" buttons. Only show "Pause/Enable" toggle.
+**Fix**:
+- In `adminUsersService.getUsers()`, add a `partnerUserId` filter parameter. When set, first fetch the partner's cabin/hostel IDs, then get user IDs from bookings on those properties, and filter profiles to only those users.
+- In `AdminStudents.tsx`, pass the current user's ID as `partnerUserId` when role is `vendor`.
+- For partner's "View" action on students, show a simplified dialog with only name, phone, email, and their bookings at the partner's properties (not full details with edit).
 
-**For Hostel Management page**: Same -- hide "Add Hostel", "Edit", "Delete" for partners. Only show "Pause/Enable" toggle.
+**Files**: `src/api/adminUsersService.ts`, `src/pages/AdminStudents.tsx`
 
-### 2. Hide Edit/Delete buttons for partners in CabinItem and HostelItem
+### 4. Partner-scoped coupons
 
-**CabinItem.tsx**: Conditionally hide Edit button and don't pass onDelete for non-admin users. Keep Pause/Enable and Seats buttons.
+**Problem**: Coupons use the legacy MongoDB/axios backend (`couponService.ts`). Partners can see all coupons and create coupons that are globally visible.
 
-**HostelItem.tsx**: Same approach -- hide Edit, Delete, Add Room, Manage Packages for non-admin users. Keep Pause/Enable toggle.
+**Fix**: This is a significant migration since the entire coupon system runs on the legacy backend. For now, the practical fix is:
+- Filter the coupon list on the frontend: when a partner is logged in, only show coupons where `scope === 'vendor'` and `vendorId` matches the partner's ID, or `scope === 'global'` (read-only).
+- When a partner creates a coupon, force `scope = 'vendor'` and auto-set `vendorId` to the partner's own ID.
+- Hide Edit/Delete buttons for global coupons when logged in as a partner.
 
-**RoomManagement.tsx**: Hide "Add New Room" button for non-admin. Don't pass onEdit/onDelete handlers for non-admin. Don't open editor for non-admin.
+**Files**: `src/components/admin/CouponManagement.tsx`
 
-**HostelManagement.tsx**: Hide "Add Hostel" button for non-admin. Don't pass edit/delete handlers for non-admin.
+### 5. Employee management with new UI
 
-### 3. Reviews -- hide Approve/Reject for partners (ReviewsManagement.tsx)
+**Problem**: Employee management (`VendorEmployees.tsx`) uses the legacy MongoDB/axios backend (`vendorService.getEmployees()`). It needs migration to the Supabase backend and a refreshed UI with salary fields, edit/view mode, and sidebar permission sharing.
 
-Add role check: only show Approve/Reject buttons when `user?.role === 'admin'`. Partners just see the reviews list (read-only).
+**Fix**:
+- Create a `vendor_employees` table in the database (id, partner_user_id, user_id, name, email, phone, role, permissions, status, salary, created_at, updated_at) with RLS policies.
+- Create a new `vendorEmployeeService.ts` using Supabase queries.
+- Rewrite `VendorEmployees.tsx` with a modern table-based UI showing employee name, role, permissions, salary, status, and Edit/View actions.
+- Update `VendorEmployeeForm.tsx` to include salary field and permission checkboxes matching sidebar items.
 
-### 4. Hide "Import Users" from sidebar for partners (AdminSidebar.tsx)
+**Database Migration**: Create `vendor_employees` table with RLS.
 
-Change the Import Users sub-item role to `['admin']` only. Currently it shows for vendors.
+**Files**: New migration, `src/api/vendorEmployeeService.ts` (new), `src/pages/vendor/VendorEmployees.tsx`, `src/components/vendor/VendorEmployeeForm.tsx`
 
-### 5. Filter users list for partners (AdminStudents.tsx + adminUsersService.ts)
+### 6. Partner profile page not showing data
 
-Partners should only see students who have bookings at their properties and their own employees. This requires filtering:
-- For the Users page, when partner is logged in, only show users who have bookings in cabins/hostels owned by the partner
-- Show the partner's own vendor_employees
+**Problem**: The profile page fetches from `vendorProfileService.getProfile()` which queries the `partners` table. The issue is likely that the partner record doesn't exist (wasn't created when the user was created), or RLS is blocking the read.
 
-This is complex. A simpler approach: hide the role tabs for partners -- only show "Students" (filtered to their property users) and "Employees" tabs. Hide "Partners" and "Admins" tabs.
+**Fix**:
+- Debug and verify the `partners` table has a record for the logged-in partner with matching `user_id`.
+- Ensure RLS SELECT policy for "Partners can view own record" is correct (it uses `auth.uid() = user_id` which should work).
+- Add a "Documents" tab to the profile page for uploading business documents (Aadhar, PAN, GST certificate, cancelled cheque, site photos) using the existing storage system.
+- Add all editable fields: business name, type, contact person, phone, address, GST number, PAN, Aadhar, bank details (account holder, account number, bank name, IFSC, UPI ID).
 
-For filtering students to partner's properties: modify `adminUsersService.getUsers()` to accept a `createdBy` filter. When partner is logged in, first get their cabin/hostel IDs, then get user IDs from bookings on those properties, then filter profiles.
+**Files**: `src/components/vendor/VendorProfile.tsx`, `src/api/vendorProfileService.ts`
 
-### 6. Fix Partner Profile page (VendorProfile.tsx + vendorProfileService.ts)
+### 7. Complaints visible only for partner's own properties
 
-The profile page uses `vendorProfileService` which calls the old MongoDB backend via axios. Migrate to query the Supabase `partners` table directly:
-- `getProfile()`: Query `partners` table where `user_id = auth.uid()`
-- `updateProfile()`: Update the partner's own record in `partners` table
+**Problem**: Complaints page is admin-only in the sidebar (`roles: ['admin']`). Partners cannot see complaints at all.
 
-### 7. Fix Booking Reports for partners (BookingReportsPage.tsx + related)
+**Fix**:
+- Add Complaints to the partner's sidebar menu under a suitable section.
+- Filter complaints to only show those linked to the partner's cabins/hostels (`cabin_id` or `hostel_id` belonging to the partner).
+- Add RLS policy for vendors to view complaints for their own properties.
 
-The reports components query all bookings. For partners, filter to only bookings on their cabins/hostels. Pass a `cabinIds` filter from the reports page. The partner's cabins can be fetched and used as a filter.
+**Database Migration**: Add RLS policy on `complaints` table for vendors to SELECT complaints where `cabin_id` is in their cabins or `hostel_id` is in their hostels.
+
+**Files**: `src/components/admin/AdminSidebar.tsx`, RLS migration for complaints
 
 ---
-
-## Files to Modify
-
-1. **`src/components/admin/CabinItem.tsx`** -- Add `isAdmin` prop, hide Edit button for non-admin
-2. **`src/pages/RoomManagement.tsx`** -- Hide Add/Edit/Delete for partners, only pass pause toggle
-3. **`src/components/admin/HostelItem.tsx`** -- Add `isAdmin` prop, hide Edit/Delete for non-admin
-4. **`src/pages/hotelManager/HostelManagement.tsx`** -- Hide Add/Edit/Delete for partners
-5. **`src/pages/admin/ReviewsManagement.tsx`** -- Hide Approve/Reject buttons for non-admin
-6. **`src/components/admin/AdminSidebar.tsx`** -- Remove Import Users from partner menu, restrict role tabs
-7. **`src/pages/AdminStudents.tsx`** -- Hide Partners/Admins tabs for partner role, filter to own users
-8. **`src/api/vendorProfileService.ts`** -- Rewrite to use Supabase `partners` table
-9. **`src/components/vendor/VendorProfile.tsx`** -- Update to work with new Supabase-based profile data
-10. **`src/api/adminUsersService.ts`** -- Add partner-scoped user filtering
-11. **`src/components/admin/reports/BookingReportsPage.tsx`** -- Pass partner cabin filter to sub-reports
 
 ## Implementation Order
 
-1. Fix partner profile (vendorProfileService + VendorProfile component)
-2. Restrict Room/Hostel management to view-only for partners
-3. Hide Approve/Reject on reviews for partners
-4. Hide Import Users and restrict sidebar items
-5. Filter users list for partners
-6. Fix booking reports for partners
+1. **Database migrations**: Create `vendor_employees` table + RLS; add vendor complaint access policy
+2. **Property filtering**: Fix cabin/hostel services to filter by partner
+3. **Hide Seats/Beds buttons**: Update CabinItem and HostelItem
+4. **Student/Employee filtering**: Update AdminStudents and adminUsersService
+5. **Coupon scoping**: Filter CouponManagement for partners
+6. **Employee management rewrite**: New service + UI with salary and permissions
+7. **Partner profile fix**: Debug data, add documents tab
+8. **Complaints access**: Add sidebar item + filtering for partners
 
+## Files to Create/Modify
+
+### New Files:
+- Database migration for `vendor_employees` table
+- Database migration for complaints RLS vendor policy
+- `src/api/vendorEmployeeService.ts`
+
+### Modified Files:
+- `src/api/adminCabinsService.ts` -- add partner filter
+- `src/pages/RoomManagement.tsx` -- pass partner filter
+- `src/components/admin/CabinItem.tsx` -- hide Seats button for partners
+- `src/components/admin/HostelItem.tsx` -- hide Beds/Packages buttons for partners
+- `src/api/adminUsersService.ts` -- add partner-scoped user filtering
+- `src/pages/AdminStudents.tsx` -- simplified view for partners, filter users
+- `src/components/admin/CouponManagement.tsx` -- partner-scoped coupon filtering
+- `src/pages/vendor/VendorEmployees.tsx` -- full rewrite with new UI
+- `src/components/vendor/VendorEmployeeForm.tsx` -- add salary, permissions
+- `src/components/vendor/VendorProfile.tsx` -- add documents tab, fix data display
+- `src/api/vendorProfileService.ts` -- add document upload support
+- `src/components/admin/AdminSidebar.tsx` -- add Complaints for partners
