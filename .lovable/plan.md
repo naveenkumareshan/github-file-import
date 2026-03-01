@@ -1,57 +1,16 @@
 
+## Remove Default "Room" Prefix from Room Labels
 
-## Fix Delete Confirmations, Compact Bed Grid, and Layout Sync
+### Problem
+When a room is manually named (e.g., "Flat 101"), the UI prepends "Room" making it display as "Room Flat 101". The word "Room" should be removed since the user provides the full name themselves.
 
-### Issue 1: Delete actions need confirmation dialogs with dependency checks
+### Changes
 
-Currently, clicking delete on a room, floor, or bed executes immediately with no warning. We need:
+**File: `src/pages/admin/HostelBedManagementPage.tsx`**
 
-- **Confirmation dialog** (AlertDialog) before any delete action
-- **Dependency enforcement**:
-  - Floor cannot be deleted if it has rooms -- show error message asking to delete rooms first
-  - Room cannot be deleted if it has beds -- show error message asking to delete beds first
-  - Bed can be deleted after confirmation (unless occupied)
+Remove the hardcoded "Room " prefix from 4 locations:
 
-### Issue 2: Bed cards in grid are too large
-
-Current bed cards use `p-3` padding and show all details expanded. Changes:
-- Shrink cards: reduce padding to `p-2`, use smaller text
-- Add explicit small **Edit** (pencil) and **Delete** (trash) icon buttons on each card
-- Show only essential info: bed number, status dot, category badge, price
-- Move amenities and occupant details to the edit dialog
-
-### Issue 3: Beds added via "Add Beds" dialog don't appear in Layout Plan
-
-The `handleAddBeds` function inserts beds into the database and calls `fetchAll()`, which updates `floorData` (used by the grid). However, it does NOT update `designerBeds` (used by the layout plan). The layout plan only refreshes when `selectedRoomId` changes (useEffect on line 204).
-
-**Fix**: After `fetchAll()` completes in `handleAddBeds`, re-trigger the designer data load by calling the same logic used in the `useEffect` -- extract it into a reusable function `loadDesignerData(roomId)` and call it after adding beds.
-
----
-
-### File: `src/pages/admin/HostelBedManagementPage.tsx`
-
-**1. Add confirmation state and AlertDialog imports**
-- Import `AlertDialog` components from radix
-- Add state for `deleteConfirm`: `{ type: 'bed'|'room'|'floor', id: string, name: string } | null`
-
-**2. Wrap all delete handlers with dependency checks**
-- `handleDeleteFloor`: Check if any rooms exist on that floor. If yes, show toast error "Delete all rooms on this floor first". If no, show confirmation dialog.
-- `handleDeleteRoom`: Check if any beds exist in that room. If yes, show toast error "Delete all beds in this room first". If no, show confirmation dialog.
-- `handleDeleteBed`: Show confirmation dialog. If bed has occupant, prevent deletion.
-
-**3. Add AlertDialog component to the JSX**
-- Render a single AlertDialog controlled by `deleteConfirm` state
-- On confirm, execute the actual delete based on `deleteConfirm.type`
-
-**4. Compact bed grid cards**
-- Change grid from `grid-cols-2 md:grid-cols-3 lg:grid-cols-4` to `grid-cols-3 md:grid-cols-4 lg:grid-cols-6`
-- Reduce padding from `p-3` to `p-2`
-- Show: bed number + status dot on one line, category/sharing badges, price
-- Remove inline amenities display from grid cards
-- Add small Edit (pencil) and Delete (trash) icon buttons in the card header
-
-**5. Fix layout plan sync after adding beds**
-- Extract the designer data loading logic (lines 206-241) into a standalone async function `loadDesignerData(roomId)`
-- Call `loadDesignerData(selectedRoomId)` inside `handleAddBeds` after `fetchAll()` completes
-- Also call it after `handleDeleteBed` completes
-
+1. **Line 328** -- Delete confirmation dialog name: Change `` `Room ${roomNumber}` `` to just `roomNumber`
+2. **Line 770** -- Room pill label: Change `Room {room.room_number}` to `{room.room_number}`
+3. **Line 826** -- "Add Beds" helper text: Change `to Room {selectedRoom?.room_number}` to `to {selectedRoom?.room_number}`
+4. **Line 836** -- Bed grid section header: Change `Room {selectedRoom?.room_number}` to `{selectedRoom?.room_number}`
