@@ -21,9 +21,10 @@ import { hostelBedCategoryService, HostelBedCategory } from '@/api/hostelBedCate
 import { hostelFloorService, HostelFloor } from '@/api/hostelFloorService';
 import { hostelSharingTypeService, HostelSharingType } from '@/api/hostelSharingTypeService';
 import { formatCurrency } from '@/utils/currency';
-import { ArrowLeft, Plus, Trash2, Pencil, BedDouble, Lock, Unlock, Settings, Layers, Eye, LayoutGrid, Map as MapIcon, Building, Users, Tag } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Pencil, BedDouble, Lock, Unlock, Settings, Layers, Eye, LayoutGrid, Map as MapIcon, Building, Users, Tag, RotateCw } from 'lucide-react';
 import { HostelBedPlanDesigner, DesignerBed } from '@/components/hostels/HostelBedPlanDesigner';
 import { HostelBedDetailsDialog } from '@/components/admin/HostelBedDetailsDialog';
+import { BedShapeIcon } from '@/components/hostels/BedShapeIcon';
 
 const AMENITY_OPTIONS = [
   'Attached Bathroom', 'Common Bathroom', 'Kitchen Access', 'Study Table',
@@ -242,6 +243,7 @@ const HostelBedManagementPage = () => {
       is_available: b.is_available, is_blocked: b.is_blocked, category: b.category, price_override: b.price_override,
       sharing_option_id: b.sharing_option_id, sharingType: b.hostel_sharing_options?.type,
       sharingPrice: b.hostel_sharing_options?.price_monthly, occupantName: bookingMap.get(b.id),
+      rotation: (b as any).rotation || 0,
     })));
   }, [rooms, hostelId]);
 
@@ -456,7 +458,7 @@ const HostelBedManagementPage = () => {
         layout_image: layoutImage, layout_image_opacity: layoutImageOpacity,
       }).eq('id', selectedRoomId);
       const updates = designerBeds.map(b =>
-        supabase.from('hostel_beds').update({ position_x: b.position_x, position_y: b.position_y }).eq('id', b.id)
+        supabase.from('hostel_beds').update({ position_x: b.position_x, position_y: b.position_y, rotation: (b as any).rotation || 0 } as any).eq('id', b.id)
       );
       await Promise.all(updates);
       toast({ title: 'Layout saved successfully' });
@@ -490,6 +492,11 @@ const HostelBedManagementPage = () => {
 
   const handleBedMove = async (bedId: string, position: { x: number; y: number }) => {
     await supabase.from('hostel_beds').update({ position_x: position.x, position_y: position.y }).eq('id', bedId);
+  };
+
+  const handleBedRotate = async (bedId: string, rotation: number) => {
+    setDesignerBeds(prev => prev.map(b => b.id === bedId ? { ...b, rotation } : b));
+    await supabase.from('hostel_beds').update({ rotation } as any).eq('id', bedId);
   };
 
   const handleDeleteDesignerBed = async (bedId: string) => {
@@ -715,21 +722,41 @@ const HostelBedManagementPage = () => {
       {/* ═══ Floor Tabs ═══ */}
       {floors.length > 0 ? (
         <div className="space-y-3">
+          {/* Total bed counts summary */}
+          {(() => {
+            const allBeds = Object.values(floorData).flat().flatMap((r: any) => r.beds || []);
+            const totalBeds = allBeds.length;
+            const availableBeds = allBeds.filter((b: any) => b.is_available && !b.is_blocked).length;
+            return totalBeds > 0 ? (
+              <div className="text-xs text-muted-foreground px-1">
+                Total: <span className="font-semibold text-foreground">{totalBeds} beds</span> ({availableBeds} available)
+              </div>
+            ) : null;
+          })()}
           <div className="flex items-center gap-2 overflow-x-auto pb-1">
-            {floors.map(floor => (
-              <button
-                key={floor.id}
-                className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors whitespace-nowrap ${
-                  selectedFloorId === floor.id
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-muted/50 hover:bg-accent border-border text-foreground'
-                }`}
-                onClick={() => setSelectedFloorId(floor.id)}
-              >
-                <Layers className="h-3.5 w-3.5 inline mr-1.5" />
-                {floor.name}
-              </button>
-            ))}
+            {floors.map(floor => {
+              const floorRoomsList = rooms.filter(r => r.floor_id === floor.id);
+              const floorBedCount = floorRoomsList.reduce((sum, room) => {
+                const allRoomData = Object.values(floorData).flat();
+                const roomData = allRoomData.find((r: any) => r.roomId === room.id);
+                return sum + (roomData?.beds?.length || 0);
+              }, 0);
+              return (
+                <button
+                  key={floor.id}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors whitespace-nowrap ${
+                    selectedFloorId === floor.id
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-muted/50 hover:bg-accent border-border text-foreground'
+                  }`}
+                  onClick={() => setSelectedFloorId(floor.id)}
+                >
+                  <Layers className="h-3.5 w-3.5 inline mr-1.5" />
+                  {floor.name}
+                  <span className="ml-1 opacity-75">({floorBedCount})</span>
+                </button>
+              );
+            })}
           </div>
 
           {/* ═══ Room Pills ═══ */}
@@ -859,44 +886,54 @@ const HostelBedManagementPage = () => {
                     statusDot = 'bg-blue-500';
                   }
                   const bedPrice = bed.price_override || bed.sharingPrice || 0;
-                  return (
-                    <div
-                      key={bed.id}
-                      className={`relative rounded-lg border p-2 text-left transition-all hover:shadow-md ${statusColor}`}
-                    >
-                      {/* Header: bed number + status dot + action icons */}
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-1">
-                          <div className={`w-2 h-2 rounded-full ${statusDot}`} />
-                          <span className="font-bold text-xs">#{bed.bed_number}</span>
+                    return (
+                      <div
+                        key={bed.id}
+                        className={`relative rounded-lg border p-2 text-left transition-all hover:shadow-md ${statusColor}`}
+                      >
+                        {/* Header: bed number + status dot + action icons */}
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-1">
+                            <div className={`w-2 h-2 rounded-full ${statusDot}`} />
+                            <span className="font-bold text-xs">#{bed.bed_number}</span>
+                          </div>
+                          <div className="flex items-center gap-0">
+                            <button
+                              className="p-0.5 rounded hover:bg-muted"
+                              onClick={(e) => { e.stopPropagation(); handleGridBedClick(bed); }}
+                              title="Edit bed"
+                            >
+                              <Pencil className="h-3 w-3 text-muted-foreground" />
+                            </button>
+                            <button
+                              className="p-0.5 rounded hover:bg-destructive/10"
+                              onClick={(e) => { e.stopPropagation(); requestDeleteBed(bed.id, bed.bed_number, bed.occupantName); }}
+                              title="Delete bed"
+                            >
+                              <Trash2 className="h-3 w-3 text-destructive" />
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-0">
-                          <button
-                            className="p-0.5 rounded hover:bg-muted"
-                            onClick={(e) => { e.stopPropagation(); handleGridBedClick(bed); }}
-                            title="Edit bed"
-                          >
-                            <Pencil className="h-3 w-3 text-muted-foreground" />
-                          </button>
-                          <button
-                            className="p-0.5 rounded hover:bg-destructive/10"
-                            onClick={(e) => { e.stopPropagation(); requestDeleteBed(bed.id, bed.bed_number, bed.occupantName); }}
-                            title="Delete bed"
-                          >
-                            <Trash2 className="h-3 w-3 text-destructive" />
-                          </button>
+                        {/* Bed shape icon */}
+                        <div className="flex justify-center my-1">
+                          <BedShapeIcon
+                            width={40}
+                            height={50}
+                            status={isBlocked ? 'blocked' : !isAvail ? 'occupied' : 'available'}
+                            bedNumber={bed.bed_number}
+                            rotation={0}
+                          />
                         </div>
+                        {/* Badges */}
+                        <div className="flex flex-wrap gap-0.5 mb-1">
+                          {bed.category && <Badge variant="outline" className="text-[8px] px-1 py-0 leading-tight">{bed.category}</Badge>}
+                          {bed.sharingType && <Badge variant="secondary" className="text-[8px] px-1 py-0 leading-tight">{bed.sharingType}</Badge>}
+                        </div>
+                        {/* Price */}
+                        <span className="text-[10px] font-semibold text-primary">{formatCurrency(bedPrice)}/mo</span>
+                        {bed.occupantName && <span className="block text-[9px] text-muted-foreground truncate">👤 {bed.occupantName}</span>}
                       </div>
-                      {/* Badges */}
-                      <div className="flex flex-wrap gap-0.5 mb-1">
-                        {bed.category && <Badge variant="outline" className="text-[8px] px-1 py-0 leading-tight">{bed.category}</Badge>}
-                        {bed.sharingType && <Badge variant="secondary" className="text-[8px] px-1 py-0 leading-tight">{bed.sharingType}</Badge>}
-                      </div>
-                      {/* Price */}
-                      <span className="text-[10px] font-semibold text-primary">{formatCurrency(bedPrice)}/mo</span>
-                      {bed.occupantName && <span className="block text-[9px] text-muted-foreground truncate">👤 {bed.occupantName}</span>}
-                    </div>
-                  );
+                    );
                 })}
               </div>
 
@@ -938,6 +975,7 @@ const HostelBedManagementPage = () => {
                   onDeleteBed={handleDeleteDesignerBed}
                   onPlaceBed={handlePlaceBed}
                   onBedMove={handleBedMove}
+                  onBedRotate={handleBedRotate}
                   layoutImage={layoutImage}
                   layoutImageOpacity={layoutImageOpacity}
                   onLayoutImageChange={setLayoutImage}
@@ -997,14 +1035,6 @@ const HostelBedManagementPage = () => {
                   </label>
                 ))}
               </div>
-            </div>
-            <Separator />
-            <div>
-              <Label>Block Reason</Label>
-              <Input value={editBlockReason} onChange={e => setEditBlockReason(e.target.value)} placeholder="Reason for blocking" className="mt-1" />
-              <Button size="sm" variant={editBed?.is_blocked ? 'default' : 'destructive'} className="mt-2 w-full" onClick={handleToggleBlock} disabled={saving}>
-                {editBed?.is_blocked ? <><Unlock className="h-3.5 w-3.5 mr-1" /> Unblock</> : <><Lock className="h-3.5 w-3.5 mr-1" /> Block Bed</>}
-              </Button>
             </div>
           </div>
           <DialogFooter className="flex gap-2">
