@@ -702,6 +702,7 @@ export type Database = {
           position_y: number
           price_override: number | null
           room_id: string
+          rotation: number
           sharing_option_id: string
           sharing_type_id: string | null
         }
@@ -718,6 +719,7 @@ export type Database = {
           position_y?: number
           price_override?: number | null
           room_id: string
+          rotation?: number
           sharing_option_id: string
           sharing_type_id?: string | null
         }
@@ -734,6 +736,7 @@ export type Database = {
           position_y?: number
           price_override?: number | null
           room_id?: string
+          rotation?: number
           sharing_option_id?: string
           sharing_type_id?: string | null
         }

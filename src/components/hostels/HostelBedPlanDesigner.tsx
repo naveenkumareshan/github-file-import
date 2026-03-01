@@ -5,12 +5,13 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Save, ZoomIn, ZoomOut, Maximize, Image, X, MousePointerClick } from 'lucide-react';
+import { Save, ZoomIn, ZoomOut, Maximize, Image, X, MousePointerClick, RotateCw } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { BedShapeIcon } from '@/components/hostels/BedShapeIcon';
 
 const GRID_SNAP = 40;
-const BED_W = 40;
-const BED_H = 30;
+const BED_W = 50;
+const BED_H = 62;
 const snapToGrid = (v: number) => Math.round(v / GRID_SNAP) * GRID_SNAP;
 const clampPosition = (x: number, y: number, roomW: number, roomH: number) => ({
   x: Math.max(BED_W / 2, Math.min(roomW - BED_W / 2, x)),
@@ -30,6 +31,7 @@ export interface DesignerBed {
   sharingType?: string;
   sharingPrice?: number;
   occupantName?: string;
+  rotation?: number;
 }
 
 interface HostelBedPlanDesignerProps {
@@ -44,6 +46,7 @@ interface HostelBedPlanDesignerProps {
   onDeleteBed?: (bedId: string) => void;
   onPlaceBed?: (position: { x: number; y: number }, number: number, sharingOptionId: string, category: string) => void;
   onBedMove?: (bedId: string, position: { x: number; y: number }) => void;
+  onBedRotate?: (bedId: string, rotation: number) => void;
   layoutImage?: string | null;
   layoutImageOpacity?: number;
   onLayoutImageChange?: (image: string | null) => void;
@@ -55,7 +58,7 @@ interface HostelBedPlanDesignerProps {
 
 export const HostelBedPlanDesigner: React.FC<HostelBedPlanDesignerProps> = ({
   roomId, roomWidth, roomHeight, beds, onBedsChange, onBedSelect, selectedBed,
-  onSave, onDeleteBed, onPlaceBed, onBedMove, layoutImage, layoutImageOpacity = 30,
+  onSave, onDeleteBed, onPlaceBed, onBedMove, onBedRotate, layoutImage, layoutImageOpacity = 30,
   onLayoutImageChange, onLayoutImageOpacityChange, isSaving, sharingOptions = [], categories = [],
 }) => {
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -273,10 +276,8 @@ export const HostelBedPlanDesigner: React.FC<HostelBedPlanDesignerProps> = ({
             const isOccupied = !bed.is_available && !isBlocked;
             const isDragging = draggingBedId === bed.id;
 
-            let bedClass = 'bg-emerald-50 border-emerald-400 text-emerald-800';
-            if (isSelected) bedClass = 'bg-primary border-primary text-primary-foreground ring-2 ring-primary/50';
-            else if (isBlocked) bedClass = 'bg-destructive/10 border-destructive/30 text-destructive';
-            else if (isOccupied) bedClass = 'bg-blue-50 border-blue-400 text-blue-800';
+            const bedStatus = isSelected ? 'selected' : isBlocked ? 'blocked' : isOccupied ? 'occupied' : 'available';
+            const bedRotation = bed.rotation || 0;
 
             return (
               <div key={bed.id} className="group absolute" style={{
@@ -285,14 +286,29 @@ export const HostelBedPlanDesigner: React.FC<HostelBedPlanDesignerProps> = ({
                 zIndex: isDragging ? 30 : isSelected ? 20 : 5,
                 cursor: placementMode ? 'crosshair' : 'move',
               }}>
-                <button
-                  className={`flex flex-col items-center justify-center rounded border text-[9px] font-bold select-none transition-all ${bedClass} ${isDragging ? 'shadow-lg scale-110' : ''}`}
+                <div
+                  className={`select-none transition-all ${isDragging ? 'shadow-lg scale-110' : ''} ${isSelected ? 'ring-2 ring-primary/50 rounded' : ''}`}
                   style={{ width: BED_W, height: BED_H }}
                   onMouseDown={e => handleBedMouseDown(e, bed)}
                 >
-                  <span>{bed.bed_number}</span>
-                  {bed.category && <span className="text-[7px] font-normal opacity-70">{bed.category}</span>}
-                </button>
+                  <BedShapeIcon
+                    width={BED_W}
+                    height={BED_H}
+                    status={bedStatus}
+                    bedNumber={bed.bed_number}
+                    rotation={bedRotation}
+                  />
+                </div>
+                {/* Rotate button */}
+                {onBedRotate && !isDragging && (
+                  <button
+                    className="absolute -top-2 -left-2 hidden group-hover:flex h-5 w-5 items-center justify-center rounded-full bg-muted border border-border text-foreground shadow-sm"
+                    onClick={e => { e.stopPropagation(); onBedRotate(bed.id, ((bed.rotation || 0) + 90) % 360); }}
+                    title="Rotate bed"
+                  >
+                    <RotateCw className="h-3 w-3" />
+                  </button>
+                )}
                 {onDeleteBed && !isDragging && (
                   <button
                     className="absolute -top-2 -right-2 hidden group-hover:flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[8px]"
