@@ -1,5 +1,5 @@
 
-import axios from './axiosConfig';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface VendorFilters {
   status?: 'pending' | 'approved' | 'rejected' | 'suspended' | 'all';
@@ -11,11 +11,6 @@ export interface VendorFilters {
   state?: string;
 }
 
-interface PaginationParams {
-  page: number;
-  limit: number;
-}
-
 export interface VendorApprovalData {
   action: 'approve' | 'reject' | 'suspend';
   notes?: string;
@@ -24,63 +19,44 @@ export interface VendorApprovalData {
 }
 
 export interface Vendor {
-  _id: string;
-  vendorId: string;
-  businessName: string;
-  businessType: string;
-  contactPerson: string;
+  id: string;
+  user_id: string;
+  business_name: string;
+  business_type: string;
+  contact_person: string;
   email: string;
   phone: string;
   status: 'pending' | 'approved' | 'rejected' | 'suspended';
   address: {
-    street: string;
-    city: string;
-    state: string;
-    pincode: string;
-    country: string;
+    street?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
+    country?: string;
   };
-  businessDetails: {
-    gstNumber: string;
-    panNumber: string;
-    aadharNumber: string;
-    businessLicense: string;
-    description: string;
+  business_details: {
+    gstNumber?: string;
+    panNumber?: string;
+    aadharNumber?: string;
+    businessLicense?: string;
+    description?: string;
   };
-  bankDetails: {
-    accountHolderName: string;
-    accountNumber: string;
-    bankName: string;
-    ifscCode: string;
-    upiId: string;
+  bank_details: {
+    accountHolderName?: string;
+    accountNumber?: string;
+    bankName?: string;
+    ifscCode?: string;
+    upiId?: string;
   };
-  commissionSettings: {
-    type: string;
-    value: number;
-    payoutCycle: string;
+  commission_settings: {
+    type?: string;
+    value?: number;
+    payoutCycle?: string;
   };
-  totalRevenue: number;
-  pendingPayout: number;
-  createdAt: string;
-  updatedAt: string;
-  documents: Array<{
-    vendorId:string;
-    documentType: string;
-    url: string;
-    status: string;
-    filename:string;
-    uploadedAt: string;
-    _id:string;
-    fileSize: number;
-    mimeType: string;
-    reviewedAt?: string;
-    reviewedBy?: {
-      _id: string;
-      name: string;
-      email: string;
-    };
-    rejectionReason?: string;
-    notes?: string;
-  }>;
+  serial_number: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface VendorsResponse {
@@ -92,99 +68,169 @@ export interface VendorsResponse {
   hasPrevPage: boolean;
 }
 
+interface PaginationParams {
+  page: number;
+  limit: number;
+}
+
 export const vendorApprovalService = {
-  // Get all vendors with pagination and filters
   getVendors: async (pagination: PaginationParams, filters: VendorFilters = {}) => {
     try {
-      const params = {
-        page: pagination.page,
-        limit: pagination.limit,
-        ...filters
+      let query = supabase.from('partners').select('*', { count: 'exact' });
+
+      if (filters.status && filters.status !== 'all') {
+        query = query.eq('status', filters.status);
+      }
+      if (filters.businessType) {
+        query = query.eq('business_type', filters.businessType);
+      }
+      if (filters.search) {
+        query = query.or(`business_name.ilike.%${filters.search}%,contact_person.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
+      }
+      if (filters.city) {
+        query = query.ilike('address->>city', `%${filters.city}%`);
+      }
+      if (filters.state) {
+        query = query.ilike('address->>state', `%${filters.state}%`);
+      }
+
+      const from = (pagination.page - 1) * pagination.limit;
+      const to = from + pagination.limit - 1;
+      query = query.order('created_at', { ascending: false }).range(from, to);
+
+      const { data, error, count } = await query;
+      if (error) throw error;
+
+      const totalCount = count || 0;
+      const totalPages = Math.ceil(totalCount / pagination.limit);
+
+      const response: VendorsResponse = {
+        vendors: (data || []) as unknown as Vendor[],
+        totalCount,
+        totalPages,
+        currentPage: pagination.page,
+        hasNextPage: pagination.page < totalPages,
+        hasPrevPage: pagination.page > 1,
       };
-      
-      const response = await axios.get('/admin/vendors', { params });
-      return { success: true, data: response.data };
-    } catch (error) {
-      return { success: false, error: error.response?.data || error.message };
+
+      return { success: true, data: { data: response } };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
     }
   },
 
-    // Get all vendors with pagination and filters
   getAllVendors: async (pagination: PaginationParams, filters: VendorFilters = {}) => {
-    try {
-      const params = {
-        page: pagination.page,
-        limit: pagination.limit,
-        ...filters
-      };
-      
-      const response = await axios.get('/admin/vendors', { params });
-      return { success: true, data: response.data };
-    } catch (error) {
-      return { success: false, error: error.response?.data || error.message };
-    }
+    return vendorApprovalService.getVendors(pagination, filters);
   },
 
-  // Get single vendor details
   getVendorById: async (vendorId: string) => {
     try {
-      const response = await axios.get(`/admin/vendors/${vendorId}`);
-      return { success: true, data: response.data };
-    } catch (error) {
-      return { success: false, error: error.response?.data || error.message };
+      const { data, error } = await supabase
+        .from('partners')
+        .select('*')
+        .eq('id', vendorId)
+        .single();
+      if (error) throw error;
+      return { success: true, data: { data: data as unknown as Vendor } };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
     }
   },
 
-  // Update vendor status (approve/reject/suspend)
   updateVendorStatus: async (vendorId: string, data: VendorApprovalData) => {
     try {
-      const response = await axios.put(`/admin/vendors/${vendorId}/status`, data);
-      return { success: true, data: response.data };
-    } catch (error) {
-      return { success: false, error: error.response?.data || error.message };
+      const updateData: any = { status: data.action === 'approve' ? 'approved' : data.action === 'reject' ? 'rejected' : 'suspended' };
+      if (data.action === 'approve' && data.commissionRate !== undefined) {
+        updateData.commission_settings = { type: 'percentage', value: data.commissionRate, payoutCycle: 'monthly' };
+      }
+
+      const { error } = await supabase
+        .from('partners')
+        .update(updateData)
+        .eq('id', vendorId);
+      if (error) throw error;
+      return { success: true, data: {} };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
     }
   },
 
-  // Update vendor details
   updateVendorDetails: async (vendorId: string, data: Partial<Vendor>) => {
     try {
-      const response = await axios.put(`/admin/vendors/${vendorId}`, data);
-      return { success: true, data: response.data };
-    } catch (error) {
-      return { success: false, error: error.response?.data || error.message };
+      const { data: updated, error } = await supabase
+        .from('partners')
+        .update(data as any)
+        .eq('id', vendorId)
+        .select()
+        .single();
+      if (error) throw error;
+      return { success: true, data: { data: updated as unknown as Vendor } };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
     }
   },
 
-  // Get vendor statistics
   getVendorStats: async () => {
     try {
-      const response = await axios.get('/admin/vendors/stats');
-      return { success: true, data: response.data };
-    } catch (error) {
-      return { success: false, error: error.response?.data || error.message };
+      const { data, error } = await supabase.from('partners').select('status');
+      if (error) throw error;
+
+      const partners = data || [];
+      const stats = {
+        totalVendors: partners.length,
+        pendingApprovals: partners.filter(p => p.status === 'pending').length,
+        approvedVendors: partners.filter(p => p.status === 'approved').length,
+        rejectedVendors: partners.filter(p => p.status === 'rejected').length,
+        suspendedVendors: partners.filter(p => p.status === 'suspended').length,
+        totalRevenue: 0,
+        monthlyGrowth: 0,
+      };
+
+      return { success: true, data: { data: stats } };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
     }
   },
 
-  // Export vendors data
   exportVendors: async (filters: VendorFilters = {}) => {
     try {
-      const response = await axios.get('/admin/vendors/export', { 
-        params: filters,
-        responseType: 'blob'
-      });
-      return { success: true, data: response.data };
-    } catch (error) {
-      return { success: false, error: error.response?.data || error.message };
+      let query = supabase.from('partners').select('*');
+      if (filters.status && filters.status !== 'all') {
+        query = query.eq('status', filters.status);
+      }
+      if (filters.search) {
+        query = query.or(`business_name.ilike.%${filters.search}%,contact_person.ilike.%${filters.search}%,email.ilike.%${filters.search}%`);
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false });
+      if (error) throw error;
+
+      // Convert to CSV
+      const vendors = (data || []) as unknown as Vendor[];
+      const headers = ['Business Name', 'Contact Person', 'Email', 'Phone', 'Status', 'Business Type', 'City', 'State', 'Created At'];
+      const rows = vendors.map(v => [
+        v.business_name, v.contact_person, v.email, v.phone, v.status, v.business_type,
+        v.address?.city || '', v.address?.state || '', new Date(v.created_at).toLocaleDateString()
+      ]);
+      const csv = [headers.join(','), ...rows.map(r => r.map(c => `"${c}"`).join(','))].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+
+      return { success: true, data: blob };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
     }
   },
 
-  // Update vendor commission settings
-  updateCommissionSettings: async (vendorId: string, commissionData: unknown) => {
+  updateCommissionSettings: async (vendorId: string, commissionData: any) => {
     try {
-      const response = await axios.put(`/admin/vendors/${vendorId}/commission`, commissionData);
-      return { success: true, data: response.data };
-    } catch (error) {
-      return { success: false, error: error.response?.data || error.message };
+      const { error } = await supabase
+        .from('partners')
+        .update({ commission_settings: commissionData })
+        .eq('id', vendorId);
+      if (error) throw error;
+      return { success: true, data: {} };
+    } catch (error: any) {
+      return { success: false, error: { message: error.message } };
     }
   }
 };

@@ -36,9 +36,9 @@ interface CabinData {
 }
 
 interface Vendor {
-  _id: string;
-  vendorId: string;
-  businessName: string;
+  id: string;
+  serial_number: string | null;
+  business_name: string;
 }
 
 const RoomManagement = () => {
@@ -412,10 +412,10 @@ const RoomManagement = () => {
                       <SelectValue placeholder="Filter by Vendor" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Vendors</SelectItem>
+                      <SelectItem value="all">All Partners</SelectItem>
                       {vendors.map((vendor) => (
-                        <SelectItem key={vendor._id} value={vendor._id}>
-                          {vendor.businessName} ({vendor.vendorId})
+                        <SelectItem key={vendor.id} value={vendor.id}>
+                          {vendor.business_name} ({vendor.serial_number || vendor.id.slice(0,8)})
                         </SelectItem>
                       ))}
                     </SelectContent>

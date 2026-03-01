@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Users, Check, X, AlertTriangle, TrendingUp, Clock1 } from 'lucide-react';
 import { vendorApprovalService } from '@/api/vendorApprovalService';
 
@@ -39,8 +39,8 @@ export const VendorStatsCards: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
-        {Array.from({ length: 6 }).map((_, i) => (
+      <div className="grid grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
+        {Array.from({ length: 5 }).map((_, i) => (
           <Card key={i} className="shadow-none border">
             <div className="p-3">
               <div className="animate-pulse">
@@ -60,11 +60,10 @@ export const VendorStatsCards: React.FC = () => {
     { label: 'Approved', value: stats.approvedVendors, icon: Check, color: 'text-green-600' },
     { label: 'Rejected', value: stats.rejectedVendors, icon: X, color: 'text-red-600' },
     { label: 'Suspended', value: stats.suspendedVendors, icon: AlertTriangle, color: 'text-yellow-600' },
-    { label: 'Revenue', value: `₹${stats.totalRevenue.toLocaleString()}`, icon: TrendingUp, color: 'text-green-600' },
   ];
 
   return (
-    <div className="grid grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
+    <div className="grid grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
       {cards.map((card) => (
         <Card key={card.label} className="shadow-none border">
           <div className="p-3">

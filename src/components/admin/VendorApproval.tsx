@@ -1,23 +1,21 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DataTable } from '@/components/ui/data-table';
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
-import { Eye, Check, X, Clock, AlertTriangle, User, Building, CreditCard, FileText, Phone, Mail, Download, Filter, Search } from 'lucide-react';
+import { Eye, Check, X, Clock, AlertTriangle, User, Phone, Mail, Download, Filter } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { vendorApprovalService, Vendor, VendorFilters, VendorsResponse } from '@/api/vendorApprovalService';
 import { VendorDetailsDialog } from './VendorDetailsDialog';
 import { VendorStatsCards } from './VendorStatsCards';
-import { Link } from 'react-router-dom';
 
 const VendorApproval: React.FC = () => {
   const [vendors, setVendors] = useState<Vendor[]>([]);
@@ -55,7 +53,7 @@ const VendorApproval: React.FC = () => {
       console.error('Failed to fetch Partners');
     }
     setLoading(false);
-  }, [currentPage, filters, toast]);
+  }, [currentPage, filters]);
 
   useEffect(() => {
     fetchVendors();
@@ -76,7 +74,7 @@ const VendorApproval: React.FC = () => {
         title: "Success",
         description: `Partner ${action}ed successfully`
       });
-      fetchVendors(); // Refresh the list
+      fetchVendors();
       setRejectionReason('');
       setApprovalNotes('');
     } else {
@@ -96,8 +94,8 @@ const VendorApproval: React.FC = () => {
         title: "Success",
         description: "Partner details updated successfully"
       });
-      fetchVendors(); // Refresh the list
-      setSelectedVendor(result.data.data); // Update selected vendor with new data
+      fetchVendors();
+      setSelectedVendor(result.data.data);
     } else {
       toast({
         title: "Error",
@@ -109,7 +107,7 @@ const VendorApproval: React.FC = () => {
 
   const handleFilterChange = (key: keyof VendorFilters, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
-    setCurrentPage(1); // Reset to first page when filtering
+    setCurrentPage(1);
   };
 
   const handleExport = async () => {
@@ -118,7 +116,7 @@ const VendorApproval: React.FC = () => {
       const url = window.URL.createObjectURL(new Blob([result.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `Partners_${new Date().toISOString().split('T')[0]}.xlsx`);
+      link.setAttribute('download', `Partners_${new Date().toISOString().split('T')[0]}.csv`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -157,28 +155,28 @@ const VendorApproval: React.FC = () => {
 
   const columns = [
     {
-      accessorKey: 'vendorId',
+      accessorKey: 'serial_number',
       header: 'Partner ID',
       cell: ({ row }: { row: { original: Vendor } }) => (
-        <div className="font-mono text-sm">{row.original.vendorId}</div>
+        <div className="font-mono text-sm">{row.original.serial_number || row.original.id.slice(0, 8)}</div>
       )
     },
     {
-      accessorKey: 'businessName',
+      accessorKey: 'business_name',
       header: 'Business Name',
       cell: ({ row }: { row: { original: Vendor } }) => (
         <div>
-          <p className="font-medium">{row.original.businessName}</p>
-          <p className="text-sm text-muted-foreground">{row.original.contactPerson}</p>
+          <p className="font-medium">{row.original.business_name}</p>
+          <p className="text-sm text-muted-foreground">{row.original.contact_person}</p>
         </div>
       )
     },
     {
-      accessorKey: 'businessType',
+      accessorKey: 'business_type',
       header: 'Type',
       cell: ({ row }: { row: { original: Vendor } }) => (
         <Badge variant="outline" className="capitalize">
-          {row.original.businessType}
+          {row.original.business_type}
         </Badge>
       )
     },
@@ -203,8 +201,8 @@ const VendorApproval: React.FC = () => {
       header: 'Location',
       cell: ({ row }: { row: { original: Vendor } }) => (
         <div className="text-sm">
-          <p>{row.original.address.city}, {row.original.address.state}</p>
-          <p className="text-muted-foreground">{row.original.address.pincode}</p>
+          <p>{row.original.address?.city}, {row.original.address?.state}</p>
+          <p className="text-muted-foreground">{row.original.address?.pincode}</p>
         </div>
       )
     },
@@ -221,11 +219,11 @@ const VendorApproval: React.FC = () => {
       )
     },
     {
-      accessorKey: 'createdAt',
-      header: 'Applied On',
+      accessorKey: 'created_at',
+      header: 'Created',
       cell: ({ row }: { row: { original: Vendor } }) => (
         <div className="text-sm">
-          {new Date(row.original.createdAt).toLocaleDateString()}
+          {new Date(row.original.created_at).toLocaleDateString()}
         </div>
       )
     },
@@ -251,7 +249,7 @@ const VendorApproval: React.FC = () => {
                 variant="outline"
                 size="sm"
                 className="text-green-600 hover:text-green-700"
-                onClick={() => handleStatusUpdate(row.original._id, 'approve')}
+                onClick={() => handleStatusUpdate(row.original.id, 'approve')}
               >
                 <Check className="h-4 w-4" />
               </Button>
@@ -281,7 +279,7 @@ const VendorApproval: React.FC = () => {
                       />
                     </div>
                     <Button 
-                      onClick={() => handleStatusUpdate(row.original._id, 'reject')}
+                      onClick={() => handleStatusUpdate(row.original.id, 'reject')}
                       className="w-full"
                       variant="destructive"
                     >
@@ -298,7 +296,7 @@ const VendorApproval: React.FC = () => {
               variant="outline"
               size="sm"
               className="text-yellow-600 hover:text-yellow-700"
-              onClick={() => handleStatusUpdate(row.original._id, 'suspend')}
+              onClick={() => handleStatusUpdate(row.original.id, 'suspend')}
             >
               <AlertTriangle className="h-4 w-4" />
             </Button>
@@ -328,11 +326,6 @@ const VendorApproval: React.FC = () => {
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
-          <Link to="/admin/vendor-auto-payout">
-            <Button variant="outline" size="sm">
-              Auto Payout Settings
-            </Button>
-          </Link>
         </div>
       </div>
 
@@ -349,6 +342,7 @@ const VendorApproval: React.FC = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
                     <SelectItem value="pending">Pending</SelectItem>
                     <SelectItem value="approved">Approved</SelectItem>
                     <SelectItem value="rejected">Rejected</SelectItem>
@@ -363,7 +357,9 @@ const VendorApproval: React.FC = () => {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="reading_room">Reading Room</SelectItem>
+                    <SelectItem value="individual">Individual</SelectItem>
+                    <SelectItem value="company">Company</SelectItem>
+                    <SelectItem value="partnership">Partnership</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
