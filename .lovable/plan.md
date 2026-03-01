@@ -1,25 +1,33 @@
 
-## Fix VendorSeats.tsx Build Error
+
+## Fix Build Failure for Publishing
 
 ### Problem
-Line 536 references `bookingPlan` and `customDays` which are undefined variables. The correct state variable is `selectedDuration` (with `.type` and `.count` properties).
+The Vite build completes successfully (3869 modules transformed, all chunks generated), but the Lovable build system reports "failed to build." Since the build output is truncated, the actual error message at the end is hidden. The most likely cause is that **Vite outputs a warning about large chunk sizes** (chunks exceeding 500 kB after minification) to stderr, and the build system interprets this as a build failure.
 
-### Fix
-**File: `src/pages/vendor/VendorSeats.tsx` (line 536)**
+### Fix Strategy
+Two changes to resolve this:
 
-Replace:
+**1. Add `chunkSizeWarningLimit` to suppress the Vite warning**
+In `vite.config.ts`, add a `build` section that increases the chunk size warning limit so Vite doesn't output warnings to stderr:
+
 ```typescript
-duration: (bookingPlan as any) === 'monthly' ? '1 Month' : (bookingPlan as any) === '15days' ? '15 Days' : `${(customDays as any) || 0} Days`,
+build: {
+  chunkSizeWarningLimit: 2000, // 2MB limit to suppress warnings
+}
 ```
 
-With:
-```typescript
-duration: selectedDuration.type === 'monthly' ? `${selectedDuration.count} Month${selectedDuration.count > 1 ? 's' : ''}` : selectedDuration.type === 'weekly' ? `${selectedDuration.count} Week${selectedDuration.count > 1 ? 's' : ''}` : `${selectedDuration.count} Day${selectedDuration.count > 1 ? 's' : ''}`,
-```
+**2. Remove `mode: mode` redundancy**
+The explicit `mode: mode` in the config overrides Vite's default mode handling and could cause the production build to use the wrong mode. Remove line 20.
 
-This uses the existing `selectedDuration` state variable (defined at line 89) which has `type` ('daily'|'weekly'|'monthly') and `count` (number) -- matching the booking form's actual data.
+**3. Clean up `from('reviews' as any)` (optional improvement)**
+Since `reviews` table now exists in the auto-generated types, remove the unnecessary `as any` casts from `reviewsService.ts`. While this won't fix the build (Vite doesn't type-check), it's good cleanup.
 
-### Files
+### Files to Edit
 | File | Change |
 |------|--------|
-| `src/pages/vendor/VendorSeats.tsx` | Replace undefined vars with `selectedDuration` on line 536 |
+| `vite.config.ts` | Add `build.chunkSizeWarningLimit`, remove `mode: mode` |
+| `src/api/reviewsService.ts` | Remove `as any` from `from('reviews')` calls (cleanup) |
+
+### Expected Result
+The Vite build warning is suppressed, the build completes without stderr output, and the app publishes successfully.
