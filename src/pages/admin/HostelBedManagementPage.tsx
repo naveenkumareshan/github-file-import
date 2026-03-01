@@ -89,8 +89,6 @@ const HostelBedManagementPage = () => {
   const [addRoomDialogOpen, setAddRoomDialogOpen] = useState(false);
   const [newRoomNumber, setNewRoomNumber] = useState('');
   const [newRoomFloorId, setNewRoomFloorId] = useState('');
-  const [newRoomCategoryId, setNewRoomCategoryId] = useState('');
-  const [newRoomSharingTypeId, setNewRoomSharingTypeId] = useState('');
   const [newRoomDescription, setNewRoomDescription] = useState('');
 
   // Rename room
@@ -161,8 +159,8 @@ const HostelBedManagementPage = () => {
         const grouped: Record<string, any[]> = {};
         roomsData.forEach(room => {
           const floorKey = room.floor_id
-            ? (floorResult.success ? floorResult.data.find(f => f.id === room.floor_id)?.name || `Floor ${room.floor}` : `Floor ${room.floor}`)
-            : `Floor ${room.floor}`;
+            ? (floorResult.success ? floorResult.data.find(f => f.id === room.floor_id)?.name || 'Unassigned' : 'Unassigned')
+            : 'Unassigned';
           if (!grouped[floorKey]) grouped[floorKey] = [];
           const roomOpts = (opts || []).filter(s => s.room_id === room.id);
           const roomBeds = (beds || []).filter(b => b.room_id === room.id).map(b => ({
@@ -483,40 +481,13 @@ const HostelBedManagementPage = () => {
         room_number: newRoomNumber,
         floor: selectedFloor?.floor_order || 1,
         floor_id: newRoomFloorId,
-        category_id: newRoomCategoryId || null,
-        sharing_type_id: newRoomSharingTypeId || null,
-        category: categories.find(c => c.id === newRoomCategoryId)?.name || 'standard',
         description: newRoomDescription || '',
       } as any);
       if (error) throw error;
 
-      // If sharing type selected, auto-create a sharing option for backward compat
-      if (newRoomSharingTypeId) {
-        const st = sharingTypes.find(s => s.id === newRoomSharingTypeId);
-        if (st) {
-          const { data: newRoom } = await supabase
-            .from('hostel_rooms')
-            .select('id')
-            .eq('hostel_id', hostelId)
-            .eq('room_number', newRoomNumber)
-            .single();
-          if (newRoom) {
-            await supabase.from('hostel_sharing_options').insert({
-              room_id: newRoom.id,
-              type: st.name,
-              capacity: st.capacity,
-              total_beds: 0,
-              price_monthly: 0,
-              price_daily: 0,
-            });
-          }
-        }
-      }
-
       toast({ title: 'Room added' });
       setAddRoomDialogOpen(false);
-      setNewRoomNumber(''); setNewRoomFloorId(''); setNewRoomCategoryId('');
-      setNewRoomSharingTypeId(''); setNewRoomDescription('');
+      setNewRoomNumber(''); setNewRoomFloorId(''); setNewRoomDescription('');
       fetchAll();
     } catch (e: any) {
       toast({ title: 'Error', description: e.message, variant: 'destructive' });
@@ -751,9 +722,6 @@ const HostelBedManagementPage = () => {
                           <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-2">
                               <span className="font-semibold text-sm">Room {room.roomNumber}</span>
-                              {room.categoryName && <Badge variant="outline" className="text-[10px]">{room.categoryName}</Badge>}
-                              {room.sharingTypeName && <Badge variant="secondary" className="text-[10px]">{room.sharingTypeName}</Badge>}
-                              {!room.categoryName && room.roomCategory && <Badge variant="outline" className="text-[10px]">{room.roomCategory}</Badge>}
                             </div>
                             <span className="text-xs text-muted-foreground">{availBeds}/{totalBeds} beds</span>
                           </div>
@@ -983,26 +951,6 @@ const HostelBedManagementPage = () => {
             <div>
               <Label>Room Number / Name</Label>
               <Input value={newRoomNumber} onChange={e => setNewRoomNumber(e.target.value)} placeholder="e.g. 101 or Flat A" className="mt-1" />
-            </div>
-            <div>
-              <Label>Category</Label>
-              <Select value={newRoomCategoryId} onValueChange={setNewRoomCategoryId}>
-                <SelectTrigger className="mt-1"><SelectValue placeholder="Select category" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No category</SelectItem>
-                  {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Sharing Type</Label>
-              <Select value={newRoomSharingTypeId} onValueChange={setNewRoomSharingTypeId}>
-                <SelectTrigger className="mt-1"><SelectValue placeholder="Select sharing type" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No sharing type</SelectItem>
-                  {sharingTypes.map(s => <SelectItem key={s.id} value={s.id}>{s.name} ({s.capacity} beds)</SelectItem>)}
-                </SelectContent>
-              </Select>
             </div>
             <div>
               <Label>Description (optional)</Label>
