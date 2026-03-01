@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      adjustment_entries: {
+        Row: {
+          amount: number
+          applied_at: string | null
+          created_at: string
+          created_by: string
+          description: string
+          id: string
+          partner_id: string
+          settlement_id: string | null
+          status: string
+          type: string
+        }
+        Insert: {
+          amount?: number
+          applied_at?: string | null
+          created_at?: string
+          created_by: string
+          description?: string
+          id?: string
+          partner_id: string
+          settlement_id?: string | null
+          status?: string
+          type?: string
+        }
+        Update: {
+          amount?: number
+          applied_at?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string
+          id?: string
+          partner_id?: string
+          settlement_id?: string | null
+          status?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "adjustment_entries_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "adjustment_entries_settlement_id_fkey"
+            columns: ["settlement_id"]
+            isOneToOne: false
+            referencedRelation: "partner_settlements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       areas: {
         Row: {
           city_id: string
@@ -128,6 +182,8 @@ export type Database = {
           seat_id: string | null
           seat_number: number | null
           serial_number: string | null
+          settlement_id: string | null
+          settlement_status: string
           slot_id: string | null
           start_date: string | null
           total_price: number | null
@@ -165,6 +221,8 @@ export type Database = {
           seat_id?: string | null
           seat_number?: number | null
           serial_number?: string | null
+          settlement_id?: string | null
+          settlement_status?: string
           slot_id?: string | null
           start_date?: string | null
           total_price?: number | null
@@ -202,6 +260,8 @@ export type Database = {
           seat_id?: string | null
           seat_number?: number | null
           serial_number?: string | null
+          settlement_id?: string | null
+          settlement_status?: string
           slot_id?: string | null
           start_date?: string | null
           total_price?: number | null
@@ -222,6 +282,13 @@ export type Database = {
             columns: ["seat_id"]
             isOneToOne: false
             referencedRelation: "seats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_settlement_id_fkey"
+            columns: ["settlement_id"]
+            isOneToOne: false
+            referencedRelation: "partner_settlements"
             referencedColumns: ["id"]
           },
           {
@@ -796,6 +863,8 @@ export type Database = {
           room_id: string
           security_deposit: number
           serial_number: string | null
+          settlement_id: string | null
+          settlement_status: string
           sharing_option_id: string
           start_date: string
           status: string
@@ -832,6 +901,8 @@ export type Database = {
           room_id: string
           security_deposit?: number
           serial_number?: string | null
+          settlement_id?: string | null
+          settlement_status?: string
           sharing_option_id: string
           start_date: string
           status?: string
@@ -868,6 +939,8 @@ export type Database = {
           room_id?: string
           security_deposit?: number
           serial_number?: string | null
+          settlement_id?: string | null
+          settlement_status?: string
           sharing_option_id?: string
           start_date?: string
           status?: string
@@ -896,6 +969,13 @@ export type Database = {
             columns: ["room_id"]
             isOneToOne: false
             referencedRelation: "hostel_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hostel_bookings_settlement_id_fkey"
+            columns: ["settlement_id"]
+            isOneToOne: false
+            referencedRelation: "partner_settlements"
             referencedColumns: ["id"]
           },
           {
@@ -1578,6 +1658,225 @@ export type Database = {
           },
         ]
       }
+      partner_ledger: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          description: string
+          entry_type: string
+          id: string
+          partner_id: string
+          property_id: string | null
+          property_type: string
+          reference_id: string | null
+          reference_type: string | null
+          running_balance: number
+        }
+        Insert: {
+          amount?: number
+          category: string
+          created_at?: string
+          description?: string
+          entry_type: string
+          id?: string
+          partner_id: string
+          property_id?: string | null
+          property_type?: string
+          reference_id?: string | null
+          reference_type?: string | null
+          running_balance?: number
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          description?: string
+          entry_type?: string
+          id?: string
+          partner_id?: string
+          property_id?: string | null
+          property_type?: string
+          reference_id?: string | null
+          reference_type?: string | null
+          running_balance?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_ledger_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_payout_settings: {
+        Row: {
+          commission_fixed: number
+          commission_on: string
+          commission_percentage: number
+          commission_type: string
+          created_at: string
+          custom_cycle_days: number | null
+          gateway_charge_mode: string
+          gateway_split_percentage: number
+          id: string
+          minimum_payout_amount: number
+          partner_id: string
+          security_hold_days: number
+          security_hold_enabled: boolean
+          security_hold_percentage: number
+          settlement_cycle: string
+          tds_enabled: boolean
+          tds_percentage: number
+          updated_at: string
+        }
+        Insert: {
+          commission_fixed?: number
+          commission_on?: string
+          commission_percentage?: number
+          commission_type?: string
+          created_at?: string
+          custom_cycle_days?: number | null
+          gateway_charge_mode?: string
+          gateway_split_percentage?: number
+          id?: string
+          minimum_payout_amount?: number
+          partner_id: string
+          security_hold_days?: number
+          security_hold_enabled?: boolean
+          security_hold_percentage?: number
+          settlement_cycle?: string
+          tds_enabled?: boolean
+          tds_percentage?: number
+          updated_at?: string
+        }
+        Update: {
+          commission_fixed?: number
+          commission_on?: string
+          commission_percentage?: number
+          commission_type?: string
+          created_at?: string
+          custom_cycle_days?: number | null
+          gateway_charge_mode?: string
+          gateway_split_percentage?: number
+          id?: string
+          minimum_payout_amount?: number
+          partner_id?: string
+          security_hold_days?: number
+          security_hold_enabled?: boolean
+          security_hold_percentage?: number
+          settlement_cycle?: string
+          tds_enabled?: boolean
+          tds_percentage?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_payout_settings_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: true
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_settlements: {
+        Row: {
+          adjustment_amount: number
+          approved_at: string | null
+          approved_by: string | null
+          commission_amount: number
+          created_at: string
+          gateway_fees: number
+          id: string
+          locked_at: string | null
+          locked_by: string | null
+          net_payable: number
+          notes: string | null
+          partner_id: string
+          payment_date: string | null
+          payment_mode: string | null
+          payment_reference: string | null
+          period_end: string
+          period_start: string
+          refund_amount: number
+          security_hold_amount: number
+          serial_number: string | null
+          status: string
+          tds_amount: number
+          total_bookings: number
+          total_collected: number
+          updated_at: string
+          utr_number: string | null
+        }
+        Insert: {
+          adjustment_amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          commission_amount?: number
+          created_at?: string
+          gateway_fees?: number
+          id?: string
+          locked_at?: string | null
+          locked_by?: string | null
+          net_payable?: number
+          notes?: string | null
+          partner_id: string
+          payment_date?: string | null
+          payment_mode?: string | null
+          payment_reference?: string | null
+          period_end: string
+          period_start: string
+          refund_amount?: number
+          security_hold_amount?: number
+          serial_number?: string | null
+          status?: string
+          tds_amount?: number
+          total_bookings?: number
+          total_collected?: number
+          updated_at?: string
+          utr_number?: string | null
+        }
+        Update: {
+          adjustment_amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          commission_amount?: number
+          created_at?: string
+          gateway_fees?: number
+          id?: string
+          locked_at?: string | null
+          locked_by?: string | null
+          net_payable?: number
+          notes?: string | null
+          partner_id?: string
+          payment_date?: string | null
+          payment_mode?: string | null
+          payment_reference?: string | null
+          period_end?: string
+          period_start?: string
+          refund_amount?: number
+          security_hold_amount?: number
+          serial_number?: string | null
+          status?: string
+          tds_amount?: number
+          total_bookings?: number
+          total_collected?: number
+          updated_at?: string
+          utr_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_settlements_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partners: {
         Row: {
           address: Json
@@ -1637,6 +1936,66 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      payout_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          notes: string | null
+          partner_id: string
+          payment_date: string
+          payment_mode: string
+          payment_reference: string
+          processed_by: string
+          settlement_id: string
+          status: string
+          utr_number: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          partner_id: string
+          payment_date?: string
+          payment_mode?: string
+          payment_reference?: string
+          processed_by: string
+          settlement_id: string
+          status?: string
+          utr_number?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          partner_id?: string
+          payment_date?: string
+          payment_mode?: string
+          payment_reference?: string
+          processed_by?: string
+          settlement_id?: string
+          status?: string
+          utr_number?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payout_transactions_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payout_transactions_settlement_id_fkey"
+            columns: ["settlement_id"]
+            isOneToOne: false
+            referencedRelation: "partner_settlements"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -1991,6 +2350,65 @@ export type Database = {
           year?: number
         }
         Relationships: []
+      }
+      settlement_items: {
+        Row: {
+          booking_id: string | null
+          booking_type: string
+          commission_amount: number
+          created_at: string
+          food_amount: number
+          gateway_fee: number
+          hostel_booking_id: string | null
+          id: string
+          net_amount: number
+          property_name: string
+          room_rent: number
+          settlement_id: string
+          student_name: string
+          total_amount: number
+        }
+        Insert: {
+          booking_id?: string | null
+          booking_type?: string
+          commission_amount?: number
+          created_at?: string
+          food_amount?: number
+          gateway_fee?: number
+          hostel_booking_id?: string | null
+          id?: string
+          net_amount?: number
+          property_name?: string
+          room_rent?: number
+          settlement_id: string
+          student_name?: string
+          total_amount?: number
+        }
+        Update: {
+          booking_id?: string | null
+          booking_type?: string
+          commission_amount?: number
+          created_at?: string
+          food_amount?: number
+          gateway_fee?: number
+          hostel_booking_id?: string | null
+          id?: string
+          net_amount?: number
+          property_name?: string
+          room_rent?: number
+          settlement_id?: string
+          student_name?: string
+          total_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "settlement_items_settlement_id_fkey"
+            columns: ["settlement_id"]
+            isOneToOne: false
+            referencedRelation: "partner_settlements"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       states: {
         Row: {

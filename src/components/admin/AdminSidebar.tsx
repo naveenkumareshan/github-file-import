@@ -297,6 +297,7 @@ export function AdminSidebar() {
       subItems: [
         { title: 'All Partners', url: '/admin/vendors', icon: UserCheck, roles: ['admin'] },
         { title: 'Property Approvals', url: '/admin/property-approvals', icon: ClipboardCheck, roles: ['admin'] },
+        { title: 'Settlements', url: '/admin/settlements', icon: Wallet, roles: ['admin'] },
       ],
       },
       {
@@ -390,11 +391,11 @@ export function AdminSidebar() {
 
     if (hasPermission('view_payouts')) {
       vendorMenuItems.push({
-        title: 'Payouts',
+        title: 'Earnings & Settlements',
         icon: Wallet,
         roles: ['vendor', 'vendor_employee'],
         permissions: ['view_payouts'],
-        url: `${routePrefix}/vendorpayouts`
+        url: `${routePrefix}/earnings`
       });
     }
 
