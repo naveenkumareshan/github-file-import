@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface ReviewData {
@@ -36,7 +35,7 @@ export const reviewsService = {
     if (!userData.user) throw new Error('Not authenticated');
 
     const { data: review, error } = await supabase
-      .from('reviews' as any)
+      .from('reviews')
       .insert({
         user_id: userData.user.id,
         booking_id: data.booking_id,
@@ -45,7 +44,7 @@ export const reviewsService = {
         title: data.title || null,
         comment: data.comment,
         status: 'pending',
-      } as any)
+      })
       .select()
       .single();
 
@@ -55,7 +54,7 @@ export const reviewsService = {
 
   getApprovedReviews: async (cabinId: string) => {
     const { data, error } = await supabase
-      .from('reviews' as any)
+      .from('reviews')
       .select('*, profiles:user_id(name, profile_picture)')
       .eq('cabin_id', cabinId)
       .eq('status', 'approved')
@@ -67,7 +66,7 @@ export const reviewsService = {
 
   getUserReviewForBooking: async (bookingId: string) => {
     const { data, error } = await supabase
-      .from('reviews' as any)
+      .from('reviews')
       .select('id, status')
       .eq('booking_id', bookingId)
       .maybeSingle();
@@ -79,17 +78,17 @@ export const reviewsService = {
   getUserReviewsForBookings: async (bookingIds: string[]) => {
     if (bookingIds.length === 0) return [];
     const { data, error } = await supabase
-      .from('reviews' as any)
+      .from('reviews')
       .select('id, booking_id, status')
       .in('booking_id', bookingIds);
 
     if (error) throw error;
-    return ((data || []) as any) as Array<{ id: string; booking_id: string; status: string }>;
+    return (data || []) as Array<{ id: string; booking_id: string; status: string }>;
   },
 
   getAdminReviews: async (statusFilter?: string, cabinId?: string, page = 1, limit = 10) => {
     let query = supabase
-      .from('reviews' as any)
+      .from('reviews')
       .select('*, profiles:user_id(name, profile_picture, email), cabins:cabin_id(name)', { count: 'exact' });
 
     if (statusFilter && statusFilter !== 'all') {
@@ -117,8 +116,8 @@ export const reviewsService = {
 
   updateReviewStatus: async (reviewId: string, status: string) => {
     const { data, error } = await supabase
-      .from('reviews' as any)
-      .update({ status } as any)
+      .from('reviews')
+      .update({ status })
       .eq('id', reviewId)
       .select()
       .single();
@@ -129,7 +128,7 @@ export const reviewsService = {
 
   deleteReview: async (reviewId: string) => {
     const { error } = await supabase
-      .from('reviews' as any)
+      .from('reviews')
       .delete()
       .eq('id', reviewId);
 
@@ -152,7 +151,6 @@ export const reviewsService = {
 
   getCabinRatingStatsBatch: async (cabinIds: string[]) => {
     const results: Record<string, { average_rating: number; review_count: number }> = {};
-    // Fetch in parallel
     await Promise.all(
       cabinIds.map(async (id) => {
         try {
