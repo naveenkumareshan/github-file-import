@@ -168,7 +168,7 @@ useEffect(() => {
     try {
       const response = await adminCabinsService.getAllCabins();
       if (response.success && response.data) {
-        setCabins(response.data);
+        setCabins(response.data as any);
       } else {
         setError('Failed to load cabins');
       }

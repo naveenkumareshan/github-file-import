@@ -23,7 +23,7 @@ export const ReviewsManager: React.FC<ReviewsManagerProps> = ({
       setLoading(true);
       const response = await reviewsService.getApprovedReviews(entityId);
       if (response.success) {
-        setReviews(response.data as Review[]);
+        setReviews(response.data as unknown as Review[]);
       }
     } catch (error) {
       console.error('Error fetching reviews:', error);

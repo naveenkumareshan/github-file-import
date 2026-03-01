@@ -45,8 +45,8 @@ export const useLocations = () => {
     try {
       const response = await locationsService.getCities({ stateId, limit: 200 });
       if (response.success) {
-        setCities(response.data);
-        return response.data;
+        setCities(response.data as any);
+        return response.data as any;
       }
       return [];
     } catch (error) {
@@ -59,8 +59,8 @@ export const useLocations = () => {
     try {
       const response = await locationsService.getAreas({ cityId, limit: 200 });
       if (response.success) {
-        setAreas(response.data);
-        return response.data;
+        setAreas(response.data as any);
+        return response.data as any;
       }
       return [];
     } catch (error) {
@@ -96,11 +96,11 @@ export const useLocations = () => {
       }
       if (type === 'city' || !type) {
         const response = await locationsService.getCities({ search: query, limit: 50 });
-        if (response.success) results.cities = response.data;
+        if (response.success) results.cities = response.data as any;
       }
       if (type === 'area' || !type) {
         const response = await locationsService.getAreas({ search: query, limit: 50 });
-        if (response.success) results.areas = response.data;
+        if (response.success) results.areas = response.data as any;
       }
     } catch (error) {
       console.error('Error searching locations:', error);

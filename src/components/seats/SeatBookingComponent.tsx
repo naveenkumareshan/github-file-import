@@ -37,7 +37,8 @@ export const SeatBookingComponent: React.FC<SeatBookingComponentProps> = ({ cabi
       
       if (response.success && response.data) {
         // Transform the occupancy data into available seats
-        const seats = response.data.seats || [];
+        const rData = response.data as any;
+        const seats = rData?.seats || [];
         setAvailableSeats(seats.map((seat: any) => ({
           id: seat._id || seat.id,
           seatNumber: seat.number || seat.seatNumber,
@@ -46,8 +47,8 @@ export const SeatBookingComponent: React.FC<SeatBookingComponentProps> = ({ cabi
         })));
         
         // Set cabin data if available in the response
-        if (response.data.cabin) {
-          setCabinData(response.data.cabin);
+        if (rData?.cabin) {
+          setCabinData(rData.cabin);
         }
       } else {
         // If the API fails, use fallback mock data

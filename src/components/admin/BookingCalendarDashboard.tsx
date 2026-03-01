@@ -69,7 +69,7 @@ export const BookingCalendarDashboard = () => {
 
       const response = await adminBookingsService.getAllBookings(filters);
       if (response.success && response.data) {
-        setBookings(response.data);
+        setBookings(response.data as any);
       }
     } catch (error) {
       console.error('Error fetching bookings:', error);

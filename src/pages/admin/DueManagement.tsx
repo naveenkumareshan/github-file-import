@@ -61,7 +61,7 @@ const DueManagement: React.FC = () => {
     ]);
     if (duesRes.success) setDues(duesRes.data);
     if (summaryRes.success) setSummary(summaryRes.data);
-    if (cabinsRes.success && cabinsRes.data) setCabins(cabinsRes.data.data);
+    if (cabinsRes.success && cabinsRes.data) setCabins(cabinsRes.data.data as any);
     setLoading(false);
   };
 

@@ -82,7 +82,7 @@ export const RoomRestrictionManagement: React.FC = () => {
 
   const fetchCabins = async () => {
     try {
-      const response = await adminRoomsService.getAllRooms();
+      const response = await (adminRoomsService as any).getAllRooms();
       if (response.success) {
         setCabins(response.data || []);
       }

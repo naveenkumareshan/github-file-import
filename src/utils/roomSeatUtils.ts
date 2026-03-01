@@ -34,7 +34,7 @@ export const buildSeats = (selectedSeatId?: number): RoomSeat[] => {
   const generatePrice = () => Math.floor(Math.random() * 300) + 1700; // Prices between 1700-2000
   
   // Generate 100 seats and set their status.
-  return Array.from({ length: TOTAL_SEATS }).map((_, i) => {
+  return (Array.from({ length: TOTAL_SEATS }).map((_, i) => {
     const seatNumber = i + 1;
     
     // Determine seat status - create hot selling section
@@ -56,5 +56,5 @@ export const buildSeats = (selectedSeatId?: number): RoomSeat[] => {
       status,
       price: generatePrice(),
     };
-  });
+  })) as RoomSeat[];
 };

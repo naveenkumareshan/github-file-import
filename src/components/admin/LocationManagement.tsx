@@ -47,12 +47,12 @@ const LocationManagement: React.FC = () => {
         }
         case 'cities': {
           const response = await locationsService.getCities({ search: searchTerm || undefined });
-          if (response.success) setCities(response.data);
+          if (response.success) setCities(response.data as any);
           break;
         }
         case 'areas': {
           const response = await locationsService.getAreas({ search: searchTerm || undefined });
-          if (response.success) setAreas(response.data);
+          if (response.success) setAreas(response.data as any);
           break;
         }
       }
@@ -143,7 +143,7 @@ const LocationManagement: React.FC = () => {
   }, []);
   useEffect(() => {
     if (formData.stateId) {
-      locationsService.getCities({ stateId: formData.stateId }).then(r => { if (r.success) setAllCities(r.data); });
+      locationsService.getCities({ stateId: formData.stateId }).then(r => { if (r.success) setAllCities(r.data as any); });
     }
   }, [formData.stateId]);
 

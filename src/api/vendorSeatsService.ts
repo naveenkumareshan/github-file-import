@@ -222,7 +222,7 @@ export const vendorSeatsService = {
         .select('cabin_id, is_available');
       if (seatsError) throw seatsError;
 
-      const cabinData: VendorCabin[] = (cabins || []).map(cabin => {
+      const cabinData = (cabins || []).map(cabin => {
         const cabinSeats = (seats || []).filter(s => s.cabin_id === cabin.id);
         return {
           _id: cabin.id,

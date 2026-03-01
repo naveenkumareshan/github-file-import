@@ -58,21 +58,21 @@ export function useDashboardStatistics() {
         let availableSeats = 0;
         const pendingSeats = 0;
         
-        if (seatsResponse.success && seatsResponse.data) {
-          availableSeats = seatsResponse.data;
+        if (seatsResponse.success) {
+          availableSeats = (seatsResponse as any).data || seatsResponse.count || 0;
         }
         
         const dashboardStats: DashboardStatistics = {
           totalRevenue: revenueResponse.success ? revenueResponse.data?.totalRevenue || 0 : 0,
-          revenueToday: revenueResponse.success ? revenueResponse.data?.todayRevenue || 0 : 0,
-          currentYear: revenueResponse.success ? revenueResponse.data?.currentYear || 0 : 0,
-          pendingPayments: bookingStats.success ? bookingStats.data?.pendingPayments || 0 : 0,
-          activeSubscriptions: bookingStats.success ? bookingStats.data?.activeSubscriptions || 0 : 0,
-          newSubscriptionsThisMonth: bookingStats.success ? bookingStats.data?.newSubscriptionsThisMonth || 0 : 0,
-          occupancyRate: occupancyData.success ? occupancyData.data?.overallOccupancy || 0 : 0,
+          revenueToday: revenueResponse.success ? (revenueResponse.data as any)?.todayRevenue || 0 : 0,
+          currentYear: revenueResponse.success ? (revenueResponse.data as any)?.currentYear || 0 : 0,
+          pendingPayments: bookingStats.success ? (bookingStats.data as any)?.pendingPayments || bookingStats.data?.pending || 0 : 0,
+          activeSubscriptions: bookingStats.success ? (bookingStats.data as any)?.activeSubscriptions || bookingStats.data?.completed || 0 : 0,
+          newSubscriptionsThisMonth: bookingStats.success ? (bookingStats.data as any)?.newSubscriptionsThisMonth || 0 : 0,
+          occupancyRate: occupancyData.success ? (occupancyData.data as any)?.overallOccupancy || 0 : 0,
           pendingSeats: pendingSeats,
           availableSeats: availableSeats,
-          totalCabins: bookingStats.success ? bookingStats.data?.totalCabins || 0 : 0,
+          totalCabins: bookingStats.success ? (bookingStats.data as any)?.totalCabins || bookingStats.data?.total || 0 : 0,
         };
         
         setStatistics(dashboardStats);

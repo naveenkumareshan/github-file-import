@@ -73,29 +73,30 @@ export function OccupancyReports({ dateRange }: { dateRange: DateRange }) {
       
       
       if (response.success && response.data) {
+        const rData = response.data as any;
         // Process cabin-level data
-        if (response.data.cabins && Array.isArray(response.data.cabins)) {
-          setOccupancyData(response.data.cabins);
+        if (rData.cabins && Array.isArray(rData.cabins)) {
+          setOccupancyData(rData.cabins);
           
           // Get overall data directly from API
-          if (response.data.overall) {
-            const overall = response.data.overall as OverallOccupancy;
+          if (rData.overall) {
+            const overall = rData.overall as OverallOccupancy;
             setTotalSeats(overall.totalSeats);
             setOccupiedSeats(overall.occupiedSeats);
             setAvailableSeats(overall.availableSeats || overall.totalSeats - overall.occupiedSeats);
             setOverallOccupancy(overall.occupancyRate);
             
             // Calculate total pending bookings
-            const totalPending = response.data.cabins.reduce(
+            const totalPending = rData.cabins.reduce(
               (sum: number, cabin: OccupancyData) => sum + cabin.pendingBookings, 0
             );
             setTotalPendingBookings(totalPending);
           } else {
             // Calculate overall metrics from cabin data if not provided
-            const totalSeatCount = response.data.cabins.reduce((sum: number, cabin: OccupancyData) => sum + cabin.totalSeats, 0);
-            const occupiedSeatCount = response.data.cabins.reduce((sum: number, cabin: OccupancyData) => sum + cabin.occupiedSeats, 0);
-            const availableSeatCount = response.data.cabins.reduce((sum: number, cabin: OccupancyData) => sum + cabin.availableSeats, 0);
-            const pendingBookingsCount = response.data.cabins.reduce((sum: number, cabin: OccupancyData) => sum + cabin.pendingBookings, 0);
+            const totalSeatCount = rData.cabins.reduce((sum: number, cabin: OccupancyData) => sum + cabin.totalSeats, 0);
+            const occupiedSeatCount = rData.cabins.reduce((sum: number, cabin: OccupancyData) => sum + cabin.occupiedSeats, 0);
+            const availableSeatCount = rData.cabins.reduce((sum: number, cabin: OccupancyData) => sum + cabin.availableSeats, 0);
+            const pendingBookingsCount = rData.cabins.reduce((sum: number, cabin: OccupancyData) => sum + cabin.pendingBookings, 0);
             
             setTotalSeats(totalSeatCount);
             setOccupiedSeats(occupiedSeatCount);
@@ -114,8 +115,8 @@ export function OccupancyReports({ dateRange }: { dateRange: DateRange }) {
         }
         
         // Handle trend data
-        if (response.data.trend && Array.isArray(response.data.trend)) {
-          setOccupancyTrend(response.data.trend);
+        if (rData.trend && Array.isArray(rData.trend)) {
+          setOccupancyTrend(rData.trend);
         } else {
           // Generate mock trend data if not provided
           setOccupancyTrend(generateMockOccupancyTrend(timeframe));
@@ -123,7 +124,7 @@ export function OccupancyReports({ dateRange }: { dateRange: DateRange }) {
       } else {
         toast({
           title: "Could not load data",
-          description: response.message || "Failed to retrieve occupancy data.",
+          description: (response as any).message || "Failed to retrieve occupancy data.",
           variant: "destructive"
         });
         

@@ -133,10 +133,10 @@ export function SeatTransferManagementHistory() {
       
       if (response.success) {
         // Filter for only completed bookings with seats (transferable bookings)
-        const transferableBookings = (response.data || []).filter((booking: Booking) => 
+        const transferableBookings = (response.data || []).filter((booking: any) => 
           booking.status === 'completed' && booking.seatId
         );
-        setBookings(transferableBookings);
+        setBookings(transferableBookings as any);
         setTotalCount(response.totalDocs);
         // setTotalPages(Math.ceil(transferableBookings.length / itemsPerPage));
         setTotalPages(Math.ceil(response.totalPages));
@@ -178,13 +178,13 @@ export function SeatTransferManagementHistory() {
         throw new Error(response.error);
       }
 
-      const transferableBookings = (response.data || []).filter((booking: Booking) => 
+      const transferableBookings = (response.data || []).filter((booking: any) => 
         booking.status === 'completed' && booking.seatId
       );
 
       const csvContent = [
         ['Booking ID', 'Student Name', 'Email', 'Reading Room', 'Seat', 'Start Date', 'End Date', 'Status', 'Amount'].join(','),
-        ...transferableBookings.map((booking: Booking) => [
+        ...transferableBookings.map((booking: any) => [
           booking.bookingId || booking._id,
           booking.userId.name,
           booking.userId.email,

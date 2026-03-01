@@ -119,8 +119,8 @@ const BookingReceiptCard: React.FC<ReceiptCardProps> = ({ booking, formatDate, i
         <div className="px-4 py-3">
           <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Amount</p>
           <p className="text-[12px] font-semibold text-foreground">Bed: ₹{(booking.total_price || 0).toLocaleString()}</p>
-          {(booking.security_deposit || 0) > 0 && (
-            <p className="text-[10px] text-muted-foreground">Deposit: ₹{(booking.security_deposit || 0).toLocaleString()}</p>
+          {((booking as any).security_deposit || 0) > 0 && (
+            <p className="text-[10px] text-muted-foreground">Deposit: ₹{((booking as any).security_deposit || 0).toLocaleString()}</p>
           )}
         </div>
       </div>
@@ -488,8 +488,8 @@ const StudentDashboard: React.FC = () => {
                             <div className="flex justify-between items-center sm:block sm:space-y-1 text-sm">
                               <p className="text-xs text-muted-foreground uppercase tracking-wide">Price</p>
                               <p className="font-medium text-green-700">Seat: ₹{(booking.total_price || 0).toLocaleString()}</p>
-                              {(booking.locker_price || 0) > 0 && (
-                                <p className="text-xs text-muted-foreground">Locker: ₹{(booking.locker_price || 0).toLocaleString()}</p>
+                              {((booking as any).locker_price || 0) > 0 && (
+                                <p className="text-xs text-muted-foreground">Locker: ₹{((booking as any).locker_price || 0).toLocaleString()}</p>
                               )}
                             </div>
                             

@@ -37,11 +37,11 @@ export const HostelBookingsList = ({ hostelId }: BookingListProps) => {
       setLoading(true);
       setError(null);
       
-      const params = hostelId ? { hostelId } : {};
-      const response = await hostelService.getAllBookings(params);
+      const params = hostelId ? { hostel_id: hostelId } : {};
+      const response = await hostelService.getAllBookings(params) as any;
       
-      if (response.success) {
-        setBookings(response.data);
+      if (!response?.length || (response as any).success !== undefined ? (response as any).success : true) {
+        setBookings(Array.isArray(response) ? response : (response as any)?.data || response);
       } else {
         setError('Failed to load bookings');
         toast({

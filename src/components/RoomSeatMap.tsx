@@ -28,7 +28,7 @@ export function RoomSeatMap({
   const seats = buildSeats(selectedSeat?.id);
 
   const handleSeatClick = (seat: RoomSeat) => {
-    if (seat.status === "available" || seat.status === "hot") {
+    if (seat.status === "available" || (seat.status as string) === "hot") {
       setSelectedSeatDetails(seat);
       onSeatSelect?.(seat);
       setIsEditMode(true);

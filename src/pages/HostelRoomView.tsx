@@ -71,17 +71,17 @@ const HostelRoomView = () => {
       setError(null);
       
       // Fetch hostel details
-      const hostelResponse = await hostelService.getHostelById(hostelId!);
-      if (hostelResponse.success) {
-        setHostel(hostelResponse.data);
+      const hostelResponse = await hostelService.getHostelById(hostelId!) as any;
+      if (hostelResponse) {
+        setHostel(hostelResponse);
       } else {
         setError('Failed to load hostel details');
       }
       
       // Fetch hostel rooms
-      const roomsResponse = await hostelService.getHostelRooms(hostelId!);
-      if (roomsResponse.success) {
-        setRooms(roomsResponse.data);
+      const roomsResponse = await (hostelService as any).getHostelRooms?.(hostelId!) || await hostelRoomService.getHostelRooms(hostelId!);
+      if (Array.isArray(roomsResponse)) {
+        setRooms(roomsResponse as any);
       } else {
         setError('Failed to load hostel rooms');
       }
@@ -437,7 +437,7 @@ const HostelRoomView = () => {
             </DialogHeader>
             {selectedRoom && (
               <HostelRoomForm 
-                initialData={selectedRoom} 
+                initialData={selectedRoom as any} 
                 hostelId={hostelId!} 
                 roomId={selectedRoom._id || selectedRoom.id} 
                 onSuccess={handleRoomUpdated} 

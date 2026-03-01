@@ -57,7 +57,7 @@ export default function BookSharedRoom() {
         setLoading(true);
         
         // Fetch room details
-        const roomResponse = await adminRoomsService.getRoomById(roomId);
+        const roomResponse = await (adminRoomsService as any).getRoomById(roomId);
         setRoom(roomResponse.data);
         
         // Fetch sharing options for this room
