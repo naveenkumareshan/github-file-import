@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { toast } from '@/hooks/use-toast';
 import { UserPlus, Copy, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { getPublicAppUrl } from '@/utils/appUrl';
 import { FunctionsHttpError } from '@supabase/supabase-js';
 
 interface CreateStudentFormProps {
@@ -145,7 +146,7 @@ const CreateStudentForm: React.FC<CreateStudentFormProps> = ({ onStudentCreated 
 
   const handleCopyCredentials = () => {
     if (!credentialsDialog) return;
-    const loginUrl = `${window.location.origin}${getLoginUrl(credentialsDialog.role)}`;
+    const loginUrl = `${getPublicAppUrl()}${getLoginUrl(credentialsDialog.role)}`;
     const text = `Login URL: ${loginUrl}\nEmail: ${credentialsDialog.email}\nPassword: ${credentialsDialog.password}`;
     navigator.clipboard.writeText(text);
     setCopied(true);
@@ -268,7 +269,7 @@ const CreateStudentForm: React.FC<CreateStudentFormProps> = ({ onStudentCreated 
               <div className="border rounded-lg p-3 bg-muted/50 space-y-2 text-xs">
                 <div>
                   <span className="text-muted-foreground">Login URL:</span>
-                  <p className="font-mono text-[11px] break-all">{window.location.origin}{getLoginUrl(credentialsDialog.role)}</p>
+                  <p className="font-mono text-[11px] break-all">{getPublicAppUrl()}{getLoginUrl(credentialsDialog.role)}</p>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Email:</span>
