@@ -1,169 +1,110 @@
 
 
-# Geo-Based Sponsored Listing System
+# Sponsored Listings Enhancement -- UI Standardization, Packages, Area Display, and User Creation Fix
 
-## Overview
-Build a full Sponsored Listings module with Admin control, Partner visibility, and Student-side automatic display. This includes a new database table, admin management UI, partner promotions view, and smart display logic on student listing pages (Hostels + Reading Rooms).
+## 3 Changes Requested
 
----
+### 1. Standardize UI to Match Receipts Pattern (Admin + Partner)
 
-## Phase 1: Database Schema
+**Problem:** Current Sponsored Listings admin page and Partner My Promotions page don't follow the standardized admin UI pattern used by Receipts, Dues, etc (S.No, serial numbers, pagination, filters, search, compact density).
 
-Create a `sponsored_listings` table and a `sponsored_listing_analytics` table.
+**Changes:**
 
-**`sponsored_listings` table:**
-- `id` (uuid, PK)
-- `property_type` (text: 'hostel' | 'reading_room')
-- `property_id` (uuid) -- references hostel or cabin id
-- `partner_id` (uuid) -- references partners table
-- `tier` (text: 'featured' | 'inline_sponsored' | 'boost_ranking')
-- `target_city_id` (uuid) -- required, references cities
-- `target_area_ids` (uuid[]) -- optional multi-select areas
-- `start_date` (date)
-- `end_date` (date)
-- `priority_rank` (integer, default 0)
-- `status` (text: 'active' | 'paused' | 'expired', default 'active')
-- `created_by` (uuid)
-- `created_at`, `updated_at` (timestamptz)
+**Database Migration:**
+- Add `serial_number` column to `sponsored_listings` table
+- Create trigger `set_serial_sponsored_listings` using prefix `SPAD` (Sponsored Ad)
+- Display area names alongside city in both admin table and partner view
 
-**`sponsored_listing_events` table (analytics):**
-- `id` (uuid, PK)
-- `sponsored_listing_id` (uuid, FK)
-- `event_type` (text: 'impression' | 'click' | 'booking')
-- `user_id` (uuid, nullable)
-- `created_at` (timestamptz)
+**Admin Page (`src/pages/admin/SponsoredListings.tsx`) -- Full Rewrite to Match Receipts UI:**
+- Add summary bar at top (Total Listings, Active, Paused, Expired counts)
+- Add compact single-line filter row: Search input + Property Type filter + Tier filter + Status filter + Date range (From/To) + Clear button
+- Table with S.No column (cross-page continuity via `getSerialNumber`)
+- Add serial_number column (font-mono display like receipts)
+- Add Area Names column (resolve `target_area_ids` to names, show as comma-separated)
+- Add `AdminTablePagination` component with page size selector
+- Import and use existing `AdminTablePagination` and `getSerialNumber` from `@/components/admin/AdminTablePagination`
+- Add Refresh and Export buttons in header
+- Keep existing Create/Edit dialog and action buttons
 
-**RLS Policies:**
-- Admins: full CRUD on both tables
-- Partners: SELECT on `sponsored_listings` where `partner_id` matches their partner record; SELECT on `sponsored_listing_events` for their own listings
-- Public/Students: SELECT on `sponsored_listings` where `status = 'active'` and `start_date <= now()` and `end_date >= now()`
-
-**Auto-expire trigger:** A database function that sets `status = 'expired'` when `end_date < CURRENT_DATE`.
+**Partner Page (`src/pages/partner/MyPromotions.tsx`) -- Upgrade to Table View:**
+- Switch from card layout to standardized table layout matching admin pattern
+- Add S.No, Serial Number, Property, Tier, City, Areas, Dates, Days Left, Status, Stats columns
+- Add search + status filter + pagination
+- Keep read-only (no edit/delete actions)
+- Show area names resolved from `target_area_ids`
 
 ---
 
-## Phase 2: Admin Panel -- Sponsored Listings Manager
+### 2. Sponsored Listing Packages -- Partner Self-Service Booking
 
-**New file:** `src/components/admin/SponsoredListingsManager.tsx`
-**New page:** `src/pages/admin/SponsoredListings.tsx`
+**Concept:** Admin creates reusable "Ad Packages" (e.g., "7-Day Featured Boost -- Rs 999", "30-Day Inline Sponsor -- Rs 2499"). Partners can browse available packages and book them for their properties (creating a sponsored listing tied to a package).
 
-Features:
-- Table listing all sponsored ads with columns: Property Name, Partner, Tier, City, Areas, Dates, Priority, Status
-- Create/Edit dialog with:
-  - Property type selector (Hostel / Reading Room)
-  - Property dropdown (filtered by type)
-  - Partner dropdown (auto-filled from property's owner)
-  - Tier selector (Featured / Inline Sponsored / Boost Ranking)
-  - City selector (required) + Area multi-select
-  - Start Date / End Date pickers
-  - Priority Rank input
-  - Status toggle (Active / Paused)
-- Inline status toggle to pause/activate
-- Badge showing expired ads
-- Add to AdminSidebar under a "Marketing" or existing section
+**Database Migration:**
+- Create `sponsored_packages` table:
+  - `id` (uuid, PK)
+  - `name` (text) -- e.g. "7-Day Featured Boost"
+  - `description` (text)
+  - `tier` (text: featured / inline_sponsored / boost_ranking)
+  - `duration_days` (integer) -- auto-calculates end_date from start
+  - `price` (numeric) -- package cost
+  - `is_active` (boolean, default true)
+  - `serial_number` (text, auto-generated with prefix `SPKG`)
+  - `created_by` (uuid)
+  - `created_at` (timestamptz)
+- Add `package_id` column (uuid, nullable, FK) to `sponsored_listings` table
+- Add `payment_status` column (text: 'pending' | 'paid' | 'admin_created', default 'admin_created') to `sponsored_listings`
+- RLS: Admins full CRUD; Partners + Public can SELECT active packages
 
----
+**Admin -- Package Manager Section:**
+- Add a "Packages" tab or section within the Sponsored Listings page
+- CRUD for packages: Name, Description, Tier, Duration (days), Price, Status
+- Table with S.No, Serial Number, Name, Tier, Duration, Price, Status, Actions
 
-## Phase 3: Partner Panel -- My Promotions
-
-**New file:** `src/pages/partner/MyPromotions.tsx`
-
-Features:
-- Card-based list of partner's sponsored listings
-- Each card shows: property name, tier badge, target city/areas, date range, remaining days
-- Analytics per listing: impressions, clicks, CTR%, bookings generated
-- Read-only -- partner cannot activate/create ads
-- Add to partner sidebar navigation
-
----
-
-## Phase 4: Student Display Logic
-
-**Modified files:** `src/pages/Hostels.tsx`, `src/pages/CabinSearch.tsx`
-
-**New hook:** `src/hooks/useSponsoredListings.ts`
-- Fetches active sponsored listings for the current city/area context
-- Tracks impressions automatically
-- Tracks clicks on sponsored cards
-
-**Display ordering logic:**
-1. Area-level Featured ads (max 2)
-2. City-level Featured ads (max 3)
-3. After every 6 organic listings, insert 1 Inline Sponsored card
-4. Boosted listings get a ranking score boost
-5. Remaining organic listings
-6. Max 5 sponsored per page total
-
-**Badges:**
-- "Featured" badge (gold/amber) on featured tier cards
-- "Sponsored" badge (blue) on inline sponsored cards
-- Boosted listings get no visible badge (ranking only)
-
-**Fallback logic:**
-- No area ads -> show city-level ads
-- No city ads -> organic only
+**Partner -- Book a Package (in My Promotions page):**
+- "Book Ad Package" button at top
+- Dialog/sheet showing available packages as cards (name, tier badge, duration, price)
+- Partner selects package, then selects:
+  - Property (from their own properties only)
+  - Target City + Areas
+  - Start Date (end date auto-calculated from package duration)
+- On submit: creates a `sponsored_listings` row with `status = 'pending'`, `payment_status = 'pending'`, `package_id` set
+- Admin must then approve (change status to 'active') -- keeps admin control intact
+- Future: integrate with payment gateway (for now, partner submits request, admin approves after offline payment confirmation)
 
 ---
 
-## Phase 5: Analytics Tracking
+### 3. Remove Employee Option from Partner User Creation
 
-**Event tracking in hook:**
-- `impression`: fired when a sponsored card enters the viewport (IntersectionObserver)
-- `click`: fired when user taps a sponsored card
-- `booking`: tracked at booking confirmation by checking if the property has an active sponsored listing
+**Problem:** The CreateStudentForm allows partners (role = 'vendor') to create users with role 'vendor_employee'. There is already a separate dedicated Employee management section, so the employee option in the user creation form is redundant for partners.
 
-**Admin analytics view** (in SponsoredListingsManager):
-- Per-listing stats: impressions, clicks, CTR%, bookings, revenue
-- Aggregate from `sponsored_listing_events` table
+**File:** `src/components/admin/CreateStudentForm.tsx`
 
----
+**Change:** When user role is 'vendor', filter out `vendor_employee` from the role options. Partners should only be able to create Students from the user creation form. Employee creation is handled separately via the dedicated employee management module.
 
-## Phase 6: Ranking Algorithm
-
-Applied in the display hook before rendering:
-
-```text
-finalScore = baseScore
-  + (sponsoredWeight * tierMultiplier)
-  + (areaMatchPriority * areaBonus)
-  + (ratingScore * ratingWeight)
-  + (availabilityScore * availabilityWeight)
+Current code (line 37-39):
+```typescript
+if (user?.role === 'vendor') {
+  return ROLE_OPTIONS.filter(r => r.value === 'student' || r.value === 'vendor_employee');
+}
 ```
 
-Where:
-- `tierMultiplier`: Featured = 100, Inline = 50, Boost = 30
-- `areaBonus`: +20 if area matches
-- `ratingScore`: average_rating * 5
-- `availabilityScore`: has available beds/seats = +10
-
-Sponsored listings influence position but organic high-rated listings can still rank highly.
-
----
-
-## File Changes Summary
-
-| Action | File |
-|--------|------|
-| Create | `src/components/admin/SponsoredListingsManager.tsx` |
-| Create | `src/pages/admin/SponsoredListings.tsx` |
-| Create | `src/pages/partner/MyPromotions.tsx` |
-| Create | `src/hooks/useSponsoredListings.ts` |
-| Modify | `src/pages/Hostels.tsx` (integrate sponsored display) |
-| Modify | `src/pages/CabinSearch.tsx` (integrate sponsored display) |
-| Modify | `src/components/admin/AdminSidebar.tsx` (add menu item) |
-| Modify | `src/App.tsx` (add routes) |
-| DB Migration | Create `sponsored_listings` and `sponsored_listing_events` tables with RLS |
-| DB Migration | Create auto-expire function/trigger |
+Change to:
+```typescript
+if (user?.role === 'vendor') {
+  return ROLE_OPTIONS.filter(r => r.value === 'student');
+}
+```
 
 ---
 
-## Important Conditions Met
+## Technical Summary
 
-- Ads auto-expire via database trigger
-- Max 5 sponsored per page enforced in hook
-- Admin has full control (CRUD + status management)
-- Partner view is read-only with analytics
-- Mobile-responsive card UI with marketplace-style badges
-- Geo-targeted by city (required) + area (optional multi-select)
-- No SEO disruption (badges are small, no layout shift)
+| Action | File / Resource |
+|--------|----------------|
+| DB Migration | Add `serial_number` to `sponsored_listings`, create trigger |
+| DB Migration | Create `sponsored_packages` table with serial number trigger |
+| DB Migration | Add `package_id`, `payment_status` columns to `sponsored_listings` |
+| Rewrite | `src/pages/admin/SponsoredListings.tsx` (receipts-style UI + packages tab) |
+| Rewrite | `src/pages/partner/MyPromotions.tsx` (table UI + book package flow) |
+| Edit | `src/components/admin/CreateStudentForm.tsx` (remove employee from partner role options) |
 
