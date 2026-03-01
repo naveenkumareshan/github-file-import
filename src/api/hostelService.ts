@@ -51,7 +51,7 @@ export const hostelService = {
   getAllHostels: async (filters?: HostelFilters) => {
     let query = supabase
       .from('hostels')
-      .select('*, states(name), cities(name), areas(name)')
+      .select('*, states(name), cities(name), areas(name), hostel_rooms(hostel_sharing_options(price_monthly))')
       .order('created_at', { ascending: false });
 
     if (filters?.city_id) query = query.eq('city_id', filters.city_id);
