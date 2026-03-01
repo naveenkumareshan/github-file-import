@@ -10,6 +10,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { hostelService } from "@/api/hostelService";
@@ -95,6 +102,7 @@ const HostelRoomDetails = () => {
   // Selection state
   const [sharingFilter, setSharingFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [roomFilter, setRoomFilter] = useState<string>('all');
   const [selectedBed, setSelectedBed] = useState<any>(null);
   const [selectedStayPackage, setSelectedStayPackage] = useState<StayPackage | null>(null);
   const [durationType, setDurationType] = useState<DurationType>('monthly');
@@ -197,6 +205,14 @@ const HostelRoomDetails = () => {
 
   const handleCategoryFilterChange = (val: string) => {
     setCategoryFilter(val);
+    setSelectedBed(null);
+    setSelectedStayPackage(null);
+    setAgreedToTerms(false);
+    setUseAdvancePayment(false);
+  };
+
+  const handleRoomFilterChange = (val: string) => {
+    setRoomFilter(val);
     setSelectedBed(null);
     setSelectedStayPackage(null);
     setAgreedToTerms(false);
@@ -572,6 +588,38 @@ const HostelRoomDetails = () => {
                   ))}
                 </div>
               )}
+
+              {/* Room filter pills */}
+              {rooms.length > 1 && (
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium text-muted-foreground">Room</Label>
+                  <div className="flex gap-1.5 overflow-x-auto pb-2 no-scrollbar">
+                    <button
+                      onClick={() => handleRoomFilterChange('all')}
+                      className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all ${
+                        roomFilter === 'all'
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
+                      }`}
+                    >
+                      All Rooms
+                    </button>
+                    {rooms.map((room: any) => (
+                      <button
+                        key={room.id}
+                        onClick={() => handleRoomFilterChange(room.id)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all ${
+                          roomFilter === room.id
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
+                        }`}
+                      >
+                        R{room.room_number} (F{room.floor})
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* ═══ 2: Stay Duration ═══ */}
@@ -582,84 +630,91 @@ const HostelRoomDetails = () => {
                 <Label className="text-sm font-semibold text-foreground">Stay Duration</Label>
               </div>
 
-              {/* Duration type pills - filtered by allowed_durations */}
-              <div className="flex gap-2 mb-3">
-                {(['daily', 'weekly', 'monthly'] as DurationType[]).filter(type => allowedDurations.includes(type)).map(type => (
-                  <button
-                    key={type}
-                    onClick={() => { setDurationType(type); setDurationCount(1); setSelectedStayPackage(null); setSelectedBed(null); }}
-                    className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all ${
-                      durationType === type
-                        ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                        : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
-                    }`}
-                  >
-                    {type === 'daily' ? 'Daily' : type === 'weekly' ? 'Weekly' : 'Monthly'}
-                  </button>
-                ))}
-              </div>
-
-              {/* Check-in date picker */}
-              <div className="flex items-center gap-3 mb-3">
-                <span className="text-sm text-muted-foreground">Check-in:</span>
-                <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
+              {/* Duration type segmented toggle */}
+              <div>
+                <Label className="block mb-1 text-xs font-medium text-muted-foreground">Duration Type</Label>
+                <div className="flex gap-1.5 bg-muted/50 rounded-xl p-1">
+                  {(['daily', 'weekly', 'monthly'] as DurationType[]).filter(type => allowedDurations.includes(type)).map(type => (
+                    <button
+                      key={type}
+                      onClick={() => { setDurationType(type); setDurationCount(1); setSelectedStayPackage(null); setSelectedBed(null); }}
                       className={cn(
-                        "w-[200px] justify-start text-left font-normal text-sm",
-                        !checkInDate && "text-muted-foreground"
+                        "flex-1 py-2 rounded-lg text-xs font-semibold transition-all",
+                        durationType === type
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
                       )}
                     >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {format(checkInDate, 'dd MMM yyyy')}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={checkInDate}
-                      onSelect={handleCheckInDateChange}
-                      disabled={(date) =>
-                        date < new Date(new Date().setHours(0, 0, 0, 0)) ||
-                        date > addDays(new Date(), maxAdvanceBookingDays)
-                      }
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")}
-                    />
-                  </PopoverContent>
-                </Popover>
+                      {type === 'daily' ? 'Daily' : type === 'weekly' ? 'Weekly' : 'Monthly'}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              {/* Duration count */}
-              <div className="flex items-center gap-3 mb-3">
-                <span className="text-sm text-muted-foreground">Duration:</span>
-                <div className="flex items-center border rounded-lg overflow-hidden">
-                  <button
-                    onClick={() => { if (durationCount > 1) { setDurationCount(durationCount - 1); setSelectedBed(null); } }}
-                    className="px-3 py-1.5 text-sm font-bold bg-muted/50 hover:bg-muted border-r"
-                  >−</button>
-                  <span className="px-4 py-1.5 text-sm font-semibold min-w-[3rem] text-center">{durationCount}</span>
-                  <button
-                    onClick={() => { setDurationCount(durationCount + 1); setSelectedBed(null); }}
-                    className="px-3 py-1.5 text-sm font-bold bg-muted/50 hover:bg-muted border-l"
-                  >+</button>
+              {/* Duration count + Start date in a styled row */}
+              <div className="flex items-end gap-2 bg-muted/20 rounded-xl p-2.5 border border-border/50">
+                <div className="w-28">
+                  <Label className="block mb-1 text-xs text-muted-foreground">
+                    {durationType === 'daily' ? 'Days' : durationType === 'weekly' ? 'Weeks' : 'Months'}
+                  </Label>
+                  <Select
+                    value={String(durationCount)}
+                    onValueChange={(val) => { setDurationCount(parseInt(val)); setSelectedBed(null); }}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-80">
+                      {(durationType === 'daily'
+                        ? Array.from({length: 30}, (_, i) => ({ label: `${i+1} ${i === 0 ? 'Day' : 'Days'}`, value: i+1 }))
+                        : durationType === 'weekly'
+                        ? Array.from({length: 12}, (_, i) => ({ label: `${i+1} ${i === 0 ? 'Week' : 'Weeks'}`, value: i+1 }))
+                        : Array.from({length: 12}, (_, i) => ({ label: `${i+1} ${i === 0 ? 'Month' : 'Months'}`, value: i+1 }))
+                      ).map(opt => (
+                        <SelectItem key={opt.value} value={String(opt.value)}>{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <span className="text-sm text-muted-foreground">
-                  {durationType === 'daily' ? (durationCount === 1 ? 'day' : 'days') : durationType === 'weekly' ? (durationCount === 1 ? 'week' : 'weeks') : (durationCount === 1 ? 'month' : 'months')}
+
+                <div className="flex-1">
+                  <Label className="block mb-1 text-xs text-muted-foreground">Start Date</Label>
+                  <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal h-9",
+                          !checkInDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {format(checkInDate, 'PPP')}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={checkInDate}
+                        onSelect={handleCheckInDateChange}
+                        disabled={(date) =>
+                          date < new Date(new Date().setHours(0, 0, 0, 0)) ||
+                          date > addDays(new Date(), maxAdvanceBookingDays)
+                        }
+                        initialFocus
+                        className={cn("p-3 pointer-events-auto")}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+
+              {/* End date as styled badge */}
+              <div className="flex items-center gap-1.5">
+                <span className="inline-flex items-center gap-1 text-xs font-medium bg-primary/10 text-primary rounded-full px-3 py-1">
+                  <CalendarIcon className="h-3 w-3" />
+                  Ends: {format(endDate, 'dd MMM yyyy')}
                 </span>
-              </div>
-
-              {/* Check-in / Check-out info */}
-              <div className="bg-muted/30 rounded-lg p-2.5 border border-border/50 text-xs space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Check-in</span>
-                  <span className="font-medium text-foreground">{format(checkInDate, 'dd MMM yyyy')}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Check-out</span>
-                  <span className="font-medium text-foreground">{format(endDate, 'dd MMM yyyy')}</span>
-                </div>
               </div>
             </div>
 
@@ -678,6 +733,7 @@ const HostelRoomDetails = () => {
                 readOnly={false}
                 sharingFilter={sharingFilter}
                 categoryFilter={categoryFilter}
+                roomFilter={roomFilter}
                 startDate={format(checkInDate, 'yyyy-MM-dd')}
                 endDate={format(endDate, 'yyyy-MM-dd')}
               />
@@ -722,6 +778,18 @@ const HostelRoomDetails = () => {
                     <div className="flex justify-between"><span className="text-muted-foreground">Check-in</span><span className="font-medium text-foreground">{format(checkInDate, 'dd MMM yyyy')}</span></div>
                     <div className="flex justify-between"><span className="text-muted-foreground">Check-out</span><span className="font-medium text-foreground">{format(endDate, 'dd MMM yyyy')}</span></div>
                     <div className="flex justify-between"><span className="text-muted-foreground">Duration</span><span className="font-medium text-foreground">{durationCount} {durationType === 'daily' ? (durationCount === 1 ? 'day' : 'days') : durationType === 'weekly' ? (durationCount === 1 ? 'week' : 'weeks') : (durationCount === 1 ? 'month' : 'months')}</span></div>
+                    {selectedBed.amenities && selectedBed.amenities.length > 0 && (
+                      <div className="flex justify-between items-start">
+                        <span className="text-muted-foreground">Amenities</span>
+                        <div className="flex flex-wrap gap-1 justify-end max-w-[60%]">
+                          {selectedBed.amenities.map((a: string) => (
+                            <span key={a} className="inline-flex items-center text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                              {a}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Price Breakdown */}

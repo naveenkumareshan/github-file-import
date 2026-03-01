@@ -690,6 +690,7 @@ export type Database = {
       }
       hostel_beds: {
         Row: {
+          amenities: string[]
           bed_number: number
           block_reason: string | null
           category: string | null
@@ -704,6 +705,7 @@ export type Database = {
           sharing_option_id: string
         }
         Insert: {
+          amenities?: string[]
           bed_number?: number
           block_reason?: string | null
           category?: string | null
@@ -718,6 +720,7 @@ export type Database = {
           sharing_option_id: string
         }
         Update: {
+          amenities?: string[]
           bed_number?: number
           block_reason?: string | null
           category?: string | null
