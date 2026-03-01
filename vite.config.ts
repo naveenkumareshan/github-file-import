@@ -28,7 +28,7 @@ export default defineConfig(({ mode }) => ({
       devOptions: {
         enabled: false, // optional (for dev mode testing)
       },
-      includeAssets: ['favicon.svg', 'robots.txt', 'apple-touch-icon.png'],
+      includeAssets: ['favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
       manifest: {
         name: 'Inhalestays',
         short_name: 'Reading Rooms',
@@ -65,9 +65,7 @@ export default defineConfig(({ mode }) => ({
         ],
         runtimeCaching: [
           {
-            urlPattern: ({ url }) =>
-              url.origin === 'https://inhalestays.com' &&
-              url.pathname.startsWith('/manage/api'),
+            urlPattern: /^https:\/\/inhalestays\.com\/manage\/api\/.*/,
             handler: 'NetworkOnly'
           }
         ],
