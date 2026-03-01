@@ -182,7 +182,7 @@ export default function Hostels() {
             {filteredHostels.map((hostel) => (
               <div
                 key={hostel.id}
-                onClick={() => navigate(`/hostels/${hostel.id}`)}
+                onClick={() => navigate(`/hostels/${hostel.serial_number || hostel.id}`)}
                 className="flex gap-3 p-3 bg-card rounded-2xl border border-border hover:border-primary/30 hover:shadow-sm transition-all active:scale-[0.99] cursor-pointer"
               >
                 {/* Thumbnail */}

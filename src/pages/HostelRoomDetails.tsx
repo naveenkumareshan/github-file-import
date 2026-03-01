@@ -111,6 +111,8 @@ const HostelRoomDetails = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
 
+  const isUUID = (s: string) => /^[0-9a-f]{8}-/.test(s);
+
   /* ─── Data fetch ─── */
   useEffect(() => {
     const fetchData = async () => {
@@ -119,10 +121,13 @@ const HostelRoomDetails = () => {
         fetchedRef.current = true;
         setLoading(true);
         setError(null);
-        const [hostelData, roomsData, catResult] = await Promise.all([
-          hostelService.getHostelById(hostelId),
-          hostelRoomService.getHostelRooms(hostelId),
-          hostelBedCategoryService.getCategories(hostelId),
+        const hostelData = isUUID(hostelId)
+          ? await hostelService.getHostelById(hostelId)
+          : await hostelService.getHostelBySerialNumber(hostelId);
+        const resolvedId = hostelData.id;
+        const [roomsData, catResult] = await Promise.all([
+          hostelRoomService.getHostelRooms(resolvedId),
+          hostelBedCategoryService.getCategories(resolvedId),
         ]);
         setHostel(hostelData);
         setRooms(roomsData || []);

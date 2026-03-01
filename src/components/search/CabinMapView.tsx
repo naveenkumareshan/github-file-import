@@ -180,7 +180,7 @@ export const CabinMapView = ({ cabins, selectedLocation, loading }: CabinMapView
           <div class="flex gap-2">
             <button 
               class="book-now-btn flex-1 px-3 py-2 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-              data-cabin-id="${cabin._id}"
+              data-cabin-id="${(cabin as any).serial_number || cabin._id}"
             >
               Book Now
             </button>
@@ -192,12 +192,13 @@ export const CabinMapView = ({ cabins, selectedLocation, loading }: CabinMapView
       const viewDetailsBtn = popupContent.querySelector('.view-details-btn');
       const bookNowBtn = popupContent.querySelector('.book-now-btn');
 
+      const cabinSlug = (cabin as any).serial_number || cabin._id;
       viewDetailsBtn?.addEventListener('click', () => {
-        navigate(`/cabins/${cabin._id}`);
+        navigate(`/cabins/${cabinSlug}`);
       });
 
       bookNowBtn?.addEventListener('click', () => {
-        navigate(`/book-seat/${cabin._id}`);
+        navigate(`/book-seat/${cabinSlug}`);
       });
 
       // Create popup
@@ -248,7 +249,7 @@ export const CabinMapView = ({ cabins, selectedLocation, loading }: CabinMapView
     }
   };
 
-  const handleBookNow = (cabinId: string) => navigate(`/book-seat/${cabinId}`);
+  const handleBookNow = (cabinId: string) => navigate(`/book-seat/${cabinId}`); // cabinId here is already slug from selectedCabin
 
   return (
     <div className="space-y-4">
@@ -308,7 +309,7 @@ export const CabinMapView = ({ cabins, selectedLocation, loading }: CabinMapView
                   ₹{selectedCabin.price}/month
                 </div>
                 <div className="flex gap-2">
-                  <Button size="sm" onClick={() => handleBookNow(selectedCabin._id)}>
+                  <Button size="sm" onClick={() => handleBookNow((selectedCabin as any).serial_number || selectedCabin._id)}>
                     Book Now
                   </Button>
                 </div>

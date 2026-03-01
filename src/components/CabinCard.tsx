@@ -49,8 +49,10 @@ export const CabinCard = ({ cabin }: CabinCardProps) => {
   
   const hasRating = (cabin.reviewCount || 0) > 0;
 
+  const cabinSlug = (cabin as any).serial_number || cabin._id;
+
   return (
-    <Link to={`/book-seat/${cabin._id}`} className="block group">
+    <Link to={`/book-seat/${cabinSlug}`} className="block group">
       <Card className="overflow-hidden border-0 shadow-card hover:shadow-card-hover transition-all duration-300 hover:-translate-y-1 bg-card h-full">
         {/* Image */}
         <div className="aspect-[4/3] relative overflow-hidden">

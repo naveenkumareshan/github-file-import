@@ -278,4 +278,14 @@ export const hostelService = {
     if (error) throw error;
     return data;
   },
+
+  getHostelBySerialNumber: async (serialNumber: string) => {
+    const { data, error } = await supabase
+      .from('hostels')
+      .select('*, states(name), cities(name), areas(name)')
+      .eq('serial_number', serialNumber)
+      .single();
+    if (error) throw error;
+    return data;
+  },
 };

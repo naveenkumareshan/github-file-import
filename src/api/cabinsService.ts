@@ -103,4 +103,18 @@ export const cabinsService = {
       return { success: false, error, data: [] };
     }
   },
+
+  getCabinBySerialNumber: async (serialNumber: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('cabins')
+        .select('*')
+        .eq('serial_number', serialNumber)
+        .single();
+      return { success: !error, data };
+    } catch (error) {
+      console.error(`Error fetching cabin with serial number ${serialNumber}:`, error);
+      return { success: false, error };
+    }
+  },
 };
