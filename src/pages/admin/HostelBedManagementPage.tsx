@@ -325,7 +325,7 @@ const HostelBedManagementPage = () => {
       toast({ title: 'Cannot delete room', description: `Delete all ${count} bed(s) in this room first.`, variant: 'destructive' });
       return;
     }
-    setDeleteConfirm({ type: 'room', id: roomId, name: `Room ${roomNumber}` });
+    setDeleteConfirm({ type: 'room', id: roomId, name: roomNumber });
   };
 
   const executeDeleteRoom = async (roomId: string) => {
@@ -767,7 +767,7 @@ const HostelBedManagementPage = () => {
                             onClick={() => setSelectedRoomId(room.id)}
                           >
                             <Building className="h-3 w-3 inline mr-1" />
-                            Room {room.room_number}
+                            {room.room_number}
                             <span className="ml-1 opacity-75">({availBeds}/{bedCount})</span>
                           </button>
                           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setRenameRoomId(room.id); setRenameRoomValue(room.room_number); }}>
@@ -823,7 +823,7 @@ const HostelBedManagementPage = () => {
                 <Plus className="h-3.5 w-3.5 mr-1" />Add Beds
               </Button>
               <span className="text-xs text-muted-foreground">
-                to Room {selectedRoom?.room_number}
+                to {selectedRoom?.room_number}
               </span>
             </div>
           )}
@@ -833,7 +833,7 @@ const HostelBedManagementPage = () => {
             <div className="border rounded-xl p-4 bg-card">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-sm">Room {selectedRoom?.room_number}</span>
+                  <span className="font-semibold text-sm">{selectedRoom?.room_number}</span>
                 </div>
                 <span className="text-xs text-muted-foreground">
                   {selectedRoomBeds.filter((b: any) => b.is_available && !b.is_blocked).length}/{selectedRoomBeds.length} available
@@ -910,7 +910,7 @@ const HostelBedManagementPage = () => {
           ) : selectedRoomId ? (
             <div className="text-center py-6 text-muted-foreground border rounded-lg">
               <BedDouble className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">No beds in Room {selectedRoom?.room_number}</p>
+              <p className="text-sm">No beds in {selectedRoom?.room_number}</p>
               <p className="text-xs mt-1">Use "Add Beds" to create beds for this room</p>
             </div>
           ) : null}
@@ -920,7 +920,7 @@ const HostelBedManagementPage = () => {
             <div className="space-y-2">
               <h3 className="text-sm font-semibold flex items-center gap-1.5">
                 <MapIcon className="h-4 w-4" />
-                Layout Plan — Room {selectedRoom?.room_number}
+                Layout Plan — {selectedRoom?.room_number}
               </h3>
               {roomLayout ? (
                 <HostelBedPlanDesigner
@@ -1022,7 +1022,7 @@ const HostelBedManagementPage = () => {
       {/* Add Beds Dialog */}
       <Dialog open={addBedDialogOpen} onOpenChange={setAddBedDialogOpen}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Add Beds to Room {selectedRoom?.room_number}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Add Beds to {selectedRoom?.room_number}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div>
               <Label>Sharing Type</Label>
