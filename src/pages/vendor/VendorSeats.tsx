@@ -533,7 +533,7 @@ const VendorSeats: React.FC = () => {
         seatNumber: selectedSeat.number,
         startDate: format(bookingStartDate, 'yyyy-MM-dd'),
         endDate: format(computedEndDate, 'yyyy-MM-dd'),
-        duration: (bookingPlan as any) === 'monthly' ? '1 Month' : (bookingPlan as any) === '15days' ? '15 Days' : `${(customDays as any) || 0} Days`,
+        duration: selectedDuration.type === 'monthly' ? `${selectedDuration.count} Month${selectedDuration.count > 1 ? 's' : ''}` : selectedDuration.type === 'weekly' ? `${selectedDuration.count} Week${selectedDuration.count > 1 ? 's' : ''}` : `${selectedDuration.count} Day${selectedDuration.count > 1 ? 's' : ''}`,
         seatAmount: parseFloat(bookingPrice) || 0,
         discountAmount: parseFloat(discountAmount) || 0,
         discountReason,
