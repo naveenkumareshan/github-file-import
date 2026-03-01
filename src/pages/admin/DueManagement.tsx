@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Wallet, AlertTriangle, IndianRupee, Calendar, Search, Banknote, Smartphone, Building2, CreditCard, Receipt, Pencil } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -51,6 +52,7 @@ const DueManagement: React.FC = () => {
   const [dateDialogOpen, setDateDialogOpen] = useState(false);
 
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   const fetchData = async () => {
     setLoading(true);
@@ -224,6 +226,41 @@ const DueManagement: React.FC = () => {
             <div className="text-center py-12 text-muted-foreground text-sm">No dues found</div>
           ) : (
             <div className="overflow-x-auto">
+              {isMobile ? (
+                <div className="space-y-3 p-3">
+                  {dues.map((due: any) => {
+                    const remaining = Number(due.due_amount) - Number(due.paid_amount);
+                    return (
+                      <div key={due.id} className="border rounded-lg p-3 bg-card space-y-2">
+                        <div className="flex items-start justify-between">
+                          <div className="min-w-0">
+                            <p className="font-medium text-xs">{(due.profiles as any)?.name || 'N/A'}</p>
+                            <p className="text-[10px] text-muted-foreground">{(due.profiles as any)?.phone}</p>
+                          </div>
+                          {getStatusBadge(due)}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-[11px]">
+                          <div><span className="text-muted-foreground">Room: </span>{(due.cabins as any)?.name || ''} #{(due.seats as any)?.number || ''}</div>
+                          <div><span className="text-muted-foreground">Total: </span>₹{Number(due.total_fee).toLocaleString()}</div>
+                          <div className="text-emerald-600">Paid: ₹{(Number(due.advance_paid) + Number(due.paid_amount)).toLocaleString()}</div>
+                          <div className="text-red-600 font-medium">Due: ₹{Math.max(0, remaining).toLocaleString()}</div>
+                        </div>
+                        <div className="flex items-center justify-between pt-1 border-t text-[11px]">
+                          <div>{getDaysInfo(due)}</div>
+                          <div className="flex gap-1">
+                            {remaining > 0 && (
+                              <Button size="sm" variant="outline" className="h-7 text-[10px] px-2" onClick={() => openCollect(due)}>Collect</Button>
+                            )}
+                            <Button size="sm" variant="ghost" className="h-7 text-[10px] px-2 gap-1" onClick={() => openReceipts(due)}>
+                              <Receipt className="h-3 w-3" /> Receipts
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
               <Table>
                 <TableHeader>
                   <TableRow className="text-[10px]">
@@ -300,6 +337,7 @@ const DueManagement: React.FC = () => {
                   })}
                 </TableBody>
               </Table>
+              )}
             </div>
           )}
         </CardContent>

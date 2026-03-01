@@ -23,6 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { adminUsersService } from "../api/adminUsersService";
 import { toast } from "@/hooks/use-toast";
 import ErrorBoundary from "../components/ErrorBoundary";
@@ -82,6 +83,7 @@ const AdminStudents = () => {
   const [includeInactive, setIncludeInactive] = useState(false);
   const [loadingBookings, setLoadingBookings] = useState(false);
   const { user } = useAuth();
+  const isMobile = useIsMobile();
 
   // Property linking state
   const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
@@ -311,85 +313,123 @@ const AdminStudents = () => {
           </div>
         ) : (
           <>
-            <div className="border rounded-lg overflow-x-auto">
-              <table className="w-full text-[11px]">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <th className="text-left py-2 px-3 font-medium w-12">S.No.</th>
-                    <th className="text-left py-2 px-3 font-medium">Name</th>
-                    {(role === "student" || role === "vendor_employee") && (
-                      <th className="text-left py-2 px-3 font-medium">Gender</th>
-                    )}
-                    <th className="text-left py-2 px-3 font-medium">Status</th>
-                    <th className="text-left py-2 px-3 font-medium">Joined</th>
-                    <th className="text-right py-2 px-3 font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {students.map((s, index) => (
-                    <tr key={s._id} className="border-b last:border-0 hover:bg-muted/30">
-                      <td className="py-1.5 px-3 text-muted-foreground">{getSerialNumber(index, currentPage, pageSize)}</td>
-                      <td className="py-1.5 px-3">
-                        <div>
-                          <span className="font-medium">{s.name}</span>
-                          <div className="text-[10px] text-muted-foreground">{s.phone || '—'}</div>
-                          <div className="text-[10px] text-muted-foreground">{s.email}</div>
-                        </div>
-                      </td>
-                      {(role === "student" || role === "vendor_employee") && (
-                        <td className="py-1.5 px-3 text-muted-foreground">{s.gender || '—'}</td>
+            {isMobile ? (
+              <div className="space-y-3">
+                {students.map((s) => (
+                  <div key={s._id} className="border rounded-lg p-3 bg-card space-y-2">
+                    <div className="flex items-start justify-between">
+                      <div className="min-w-0">
+                        <p className="font-medium text-xs truncate">{s.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{s.email}</p>
+                        <p className="text-[10px] text-muted-foreground">{s.phone || '—'}</p>
+                      </div>
+                      <Badge variant={s.isActive ? 'success' : 'destructive'} className="text-[9px]">
+                        {s.isActive ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span>Joined: {s.joinedAt ? new Date(s.joinedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</span>
+                      {(role === "student" || role === "vendor_employee") && <span>Gender: {s.gender || '—'}</span>}
+                    </div>
+                    <div className="flex items-center gap-1 pt-1 border-t flex-wrap">
+                      <Button variant="ghost" size="sm" className="h-7 text-[10px] px-2 gap-1" onClick={() => handleViewDetails(s)}>
+                        <Eye className="h-3 w-3" /> View
+                      </Button>
+                      {user.role === "admin" && (
+                        <Button variant="ghost" size="sm" className="h-7 text-[10px] px-2 gap-1" onClick={() => { setSelectedStudent(s); setIsEditOpen(true); }}>
+                          <Edit className="h-3 w-3" /> Edit
+                        </Button>
                       )}
-                      <td className="py-1.5 px-3">
-                        <Badge variant={s.isActive ? 'success' : 'destructive'} className="text-[9px]">
-                          {s.isActive ? 'Active' : 'Inactive'}
-                        </Badge>
-                      </td>
-                      <td className="py-1.5 px-3 text-muted-foreground">
-                        {s.joinedAt ? new Date(s.joinedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
-                      </td>
-                      <td className="py-1.5 px-3 text-right">
-                        <div className="flex items-center justify-end gap-1 flex-wrap">
-                          <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 gap-1" onClick={() => handleViewDetails(s)}>
-                            <Eye className="h-3 w-3" /> View
-                          </Button>
-                          {user.role === "admin" && (
-                            <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 gap-1" onClick={() => { setSelectedStudent(s); setIsEditOpen(true); }}>
-                              <Edit className="h-3 w-3" /> Edit
-                            </Button>
-                          )}
-                          {isPartnerTab && user.role === "admin" && (
-                            <>
-                              <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 gap-1" onClick={() => handleOpenLinkDialog(s, 'cabin')}>
-                                <Link2 className="h-3 w-3" /> Room
-                              </Button>
-                              <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 gap-1" onClick={() => handleOpenLinkDialog(s, 'hostel')}>
-                                <Building2 className="h-3 w-3" /> Hostel
-                              </Button>
-                            </>
-                          )}
-                          {user?.role === "admin" && (
-                            <>
-                              <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 gap-1" onClick={() => { setSelectedStudent(s); setIsResetPasswordOpen(true); }}>
-                                <KeyRound className="h-3 w-3" /> Reset
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className={`h-6 text-[10px] px-2 gap-1 ${s.isActive ? 'text-destructive hover:text-destructive' : 'text-green-600 hover:text-green-700'}`}
-                                onClick={() => setToggleStatusUser(s)}
-                              >
-                                {s.isActive ? <ShieldOff className="h-3 w-3" /> : <ShieldCheck className="h-3 w-3" />}
-                                {s.isActive ? 'Deactivate' : 'Activate'}
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </td>
+                      {user?.role === "admin" && (
+                        <Button variant="ghost" size="sm" className="h-7 text-[10px] px-2 gap-1" onClick={() => { setSelectedStudent(s); setIsResetPasswordOpen(true); }}>
+                          <KeyRound className="h-3 w-3" /> Reset
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="border rounded-lg overflow-x-auto">
+                <table className="w-full text-[11px]">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="text-left py-2 px-3 font-medium w-12">S.No.</th>
+                      <th className="text-left py-2 px-3 font-medium">Name</th>
+                      {(role === "student" || role === "vendor_employee") && (
+                        <th className="text-left py-2 px-3 font-medium">Gender</th>
+                      )}
+                      <th className="text-left py-2 px-3 font-medium">Status</th>
+                      <th className="text-left py-2 px-3 font-medium">Joined</th>
+                      <th className="text-right py-2 px-3 font-medium">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {students.map((s, index) => (
+                      <tr key={s._id} className="border-b last:border-0 hover:bg-muted/30">
+                        <td className="py-1.5 px-3 text-muted-foreground">{getSerialNumber(index, currentPage, pageSize)}</td>
+                        <td className="py-1.5 px-3">
+                          <div>
+                            <span className="font-medium">{s.name}</span>
+                            <div className="text-[10px] text-muted-foreground">{s.phone || '—'}</div>
+                            <div className="text-[10px] text-muted-foreground">{s.email}</div>
+                          </div>
+                        </td>
+                        {(role === "student" || role === "vendor_employee") && (
+                          <td className="py-1.5 px-3 text-muted-foreground">{s.gender || '—'}</td>
+                        )}
+                        <td className="py-1.5 px-3">
+                          <Badge variant={s.isActive ? 'success' : 'destructive'} className="text-[9px]">
+                            {s.isActive ? 'Active' : 'Inactive'}
+                          </Badge>
+                        </td>
+                        <td className="py-1.5 px-3 text-muted-foreground">
+                          {s.joinedAt ? new Date(s.joinedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                        </td>
+                        <td className="py-1.5 px-3 text-right">
+                          <div className="flex items-center justify-end gap-1 flex-wrap">
+                            <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 gap-1" onClick={() => handleViewDetails(s)}>
+                              <Eye className="h-3 w-3" /> View
+                            </Button>
+                            {user.role === "admin" && (
+                              <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 gap-1" onClick={() => { setSelectedStudent(s); setIsEditOpen(true); }}>
+                                <Edit className="h-3 w-3" /> Edit
+                              </Button>
+                            )}
+                            {isPartnerTab && user.role === "admin" && (
+                              <>
+                                <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 gap-1" onClick={() => handleOpenLinkDialog(s, 'cabin')}>
+                                  <Link2 className="h-3 w-3" /> Room
+                                </Button>
+                                <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 gap-1" onClick={() => handleOpenLinkDialog(s, 'hostel')}>
+                                  <Building2 className="h-3 w-3" /> Hostel
+                                </Button>
+                              </>
+                            )}
+                            {user?.role === "admin" && (
+                              <>
+                                <Button variant="ghost" size="sm" className="h-6 text-[10px] px-2 gap-1" onClick={() => { setSelectedStudent(s); setIsResetPasswordOpen(true); }}>
+                                  <KeyRound className="h-3 w-3" /> Reset
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className={`h-6 text-[10px] px-2 gap-1 ${s.isActive ? 'text-destructive hover:text-destructive' : 'text-green-600 hover:text-green-700'}`}
+                                  onClick={() => setToggleStatusUser(s)}
+                                >
+                                  {s.isActive ? <ShieldOff className="h-3 w-3" /> : <ShieldCheck className="h-3 w-3" />}
+                                  {s.isActive ? 'Deactivate' : 'Activate'}
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
             <AdminTablePagination
               currentPage={currentPage}

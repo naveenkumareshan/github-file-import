@@ -14,6 +14,7 @@ import { CalendarIcon, Search, Receipt, Download, RefreshCw } from 'lucide-react
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/utils/currency';
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ReceiptRow {
   id: string;
@@ -50,6 +51,7 @@ const Receipts: React.FC = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     fetchCabins();
@@ -158,7 +160,7 @@ const Receipts: React.FC = () => {
       </div>
 
       {/* Summary */}
-      <div className="border rounded-md p-3 bg-card flex items-center gap-6">
+      <div className="border rounded-md p-3 bg-card flex flex-wrap items-center gap-4 sm:gap-6">
         <div>
           <div className="text-[10px] uppercase text-muted-foreground">Total</div>
           <div className="text-lg font-bold">{formatCurrency(totalAmount)}</div>
@@ -217,31 +219,54 @@ const Receipts: React.FC = () => {
         )}
       </div>
 
-      {/* Table */}
+      {/* Table / Cards */}
       <div className="border rounded-md">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="text-xs">S.No.</TableHead>
-              <TableHead className="text-xs">Receipt #</TableHead>
-              <TableHead className="text-xs">Student</TableHead>
-              <TableHead className="text-xs">Room / Seat</TableHead>
-              <TableHead className="text-xs">Amount</TableHead>
-              <TableHead className="text-xs">Method</TableHead>
-              <TableHead className="text-xs">Type</TableHead>
-              <TableHead className="text-xs">Booking ID</TableHead>
-              <TableHead className="text-xs">Collected By</TableHead>
-              <TableHead className="text-xs">Txn ID / Notes</TableHead>
-              <TableHead className="text-xs">Date</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow><TableCell colSpan={11} className="text-center py-8 text-muted-foreground text-xs">Loading...</TableCell></TableRow>
-            ) : paginated.length === 0 ? (
-              <TableRow><TableCell colSpan={11} className="text-center py-8 text-muted-foreground text-xs">No receipts found</TableCell></TableRow>
-            ) : (
-              paginated.map((r, index) => (
+        {loading ? (
+          <div className="text-center py-8 text-muted-foreground text-xs">Loading...</div>
+        ) : paginated.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground text-xs">No receipts found</div>
+        ) : isMobile ? (
+          <div className="space-y-3 p-3">
+            {paginated.map((r) => (
+              <div key={r.id} className="border rounded-lg p-3 bg-card space-y-2">
+                <div className="flex items-start justify-between">
+                  <div className="min-w-0">
+                    <p className="font-medium text-xs">{r.studentName}</p>
+                    <p className="text-[10px] text-muted-foreground">{r.studentPhone}</p>
+                  </div>
+                  <Badge variant={r.receipt_type === 'booking_payment' ? 'default' : 'secondary'} className="text-[10px]">
+                    {r.receipt_type === 'booking_payment' ? 'Booking' : 'Due'}
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                  <div><span className="text-muted-foreground">Receipt: </span><span className="font-mono">{r.serial_number}</span></div>
+                  <div><span className="text-muted-foreground">Amount: </span><span className="font-semibold">{formatCurrency(r.amount)}</span></div>
+                  <div><span className="text-muted-foreground">Method: </span>{methodLabel(r.payment_method)}</div>
+                  <div><span className="text-muted-foreground">Date: </span>{new Date(r.created_at).toLocaleDateString('en-IN')}</div>
+                </div>
+                {r.cabinName && <p className="text-[10px] text-muted-foreground">Room: {r.cabinName}{r.seatNumber !== undefined ? ` / #${r.seatNumber}` : ''}</p>}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-xs">S.No.</TableHead>
+                <TableHead className="text-xs">Receipt #</TableHead>
+                <TableHead className="text-xs">Student</TableHead>
+                <TableHead className="text-xs">Room / Seat</TableHead>
+                <TableHead className="text-xs">Amount</TableHead>
+                <TableHead className="text-xs">Method</TableHead>
+                <TableHead className="text-xs">Type</TableHead>
+                <TableHead className="text-xs">Booking ID</TableHead>
+                <TableHead className="text-xs">Collected By</TableHead>
+                <TableHead className="text-xs">Txn ID / Notes</TableHead>
+                <TableHead className="text-xs">Date</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginated.map((r, index) => (
                 <TableRow key={r.id}>
                   <TableCell className="text-xs text-muted-foreground">{getSerialNumber(index, page, pageSize)}</TableCell>
                   <TableCell className="text-xs font-mono">{r.serial_number}</TableCell>
@@ -269,10 +294,10 @@ const Receipts: React.FC = () => {
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleDateString('en-IN')}</TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </div>
 
       {/* Pagination */}

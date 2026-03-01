@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { BookingFilters } from "@/types/BookingTypes";
 import { Eye, Search, Filter, BookOpen } from "lucide-react";
 import { AdminTablePagination, getSerialNumber } from "@/components/admin/AdminTablePagination";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type BookingStatus = "pending" | "completed" | "failed";
 
@@ -38,9 +39,20 @@ const fmtRange = (s: string, e: string) => {
   return `${fmtDate(s)} – ${fmtDate(e)}`;
 };
 
+const badgeCls = (s: string) => {
+  switch (s) {
+    case "completed": case "paid": return "bg-emerald-50 text-emerald-700 border border-emerald-200";
+    case "failed": case "cancelled": return "bg-red-50 text-red-700 border border-red-200";
+    case "pending": return "bg-amber-50 text-amber-700 border border-amber-200";
+    case "refunded": return "bg-blue-50 text-blue-700 border border-blue-200";
+    default: return "bg-muted text-muted-foreground border border-border";
+  }
+};
+
 const AdminBookings = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -76,22 +88,50 @@ const AdminBookings = () => {
   const handleSearch = (e: React.FormEvent) => { e.preventDefault(); setCurrentPage(1); };
   const handleStatusChange = (v: string) => { setStatus(v === "all" ? "" : v as BookingStatus); setCurrentPage(1); };
 
-  const badgeCls = (s: string) => {
-    switch (s) {
-      case "completed": case "paid": return "bg-emerald-50 text-emerald-700 border border-emerald-200";
-      case "failed": case "cancelled": return "bg-red-50 text-red-700 border border-red-200";
-      case "pending": return "bg-amber-50 text-amber-700 border border-amber-200";
-      case "refunded": return "bg-blue-50 text-blue-700 border border-blue-200";
-      default: return "bg-muted text-muted-foreground border border-border";
-    }
-  };
+  const renderMobileCard = (b: any, idx: number) => (
+    <div key={b._id} className="border rounded-lg p-3 bg-card space-y-2">
+      <div className="flex items-start justify-between">
+        <div className="min-w-0">
+          <p className="font-medium text-xs truncate">{b.userId?.name || "N/A"}</p>
+          <p className="text-[10px] text-muted-foreground truncate">{b.userId?.email || ""}</p>
+        </div>
+        <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium capitalize ${badgeCls(b.status || "pending")}`}>
+          {b.status || "pending"}
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-2 text-[11px]">
+        <div>
+          <span className="text-muted-foreground">Room/Seat: </span>
+          <span>{b.cabinId?.name && b.seatId?.number ? `${b.cabinId.name} / S${b.seatId.number}` : b.roomNumber || "-"}</span>
+        </div>
+        <div>
+          <span className="text-muted-foreground">Category: </span>
+          <span>{b.seatCategory || "—"}</span>
+        </div>
+        <div>
+          <span className="text-muted-foreground">Duration: </span>
+          <span>{fmtRange(b.startDate, b.endDate)}</span>
+        </div>
+        <div>
+          <span className="text-muted-foreground">Booked: </span>
+          <span>{fmtDateTime(b.createdAt)}</span>
+        </div>
+      </div>
+      <div className="flex items-center justify-between pt-1 border-t">
+        <div className="text-[11px]">
+          <span className="font-semibold">₹{((b.totalPrice || 0) - (b.lockerPrice || 0)).toLocaleString()}</span>
+          <span className="text-muted-foreground ml-2">Paid: ₹{(b.totalPaid || 0).toLocaleString()}</span>
+        </div>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(`/admin/bookings/${b._id}/cabin`)}>
+          <Eye className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-          <span>Admin Panel</span><span>/</span><span className="text-foreground font-medium">All Transactions</span>
-        </div>
         <h1 className="text-lg font-semibold tracking-tight">All Transactions</h1>
         <p className="text-muted-foreground text-xs mt-0.5">View and manage all seat reservations across reading rooms.</p>
       </div>
@@ -128,6 +168,10 @@ const AdminBookings = () => {
           ) : bookings.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
               <BookOpen className="h-8 w-8 opacity-30" /><p className="text-xs">No bookings found.</p>
+            </div>
+          ) : isMobile ? (
+            <div className="space-y-3 p-3">
+              {bookings.map((b, idx) => renderMobileCard(b, idx))}
             </div>
           ) : (
             <TooltipProvider delayDuration={200}>
@@ -182,18 +226,18 @@ const AdminBookings = () => {
                   </TableBody>
                 </Table>
               </div>
-
-              <div className="border-t">
-                <AdminTablePagination
-                  currentPage={currentPage}
-                  totalItems={totalCount}
-                  pageSize={pageSize}
-                  onPageChange={setCurrentPage}
-                  onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
-                />
-              </div>
             </TooltipProvider>
           )}
+
+          <div className="border-t">
+            <AdminTablePagination
+              currentPage={currentPage}
+              totalItems={totalCount}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
+            />
+          </div>
         </CardContent>
       </Card>
     </div>

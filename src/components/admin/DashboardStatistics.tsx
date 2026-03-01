@@ -95,42 +95,65 @@ export function DashboardStatistics() {
           ) : topFillingRooms.length === 0 ? (
             <EmptyState icon={TrendingUp} title="No room data available" />
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/30">
-                  <TableHead className="font-semibold">#</TableHead>
-                  <TableHead className="font-semibold">Room Name</TableHead>
-                  <TableHead className="font-semibold">Category</TableHead>
-                  <TableHead className="font-semibold">Occupancy</TableHead>
-                  <TableHead className="font-semibold">Booked / Total</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <>
+              {/* Mobile cards */}
+              <div className="block md:hidden space-y-3 p-3">
                 {topFillingRooms.map((room, idx) => (
-                  <TableRow key={room.id} className={idx % 2 === 0 ? "bg-background" : "bg-muted/20"}>
-                    <TableCell className="text-muted-foreground text-sm w-8">{idx + 1}</TableCell>
-                    <TableCell className="font-medium">{room.name}</TableCell>
-                    <TableCell>
-                      <Badge className={`capitalize ${getCategoryBadgeColor(room.category)}`}>
-                        {room.category}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div className="w-20 h-1.5 rounded-full bg-muted overflow-hidden">
-                          <div className="h-full bg-primary rounded-full" style={{ width: `${room.occupancyRate}%` }} />
-                        </div>
-                        <span className="text-sm font-medium">{room.occupancyRate}%</span>
+                  <div key={room.id} className="border rounded-lg p-3 bg-card space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-xs">{idx + 1}. {room.name}</span>
+                      <Badge className={`capitalize text-[10px] ${getCategoryBadgeColor(room.category)}`}>{room.category}</Badge>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div className="h-full bg-primary rounded-full" style={{ width: `${room.occupancyRate}%` }} />
                       </div>
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      <span className="font-medium">{room.bookedSeats}</span>
-                      <span className="text-muted-foreground"> / {room.totalSeats}</span>
-                    </TableCell>
-                  </TableRow>
+                      <span className="text-xs font-medium">{room.occupancyRate}%</span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">{room.bookedSeats} / {room.totalSeats} seats booked</p>
+                  </div>
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+              {/* Desktop table */}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/30">
+                      <TableHead className="font-semibold">#</TableHead>
+                      <TableHead className="font-semibold">Room Name</TableHead>
+                      <TableHead className="font-semibold">Category</TableHead>
+                      <TableHead className="font-semibold">Occupancy</TableHead>
+                      <TableHead className="font-semibold">Booked / Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {topFillingRooms.map((room, idx) => (
+                      <TableRow key={room.id} className={idx % 2 === 0 ? "bg-background" : "bg-muted/20"}>
+                        <TableCell className="text-muted-foreground text-sm w-8">{idx + 1}</TableCell>
+                        <TableCell className="font-medium">{room.name}</TableCell>
+                        <TableCell>
+                          <Badge className={`capitalize ${getCategoryBadgeColor(room.category)}`}>
+                            {room.category}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div className="w-20 h-1.5 rounded-full bg-muted overflow-hidden">
+                              <div className="h-full bg-primary rounded-full" style={{ width: `${room.occupancyRate}%` }} />
+                            </div>
+                            <span className="text-sm font-medium">{room.occupancyRate}%</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          <span className="font-medium">{room.bookedSeats}</span>
+                          <span className="text-muted-foreground"> / {room.totalSeats}</span>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

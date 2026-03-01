@@ -1,6 +1,5 @@
 #root {
-  /* text-align: center; */
-  /* background-color: #d3dbea !important; */
   background-color: hsl(220, 20%, 98%) !important;
+  overflow-x: hidden;
 }
 

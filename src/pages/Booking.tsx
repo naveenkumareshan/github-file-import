@@ -230,8 +230,8 @@ const Booking = () => {
   return (
     <div className="bg-accent/30">
       
-      <div className="container mx-auto px-4 py-12">
-        <h1 className="text-3xl font-serif font-bold text-cabin-dark mb-8 text-center">
+      <div className="container mx-auto px-3 sm:px-4 py-6 sm:py-12">
+        <h1 className="text-xl sm:text-3xl font-serif font-bold text-cabin-dark mb-4 sm:mb-8 text-center">
           Book Your Reading Room
         </h1>
 
@@ -251,7 +251,7 @@ const Booking = () => {
           </Card>
         )}
         
-        <div className="grid md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
           <div>
             <CabinDetails cabin={cabin} />
             
@@ -291,8 +291,8 @@ const Booking = () => {
       
       {/* Payment Modal */}
       {paymentModalOpen && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+        <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50 p-4">
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-serif font-bold text-cabin-dark mb-4">
               Payment Information
             </h2>
