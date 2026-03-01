@@ -95,6 +95,7 @@ import ScrollToTop from "./components/ScrollToTop";
 import { LazyWrapper } from './components/LazyWrapper';
 import ErrorBoundary from './components/ErrorBoundary';
 import { Loader2 } from 'lucide-react';
+import { useReferralCapture } from './hooks/useReferralCapture';
 
 const StudentSuspense = ({ children }: { children: React.ReactNode }) => (
   <ErrorBoundary>
@@ -106,6 +107,8 @@ const StudentSuspense = ({ children }: { children: React.ReactNode }) => (
 
 const queryClient = new QueryClient();
 
+const ReferralCaptureWrapper = () => { useReferralCapture(); return null; };
+
 function App() {
   useEffect(() => {
     hideSplashScreen();
@@ -116,6 +119,7 @@ function App() {
     <AuthProvider>
       <LazyWrapper>
         <Router>
+          <ReferralCaptureWrapper />
           <ScrollToTop />
           <Routes>
             {/* ── Admin routes (kept separate, untouched) ── */}

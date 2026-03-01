@@ -2265,6 +2265,39 @@ export type Database = {
           },
         ]
       }
+      referral_clicks: {
+        Row: {
+          booking_id: string | null
+          clicked_at: string
+          id: string
+          property_id: string
+          property_type: string
+          referred_user_id: string | null
+          referrer_user_id: string
+          signed_up: boolean
+        }
+        Insert: {
+          booking_id?: string | null
+          clicked_at?: string
+          id?: string
+          property_id: string
+          property_type?: string
+          referred_user_id?: string | null
+          referrer_user_id: string
+          signed_up?: boolean
+        }
+        Update: {
+          booking_id?: string | null
+          clicked_at?: string
+          id?: string
+          property_id?: string
+          property_type?: string
+          referred_user_id?: string | null
+          referrer_user_id?: string
+          signed_up?: boolean
+        }
+        Relationships: []
+      }
       reviews: {
         Row: {
           booking_id: string
