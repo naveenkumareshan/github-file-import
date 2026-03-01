@@ -21,25 +21,14 @@ export const formatCurrency = (amount: number, currency = 'INR'): string => {
 };
 
 export const formatBookingPeriod = (startDate, endDate) => {
- 
   if (startDate && endDate) {
     const start = formatDate(startDate);
     const end = formatDate(endDate);
-
-    // same-day booking UX
-    if (start === end) {
-      return `${start} (9:00 AM – 6:00 PM)`;
-    }
-
-    return `${start} 9:00 AM to ${end} 6:00 PM`;
+    if (start === end) return start;
+    return `${start} to ${end}`;
   }
-
   if (startDate) {
-    const start = formatDate(startDate);
-    return `${start} 9:00 AM onwards`;
+    return `From ${formatDate(startDate)}`;
   }
-
-  // only endDate
-  const end = formatDate(endDate);
-  return `Till ${end} 6:00 PM`;
+  return `Till ${formatDate(endDate)}`;
 };
