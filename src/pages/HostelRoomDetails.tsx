@@ -41,6 +41,7 @@ import {
   Shield,
   Star,
   Users,
+  Utensils,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CabinImageSlider } from "@/components/CabinImageSlider";
@@ -50,6 +51,7 @@ import { HostelBedMap } from "@/components/hostels/HostelBedMap";
 import { HostelBedLayoutView } from "@/components/hostels/HostelBedLayoutView";
 import { StayDurationPackages } from "@/components/hostels/StayDurationPackages";
 import { StayPackage, DurationType } from "@/api/hostelStayPackageService";
+import { FoodMenuModal } from "@/components/hostels/FoodMenuModal";
 
 /* ─── Skeleton ─── */
 const HostelDetailSkeleton = () => (
@@ -125,6 +127,7 @@ const HostelRoomDetails = () => {
   const [useAdvancePayment, setUseAdvancePayment] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
+  const [foodOpted, setFoodOpted] = useState(false);
 
   const isUUID = (s: string) => /^[0-9a-f]{8}-/.test(s);
 
@@ -288,6 +291,8 @@ const HostelRoomDetails = () => {
         remaining_amount: (useAdvancePayment && advanceAmount) ? totalPrice - advanceAmount : 0,
         security_deposit: hostel.security_deposit || 0,
         payment_method: 'online',
+        food_opted: foodOpted,
+        food_amount: foodAmount,
       };
 
       const booking = await hostelBookingService.createBooking(bookingData);
@@ -384,7 +389,9 @@ const HostelRoomDetails = () => {
   const priceLabel = durationType === 'daily' ? '/day' : durationType === 'weekly' ? '/wk' : '/mo';
 
   /* ─── Price calculations (after discountedPrice is defined) ─── */
-  const totalPrice = discountedPrice * durationCount;
+  const foodPriceMonthly = hostel?.food_price_monthly || 0;
+  const foodAmount = foodOpted ? (durationType === 'daily' ? Math.round(foodPriceMonthly / 30) * durationCount : durationType === 'weekly' ? Math.round(foodPriceMonthly / 4) * durationCount : foodPriceMonthly * durationCount) : 0;
+  const totalPrice = (discountedPrice * durationCount) + foodAmount;
   const calculateAdvanceAmount = () => {
     if (!hostel?.advance_booking_enabled) return null;
     if (hostel.advance_use_flat && hostel.advance_flat_amount) {
@@ -480,6 +487,12 @@ const HostelRoomDetails = () => {
                     <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-500/10 text-blue-700 dark:text-blue-400 text-xs font-semibold whitespace-nowrap shadow-sm border border-blue-500/20">
                       <Bed className="h-3.5 w-3.5" />
                       {rooms.length} room{rooms.length > 1 ? "s" : ""}
+                    </div>
+                  )}
+                  {hostel.food_enabled && (
+                    <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-orange-500/10 text-orange-700 dark:text-orange-400 text-xs font-semibold whitespace-nowrap shadow-sm border border-orange-500/20">
+                      <Utensils className="h-3.5 w-3.5" />
+                      Food Available
                     </div>
                   )}
                 </div>
@@ -771,12 +784,52 @@ const HostelRoomDetails = () => {
               </div>
             </>)}
 
-            {/* ═══ 5: Review & Pay ═══ */}
+            {/* ═══ Food Plan (optional) ═══ */}
+            {selectedBed && selectedStayPackage && hostel.food_enabled && (<>
+              <Separator className="my-0" />
+              <div className="px-3 pt-2">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">{categories.length > 0 ? 6 : 5}</div>
+                  <Label className="text-sm font-semibold text-foreground">Food Plan</Label>
+                </div>
+                <div className="bg-muted/30 rounded-xl border border-border/50 p-3 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <Checkbox
+                      id="food-opt"
+                      checked={foodOpted}
+                      onCheckedChange={(checked) => setFoodOpted(checked === true)}
+                    />
+                    <label htmlFor="food-opt" className="text-xs font-medium text-foreground cursor-pointer leading-tight">
+                      Add Monthly Food Plan (+{formatCurrency(foodPriceMonthly)}/mo)
+                    </label>
+                  </div>
+                  <FoodMenuModal
+                    hostelId={hostel.id}
+                    menuImage={hostel.food_menu_image}
+                    trigger={
+                      <button className="text-xs text-primary font-medium flex items-center gap-1 hover:underline">
+                        <Utensils className="h-3 w-3" /> View Food Menu
+                      </button>
+                    }
+                  />
+                  {foodOpted && (
+                    <div className="text-xs bg-primary/5 rounded-lg p-2 border border-primary/10">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Food Charges</span>
+                        <span className="font-semibold text-primary">{formatCurrency(foodAmount)}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>)}
+
+            {/* ═══ Review & Pay ═══ */}
             {selectedBed && selectedStayPackage && (<>
               <Separator className="my-0" />
               <div className="px-3 pt-2 pb-6">
                 <div className="flex items-center gap-2 mb-1.5">
-                  <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">{categories.length > 0 ? 6 : 5}</div>
+                  <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">{categories.length > 0 ? (hostel.food_enabled ? 7 : 6) : (hostel.food_enabled ? 6 : 5)}</div>
                   <Label className="text-sm font-semibold text-foreground">Review & Pay</Label>
                 </div>
 
@@ -817,6 +870,12 @@ const HostelRoomDetails = () => {
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Package Discount ({selectedStayPackage.name})</span>
                         <span className="font-medium text-emerald-600 dark:text-emerald-400">-{selectedStayPackage.discount_percentage}%</span>
+                      </div>
+                    )}
+                    {foodOpted && foodAmount > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Food Charges</span>
+                        <span className="font-medium text-foreground">{formatCurrency(foodAmount)}</span>
                       </div>
                     )}
                     <Separator className="my-1.5 opacity-50" />

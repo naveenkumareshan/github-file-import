@@ -20,6 +20,8 @@ export interface CreateHostelBookingData {
   razorpay_payment_id?: string;
   razorpay_signature?: string;
   transaction_id?: string;
+  food_opted?: boolean;
+  food_amount?: number;
 }
 
 export const hostelBookingService = {

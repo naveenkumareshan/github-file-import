@@ -226,8 +226,9 @@ export default function AdminHostelBookings() {
                             </TableCell>
                             <TableCell className="py-1 px-2 text-[11px]">
                               <div className="grid grid-cols-2 gap-x-4 gap-y-0 min-w-[140px]">
-                                <div className="font-semibold whitespace-nowrap">Bed: ₹{(b.total_price || 0).toLocaleString()}</div>
+                                <div className="font-semibold whitespace-nowrap">Bed: ₹{(b.total_price - (b.food_amount || 0)).toLocaleString()}</div>
                                 <div className="text-[10px] text-muted-foreground whitespace-nowrap">Deposit: {(b.security_deposit || 0) > 0 ? `₹${(b.security_deposit || 0).toLocaleString()}` : '-'}</div>
+                                {(b.food_amount || 0) > 0 && <div className="text-[10px] text-orange-600 whitespace-nowrap">Food: ₹{(b.food_amount || 0).toLocaleString()}</div>}
                                 <div className="text-[10px] text-emerald-600 whitespace-nowrap">Paid: ₹{(b.totalPaid || 0).toLocaleString()}</div>
                                 <div className="text-[10px] text-amber-600 whitespace-nowrap">Due: ₹{(b.duePending || 0).toLocaleString()}</div>
                               </div>

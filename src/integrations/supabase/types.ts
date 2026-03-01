@@ -780,6 +780,8 @@ export type Database = {
           created_at: string
           duration_count: number
           end_date: string
+          food_amount: number
+          food_opted: boolean
           hostel_id: string
           id: string
           payment_method: string | null
@@ -814,6 +816,8 @@ export type Database = {
           created_at?: string
           duration_count?: number
           end_date: string
+          food_amount?: number
+          food_opted?: boolean
           hostel_id: string
           id?: string
           payment_method?: string | null
@@ -848,6 +852,8 @@ export type Database = {
           created_at?: string
           duration_count?: number
           end_date?: string
+          food_amount?: number
+          food_opted?: boolean
           hostel_id?: string
           id?: string
           payment_method?: string | null
@@ -957,6 +963,7 @@ export type Database = {
           created_at: string
           due_amount: number
           due_date: string
+          food_amount: number
           hostel_id: string
           id: string
           paid_amount: number
@@ -975,6 +982,7 @@ export type Database = {
           created_at?: string
           due_amount?: number
           due_date: string
+          food_amount?: number
           hostel_id: string
           id?: string
           paid_amount?: number
@@ -993,6 +1001,7 @@ export type Database = {
           created_at?: string
           due_amount?: number
           due_date?: string
+          food_amount?: number
           hostel_id?: string
           id?: string
           paid_amount?: number
@@ -1070,6 +1079,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "hostel_floors_hostel_id_fkey"
+            columns: ["hostel_id"]
+            isOneToOne: false
+            referencedRelation: "hostels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hostel_food_menu: {
+        Row: {
+          created_at: string
+          display_order: number
+          hostel_id: string
+          id: string
+          is_active: boolean
+          item_name: string
+          meal_type: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          hostel_id: string
+          id?: string
+          is_active?: boolean
+          item_name: string
+          meal_type?: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          hostel_id?: string
+          id?: string
+          is_active?: boolean
+          item_name?: string
+          meal_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hostel_food_menu_hostel_id_fkey"
             columns: ["hostel_id"]
             isOneToOne: false
             referencedRelation: "hostels"
@@ -1395,6 +1442,9 @@ export type Database = {
           created_at: string
           created_by: string | null
           description: string | null
+          food_enabled: boolean
+          food_menu_image: string | null
+          food_price_monthly: number
           gender: string
           id: string
           images: string[] | null
@@ -1435,6 +1485,9 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          food_enabled?: boolean
+          food_menu_image?: string | null
+          food_price_monthly?: number
           gender?: string
           id?: string
           images?: string[] | null
@@ -1475,6 +1528,9 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           description?: string | null
+          food_enabled?: boolean
+          food_menu_image?: string | null
+          food_price_monthly?: number
           gender?: string
           id?: string
           images?: string[] | null

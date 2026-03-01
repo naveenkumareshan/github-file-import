@@ -17,6 +17,8 @@ export interface InvoiceData {
   discountReason: string;
   lockerIncluded: boolean;
   lockerPrice: number;
+  foodOpted?: boolean;
+  foodAmount?: number;
   totalAmount: number;
   paymentMethod: string;
   transactionId: string;
@@ -110,6 +112,7 @@ export const generateInvoiceHTML = (data: InvoiceData): string => {
         <tr><td>Seat Booking</td><td>${formatCurrency(data.seatAmount)}</td></tr>
         ${data.discountAmount > 0 ? `<tr class="discount-row"><td>Discount${data.discountReason ? ` (${data.discountReason})` : ''}</td><td>-${formatCurrency(data.discountAmount)}</td></tr>` : ''}
         ${data.lockerIncluded ? `<tr><td>Locker</td><td>${formatCurrency(data.lockerPrice)}</td></tr>` : ''}
+        ${data.foodOpted && data.foodAmount ? `<tr><td>Food Charges</td><td>${formatCurrency(data.foodAmount)}</td></tr>` : ''}
         <tr class="total-row"><td>Total</td><td>${formatCurrency(data.totalAmount)}</td></tr>
       </tbody>
     </table>
