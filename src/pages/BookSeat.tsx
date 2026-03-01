@@ -129,12 +129,16 @@ const BookSeat = () => {
     return () => observer.disconnect();
   }, [showDetails]);
 
+  const isUUID = (s: string) => /^[0-9a-f]{8}-/.test(s);
+
   const fetchCabinDetails = async () => {
     try {
       setLoading(true);
       if (!cabinId) { setError("Invalid cabin ID"); return; }
 
-      const response = await cabinsService.getCabinById(cabinId);
+      const response = isUUID(cabinId)
+        ? await cabinsService.getCabinById(cabinId)
+        : await cabinsService.getCabinBySerialNumber(cabinId);
       if (response.success && response.data) {
         const d = response.data;
         setCabin({

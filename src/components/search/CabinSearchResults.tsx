@@ -95,9 +95,10 @@ export const CabinSearchResults = ({
       <div className="space-y-2.5">
         {cabins.map((cabin) => {
           const cabinId = cabin.id || cabin._id;
+          const cabinSlug = (cabin as any).serial_number || cabinId;
           const imgSrc = cabin.imageSrc || cabin.image_url || '/placeholder.svg';
           return (
-          <Link to={`/book-seat/${cabinId}`} key={cabinId} className="block">
+          <Link to={`/book-seat/${cabinSlug}`} key={cabinId} className="block">
             <div className="flex gap-3 p-3 bg-card rounded-2xl border border-border hover:border-primary/30 hover:shadow-sm transition-all active:scale-[0.99]">
               {/* Image */}
               <div className="relative flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden bg-muted">

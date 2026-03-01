@@ -22,10 +22,17 @@ export default function HostelRooms() {
   useEffect(() => {
     if (!hostelId) return;
     
+    const isUUID = (s: string) => /^[0-9a-f]{8}-/.test(s);
     const fetchData = async () => {
       try {
         setLoading(true);
-        const data = await roomSharingService.getHostelAvailability(hostelId);
+        // Resolve serial number to UUID if needed
+        let resolvedId = hostelId;
+        if (!isUUID(hostelId)) {
+          const hostelData = await (await import('@/api/hostelService')).hostelService.getHostelBySerialNumber(hostelId);
+          resolvedId = hostelData.id;
+        }
+        const data = await roomSharingService.getHostelAvailability(resolvedId!);
         setHostelData(data);
       } catch (err: any) {
         console.error('Error fetching hostel data:', err);
