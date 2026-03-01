@@ -69,11 +69,11 @@ const HostelBedManagementPage = () => {
   const [addCategory, setAddCategory] = useState('');
   const [addAmenities, setAddAmenities] = useState<string[]>([]);
   const [addDialogSharingOptions, setAddDialogSharingOptions] = useState<any[]>([]);
+  const [addPrice, setAddPrice] = useState('');
 
   // Category dialog
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [newCatName, setNewCatName] = useState('');
-  const [newCatPrice, setNewCatPrice] = useState('0');
 
   // Floor dialog
   const [floorDialogOpen, setFloorDialogOpen] = useState(false);
@@ -91,8 +91,11 @@ const HostelBedManagementPage = () => {
   const [newRoomFloorId, setNewRoomFloorId] = useState('');
   const [newRoomCategoryId, setNewRoomCategoryId] = useState('');
   const [newRoomSharingTypeId, setNewRoomSharingTypeId] = useState('');
-  const [newRoomPrice, setNewRoomPrice] = useState('');
   const [newRoomDescription, setNewRoomDescription] = useState('');
+
+  // Rename room
+  const [renameRoomId, setRenameRoomId] = useState<string | null>(null);
+  const [renameRoomValue, setRenameRoomValue] = useState('');
 
   // Bed details dialog
   const [detailsBedId, setDetailsBedId] = useState<string | null>(null);
@@ -155,7 +158,6 @@ const HostelBedManagementPage = () => {
         const bookingMap = new Map<string, string>();
         bookings?.forEach((b: any) => bookingMap.set(b.bed_id, b.profiles?.name || 'Occupied'));
 
-        // Group by floor - use floor_id name if available, otherwise use floor number
         const grouped: Record<string, any[]> = {};
         roomsData.forEach(room => {
           const floorKey = room.floor_id
@@ -320,13 +322,14 @@ const HostelBedManagementPage = () => {
           bed_number: startNum + i,
           category: addCategory || null,
           amenities: addAmenities,
+          price_override: addPrice ? Number(addPrice) : null,
         });
       }
       const { error } = await supabase.from('hostel_beds').insert(beds);
       if (error) throw error;
       toast({ title: `${count} bed(s) added` });
       setAddBedDialogOpen(false);
-      setAddCount('1'); setAddCategory(''); setAddAmenities([]); setAddRoomIdInDialog('');
+      setAddCount('1'); setAddCategory(''); setAddAmenities([]); setAddRoomIdInDialog(''); setAddPrice('');
       fetchAll();
     } catch (e: any) {
       toast({ title: 'Error', description: e.message, variant: 'destructive' });
@@ -388,15 +391,15 @@ const HostelBedManagementPage = () => {
     }
   };
 
-  // Category CRUD
+  // Category CRUD - categories are labels only, no price
   const handleAddCategory = async () => {
     if (!newCatName.trim() || !hostelId) return;
     setSaving(true);
     try {
-      const result = await hostelBedCategoryService.createCategory(hostelId, newCatName, Number(newCatPrice) || 0);
+      const result = await hostelBedCategoryService.createCategory(hostelId, newCatName, 0);
       if (!result.success) throw new Error('Failed');
       toast({ title: 'Category added' });
-      setNewCatName(''); setNewCatPrice('0');
+      setNewCatName('');
       const catResult = await hostelBedCategoryService.getCategories(hostelId);
       if (catResult.success) setCategories(catResult.data);
     } catch (e: any) {
@@ -469,7 +472,7 @@ const HostelBedManagementPage = () => {
     }
   };
 
-  // Add Room
+  // Add Room - no price field
   const handleAddRoom = async () => {
     if (!newRoomNumber.trim() || !newRoomFloorId || !hostelId) return;
     setSaving(true);
@@ -503,8 +506,8 @@ const HostelBedManagementPage = () => {
               type: st.name,
               capacity: st.capacity,
               total_beds: 0,
-              price_monthly: Number(newRoomPrice) || 0,
-              price_daily: Math.round((Number(newRoomPrice) || 0) / 30),
+              price_monthly: 0,
+              price_daily: 0,
             });
           }
         }
@@ -513,11 +516,39 @@ const HostelBedManagementPage = () => {
       toast({ title: 'Room added' });
       setAddRoomDialogOpen(false);
       setNewRoomNumber(''); setNewRoomFloorId(''); setNewRoomCategoryId('');
-      setNewRoomSharingTypeId(''); setNewRoomPrice(''); setNewRoomDescription('');
+      setNewRoomSharingTypeId(''); setNewRoomDescription('');
       fetchAll();
     } catch (e: any) {
       toast({ title: 'Error', description: e.message, variant: 'destructive' });
     } finally { setSaving(false); }
+  };
+
+  // Delete room (soft-delete)
+  const handleDeleteRoom = async (roomId: string) => {
+    try {
+      const { error } = await supabase.from('hostel_rooms').update({ is_active: false } as any).eq('id', roomId);
+      if (error) throw error;
+      toast({ title: 'Room deleted (existing bookings preserved)' });
+      if (selectedRoomId === roomId) setSelectedRoomId('');
+      fetchAll();
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  // Rename room
+  const handleRenameRoom = async (roomId: string) => {
+    if (!renameRoomValue.trim()) return;
+    try {
+      const { error } = await supabase.from('hostel_rooms').update({ room_number: renameRoomValue } as any).eq('id', roomId);
+      if (error) throw error;
+      toast({ title: 'Room renamed' });
+      setRenameRoomId(null);
+      setRenameRoomValue('');
+      fetchAll();
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+    }
   };
 
   const toggleAmenity = (amenity: string, list: string[], setList: React.Dispatch<React.SetStateAction<string[]>>) => {
@@ -551,15 +582,14 @@ const HostelBedManagementPage = () => {
             <TabsTrigger value="rooms" className="text-xs"><Building className="h-3.5 w-3.5 mr-1" />Rooms</TabsTrigger>
           </TabsList>
 
-          {/* Categories Tab */}
+          {/* Categories Tab - labels only, no price */}
           <TabsContent value="categories" className="pt-3">
             <div className="space-y-3">
-              <p className="text-xs text-muted-foreground">Configure bed categories like AC / Non-AC with price adjustments.</p>
+              <p className="text-xs text-muted-foreground">Configure bed categories like AC / Non-AC. Price is set per bed.</p>
               <div className="flex flex-wrap gap-2">
                 {categories.map(cat => (
                   <div key={cat.id} className="flex items-center gap-1 border rounded px-2 py-1 text-xs">
                     <span className="font-medium">{cat.name}</span>
-                    <span className="text-muted-foreground">+₹{cat.price_adjustment}</span>
                     <Button variant="ghost" size="icon" className="h-5 w-5 ml-1" onClick={() => handleDeleteCategory(cat.id)}><Trash2 className="h-3 w-3" /></Button>
                   </div>
                 ))}
@@ -567,7 +597,6 @@ const HostelBedManagementPage = () => {
               </div>
               <div className="flex gap-2 max-w-sm">
                 <Input placeholder="e.g. AC" value={newCatName} onChange={e => setNewCatName(e.target.value)} className="flex-1" />
-                <Input type="number" placeholder="₹ adj" value={newCatPrice} onChange={e => setNewCatPrice(e.target.value)} className="w-20" />
                 <Button size="sm" onClick={handleAddCategory} disabled={saving || !newCatName.trim()}><Plus className="h-3.5 w-3.5" /></Button>
               </div>
             </div>
@@ -617,11 +646,11 @@ const HostelBedManagementPage = () => {
             </div>
           </TabsContent>
 
-          {/* Rooms Tab */}
+          {/* Rooms Tab - with delete + rename, no legacy rooms */}
           <TabsContent value="rooms" className="pt-3">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <p className="text-xs text-muted-foreground">Rooms grouped by floor. Capacity auto-calculated from beds.</p>
+                <p className="text-xs text-muted-foreground">Rooms grouped by floor. Beds & pricing configured per bed.</p>
                 <Button size="sm" variant="outline" onClick={() => setAddRoomDialogOpen(true)} disabled={floors.length === 0}>
                   <Plus className="h-3.5 w-3.5 mr-1" /> Add Room
                 </Button>
@@ -640,37 +669,44 @@ const HostelBedManagementPage = () => {
                     <div className="flex flex-wrap gap-1.5 mt-1">
                       {floorRooms.map(room => {
                         const bedCount = Object.values(floorData).flat().find((r: any) => r.roomId === room.id)?.beds?.length || 0;
+                        const isRenaming = renameRoomId === room.id;
                         return (
-                          <button
-                            key={room.id}
-                            className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${selectedRoomId === room.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-accent border-border'}`}
-                            onClick={() => setSelectedRoomId(room.id)}
-                          >
-                            Room {room.room_number} ({bedCount} beds)
-                          </button>
+                          <div key={room.id} className="flex items-center gap-0.5">
+                            {isRenaming ? (
+                              <div className="flex items-center gap-1">
+                                <Input
+                                  value={renameRoomValue}
+                                  onChange={e => setRenameRoomValue(e.target.value)}
+                                  className="h-7 w-24 text-xs"
+                                  autoFocus
+                                  onKeyDown={e => { if (e.key === 'Enter') handleRenameRoom(room.id); if (e.key === 'Escape') setRenameRoomId(null); }}
+                                />
+                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleRenameRoom(room.id)}>✓</Button>
+                                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setRenameRoomId(null)}>✕</Button>
+                              </div>
+                            ) : (
+                              <>
+                                <button
+                                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${selectedRoomId === room.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-accent border-border'}`}
+                                  onClick={() => setSelectedRoomId(room.id)}
+                                >
+                                  {room.room_number} ({bedCount} beds)
+                                </button>
+                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setRenameRoomId(room.id); setRenameRoomValue(room.room_number); }}>
+                                  <Pencil className="h-3 w-3" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDeleteRoom(room.id)}>
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
                         );
                       })}
                     </div>
                   </div>
                 );
               })}
-              {/* Legacy rooms without floor_id */}
-              {rooms.filter(r => !r.floor_id && !floors.some(f => f.floor_order === r.floor)).length > 0 && (
-                <div>
-                  <span className="text-xs font-semibold text-muted-foreground">Legacy Rooms</span>
-                  <div className="flex flex-wrap gap-1.5 mt-1">
-                    {rooms.filter(r => !r.floor_id && !floors.some(f => f.floor_order === r.floor)).map(room => (
-                      <button
-                        key={room.id}
-                        className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${selectedRoomId === room.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-accent border-border'}`}
-                        onClick={() => setSelectedRoomId(room.id)}
-                      >
-                        Room {room.room_number} (F{room.floor})
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           </TabsContent>
         </Tabs>
@@ -687,7 +723,7 @@ const HostelBedManagementPage = () => {
           </button>
         </div>
         <Button size="sm" variant="outline" onClick={() => {
-          setAddSharingOptionId(''); setAddCategory(''); setAddAmenities([]);
+          setAddSharingOptionId(''); setAddCategory(''); setAddAmenities([]); setAddPrice('');
           setAddRoomIdInDialog(selectedRoomId);
           loadAddDialogSharingOptions(selectedRoomId);
           setAddBedDialogOpen(true);
@@ -722,39 +758,58 @@ const HostelBedManagementPage = () => {
                             <span className="text-xs text-muted-foreground">{availBeds}/{totalBeds} beds</span>
                           </div>
                           <Progress value={pct} className="h-1.5 mb-3" />
-                          <TooltipProvider>
-                            <div className="grid grid-cols-5 sm:grid-cols-6 gap-2">
-                              {room.beds.map((bed: any) => {
-                                const isAvail = bed.is_available && !bed.is_blocked;
-                                const isBlocked = bed.is_blocked;
-                                let bgClass = 'bg-emerald-50 border-emerald-400 text-emerald-800 hover:bg-emerald-100';
-                                if (isBlocked) bgClass = 'bg-destructive/10 border-destructive/30 text-destructive';
-                                else if (!isAvail) bgClass = 'bg-blue-50 border-blue-400 text-blue-800';
-                                return (
-                                  <Tooltip key={bed.id}>
-                                    <TooltipTrigger asChild>
-                                      <button className={`flex flex-col items-center justify-center rounded-lg border p-2 text-[10px] font-bold cursor-pointer ${bgClass}`} onClick={() => handleGridBedClick(bed)}>
-                                        <BedDouble className="h-3.5 w-3.5 mb-0.5" />
-                                        {bed.bed_number}
-                                        {bed.category && <span className="text-[8px] font-normal opacity-70 mt-0.5">{bed.category}</span>}
-                                      </button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <div className="text-xs space-y-0.5">
-                                        <p className="font-bold">Bed #{bed.bed_number}</p>
-                                        {bed.sharingType && <p>Type: {bed.sharingType}</p>}
-                                        {bed.category && <p>Category: {bed.category}</p>}
-                                        <p>Price: {bed.price_override ? formatCurrency(bed.price_override) : formatCurrency(bed.sharingPrice || 0)}/mo</p>
-                                        <p>{isBlocked ? '🚫 Blocked' : isAvail ? '✅ Available' : '👤 Occupied'}</p>
-                                        {bed.occupantName && <p>Guest: {bed.occupantName}</p>}
-                                        {bed.amenities?.length > 0 && <p>Amenities: {bed.amenities.join(', ')}</p>}
-                                      </div>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                );
-                              })}
-                            </div>
-                          </TooltipProvider>
+                          {/* Bed Cards - room-style layout */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {room.beds.map((bed: any) => {
+                              const isAvail = bed.is_available && !bed.is_blocked;
+                              const isBlocked = bed.is_blocked;
+                              let statusColor = 'border-emerald-400 bg-emerald-50/50';
+                              let statusText = 'Available';
+                              let statusDot = 'bg-emerald-500';
+                              if (isBlocked) {
+                                statusColor = 'border-destructive/30 bg-destructive/5';
+                                statusText = 'Blocked';
+                                statusDot = 'bg-destructive';
+                              } else if (!isAvail) {
+                                statusColor = 'border-blue-400 bg-blue-50/50';
+                                statusText = 'Occupied';
+                                statusDot = 'bg-blue-500';
+                              }
+                              const bedPrice = bed.price_override || bed.sharingPrice || 0;
+                              return (
+                                <button
+                                  key={bed.id}
+                                  className={`flex flex-col items-start rounded-lg border p-3 text-left cursor-pointer transition-all hover:shadow-md ${statusColor}`}
+                                  onClick={() => handleGridBedClick(bed)}
+                                >
+                                  <div className="flex items-center justify-between w-full mb-1.5">
+                                    <div className="flex items-center gap-1.5">
+                                      <BedDouble className="h-4 w-4 text-muted-foreground" />
+                                      <span className="font-bold text-sm">Bed #{bed.bed_number}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      <div className={`w-2 h-2 rounded-full ${statusDot}`} />
+                                      <span className="text-[10px] text-muted-foreground">{statusText}</span>
+                                    </div>
+                                  </div>
+                                  <div className="flex flex-wrap gap-1 mb-1.5">
+                                    {bed.category && <Badge variant="outline" className="text-[9px] px-1.5 py-0">{bed.category}</Badge>}
+                                    {bed.sharingType && <Badge variant="secondary" className="text-[9px] px-1.5 py-0">{bed.sharingType}</Badge>}
+                                  </div>
+                                  <span className="text-xs font-semibold text-primary">{formatCurrency(bedPrice)}/mo</span>
+                                  {bed.occupantName && <span className="text-[10px] text-muted-foreground mt-0.5">👤 {bed.occupantName}</span>}
+                                  {bed.amenities?.length > 0 && (
+                                    <div className="flex flex-wrap gap-0.5 mt-1">
+                                      {bed.amenities.slice(0, 3).map((a: string) => (
+                                        <span key={a} className="text-[8px] bg-muted px-1 py-0.5 rounded">{a}</span>
+                                      ))}
+                                      {bed.amenities.length > 3 && <span className="text-[8px] text-muted-foreground">+{bed.amenities.length - 3}</span>}
+                                    </div>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
                       );
                     })}
@@ -810,14 +865,13 @@ const HostelBedManagementPage = () => {
                 <SelectTrigger className="mt-1"><SelectValue placeholder="No category" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">No category</SelectItem>
-                  {categories.map(cat => <SelectItem key={cat.id} value={cat.name}>{cat.name} (+{formatCurrency(cat.price_adjustment)})</SelectItem>)}
+                  {categories.map(cat => <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Price Override (₹/month)</Label>
-              <Input type="number" value={editPriceOverride} onChange={e => setEditPriceOverride(e.target.value)} placeholder="Uses sharing option price" className="mt-1" />
-              {editBed && <p className="text-xs text-muted-foreground mt-1">Default: {formatCurrency(editBed.sharingPrice || 0)}/mo</p>}
+              <Label>Price (₹/month)</Label>
+              <Input type="number" value={editPriceOverride} onChange={e => setEditPriceOverride(e.target.value)} placeholder="Set bed price" className="mt-1" />
             </div>
             <div>
               <Label>Amenities</Label>
@@ -851,7 +905,7 @@ const HostelBedManagementPage = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Add Beds Dialog */}
+      {/* Add Beds Dialog - with price field */}
       <Dialog open={addBedDialogOpen} onOpenChange={setAddBedDialogOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle>Add Beds</DialogTitle></DialogHeader>
@@ -873,7 +927,7 @@ const HostelBedManagementPage = () => {
                 <SelectTrigger className="mt-1"><SelectValue placeholder="Select sharing type" /></SelectTrigger>
                 <SelectContent>
                   {addDialogSharingOptions.map((s: any) => (
-                    <SelectItem key={s.id} value={s.id}>{s.type} ({formatCurrency(s.price_monthly)}/mo)</SelectItem>
+                    <SelectItem key={s.id} value={s.id}>{s.type}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -887,6 +941,10 @@ const HostelBedManagementPage = () => {
                   {categories.map(cat => <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>)}
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label>Price (₹/month)</Label>
+              <Input type="number" value={addPrice} onChange={e => setAddPrice(e.target.value)} placeholder="Bed price per month" className="mt-1" />
             </div>
             <div>
               <Label>Amenities</Label>
@@ -908,7 +966,7 @@ const HostelBedManagementPage = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Add Room Dialog */}
+      {/* Add Room Dialog - no price field */}
       <Dialog open={addRoomDialogOpen} onOpenChange={setAddRoomDialogOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle>Add Room</DialogTitle></DialogHeader>
@@ -924,7 +982,7 @@ const HostelBedManagementPage = () => {
             </div>
             <div>
               <Label>Room Number / Name</Label>
-              <Input value={newRoomNumber} onChange={e => setNewRoomNumber(e.target.value)} placeholder="e.g. 101" className="mt-1" />
+              <Input value={newRoomNumber} onChange={e => setNewRoomNumber(e.target.value)} placeholder="e.g. 101 or Flat A" className="mt-1" />
             </div>
             <div>
               <Label>Category</Label>
@@ -947,13 +1005,10 @@ const HostelBedManagementPage = () => {
               </Select>
             </div>
             <div>
-              <Label>Price (₹/month)</Label>
-              <Input type="number" value={newRoomPrice} onChange={e => setNewRoomPrice(e.target.value)} placeholder="Monthly price" className="mt-1" />
-            </div>
-            <div>
               <Label>Description (optional)</Label>
               <Input value={newRoomDescription} onChange={e => setNewRoomDescription(e.target.value)} placeholder="Room description" className="mt-1" />
             </div>
+            <p className="text-xs text-muted-foreground">💡 Beds and pricing are configured after room creation.</p>
           </div>
           <DialogFooter>
             <Button onClick={handleAddRoom} disabled={saving || !newRoomNumber.trim() || !newRoomFloorId}>Add Room</Button>
