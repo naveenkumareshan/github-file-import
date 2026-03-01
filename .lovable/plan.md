@@ -1,65 +1,53 @@
 
 
-## Show Bed Counts, Remove Grid Blocking, and Add Bed Shape Design with Rotation
+## Dependency-Safe Deletes for Categories/Sharing Types + Student Bed Selection View Toggle
 
-### 1. Show bed counts on floor tabs and total
+### 1. Category and Sharing Type deletion dependency checks
 
-**File: `src/pages/admin/HostelBedManagementPage.tsx`**
+**Problem**: Categories and sharing types can be deleted even when beds reference them, leaving orphaned data.
 
-- **Total beds summary**: Add a summary line above the floor tabs showing total beds across all floors (e.g., "Total: 24 beds (18 available)")
-- **Floor tab bed counts**: Compute bed count per floor from `floorData` and append it to each floor tab label (e.g., "Ground Floor (8)")
+**Solution (File: `src/pages/admin/HostelBedManagementPage.tsx`)**:
 
-### 2. Remove blocking from the edit dialog (grid) -- only allow from bed map
+- **`handleDeleteCategory`**: Before deleting, query `hostel_beds` to count beds where `category` matches the category name. If count > 0, show a toast error: "Delete all beds with this category first" and abort. Otherwise proceed with deletion.
+- **`handleDeleteSharingType`**: Before deleting, query `hostel_beds` joined through `hostel_sharing_options` to check if any beds use sharing options of this type. If count > 0, show toast error: "Delete all beds using this sharing type first" and abort. Otherwise proceed.
 
-**File: `src/pages/admin/HostelBedManagementPage.tsx`**
+Also apply the same logic in **`src/components/hostels/HostelBedMapEditor.tsx`** if it has its own `handleDeleteCategory`.
 
-- Remove the "Block Reason" input, the "Block/Unblock" button, and the `<Separator>` before it from the Edit Bed Dialog (lines 1001-1008)
-- Keep `handleToggleBlock` function for use by the bed map only
-- The bed map (Layout Plan) already supports clicking a bed and editing -- blocking should be accessible only there
+### 2. Student-side bed selection: Grid vs Layout Plan toggle
 
-### 3. Add bed shape SVG design to both grid cards and layout plan, with rotation support
+**Problem**: Students currently only see the grid view (HostelBedMap with HostelFloorView). They should also be able to see the layout plan (visual map) and pick a bed from either view.
 
-**Database migration**: Add `rotation` integer column (default 0) to `hostel_beds` table to store bed orientation (0, 90, 180, 270 degrees)
+**Changes**:
 
-**New component: `src/components/hostels/BedShapeIcon.tsx`**
-- Create an SVG bed shape (top-down view: rectangle with rounded headboard, pillow indicator, and mattress lines) 
-- Accept props: `width`, `height`, `rotation` (0/90/180/270), `status` (available/occupied/blocked/selected), `bedNumber`
-- Apply `transform: rotate()` based on rotation value
-- Use status-based coloring (emerald for available, blue for occupied, red for blocked)
+**File: `src/pages/HostelRoomDetails.tsx`** (Step 4: Select Your Bed)
 
-**File: `src/pages/admin/HostelBedManagementPage.tsx`**
-- Replace the plain colored `<div>` in bed grid cards with the new `BedShapeIcon` component (small version, ~40x50px)
-- Update `DesignerBed` interface and data loading to include `rotation` field
+- Add a toggle state: `const [bedViewMode, setBedViewMode] = useState<'grid' | 'layout'>('grid');`
+- Add two small toggle buttons (Grid icon / Map icon) next to the "Select Your Bed" header label
+- When `bedViewMode === 'grid'`: render the existing `<HostelBedMap>` component (current behavior)
+- When `bedViewMode === 'layout'`: render a new `<HostelBedLayoutView>` component that shows the room layout with draggable-looking beds in their positioned layout (read-only, click-to-select)
 
-**File: `src/components/hostels/HostelBedPlanDesigner.tsx`**
-- Replace the plain rectangle bed rendering (lines 288-295) with `BedShapeIcon` (larger version, ~50x60px)
-- Increase `BED_W` and `BED_H` slightly to accommodate the bed shape
-- Add a rotate button that appears on hover/selection -- clicking it cycles through 0 -> 90 -> 180 -> 270 -> 0
-- Pass rotation to `onBedMove` or add a new `onBedRotate` callback
-- Update `DesignerBed` interface to include `rotation: number`
+**New file: `src/components/hostels/HostelBedLayoutView.tsx`**
 
-**File: `src/pages/admin/HostelBedManagementPage.tsx`**
-- Add `handleBedRotate` handler that updates the bed's rotation in the database
-- Save rotation along with position in `handleSaveLayout`
-- Load rotation from DB in `loadDesignerData`
+A read-only layout viewer for students that:
+- Takes props: `hostelId`, `selectedBedId`, `onBedSelect`, `sharingFilter`, `categoryFilter`, `startDate`, `endDate`
+- Fetches rooms with their layout dimensions (`room_width`, `room_height`, `layout_image`, `layout_image_opacity`) and beds with `position_x`, `position_y`, `rotation`
+- Also fetches bookings for date-aware availability (same logic as HostelBedMap)
+- Renders each room as a scaled-down canvas/div with:
+  - Optional background layout image
+  - `BedShapeIcon` components positioned at their `(position_x, position_y)` with their `rotation`
+  - Click on a bed to select it (calls `onBedSelect`)
+  - Status coloring: available (green), occupied (blue), selected (primary), filtered-out (muted)
+- Shows floor tabs and room filter pills (same pattern as HostelBedMap)
+- Scales the room dimensions to fit within the mobile viewport (e.g., scale factor to fit ~350px width)
 
-### Technical Details
+**File: `src/components/hostels/HostelBedMap.tsx`**
 
-**BedShapeIcon SVG design** (top-down view):
-```text
-+------------------+
-|   [  pillow  ]   |  <- headboard end (rounded top)
-|                  |
-|   ............   |  <- mattress texture lines
-|   ............   |
-|                  |
-+------------------+  <- foot end
-```
+- No changes needed -- it continues to work as the grid view
 
-- Headboard: slightly thicker top edge with rounded corners
-- Pillow: small rounded rectangle near the top
-- Body: clean rectangle with subtle inner line for mattress
-- Bed number displayed in the center
+### Technical Notes
 
-**Rotation in layout**: Each bed stores its rotation angle. On the canvas, `transform: rotate(Xdeg)` is applied around the bed's center. A small circular rotate icon button appears on hover, cycling through 90-degree increments.
+- The layout view reuses `BedShapeIcon` for consistent bed visuals across admin and student views
+- Beds without positions (0,0) will be auto-arranged or shown at default positions
+- The toggle buttons use `LayoutGrid` and `MapIcon` icons from lucide-react, styled as small pill buttons similar to the sharing type pills
+- The same `onBedSelect` callback is used regardless of view mode, so all downstream logic (package selection, payment) remains unchanged
 
