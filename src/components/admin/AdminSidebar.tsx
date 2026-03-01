@@ -80,17 +80,20 @@ export function AdminSidebar() {
     );
   }
 
+  const isPartner = user?.role === 'vendor' || user?.role === 'vendor_employee';
+  const routePrefix = isPartner ? '/partner' : '/admin';
+
   const menuItems: MenuItem[] = [
     {
       title: 'Dashboard',
-      url: '/admin/dashboard',
+      url: `${routePrefix}/dashboard`,
       icon: LayoutDashboard,
       roles: ['admin', 'vendor', 'vendor_employee'],
       permissions: ['view_dashboard']
     },
     {
       title: 'Operations',
-      url: '/admin/operations',
+      url: `${routePrefix}/operations`,
       icon: ClipboardCheck,
       roles: ['admin', 'vendor', 'vendor_employee'],
       permissions: ['view_dashboard']
@@ -103,7 +106,7 @@ export function AdminSidebar() {
     if (user?.role === 'admin' || hasPermission('seats_available_map')) {
       readingRoomSubItems.push({
         title: 'Seat Map',
-        url: '/admin/seats-available-map',
+        url: `${routePrefix}/seats-available-map`,
         icon: MapIcon,
         roles: ['admin', 'vendor', 'vendor_employee'],
         permissions: ['seats_available_map']
@@ -113,7 +116,7 @@ export function AdminSidebar() {
     if (user?.role === 'admin' || hasPermission('view_bookings')) {
       readingRoomSubItems.push({
         title: 'Due Management',
-        url: '/admin/due-management',
+        url: `${routePrefix}/due-management`,
         icon: Wallet,
         roles: ['admin', 'vendor', 'vendor_employee'],
         permissions: ['view_bookings']
@@ -123,14 +126,14 @@ export function AdminSidebar() {
     if (user?.role === 'admin' || hasPermission('view_bookings')) {
       readingRoomSubItems.push({
         title: 'Bookings',
-        url: '/admin/bookings',
+        url: `${routePrefix}/bookings`,
         icon: Calendar,
         roles: ['admin', 'vendor', 'vendor_employee'],
         permissions: ['view_bookings']
       });
       readingRoomSubItems.push({
         title: 'Receipts',
-        url: '/admin/receipts',
+        url: `${routePrefix}/receipts`,
         icon: CreditCard,
         roles: ['admin', 'vendor', 'vendor_employee'],
         permissions: ['view_bookings']
@@ -140,7 +143,7 @@ export function AdminSidebar() {
     if (user?.role === 'admin' || user?.role=='vendor') {
       readingRoomSubItems.push({
         title: 'Key Deposits',
-        url: '/admin/deposits-restrictions',
+        url: `${routePrefix}/deposits-restrictions`,
         icon: Wallet,
         roles: ['admin','vendor']
       });
@@ -148,20 +151,22 @@ export function AdminSidebar() {
 
     // Add Manage Rooms and Reviews (moved from old "Reading Rooms" section)
     if (user?.role === 'admin' || hasPermission('view_reading_rooms')) {
-      readingRoomSubItems.push({
-        title: 'Manage Rooms',
-        url: '/admin/rooms',
-        icon: Building,
-        roles: ['admin', 'vendor', 'vendor_employee'],
-        permissions: ['view_reading_rooms']
-      });
-      readingRoomSubItems.push({
-        title: 'Reviews',
-        url: '/admin/reviews?module=Reading Room',
-        icon: Star,
-        roles: ['admin', 'vendor', 'vendor_employee'],
-        permissions: ['manage_reviews']
-      });
+      if (!isPartner) {
+        readingRoomSubItems.push({
+          title: 'Manage Rooms',
+          url: '/admin/rooms',
+          icon: Building,
+          roles: ['admin', 'vendor', 'vendor_employee'],
+          permissions: ['view_reading_rooms']
+        });
+        readingRoomSubItems.push({
+          title: 'Reviews',
+          url: '/admin/reviews?module=Reading Room',
+          icon: Star,
+          roles: ['admin', 'vendor', 'vendor_employee'],
+          permissions: ['manage_reviews']
+        });
+      }
     }
 
     if (readingRoomSubItems.length > 0) {
@@ -181,12 +186,12 @@ export function AdminSidebar() {
       icon: Users,
       roles: ['admin', 'vendor', 'vendor_employee'],
       subItems: [
-        { title: 'All Users', url: '/admin/students', icon: Users, roles: ['admin', 'vendor', 'vendor_employee'] },
-        { title: 'Create User', url: '/admin/students-create', icon: Plus, roles: ['admin','vendor'] },
+        { title: 'All Users', url: `${routePrefix}/students`, icon: Users, roles: ['admin', 'vendor', 'vendor_employee'] },
+        { title: 'Create User', url: `${routePrefix}/students-create`, icon: Plus, roles: ['admin','vendor'] },
         { title: 'Import Users', url: '/admin/students-import', icon: Import, roles: ['admin'] },
         {
           title: 'Coupons',
-          url: '/admin/coupons',
+          url: `${routePrefix}/coupons`,
           icon: TicketPlus,
           roles: ['admin', 'vendor', 'vendor_employee']
         },
@@ -198,53 +203,53 @@ export function AdminSidebar() {
     const hostelSubItems: MenuItem[] = [
       {
         title: 'Bed Map',
-        url: '/admin/hostel-bed-map',
+        url: `${routePrefix}/hostel-bed-map`,
         icon: Bed,
         roles: ['admin', 'vendor', 'vendor_employee'],
         permissions: ['view_reading_rooms']
       },
       {
         title: 'Due Management',
-        url: '/admin/hostel-due-management',
+        url: `${routePrefix}/hostel-due-management`,
         icon: Wallet,
         roles: ['admin', 'vendor', 'vendor_employee'],
         permissions: ['view_reading_rooms']
       },
-      {
+      ...(!isPartner ? [{
         title: 'Manage Hostels',
         url: '/admin/hostels',
         icon: HomeIcon,
         roles: ['admin', 'vendor', 'vendor_employee'],
         permissions: ['view_reading_rooms']
-      },
+      }] : []) as MenuItem[],
       {
         title: 'Hostel Bookings',
-        url: '/admin/hostel-bookings',
+        url: `${routePrefix}/hostel-bookings`,
         icon: Calendar,
         roles: ['admin', 'vendor', 'vendor_employee'],
         permissions: ['view_reading_rooms']
       },
       {
         title: 'Hostel Receipts',
-        url: '/admin/hostel-receipts',
+        url: `${routePrefix}/hostel-receipts`,
         icon: CreditCard,
         roles: ['admin', 'vendor', 'vendor_employee'],
         permissions: ['view_reading_rooms']
       },
       {
         title: 'Hostel Deposits',
-        url: '/admin/hostel-deposits',
+        url: `${routePrefix}/hostel-deposits`,
         icon: Wallet,
         roles: ['admin', 'vendor', 'vendor_employee'],
         permissions: ['view_reading_rooms']
       },
-      {
+      ...(!isPartner ? [{
         title: 'Reviews',
         url: '/admin/reviews?module=Hostel',
         icon: Star,
         roles: ['admin', 'vendor', 'vendor_employee'],
         permissions: ['manage_reviews']
-      }
+      }] : []) as MenuItem[],
     ];
 
     // Admin-only: Hostel Approvals
@@ -263,6 +268,24 @@ export function AdminSidebar() {
       roles: ['admin', 'vendor', 'vendor_employee'],
       permissions: ['view_reading_rooms'],
       subItems: hostelSubItems,
+    });
+  }
+
+  // For partners: add merged Manage Properties and Reviews
+  if (isPartner && (user?.role === 'vendor' || hasPermission('view_reading_rooms'))) {
+    menuItems.push({
+      title: 'Manage Properties',
+      url: `${routePrefix}/manage-properties`,
+      icon: Building,
+      roles: ['vendor', 'vendor_employee'],
+      permissions: ['view_reading_rooms']
+    });
+    menuItems.push({
+      title: 'Reviews',
+      url: `${routePrefix}/reviews`,
+      icon: Star,
+      roles: ['vendor', 'vendor_employee'],
+      permissions: ['manage_reviews']
     });
   }
 
@@ -333,7 +356,7 @@ export function AdminSidebar() {
       title: 'Complaints',
       icon: MessageSquare,
       roles: ['vendor', 'vendor_employee'],
-      url: '/admin/complaints'
+      url: `${routePrefix}/complaints`
     });
 
     if (hasPermission('view_reports')) {
@@ -345,14 +368,14 @@ export function AdminSidebar() {
         subItems: [
           {
             title: 'Booking Reports',
-            url: '/admin/reports',
+            url: `${routePrefix}/reports`,
             icon: BarChart2,
             roles: ['vendor', 'vendor_employee'],
             permissions: ['view_reports']
           },
           {
             title: 'Hostel Reports',
-            url: '/admin/reports?tab=transactions',
+            url: `${routePrefix}/reports?tab=transactions`,
             icon: BarChart2,
             roles: ['vendor', 'vendor_employee'],
             permissions: ['view_reports']
@@ -367,15 +390,7 @@ export function AdminSidebar() {
         icon: Users2,
         roles: ['vendor', 'vendor_employee'],
         permissions: ['manage_employees'],
-        subItems: [
-          {
-            title: 'All Employees',
-            url: '/admin/employees',
-            icon: Users,
-            roles: ['vendor', 'vendor_employee'],
-            permissions: ['manage_employees']
-          }
-        ],
+        url: `${routePrefix}/employees`,
       });
     }
 
@@ -385,7 +400,7 @@ export function AdminSidebar() {
         icon: Wallet,
         roles: ['vendor', 'vendor_employee'],
         permissions: ['view_payouts'],
-        url: '/admin/vendorpayouts'
+        url: `${routePrefix}/vendorpayouts`
       });
     }
 
@@ -394,7 +409,7 @@ export function AdminSidebar() {
         title: 'Profile',
         icon: User,
         roles: ['vendor', 'vendor_employee'],
-        url: '/admin/profile'
+        url: `${routePrefix}/profile`
       });
     }
 

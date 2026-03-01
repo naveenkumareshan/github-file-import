@@ -14,20 +14,17 @@ interface VendorEmployeeFormProps {
   onCancel: () => void;
 }
 
-const PERMISSIONS = [
-  { id: 'view_dashboard', label: 'Dashboard' },
-  { id: 'view_bookings', label: 'View Bookings' },
-  { id: 'manage_bookings', label: 'Manage Bookings' },
-  { id: 'view_reading_rooms', label: 'View Reading Rooms' },
-  { id: 'manage_reading_rooms', label: 'Manage Reading Rooms' },
-  { id: 'view_students', label: 'View Students' },
-  { id: 'manage_students', label: 'Manage Students' },
-  { id: 'view_reports', label: 'View Reports' },
-  { id: 'manage_employees', label: 'Manage Employees' },
-  { id: 'seats_available_map', label: 'Seat Availability Map' },
-  { id: 'seats_available_edit', label: 'Seat Map > Update' },
-  { id: 'manage_reviews', label: 'Manage Reviews' },
-  { id: 'view_payouts', label: 'View Payouts' },
+const PERMISSION_MODULES = [
+  { label: 'Dashboard', viewKey: 'view_dashboard', editKey: 'manage_dashboard' },
+  { label: 'Bookings', viewKey: 'view_bookings', editKey: 'manage_bookings' },
+  { label: 'Reading Rooms', viewKey: 'view_reading_rooms', editKey: 'manage_reading_rooms' },
+  { label: 'Seat Map', viewKey: 'seats_available_map', editKey: 'seats_available_edit' },
+  { label: 'Users / Students', viewKey: 'view_students', editKey: 'manage_students' },
+  { label: 'Employees', viewKey: 'view_employees', editKey: 'manage_employees' },
+  { label: 'Reports', viewKey: 'view_reports', editKey: 'manage_reports' },
+  { label: 'Reviews', viewKey: 'view_reviews', editKey: 'manage_reviews' },
+  { label: 'Payouts', viewKey: 'view_payouts', editKey: 'manage_payouts' },
+  { label: 'Complaints', viewKey: 'view_complaints', editKey: 'manage_complaints' },
 ];
 
 export const VendorEmployeeForm: React.FC<VendorEmployeeFormProps> = ({
@@ -137,20 +134,38 @@ export const VendorEmployeeForm: React.FC<VendorEmployeeFormProps> = ({
 
           <div>
             <Label className="text-xs font-medium">Sidebar Permissions</Label>
-            <p className="text-[10px] text-muted-foreground mb-2">Select which sections this employee can access</p>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {PERMISSIONS.map((permission) => (
-                <div key={permission.id} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={permission.id}
-                    checked={formData.permissions.includes(permission.id)}
-                    onCheckedChange={() => handlePermissionChange(permission.id)}
-                  />
-                  <Label htmlFor={permission.id} className="text-[11px] cursor-pointer">
-                    {permission.label}
-                  </Label>
-                </div>
-              ))}
+            <p className="text-[10px] text-muted-foreground mb-2">Select View and/or Edit access for each module</p>
+            <div className="border rounded-md overflow-hidden">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-muted/40">
+                    <th className="text-left py-1.5 px-3 font-medium text-[10px] uppercase tracking-wider">Module</th>
+                    <th className="text-center py-1.5 px-3 font-medium text-[10px] uppercase tracking-wider w-20">View</th>
+                    <th className="text-center py-1.5 px-3 font-medium text-[10px] uppercase tracking-wider w-20">Edit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {PERMISSION_MODULES.map((mod, idx) => (
+                    <tr key={mod.label} className={idx % 2 === 0 ? 'bg-background' : 'bg-muted/10'}>
+                      <td className="py-1.5 px-3 text-[11px] font-medium">{mod.label}</td>
+                      <td className="py-1.5 px-3 text-center">
+                        <Checkbox
+                          id={mod.viewKey}
+                          checked={formData.permissions.includes(mod.viewKey)}
+                          onCheckedChange={() => handlePermissionChange(mod.viewKey)}
+                        />
+                      </td>
+                      <td className="py-1.5 px-3 text-center">
+                        <Checkbox
+                          id={mod.editKey}
+                          checked={formData.permissions.includes(mod.editKey)}
+                          onCheckedChange={() => handlePermissionChange(mod.editKey)}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
 

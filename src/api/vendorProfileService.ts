@@ -105,20 +105,44 @@ function mapPartnerToProfile(row: any): VendorProfileData {
 }
 
 export const vendorProfileService = {
-  // Get vendor profile from Supabase partners table
+  // Get vendor profile from Supabase partners table (auto-creates if missing)
   getProfile: async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return { success: false, error: 'Not authenticated' };
 
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('partners')
         .select('*')
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (error) throw error;
-      if (!data) return { success: false, error: 'Profile not found' };
+
+      // Auto-create partner record if missing
+      if (!data) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('name, email, phone')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        const { data: newPartner, error: insertError } = await supabase
+          .from('partners')
+          .insert({
+            user_id: user.id,
+            business_name: profile?.name || 'Partner',
+            contact_person: profile?.name || '',
+            email: profile?.email || user.email || '',
+            phone: profile?.phone || '',
+            status: 'approved',
+          })
+          .select()
+          .single();
+
+        if (insertError) throw insertError;
+        data = newPartner;
+      }
 
       return { success: true, data: mapPartnerToProfile(data) };
     } catch (error: any) {
