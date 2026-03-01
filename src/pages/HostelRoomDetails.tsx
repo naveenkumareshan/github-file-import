@@ -4,6 +4,7 @@ import { addDays, addWeeks, addMonths, format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
@@ -507,11 +508,12 @@ const HostelRoomDetails = () => {
               </div>
             )}
 
-            {/* ═══ Step 1: Filter Pills ═══ */}
-            <div className="px-3 pt-3">
-              <div className="mb-2">
-                <h2 className="text-base font-bold text-foreground">Step 1: Select Sharing Type</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">Filter beds by sharing type and category</p>
+            {/* ═══ 1: Select Sharing Type ═══ */}
+            <Separator className="my-0" />
+            <div className="px-3 pt-2">
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">1</div>
+                <Label className="text-sm font-semibold text-foreground">Select Sharing Type</Label>
               </div>
 
               {/* Sharing type pills */}
@@ -572,11 +574,12 @@ const HostelRoomDetails = () => {
               )}
             </div>
 
-            {/* ═══ Step 2: Stay Duration ═══ */}
-            <div className="px-3 pt-3">
-              <div className="mb-2">
-                <h2 className="text-base font-bold text-foreground">Step 2: Stay Duration</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">Choose duration type and length of stay</p>
+            {/* ═══ 2: Stay Duration ═══ */}
+            <Separator className="my-0" />
+            <div className="px-3 pt-2">
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">2</div>
+                <Label className="text-sm font-semibold text-foreground">Stay Duration</Label>
               </div>
 
               {/* Duration type pills - filtered by allowed_durations */}
@@ -660,15 +663,12 @@ const HostelRoomDetails = () => {
               </div>
             </div>
 
-            {/* ═══ Step 3: Select Your Bed (Inline Bed Map) ═══ */}
-            <div className="px-3 pt-3" ref={bedMapRef}>
-              <div className="mb-2">
-                <h2 className="text-base font-bold text-foreground">Step 3: Select Your Bed</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {selectedBed 
-                    ? `Bed #${selectedBed.bed_number} selected (${selectedBed.sharingType || 'Unknown'})`
-                    : 'Tap on an available bed to select it'}
-                </p>
+            {/* ═══ 3: Select Your Bed ═══ */}
+            <Separator className="my-0" />
+            <div className="px-3 pt-2" ref={bedMapRef}>
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">3</div>
+                <Label className="text-sm font-semibold text-foreground">Select Your Bed</Label>
               </div>
 
               <HostelBedMap
@@ -683,12 +683,13 @@ const HostelRoomDetails = () => {
               />
             </div>
 
-            {/* ═══ Step 4: Choose Package (shown after bed selected) ═══ */}
-            {selectedBed && (
-              <div className="px-3 pt-4">
-                <div className="mb-2">
-                  <h2 className="text-base font-bold text-foreground">Step 4: Choose Package</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">Select a package for better pricing</p>
+            {/* ═══ 4: Choose Package ═══ */}
+            {selectedBed && (<>
+              <Separator className="my-0" />
+              <div className="px-3 pt-2">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">4</div>
+                  <Label className="text-sm font-semibold text-foreground">Choose Package</Label>
                 </div>
                 <StayDurationPackages
                   hostelId={hostel.id}
@@ -698,14 +699,15 @@ const HostelRoomDetails = () => {
                   durationType={durationType}
                 />
               </div>
-            )}
+            </>)}
 
-            {/* ═══ Step 5: Review & Pay (shown after package selected) ═══ */}
-            {selectedBed && selectedStayPackage && (
-              <div className="px-3 pt-4 pb-6">
-                <div className="mb-3">
-                  <h2 className="text-base font-bold text-foreground">Step 5: Review & Pay</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">Review your booking and proceed to payment</p>
+            {/* ═══ 5: Review & Pay ═══ */}
+            {selectedBed && selectedStayPackage && (<>
+              <Separator className="my-0" />
+              <div className="px-3 pt-2 pb-6">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">5</div>
+                  <Label className="text-sm font-semibold text-foreground">Review & Pay</Label>
                 </div>
 
                 <div className="bg-muted/30 rounded-xl border border-border/50 divide-y divide-border/50">
@@ -808,7 +810,7 @@ const HostelRoomDetails = () => {
                   {isProcessing ? 'Processing...' : useAdvancePayment && advanceAmount ? `Pay ${formatCurrency(advanceAmount)} Advance` : `Confirm & Pay ${formatCurrency(totalPrice)}`}
                 </Button>
               </div>
-            )}
+            </>)}
           </>
         )}
 
