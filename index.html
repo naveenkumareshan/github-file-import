@@ -30,9 +30,7 @@
     <script>
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then(function(regs) {
-          regs.forEach(function(r) {
-            if (r.active && r.active.scriptURL.includes('sw.js')) r.unregister();
-          });
+          regs.forEach(function(r) { r.unregister(); });
         });
       }
     </script>
