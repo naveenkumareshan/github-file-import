@@ -30,6 +30,8 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
 }) => {
   const [loading, setLoading] = useState(true);
   const [floorData, setFloorData] = useState<Record<number, any[]>>({});
+  const [selectedFloor, setSelectedFloor] = useState<string>('');
+  const [internalRoomFilter, setInternalRoomFilter] = useState<string>('all');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -89,11 +91,9 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
 
         const bookingMap = new Map<string, string>();
         bookings?.forEach((b: any) => {
-          // For advance_paid bookings, check proportional_end_date
           if (b.payment_status === 'advance_paid' && startDate) {
             const propEnd = duesMap.get(b.bed_id);
             if (propEnd && propEnd < startDate) {
-              // Bed is available after proportional_end_date
               return;
             }
           }
@@ -143,6 +143,24 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
 
   const floors = Object.keys(floorData).map(Number).sort();
 
+  // Set default floor
+  useEffect(() => {
+    if (floors.length > 0 && !selectedFloor) {
+      setSelectedFloor(String(floors[0]));
+    }
+  }, [floors, selectedFloor]);
+
+  // Reset room filter when floor changes
+  useEffect(() => {
+    setInternalRoomFilter('all');
+  }, [selectedFloor]);
+
+  // Use external roomFilter prop if provided, otherwise internal
+  const effectiveRoomFilter = roomFilter ?? internalRoomFilter;
+
+  // Rooms for current floor
+  const currentFloorRooms = selectedFloor ? (floorData[Number(selectedFloor)] || []) : [];
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-40">
@@ -162,8 +180,8 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
 
   return (
     <div>
-      <Tabs defaultValue={String(floors[0])}>
-        <TabsList className="mb-4">
+      <Tabs value={selectedFloor || String(floors[0])} onValueChange={setSelectedFloor}>
+        <TabsList className="mb-2">
           {floors.map(floor => (
             <TabsTrigger key={floor} value={String(floor)} className="flex items-center gap-1">
               <Layers className="h-3.5 w-3.5" />
@@ -171,6 +189,35 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
             </TabsTrigger>
           ))}
         </TabsList>
+
+        {/* Room filter pills (after floor tabs) */}
+        {currentFloorRooms.length > 1 && (
+          <div className="flex gap-1.5 overflow-x-auto pb-2 no-scrollbar">
+            <button
+              onClick={() => setInternalRoomFilter('all')}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all ${
+                effectiveRoomFilter === 'all'
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
+              }`}
+            >
+              All Rooms
+            </button>
+            {currentFloorRooms.map((room: any) => (
+              <button
+                key={room.roomId}
+                onClick={() => setInternalRoomFilter(room.roomId)}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all ${
+                  effectiveRoomFilter === room.roomId
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
+                }`}
+              >
+                Room {room.roomNumber}
+              </button>
+            ))}
+          </div>
+        )}
 
         {floors.map(floor => (
           <TabsContent key={floor} value={String(floor)}>
@@ -182,13 +229,13 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
               readOnly={readOnly}
               sharingFilter={sharingFilter}
               categoryFilter={categoryFilter}
-              roomFilter={roomFilter}
+              roomFilter={effectiveRoomFilter}
             />
           </TabsContent>
         ))}
       </Tabs>
 
-      {/* Legend */}
+      {/* Legend - 3 states only */}
       <div className="flex items-center justify-center gap-4 text-[11px] mt-4 pt-3 border-t">
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 rounded border border-emerald-400 bg-emerald-50" />
@@ -196,11 +243,7 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
         </div>
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 rounded border border-blue-400 bg-blue-50" />
-          <span>Occupied</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded border border-destructive/30 bg-destructive/10" />
-          <span>Blocked</span>
+          <span>Not Available</span>
         </div>
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 rounded border border-primary bg-primary" />

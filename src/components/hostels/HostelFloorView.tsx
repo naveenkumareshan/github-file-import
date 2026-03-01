@@ -96,7 +96,6 @@ export const HostelFloorView: React.FC<HostelFloorViewProps> = ({
                   {room.beds.map((bed) => {
                     const isSelected = selectedBedId === bed.id;
                     const isAvailable = bed.is_available && !bed.is_blocked;
-                    const isBlocked = bed.is_blocked;
 
                     // Check if bed matches the active filters
                     const matchesSharing = !sharingFilter || sharingFilter === 'all' || bed.sharingType?.toLowerCase() === sharingFilter.toLowerCase();
@@ -107,7 +106,6 @@ export const HostelFloorView: React.FC<HostelFloorViewProps> = ({
                     let bgClass = 'bg-emerald-50 border-emerald-400 text-emerald-800 hover:bg-emerald-100';
                     if (isSelected) bgClass = 'bg-primary border-primary text-primary-foreground ring-2 ring-primary/30';
                     else if (isDisabledByFilter) bgClass = 'bg-muted/50 border-border/50 text-muted-foreground/40';
-                    else if (isBlocked) bgClass = 'bg-destructive/10 border-destructive/30 text-destructive';
                     else if (!isAvailable) bgClass = 'bg-blue-50 border-blue-400 text-blue-800';
 
                     const canSelect = !readOnly && isAvailable && matchesFilter;
@@ -134,18 +132,31 @@ export const HostelFloorView: React.FC<HostelFloorViewProps> = ({
                             )}
                           </button>
                         </TooltipTrigger>
-                        <TooltipContent>
-                          <div className="text-xs space-y-0.5">
-                            <p className="font-bold">Bed #{bed.bed_number}</p>
-                            {bed.sharingType && <p>Type: {bed.sharingType}</p>}
-                            {bed.category && <p>Category: {bed.category}</p>}
-                            <p>{formatCurrency(effectivePrice)}/month</p>
-                            <p>
-                              {isDisabledByFilter ? '⚪ Filtered out' : isBlocked ? '🚫 Blocked' : isAvailable ? '✅ Available' : '👤 Occupied'}
-                            </p>
-                            {bed.occupantName && <p>Guest: {bed.occupantName}</p>}
+                        <TooltipContent className="max-w-[220px]">
+                          <div className="text-xs space-y-1.5">
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="font-bold">Bed #{bed.bed_number}</p>
+                              <Badge variant={isSelected ? 'default' : isAvailable ? 'outline' : 'secondary'} className="text-[9px] px-1.5 py-0">
+                                {isDisabledByFilter ? 'Filtered' : isAvailable ? 'Available' : 'Not Available'}
+                              </Badge>
+                            </div>
+                            <div className="space-y-0.5 text-muted-foreground">
+                              <p>Room {room.roomNumber} · Floor {floorNumber}</p>
+                              {bed.sharingType && <p>Type: {bed.sharingType}</p>}
+                              {bed.category && <p>Category: {bed.category}</p>}
+                              <p className="font-medium text-foreground">{formatCurrency(effectivePrice)}/month</p>
+                            </div>
+                            {bed.occupantName && (
+                              <p className="text-muted-foreground">Guest: {bed.occupantName}</p>
+                            )}
                             {bed.amenities && bed.amenities.length > 0 && (
-                              <p>🏷️ {bed.amenities.join(', ')}</p>
+                              <div className="flex flex-wrap gap-1 pt-0.5">
+                                {bed.amenities.map((a) => (
+                                  <span key={a} className="inline-flex items-center text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                                    {a}
+                                  </span>
+                                ))}
+                              </div>
                             )}
                           </div>
                         </TooltipContent>

@@ -102,7 +102,7 @@ const HostelRoomDetails = () => {
   // Selection state
   const [sharingFilter, setSharingFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [roomFilter, setRoomFilter] = useState<string>('all');
+  // roomFilter is now managed internally by HostelBedMap
   const [selectedBed, setSelectedBed] = useState<any>(null);
   const [selectedStayPackage, setSelectedStayPackage] = useState<StayPackage | null>(null);
   const [durationType, setDurationType] = useState<DurationType>('monthly');
@@ -211,13 +211,8 @@ const HostelRoomDetails = () => {
     setUseAdvancePayment(false);
   };
 
-  const handleRoomFilterChange = (val: string) => {
-    setRoomFilter(val);
-    setSelectedBed(null);
-    setSelectedStayPackage(null);
-    setAgreedToTerms(false);
-    setUseAdvancePayment(false);
-  };
+
+
 
   const handleCheckInDateChange = (date: Date | undefined) => {
     if (date) {
@@ -559,8 +554,16 @@ const HostelRoomDetails = () => {
                 ))}
               </div>
 
-              {/* Category pills (only if categories exist) */}
-              {categories.length > 0 && (
+            </div>
+
+            {/* ═══ 2: Select Category ═══ */}
+            {categories.length > 0 && (<>
+              <Separator className="my-0" />
+              <div className="px-3 pt-2">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">2</div>
+                  <Label className="text-sm font-semibold text-foreground">Select Category</Label>
+                </div>
                 <div className="flex gap-1.5 overflow-x-auto pb-2 no-scrollbar">
                   <button
                     onClick={() => handleCategoryFilterChange('all')}
@@ -587,46 +590,14 @@ const HostelRoomDetails = () => {
                     </button>
                   ))}
                 </div>
-              )}
+              </div>
+            </>)}
 
-              {/* Room filter pills */}
-              {rooms.length > 1 && (
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium text-muted-foreground">Room</Label>
-                  <div className="flex gap-1.5 overflow-x-auto pb-2 no-scrollbar">
-                    <button
-                      onClick={() => handleRoomFilterChange('all')}
-                      className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all ${
-                        roomFilter === 'all'
-                          ? 'bg-primary text-primary-foreground border-primary'
-                          : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
-                      }`}
-                    >
-                      All Rooms
-                    </button>
-                    {rooms.map((room: any) => (
-                      <button
-                        key={room.id}
-                        onClick={() => handleRoomFilterChange(room.id)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all ${
-                          roomFilter === room.id
-                            ? 'bg-primary text-primary-foreground border-primary'
-                            : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
-                        }`}
-                      >
-                        R{room.room_number} (F{room.floor})
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* ═══ 2: Stay Duration ═══ */}
+            {/* ═══ 3: Stay Duration ═══ */}
             <Separator className="my-0" />
             <div className="px-3 pt-2">
               <div className="flex items-center gap-2 mb-1.5">
-                <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">2</div>
+                <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">{categories.length > 0 ? 3 : 2}</div>
                 <Label className="text-sm font-semibold text-foreground">Stay Duration</Label>
               </div>
 
@@ -718,11 +689,11 @@ const HostelRoomDetails = () => {
               </div>
             </div>
 
-            {/* ═══ 3: Select Your Bed ═══ */}
+            {/* ═══ 4: Select Your Bed ═══ */}
             <Separator className="my-0" />
             <div className="px-3 pt-2" ref={bedMapRef}>
               <div className="flex items-center gap-2 mb-1.5">
-                <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">3</div>
+                <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">{categories.length > 0 ? 4 : 3}</div>
                 <Label className="text-sm font-semibold text-foreground">Select Your Bed</Label>
               </div>
 
@@ -733,7 +704,6 @@ const HostelRoomDetails = () => {
                 readOnly={false}
                 sharingFilter={sharingFilter}
                 categoryFilter={categoryFilter}
-                roomFilter={roomFilter}
                 startDate={format(checkInDate, 'yyyy-MM-dd')}
                 endDate={format(endDate, 'yyyy-MM-dd')}
               />
@@ -744,7 +714,7 @@ const HostelRoomDetails = () => {
               <Separator className="my-0" />
               <div className="px-3 pt-2">
                 <div className="flex items-center gap-2 mb-1.5">
-                  <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">4</div>
+                  <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">{categories.length > 0 ? 5 : 4}</div>
                   <Label className="text-sm font-semibold text-foreground">Choose Package</Label>
                 </div>
                 <StayDurationPackages
@@ -762,7 +732,7 @@ const HostelRoomDetails = () => {
               <Separator className="my-0" />
               <div className="px-3 pt-2 pb-6">
                 <div className="flex items-center gap-2 mb-1.5">
-                  <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">5</div>
+                  <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">{categories.length > 0 ? 6 : 5}</div>
                   <Label className="text-sm font-semibold text-foreground">Review & Pay</Label>
                 </div>
 
