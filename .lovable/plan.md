@@ -1,51 +1,69 @@
 
 
-## Fix Mobile Safe Areas for Native App
+## Replace UUID URLs with Clean Serial Numbers
 
-When running as a native app, content collides with the device's **status bar** (top notch/camera area) and the **bottom navigation bar** overlaps with the system's home indicator. This is fixed using CSS safe area insets.
+Currently, student-facing pages show ugly UUIDs in the URL bar (e.g., `/book-seat/5de17f48-a577-4aeb-bd5e-316be04dcc95`). This plan replaces them with the existing `serial_number` field (e.g., `/book-seat/IS-ROOM-2026-00004`).
+
+### Affected Student-Facing Routes
+
+| Current URL | New URL |
+|---|---|
+| `/book-seat/5de17f48-...` | `/book-seat/IS-ROOM-2026-00004` |
+| `/hostels/a1b2c3d4-...` | `/hostels/IS-INSH-2026-00001` |
+| `/hostels/:id/rooms` | `/hostels/IS-INSH-2026-00001/rooms` |
+| `/book-confirmation/:bookingId` | (kept as UUID - internal reference) |
+| `/booking-confirmation/:bookingId` | (kept as UUID - internal reference) |
+
+Booking confirmations will keep UUIDs since those are one-time pages and the IDs are not user-meaningful.
 
 ---
 
 ### Changes
 
-**1. `index.html` - Enable safe area insets**
-- Update the viewport meta tag to include `viewport-fit=cover`:
-  ```
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  ```
-  This tells the browser to extend the app into the safe area zones so we can manually pad them.
+**1. API: Add lookup-by-serial-number methods**
 
-**2. `src/index.css` - Add global safe area padding**
-- Add CSS for the root element to respect safe areas:
-  ```css
-  #root {
-    padding-top: env(safe-area-inset-top);
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
-  }
-  ```
-  This prevents content from going under the top status bar/notch on all pages.
+- **`src/api/cabinsService.ts`** -- Add `getCabinBySerialNumber(serialNumber)` that queries `cabins` table with `.eq('serial_number', serialNumber)`.
+- **`src/api/hostelService.ts`** -- Add `getHostelBySerialNumber(serialNumber)` that queries `hostels` table with `.eq('serial_number', serialNumber)`.
 
-**3. `src/components/student/MobileAppLayout.tsx` - Safe area on main layout**
-- Add `pt-[env(safe-area-inset-top)]` padding to the root container so content starts below the status bar.
-- Update `pb-16` on the main content to also account for the bottom safe area.
+**2. Navigation: Use serial_number instead of UUID when linking**
 
-**4. `src/components/student/MobileBottomNav.tsx` - Already handled**
-- The bottom nav already uses `paddingBottom: 'env(safe-area-inset-bottom)'` -- this is correct and stays as-is.
+Update all student-facing navigation to pass `serial_number` instead of `id`:
 
-**5. `src/components/AdminLayout.tsx` - Safe area for admin panel**
-- Add top safe area padding to the admin layout header so it doesn't collide with the status bar on native devices.
+- **`src/components/CabinCard.tsx`** -- Change `Link to={/book-seat/${cabin._id}}` to use `cabin.serial_number || cabin._id`
+- **`src/components/search/CabinSearchResults.tsx`** -- Same change for cabin links
+- **`src/components/search/CabinMapView.tsx`** -- Update `navigate(/book-seat/...)` calls
+- **`src/pages/Hostels.tsx`** -- Change `navigate(/hostels/${hostel.id})` to use `hostel.serial_number || hostel.id`
 
-**6. `capacitor.config.ts` - Status bar configuration**
-- Add `StatusBar` plugin config to use an overlay-style status bar so the app fills the full screen with proper padding.
+**3. Detail pages: Resolve serial_number to data**
 
-### Summary of Files
+- **`src/pages/BookSeat.tsx`** -- Update `fetchCabinDetails` to first try `getCabinBySerialNumber(cabinId)`, falling back to `getCabinById(cabinId)` if it looks like a UUID (for backward compatibility).
+- **`src/pages/HostelRoomDetails.tsx`** -- Same pattern: try serial number lookup first, fall back to UUID.
+- **`src/pages/HostelRooms.tsx`** -- Same pattern for hostel rooms page.
+
+**4. Downstream navigation within detail pages**
+
+Some detail pages navigate to sub-pages using the ID. These will be updated to pass along the serial_number:
+- **`src/pages/HostelRooms.tsx`** -- `handleBookRoom` uses `roomId` which comes from the rooms API (these are room-level UUIDs, not hostel-level, and don't have serial numbers -- these stay as UUIDs since they're internal references).
+
+### Backward Compatibility
+
+The detail pages will detect whether the URL parameter is a UUID or serial number:
+- If it matches UUID format (`/^[0-9a-f]{8}-/`), use the existing `getById` method
+- Otherwise, use the new `getBySerialNumber` method
+
+This ensures any bookmarked or shared old-format links still work.
+
+### Files to Modify
 
 | File | Change |
 |------|--------|
-| `index.html` | Add `viewport-fit=cover` to viewport meta |
-| `src/index.css` | Add safe area padding on `#root` |
-| `src/components/student/MobileAppLayout.tsx` | Add top safe area padding |
-| `src/components/AdminLayout.tsx` | Add top safe area padding to header |
-| `capacitor.config.ts` | Add StatusBar plugin config |
+| `src/api/cabinsService.ts` | Add `getCabinBySerialNumber` method |
+| `src/api/hostelService.ts` | Add `getHostelBySerialNumber` method |
+| `src/components/CabinCard.tsx` | Use serial_number in link |
+| `src/components/search/CabinSearchResults.tsx` | Use serial_number in link |
+| `src/components/search/CabinMapView.tsx` | Use serial_number in navigation |
+| `src/pages/Hostels.tsx` | Use serial_number in navigation |
+| `src/pages/BookSeat.tsx` | Resolve serial_number to cabin data |
+| `src/pages/HostelRoomDetails.tsx` | Resolve serial_number to hostel data |
+| `src/pages/HostelRooms.tsx` | Resolve serial_number to hostel data |
 
