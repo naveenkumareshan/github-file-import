@@ -298,6 +298,17 @@ export const HostelBedMapEditor: React.FC<HostelBedMapEditorProps> = ({ hostelId
   };
 
   const handleDeleteCategory = async (id: string) => {
+    const cat = categories.find(c => c.id === id);
+    if (cat) {
+      const { count } = await supabase
+        .from('hostel_beds')
+        .select('id', { count: 'exact', head: true })
+        .eq('category', cat.name);
+      if (count && count > 0) {
+        toast({ title: 'Cannot delete', description: `Delete all ${count} bed(s) with category "${cat.name}" first.`, variant: 'destructive' });
+        return;
+      }
+    }
     const result = await hostelBedCategoryService.deleteCategory(id);
     if (result.success) {
       toast({ title: 'Category deleted' });
