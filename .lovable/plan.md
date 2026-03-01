@@ -1,53 +1,164 @@
 
+# Food Module for Hostel -- Full Integration Plan
 
-## Dependency-Safe Deletes for Categories/Sharing Types + Student Bed Selection View Toggle
+## Overview
+Add an optional Food Facility system for hostels that integrates into the entire booking, payment, dues, and reporting pipeline. Partners/admins can enable food per hostel, set pricing/menu, and students can optionally add food during booking.
 
-### 1. Category and Sharing Type deletion dependency checks
+---
 
-**Problem**: Categories and sharing types can be deleted even when beds reference them, leaving orphaned data.
+## Phase 1: Database Schema
 
-**Solution (File: `src/pages/admin/HostelBedManagementPage.tsx`)**:
+### New Table: `hostel_food_menu`
+Stores food menu items per hostel.
 
-- **`handleDeleteCategory`**: Before deleting, query `hostel_beds` to count beds where `category` matches the category name. If count > 0, show a toast error: "Delete all beds with this category first" and abort. Otherwise proceed with deletion.
-- **`handleDeleteSharingType`**: Before deleting, query `hostel_beds` joined through `hostel_sharing_options` to check if any beds use sharing options of this type. If count > 0, show toast error: "Delete all beds using this sharing type first" and abort. Otherwise proceed.
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid PK | |
+| hostel_id | uuid FK | references hostels |
+| meal_type | text | 'breakfast', 'lunch', 'dinner' |
+| item_name | text | e.g. "Idli Sambar" |
+| display_order | integer | default 0 |
+| is_active | boolean | default true |
+| created_at | timestamptz | |
 
-Also apply the same logic in **`src/components/hostels/HostelBedMapEditor.tsx`** if it has its own `handleDeleteCategory`.
+RLS: Admins full access, Partners manage own hostel items, Anyone can view active items.
 
-### 2. Student-side bed selection: Grid vs Layout Plan toggle
+### Alter `hostels` table -- add columns:
+- `food_enabled` boolean default false
+- `food_price_monthly` numeric default 0
+- `food_menu_image` text (optional uploaded weekly/monthly menu image)
 
-**Problem**: Students currently only see the grid view (HostelBedMap with HostelFloorView). They should also be able to see the layout plan (visual map) and pick a bed from either view.
+### Alter `hostel_bookings` table -- add columns:
+- `food_opted` boolean default false
+- `food_amount` numeric default 0
 
-**Changes**:
+### Alter `hostel_dues` table -- add column:
+- `food_amount` numeric default 0 (stored separately for clarity in breakdowns)
 
-**File: `src/pages/HostelRoomDetails.tsx`** (Step 4: Select Your Bed)
+---
 
-- Add a toggle state: `const [bedViewMode, setBedViewMode] = useState<'grid' | 'layout'>('grid');`
-- Add two small toggle buttons (Grid icon / Map icon) next to the "Select Your Bed" header label
-- When `bedViewMode === 'grid'`: render the existing `<HostelBedMap>` component (current behavior)
-- When `bedViewMode === 'layout'`: render a new `<HostelBedLayoutView>` component that shows the room layout with draggable-looking beds in their positioned layout (read-only, click-to-select)
+## Phase 2: Partner/Admin -- Hostel Settings (HostelEditor.tsx)
 
-**New file: `src/components/hostels/HostelBedLayoutView.tsx`**
+Add a new collapsible **Section 5: Food Facility** (renumber existing sections 5-8 to 6-9):
 
-A read-only layout viewer for students that:
-- Takes props: `hostelId`, `selectedBedId`, `onBedSelect`, `sharingFilter`, `categoryFilter`, `startDate`, `endDate`
-- Fetches rooms with their layout dimensions (`room_width`, `room_height`, `layout_image`, `layout_image_opacity`) and beds with `position_x`, `position_y`, `rotation`
-- Also fetches bookings for date-aware availability (same logic as HostelBedMap)
-- Renders each room as a scaled-down canvas/div with:
-  - Optional background layout image
-  - `BedShapeIcon` components positioned at their `(position_x, position_y)` with their `rotation`
-  - Click on a bed to select it (calls `onBedSelect`)
-  - Status coloring: available (green), occupied (blue), selected (primary), filtered-out (muted)
-- Shows floor tabs and room filter pills (same pattern as HostelBedMap)
-- Scales the room dimensions to fit within the mobile viewport (e.g., scale factor to fit ~350px width)
+- **Toggle**: "Offer Food Facility" (Switch for `food_enabled`)
+- When ON, show:
+  - **Monthly Food Price** (number input for `food_price_monthly`)
+  - **Food Menu Items** section:
+    - Three sub-sections: Breakfast, Lunch, Dinner
+    - Each has an editable list of items (add/remove)
+    - Items saved to `hostel_food_menu` table
+  - **Upload Menu Image** (optional, uses existing ImageUpload component to `hostel-images` bucket)
+  - Save button persists all food settings
 
-**File: `src/components/hostels/HostelBedMap.tsx`**
+### Also update:
+- `hostelService.ts` -- `HostelData` interface to include `food_enabled`, `food_price_monthly`, `food_menu_image`
+- HostelEditor state initialization to include new food fields
 
-- No changes needed -- it continues to work as the grid view
+---
 
-### Technical Notes
+## Phase 3: Student Side -- Hostel Detail Page (HostelRoomDetails.tsx)
 
-- The layout view reuses `BedShapeIcon` for consistent bed visuals across admin and student views
-- Beds without positions (0,0) will be auto-arranged or shown at default positions
-- The toggle buttons use `LayoutGrid` and `MapIcon` icons from lucide-react, styled as small pill buttons similar to the sharing type pills
-- The same `onBedSelect` callback is used regardless of view mode, so all downstream logic (package selection, payment) remains unchanged
+### Info Chips section:
+- Add a "Food Available" chip (green with Utensils icon) when `hostel.food_enabled` is true
+- Also show on hostel listing cards (Hostels.tsx) as a small badge
 
+### New Step between Package and Review:
+- Show **"Add Monthly Food Plan"** checkbox when `hostel.food_enabled` is true
+- Display: "Add Monthly Food Plan (+ {formatCurrency(food_price_monthly)}/mo)"
+- "View Food Menu" link that opens a Dialog/Modal showing:
+  - Menu items grouped by Breakfast/Lunch/Dinner from `hostel_food_menu`
+  - Optional uploaded menu image
+
+### Price Calculation Updates:
+- Add state: `const [foodOpted, setFoodOpted] = useState(false);`
+- Food amount = `hostel.food_price_monthly * durationCount` (for monthly; scale for daily/weekly)
+- Update `totalPrice` to include food: `(discountedPrice * durationCount) + foodTotal`
+- Update `payableAmount` accordingly
+- Grand Total in Review section shows:
+  - Room Rent line
+  - Food Charges line (if opted)
+  - Security Deposit line
+  - Total
+
+### Booking Data:
+- Pass `food_opted: true/false` and `food_amount` in `bookingData` to `hostelBookingService.createBooking()`
+
+---
+
+## Phase 4: Booking Service Updates (hostelBookingService.ts)
+
+- Update `CreateHostelBookingData` interface to include `food_opted` and `food_amount`
+- Pass these fields through to the `hostel_bookings` insert
+- When creating `hostel_dues` for advance bookings, include `food_amount` in the total_fee calculation
+
+---
+
+## Phase 5: Confirmation & Invoice
+
+### HostelConfirmation.tsx:
+- Show "Food Plan" row in booking details grid when `booking.food_opted` is true
+- Display food amount alongside total
+
+### AdminBookingDetail.tsx:
+- In Payment Summary grid, add "Food Charges" row when `booking.food_opted`
+- Invoice download: add food as separate line item in `invoiceData` (update `InvoiceData` interface and `downloadInvoice` utility)
+
+---
+
+## Phase 6: Dues, Renewals & Dashboard Integration
+
+### HostelDueManagement.tsx:
+- Display food_amount column in due records when applicable
+- Monthly dues calculation: Room Rent + Food (when opted)
+
+### AdminHostelBookings.tsx (booking list):
+- In the Amount 2x2 grid, add food amount visibility (e.g., show "Food: X" in the grid)
+
+### StudentBookings.tsx:
+- Show food charges in booking amount display when `food_opted` is true
+
+### Partner Booking Management (HostelBedMap.tsx manual booking):
+- Add food opt-in checkbox in the manual booking dialog
+- Include food in price calculation
+
+---
+
+## Phase 7: Hostel Listing Cards
+
+### Hostels.tsx (listing page):
+- Add small "Food" badge on hostel cards when `food_enabled` is true (using Utensils icon from lucide-react)
+
+---
+
+## Files to Create/Modify
+
+### New Files:
+1. `src/components/hostels/FoodMenuModal.tsx` -- Modal to display food menu items + image
+
+### Database Migration:
+1. Create `hostel_food_menu` table with RLS
+2. Add columns to `hostels`, `hostel_bookings`, `hostel_dues`
+
+### Modified Files (approx 12 files):
+1. `src/components/admin/HostelEditor.tsx` -- Food settings section
+2. `src/api/hostelService.ts` -- HostelData interface
+3. `src/api/hostelBookingService.ts` -- Food fields in booking
+4. `src/pages/HostelRoomDetails.tsx` -- Food checkbox, menu link, price calc
+5. `src/pages/HostelConfirmation.tsx` -- Food row in details
+6. `src/pages/AdminBookingDetail.tsx` -- Food in payment summary & invoice
+7. `src/pages/admin/HostelDueManagement.tsx` -- Food amount display
+8. `src/pages/hotelManager/AdminHostelBookings.tsx` -- Food in amount grid
+9. `src/pages/StudentBookings.tsx` -- Food in booking display
+10. `src/pages/admin/HostelBedMap.tsx` -- Food in manual booking
+11. `src/pages/Hostels.tsx` -- Food badge on cards
+12. `src/utils/invoiceGenerator.ts` -- Food line item in invoice
+13. `src/integrations/supabase/types.ts` -- Auto-updated after migration
+
+### Implementation Order:
+1. Database migration (tables + columns)
+2. HostelEditor food settings + FoodMenuModal
+3. Student booking flow (HostelRoomDetails)
+4. Booking service + confirmation
+5. Admin/partner dashboards + invoice + dues
+6. Hostel listing cards
