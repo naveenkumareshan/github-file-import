@@ -1,58 +1,55 @@
 
 
-## Reorder Filters, Add Category Step, Simplify Legend & Enhance Bed Tooltips
+## Simplify Admin Bed Management Page
 
-### 1. Move Room Filter After Floor Tabs (inside Bed Map)
+### Overview
+Remove the "Date Availability" and "Transfer" tabs from the admin hostel bed management page. Enhance the "Add Beds" and "Edit Bed" dialogs with proper Room selection and Amenities picker, so beds are fully configured at creation time.
 
-Currently room filter pills are in Step 1 (HostelRoomDetails.tsx). They should appear inside the bed map, right after the floor tabs, since rooms belong to floors.
+### Changes
 
-**File: `src/components/hostels/HostelBedMap.tsx`**
-- After the `TabsList` (floor tabs), add a row of room filter pills for the selected floor
-- Derive room list from `floorData[selectedFloor]` so only rooms on that floor are shown
-- Track selected floor via tab value state
-- Remove `roomFilter` prop from being passed from HostelRoomDetails
+**File: `src/pages/admin/HostelBedManagementPage.tsx`**
 
-**File: `src/pages/HostelRoomDetails.tsx`**
-- Remove the "Room filter pills" block (lines ~592-622) from Step 1
-- Remove `roomFilter` state and `handleRoomFilterChange` if they only serve this purpose, or keep them but let HostelBedMap manage internally
+1. **Remove tabs entirely** (lines 411-542)
+   - Remove the outer `Tabs` wrapper with "Bed Map", "Date Availability", "Transfer"
+   - Remove `DateBasedBedMap` and `HostelBedTransferManagement` imports and their `TabsContent`
+   - Remove `activeTab` state
+   - Remove unused imports: `CalendarDays`, `ArrowRight`
+   - Render the bed map content (view toggle + grid/floorplan) directly without tabs
 
-### 2. Add Category Type as a Separate Step (Before Stay Duration)
+2. **Add Room selector to "Add Beds" dialog** (lines 586-621)
+   - Add a Room dropdown as the first field (currently it silently uses `selectedRoomId`)
+   - When room changes, dynamically load that room's sharing options for the next dropdown
+   - Add state for `addRoomIdInDialog` to track selection within dialog
 
-Currently category pills are inside Step 1 alongside sharing type. Category (AC/Non-AC) should be its own numbered step before Stay Duration.
+3. **Add Amenities picker to "Add Beds" dialog**
+   - Add multi-select checkboxes for amenities (Attached Washroom, Study Table, Wardrobe, Bookshelf, Power Socket, Fan, AC, Window Side)
+   - Pass selected amenities when inserting beds
+   - Add `addAmenities` state
 
-**File: `src/pages/HostelRoomDetails.tsx`**
-- Move category pills out of Step 1 into a new Step 2: "Select Category"
-- Renumber: Step 1 = Sharing Type, Step 2 = Category, Step 3 = Stay Duration, Step 4 = Select Bed, Step 5 = Package, Step 6 = Review & Pay
-- Category pills show options from `hostel_bed_categories` (already fetched as `categories`)
-- Include "All" default option
+4. **Add Amenities picker to "Edit Bed" dialog** (lines 544-583)
+   - Add amenities multi-select checkboxes (same options)
+   - Save amenities on update
+   - Add `editAmenities` state
+   - Fetch current amenities when opening edit dialog
 
-### 3. Simplify Legend to 3 States Only
+5. **Show amenities in bed tooltips** (lines 473-483)
+   - Display amenities as comma-separated list in the grid tooltip
 
-Remove "Blocked" from legend. Blocked beds should appear as "Not Available" (same as occupied style).
+### What stays the same
+- Categories + Rooms summary card at top
+- Grid view and Floor Plan view toggle
+- Category management dialog
+- Block/Unblock functionality
+- Bed Details dialog
+- All existing CRUD operations
 
-**File: `src/components/hostels/HostelBedMap.tsx`**
-- Remove the "Blocked" legend item (lines 201-204)
-- Keep only: Available, Occupied/Not Available, Selected
+### Technical Summary
 
-**File: `src/components/hostels/HostelFloorView.tsx`**
-- Change blocked bed styling: instead of `bg-destructive/10 border-destructive/30`, use the same style as occupied (`bg-blue-50 border-blue-400 text-blue-800`)
-- Remove the separate `isBlocked` color branch; treat blocked as not-available
-- In tooltip text, show "Not Available" instead of "Blocked"
-
-### 4. Enhanced Bed Tooltip with Amenities
-
-**File: `src/components/hostels/HostelFloorView.tsx`**
-- Tooltip already shows amenities (line 147-149), but improve the display:
-  - Show each amenity as a small badge/chip instead of comma-separated text
-  - Show room number, sharing type, category, price, status, and amenities in a structured layout
-  - For selected beds, show the same rich info
-
-### Summary of Changes
-
-| Change | File(s) |
-|--------|---------|
-| Move room filter inside bed map after floor tabs | `HostelBedMap.tsx`, `HostelRoomDetails.tsx` |
-| Category as separate step 2 with renumbering | `HostelRoomDetails.tsx` |
-| Remove "Blocked" from legend, merge with occupied | `HostelBedMap.tsx`, `HostelFloorView.tsx` |
-| Enhanced bed tooltip with amenity badges | `HostelFloorView.tsx` |
+| Change | Detail |
+|--------|--------|
+| Remove tabs | Delete `activeTab`, remove outer Tabs, remove DateBasedBedMap + Transfer imports and content |
+| Add Room to Add dialog | Room dropdown as first field, sharing options filter by selected room |
+| Add Amenities to Add dialog | Multi-select checkboxes with 8 preset options, saved on insert |
+| Add Amenities to Edit dialog | Same checkboxes, loaded from bed data, saved on update |
+| Tooltips | Show amenities in grid bed tooltips |
 
