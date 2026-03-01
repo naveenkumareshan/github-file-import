@@ -60,6 +60,8 @@ const HostelBedManagementPage = lazy(() => import("./pages/admin/HostelBedManage
 const HostelBedMap = lazy(() => import("./pages/admin/HostelBedMap"));
 const HostelDueManagement = lazy(() => import("./pages/admin/HostelDueManagement"));
 const OperationsHub = lazy(() => import("./pages/admin/OperationsHub"));
+const ManageProperties = lazy(() => import("./pages/partner/ManageProperties"));
+const PartnerReviews = lazy(() => import("./pages/partner/PartnerReviews"));
 
 // Student / public pages
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
@@ -169,6 +171,49 @@ function App() {
               <Route path="hostel-bed-map" element={<HostelBedMap />} />
               <Route path="hostel-due-management" element={<HostelDueManagement />} />
               <Route path="operations" element={<OperationsHub />} />
+            </Route>
+
+            {/* ── Partner routes (alias for vendor/host admin panel) ── */}
+            <Route
+              path="/partner"
+              element={
+                <ProtectedRoute requiredRole="admin" redirectPath="/partner/login">
+                  <Suspense fallback={<div className="p-6 text-center">Loading partner panel...</div>}>
+                    <AdminLayout />
+                  </Suspense>
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<AdminDashboard />} />
+              <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="bookings" element={<AdminBookings />} />
+              <Route path="bookings/:bookingId/:type" element={<AdminBookingDetail />} />
+              <Route path="hostel-bookings" element={<AdminHostelBookings />} />
+              <Route path="rooms" element={<AdminRooms />} />
+              <Route path="students" element={<AdminStudents />} />
+              <Route path="students-create" element={<CreateStudentForm />} />
+              <Route path="coupons" element={<AdminCoupons />} />
+              <Route path="hostels" element={<AdminHostels />} />
+              <Route path="employees" element={<VendorEmployees />} />
+              <Route path="vendorpayouts" element={<VendorPayouts />} />
+              <Route path="deposits-restrictions" element={<DepositAndRestrictionManagement />} />
+              <Route path="seats-available-map" element={<VendorSeats />} />
+              <Route path="hostels/:hostelId/rooms" element={<HostelRoomView />} />
+              <Route path="reports" element={<BookingReportsPage />} />
+              <Route path="reviews" element={<PartnerReviews />} />
+              <Route path="profile" element={<VendorProfilePage />} />
+              <Route path="complaints" element={<ComplaintsManagement />} />
+              <Route path="due-management" element={<DueManagement />} />
+              <Route path="receipts" element={<Receipts />} />
+              <Route path="hostel-receipts" element={<HostelReceipts />} />
+              <Route path="hostel-deposits" element={<HostelDeposits />} />
+              <Route path="hostel-bed-map" element={<HostelBedMap />} />
+              <Route path="hostel-due-management" element={<HostelDueManagement />} />
+              <Route path="operations" element={<OperationsHub />} />
+              <Route path="manage-properties" element={<ManageProperties />} />
+              <Route path="cabins/:cabinId/seats" element={<SeatManagement />} />
+              <Route path="rooms/:cabinId/seats" element={<SeatManagement />} />
+              <Route path="hostels/:hostelId/beds" element={<HostelBedManagementPage />} />
             </Route>
 
             {/* ── Partner routes (formerly vendor/host) ── */}

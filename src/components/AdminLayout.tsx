@@ -27,11 +27,42 @@ const routeLabels: Record<string, string> = {
   "/admin/vendorpayouts": "Payouts",
   "/admin/profile": "Profile",
   "/admin/seats-available-map": "Seat Map",
+  "/admin/complaints": "Complaints",
+  "/admin/operations": "Operations",
+  "/admin/manage-properties": "Manage Properties",
+  // Partner route aliases
+  "/partner/dashboard": "Dashboard",
+  "/partner/bookings": "All Transactions",
+  "/partner/students": "Users",
+  "/partner/students-create": "Create User",
+  "/partner/coupons": "Coupons",
+  "/partner/rooms": "Reading Rooms",
+  "/partner/hostels": "Hostels",
+  "/partner/reports": "Reports",
+  "/partner/deposits-restrictions": "Key Deposits",
+  "/partner/reviews": "Reviews",
+  "/partner/employees": "Employees",
+  "/partner/vendorpayouts": "Payouts",
+  "/partner/profile": "Profile",
+  "/partner/seats-available-map": "Seat Map",
+  "/partner/complaints": "Complaints",
+  "/partner/operations": "Operations",
+  "/partner/manage-properties": "Manage Properties",
+  "/partner/hostel-bookings": "Hostel Bookings",
+  "/partner/hostel-receipts": "Hostel Receipts",
+  "/partner/hostel-deposits": "Hostel Deposits",
+  "/partner/hostel-bed-map": "Bed Map",
+  "/partner/hostel-due-management": "Hostel Due Management",
+  "/partner/due-management": "Due Management",
+  "/partner/receipts": "Receipts",
 };
 
 const getPageLabel = (pathname: string): string => {
   // Exact match first
   if (routeLabels[pathname]) return routeLabels[pathname];
+  // Strip query params for matching
+  const basePath = pathname.split('?')[0];
+  if (routeLabels[basePath]) return routeLabels[basePath];
   // Prefix match for dynamic routes
   for (const key of Object.keys(routeLabels)) {
     if (pathname.startsWith(key + "/")) return routeLabels[key];

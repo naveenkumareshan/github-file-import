@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import { UserPlus, Copy, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { getPublicAppUrl } from '@/utils/appUrl';
 import { FunctionsHttpError } from '@supabase/supabase-js';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface CreateStudentFormProps {
   onStudentCreated?: () => void;
@@ -30,6 +31,15 @@ const BUSINESS_TYPE_OPTIONS = [
 ];
 
 const CreateStudentForm: React.FC<CreateStudentFormProps> = ({ onStudentCreated }) => {
+  const { user } = useAuth();
+  
+  const filteredRoleOptions = useMemo(() => {
+    if (user?.role === 'vendor') {
+      return ROLE_OPTIONS.filter(r => r.value === 'student' || r.value === 'vendor_employee');
+    }
+    return ROLE_OPTIONS;
+  }, [user?.role]);
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -174,7 +184,7 @@ const CreateStudentForm: React.FC<CreateStudentFormProps> = ({ onStudentCreated 
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {ROLE_OPTIONS.map(r => (
+                  {filteredRoleOptions.map(r => (
                     <SelectItem key={r.value} value={r.value} className="text-xs">{r.label}</SelectItem>
                   ))}
                 </SelectContent>
