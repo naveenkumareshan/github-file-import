@@ -1,47 +1,35 @@
 
 
-## Clean Up Legacy Data and Fix Display
+## Fix "Floor Plan" Rename and Sharing Type Selection
 
-### Problem
-- Legacy rooms (101, 201) exist without proper `floor_id`, creating confusing entries like "Floor 2"
-- Old test/seed beds are still showing up attached to these legacy rooms
-- Room R101 was created via the new system but is inactive
-- The display is cluttered with data that doesn't match the new hierarchy
+### Problem 1: "Floor Plan" label is confusing
+All references to "Floor Plan" should be renamed to "Layout Plan" across the bed management page.
 
-### Step 1: Database Cleanup (Migration)
+### Problem 2: Sharing Type not selectable when adding beds
+The Add Beds dialog loads sharing options from the `hostel_sharing_options` table filtered by `room_id`. But since we removed the auto-creation of sharing options during room creation, no `hostel_sharing_options` records exist for new rooms -- so the dropdown is always empty.
 
-Delete all legacy beds and deactivate legacy rooms via a SQL migration:
+**Fix**: Change the Add Beds dialog to use the hostel-level `hostel_sharing_types` (which the admin has already created) instead of room-level `hostel_sharing_options`. When beds are added, auto-create the corresponding `hostel_sharing_options` record for that room if one doesn't already exist.
 
-```sql
--- Delete all beds for this hostel (clean slate)
-DELETE FROM hostel_beds 
-WHERE room_id IN (
-  SELECT id FROM hostel_rooms 
-  WHERE hostel_id = 'a1b2c3d4-1111-1111-1111-111111111111'
-);
+---
 
--- Deactivate legacy rooms that have no floor_id
-UPDATE hostel_rooms 
-SET is_active = false 
-WHERE hostel_id = 'a1b2c3d4-1111-1111-1111-111111111111' 
-AND floor_id IS NULL;
-```
+### File: `src/pages/admin/HostelBedManagementPage.tsx`
 
-Note: 4 existing bookings reference these beds. The booking records stay intact (foreign keys are not CASCADE delete on beds), but these beds will no longer show in the UI.
+**Rename "Floor Plan" to "Layout Plan"** (3 locations):
+- Line 693: Button label `Floor Plan` -> `Layout Plan`
+- Line 821: Empty state text "Select a room to view the floor plan" -> "Select a room to view the layout plan"
+- Comment on line 337/46 referencing "Floor plan" -> "Layout plan"
 
-### Step 2: Fix Room Query Filter
+**Fix sharing type in Add Beds dialog**:
+1. Replace `loadAddDialogSharingOptions` (lines 287-294): Instead of querying `hostel_sharing_options` by room, populate the dropdown directly from the already-loaded `sharingTypes` state (hostel-level sharing types).
+2. Update `addDialogSharingOptions` to be populated from `sharingTypes` array.
+3. Update `handleAddBeds` (lines 302-335): Before inserting beds, look up or auto-create a `hostel_sharing_options` record for the selected room + sharing type combo. Use the resulting ID as the `sharing_option_id` for each bed. Also set `sharing_type_id` on each bed.
+4. Update the Add Beds dialog UI (lines 892-901): Display sharing types with their name and capacity instead of `s.type`.
 
-**File: `src/pages/admin/HostelBedManagementPage.tsx`**
+### Summary
 
-Update the room fetch query to only load rooms where `is_active = true`. Currently the query loads all rooms including deactivated ones -- add `.eq('is_active', true)` filter to the rooms query so legacy/deleted rooms stop appearing entirely.
-
-### Step 3: Hide Empty Floor Tabs
-
-In the floor grouping logic, skip floors that have zero active rooms so "Unassigned" doesn't show as an empty tab.
-
-### Result
-- All old beds removed from display and database
-- Legacy rooms (101, 201) hidden (deactivated)
-- Only rooms created through the new Floor -> Room -> Bed flow will appear
-- Admin can start fresh: create floors, then rooms under floors, then add beds inside rooms
+| Change | Detail |
+|--------|--------|
+| Rename "Floor Plan" | Change to "Layout Plan" in 3 places |
+| Fix sharing dropdown | Use hostel-level sharing types instead of empty room-level options |
+| Auto-create sharing option | Create `hostel_sharing_options` record on-the-fly when adding beds |
 
