@@ -106,10 +106,12 @@ export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBoo
                 Edit
               </Button>
             )}
-            <Button size="sm" className="h-7 px-2 text-xs" onClick={() => onManageSeats(cabin._id)}>
-              <Users className="h-3 w-3 mr-1" />
-              Seats
-            </Button>
+            {isAdmin && (
+              <Button size="sm" className="h-7 px-2 text-xs" onClick={() => onManageSeats(cabin._id)}>
+                <Users className="h-3 w-3 mr-1" />
+                Seats
+              </Button>
+            )}
             {isAdmin && onToggleActive && (
               <Button
                 size="sm"

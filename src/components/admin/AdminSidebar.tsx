@@ -326,7 +326,15 @@ export function AdminSidebar() {
       }
     );
   } else {
-    const vendorMenuItems = [];
+    const vendorMenuItems: MenuItem[] = [];
+
+    // Complaints for vendors
+    vendorMenuItems.push({
+      title: 'Complaints',
+      icon: MessageSquare,
+      roles: ['vendor', 'vendor_employee'],
+      url: '/admin/complaints'
+    });
 
     if (hasPermission('view_reports')) {
       vendorMenuItems.push({

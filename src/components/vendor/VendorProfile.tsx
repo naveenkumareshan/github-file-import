@@ -8,20 +8,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { 
-  User, 
-  Building, 
-  MapPin, 
-  CreditCard, 
-  FileText, 
-  Phone, 
-  Mail,
-  Calendar,
-  CheckCircle,
-  Clock,
-  XCircle,
-  AlertCircle,
+  User, Building, MapPin, CreditCard, FileText, Phone, Mail,
+  Calendar, CheckCircle, Clock, XCircle, AlertCircle, Upload, Trash2, FileIcon
 } from 'lucide-react';
 import { vendorProfileService, VendorProfileData, VendorProfileUpdateData } from '@/api/vendorProfileService';
+import { supabase } from '@/integrations/supabase/client';
 
 export const VendorProfile: React.FC = () => {
   const { toast } = useToast();
@@ -30,13 +21,16 @@ export const VendorProfile: React.FC = () => {
   const [updating, setUpdating] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState<VendorProfileUpdateData>({});
-
+  const [documents, setDocuments] = useState<{ name: string; url: string }[]>([]);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const hasFetched = useRef(false);
 
   useEffect(() => {
     if (!hasFetched.current) {
       hasFetched.current = true;
       fetchProfile();
+      fetchDocuments();
     }
   }, []);
 
@@ -51,24 +45,74 @@ export const VendorProfile: React.FC = () => {
           contactPerson: profileData.contactPerson,
           phone: profileData.phone,
           address: profileData.address,
-          businessDetails: { description: profileData.businessDetails?.description },
+          businessDetails: profileData.businessDetails,
           bankDetails: profileData.bankDetails
         });
       } else {
-        toast({
-          title: "Error",
-          description: "Failed to load profile",
-          variant: "destructive"
-        });
+        toast({ title: "Error", description: response.error || "Failed to load profile", variant: "destructive" });
       }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to load profile",
-        variant: "destructive"
-      });
+    } catch {
+      toast({ title: "Error", description: "Failed to load profile", variant: "destructive" });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchDocuments = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data, error } = await supabase.storage
+        .from('partner-documents')
+        .list(user.id, { limit: 100 });
+      if (error) throw error;
+      const docs = (data || []).map(f => ({
+        name: f.name,
+        url: supabase.storage.from('partner-documents').getPublicUrl(`${user.id}/${f.name}`).data.publicUrl
+      }));
+      setDocuments(docs);
+    } catch {
+      // silent
+    }
+  };
+
+  const handleDocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setUploadingDoc(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      for (const file of Array.from(files)) {
+        const filePath = `${user.id}/${Date.now()}_${file.name}`;
+        const { error } = await supabase.storage
+          .from('partner-documents')
+          .upload(filePath, file);
+        if (error) throw error;
+      }
+      toast({ title: "Success", description: "Document(s) uploaded" });
+      fetchDocuments();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Upload failed", variant: "destructive" });
+    } finally {
+      setUploadingDoc(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDocDelete = async (docName: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { error } = await supabase.storage
+        .from('partner-documents')
+        .remove([`${user.id}/${docName}`]);
+      if (error) throw error;
+      toast({ title: "Deleted", description: "Document removed" });
+      fetchDocuments();
+    } catch {
+      toast({ title: "Error", description: "Failed to delete", variant: "destructive" });
     }
   };
 
@@ -79,23 +123,12 @@ export const VendorProfile: React.FC = () => {
       if (response.success && response.data) {
         setProfile(response.data as VendorProfileData);
         setEditMode(false);
-        toast({
-          title: "Success",
-          description: "Profile updated successfully"
-        });
+        toast({ title: "Success", description: "Profile updated successfully" });
       } else {
-        toast({
-          title: "Error",
-          description: "Failed to update profile",
-          variant: "destructive"
-        });
+        toast({ title: "Error", description: "Failed to update profile", variant: "destructive" });
       }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update profile",
-        variant: "destructive"
-      });
+    } catch {
+      toast({ title: "Error", description: "Failed to update profile", variant: "destructive" });
     } finally {
       setUpdating(false);
     }
@@ -121,8 +154,8 @@ export const VendorProfile: React.FC = () => {
       <Card>
         <CardContent className="flex items-center justify-center p-8">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p>Loading profile...</p>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4" />
+            <p className="text-sm">Loading profile...</p>
           </div>
         </CardContent>
       </Card>
@@ -133,343 +166,250 @@ export const VendorProfile: React.FC = () => {
     return (
       <Card>
         <CardContent className="flex items-center justify-center p-8">
-          <p>Profile not found</p>
+          <div className="text-center">
+            <AlertCircle className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm font-medium">Profile not found</p>
+            <p className="text-xs text-muted-foreground mt-1">Your partner profile has not been set up yet. Please contact the admin.</p>
+          </div>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header Card */}
+    <div className="space-y-4">
+      {/* Header */}
       <Card>
-        <CardHeader>
+        <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-primary/10 rounded-full">
-                <Building className="h-6 w-6 text-primary" />
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-primary/10 rounded-full">
+                <Building className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <CardTitle className="text-2xl">{profile.businessName}</CardTitle>
-                <p className="text-muted-foreground">Partner ID: {profile.vendorId}</p>
+                <CardTitle className="text-lg">{profile.businessName || 'Partner'}</CardTitle>
+                <p className="text-xs text-muted-foreground">ID: {profile.vendorId}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               {getStatusBadge(profile.status)}
+              {!editMode && (
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditMode(true)}>Edit</Button>
+              )}
             </div>
           </div>
         </CardHeader>
       </Card>
 
-      <Tabs defaultValue="basic" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="basic">Basic Information</TabsTrigger>
-          <TabsTrigger value="business">Business Details</TabsTrigger>
-          <TabsTrigger value="bank">Bank Details</TabsTrigger>
+      <Tabs defaultValue="basic" className="space-y-3">
+        <TabsList className="h-8">
+          <TabsTrigger value="basic" className="text-xs">Basic Info</TabsTrigger>
+          <TabsTrigger value="business" className="text-xs">Business Details</TabsTrigger>
+          <TabsTrigger value="bank" className="text-xs">Bank Details</TabsTrigger>
+          <TabsTrigger value="documents" className="text-xs">Documents</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="basic" className="space-y-4">
+        <TabsContent value="basic" className="space-y-3">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
-                Basic Information
-              </CardTitle>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2"><User className="h-4 w-4" />Basic Information</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="businessName">Business Name</Label>
+                  <Label className="text-xs">Business Name</Label>
                   {editMode ? (
-                    <Input
-                      id="businessName"
-                      value={formData.businessName || ''}
-                      onChange={(e) => setFormData({...formData, businessName: e.target.value})}
-                    />
+                    <Input className="h-8 text-xs" value={formData.businessName || ''} onChange={(e) => setFormData({...formData, businessName: e.target.value})} />
                   ) : (
-                    <p className="mt-1 font-medium">{profile.businessName}</p>
+                    <p className="mt-0.5 text-sm font-medium">{profile.businessName || '—'}</p>
                   )}
                 </div>
-
                 <div>
-                  <Label htmlFor="contactPerson">Contact Person</Label>
+                  <Label className="text-xs">Contact Person</Label>
                   {editMode ? (
-                    <Input
-                      id="contactPerson"
-                      value={formData.contactPerson || ''}
-                      onChange={(e) => setFormData({...formData, contactPerson: e.target.value})}
-                    />
+                    <Input className="h-8 text-xs" value={formData.contactPerson || ''} onChange={(e) => setFormData({...formData, contactPerson: e.target.value})} />
                   ) : (
-                    <p className="mt-1 font-medium">{profile.contactPerson}</p>
+                    <p className="mt-0.5 text-sm font-medium">{profile.contactPerson || '—'}</p>
                   )}
                 </div>
-
                 <div>
-                  <Label className="flex items-center gap-1">
-                    <Mail className="h-4 w-4" />
-                    Email
-                  </Label>
-                  <p className="mt-1 font-medium text-muted-foreground">{profile.email}</p>
+                  <Label className="text-xs flex items-center gap-1"><Mail className="h-3 w-3" />Email</Label>
+                  <p className="mt-0.5 text-sm text-muted-foreground">{profile.email}</p>
                 </div>
-
                 <div>
-                  <Label className="flex items-center gap-1">
-                    <Phone className="h-4 w-4" />
-                    Phone
-                  </Label>
+                  <Label className="text-xs flex items-center gap-1"><Phone className="h-3 w-3" />Phone</Label>
                   {editMode ? (
-                    <Input
-                      value={formData.phone || ''}
-                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                    />
+                    <Input className="h-8 text-xs" value={formData.phone || ''} onChange={(e) => setFormData({...formData, phone: e.target.value})} />
                   ) : (
-                    <p className="mt-1 font-medium">{profile.phone}</p>
+                    <p className="mt-0.5 text-sm font-medium">{profile.phone || '—'}</p>
                   )}
                 </div>
               </div>
 
               <div>
-                <Label className="flex items-center gap-1">
-                  <MapPin className="h-4 w-4" />
-                  Address
-                </Label>
+                <Label className="text-xs flex items-center gap-1"><MapPin className="h-3 w-3" />Address</Label>
                 {editMode ? (
-                  <div className="mt-2 space-y-2">
-                    <Input
-                      placeholder="Street"
-                      value={formData.address?.street || ''}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        address: {...formData.address, street: e.target.value}
-                      })}
-                    />
+                  <div className="mt-1 space-y-2">
+                    <Input className="h-8 text-xs" placeholder="Street" value={formData.address?.street || ''} onChange={(e) => setFormData({...formData, address: {...formData.address, street: e.target.value}})} />
                     <div className="grid grid-cols-2 gap-2">
-                      <Input
-                        placeholder="City"
-                        value={formData.address?.city || ''}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          address: {...formData.address, city: e.target.value}
-                        })}
-                      />
-                      <Input
-                        placeholder="State"
-                        value={formData.address?.state || ''}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          address: {...formData.address, state: e.target.value}
-                        })}
-                      />
+                      <Input className="h-8 text-xs" placeholder="City" value={formData.address?.city || ''} onChange={(e) => setFormData({...formData, address: {...formData.address, city: e.target.value}})} />
+                      <Input className="h-8 text-xs" placeholder="State" value={formData.address?.state || ''} onChange={(e) => setFormData({...formData, address: {...formData.address, state: e.target.value}})} />
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                      <Input
-                        placeholder="Pincode"
-                        value={formData.address?.pincode || ''}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          address: {...formData.address, pincode: e.target.value}
-                        })}
-                      />
-                      <Input
-                        placeholder="Country"
-                        value={formData.address?.country || ''}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          address: {...formData.address, country: e.target.value}
-                        })}
-                      />
+                      <Input className="h-8 text-xs" placeholder="Pincode" value={formData.address?.pincode || ''} onChange={(e) => setFormData({...formData, address: {...formData.address, pincode: e.target.value}})} />
+                      <Input className="h-8 text-xs" placeholder="Country" value={formData.address?.country || ''} onChange={(e) => setFormData({...formData, address: {...formData.address, country: e.target.value}})} />
                     </div>
                   </div>
                 ) : (
-                  <div className="mt-1">
-                    <p className="font-medium">{profile.address?.street}</p>
-                    <p className="text-muted-foreground">
-                      {profile.address?.city}, {profile.address?.state} {profile.address?.pincode}
-                    </p>
-                    <p className="text-muted-foreground">{profile.address?.country}</p>
+                  <div className="mt-0.5 text-sm">
+                    <p>{profile.address?.street || '—'}</p>
+                    <p className="text-muted-foreground">{profile.address?.city}, {profile.address?.state} {profile.address?.pincode}</p>
                   </div>
                 )}
               </div>
 
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Calendar className="h-4 w-4" />
-                Joined on {new Date(profile.createdAt).toLocaleDateString()}
+              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <Calendar className="h-3 w-3" />
+                Joined on {new Date(profile.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
               </div>
 
               {editMode && (
-                <div className="flex gap-2">
-                  <Button onClick={handleUpdate} disabled={updating}>
-                    {updating ? 'Updating...' : 'Save Changes'}
+                <div className="flex gap-2 pt-2 border-t">
+                  <Button size="sm" className="h-7 text-xs" onClick={handleUpdate} disabled={updating}>
+                    {updating ? 'Saving...' : 'Save Changes'}
                   </Button>
-                  <Button variant="outline" onClick={() => setEditMode(false)}>
-                    Cancel
-                  </Button>
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditMode(false)}>Cancel</Button>
                 </div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="business" className="space-y-4">
+        <TabsContent value="business" className="space-y-3">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Business Details
-              </CardTitle>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2"><FileText className="h-4 w-4" />Business Details</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <Label>Business Type</Label>
-                  <p className="mt-1 font-medium capitalize">{profile.businessType}</p>
+                  <Label className="text-xs">Business Type</Label>
+                  <p className="mt-0.5 text-sm font-medium capitalize">{profile.businessType || '—'}</p>
                 </div>
-
                 <div>
-                  <Label>GST Number</Label>
-                  <p className="mt-1 font-medium">{profile.businessDetails?.gstNumber || 'Not provided'}</p>
+                  <Label className="text-xs">GST Number</Label>
+                  {editMode ? (
+                    <Input className="h-8 text-xs" value={formData.businessDetails?.gstNumber || ''} onChange={(e) => setFormData({...formData, businessDetails: {...formData.businessDetails, gstNumber: e.target.value}})} />
+                  ) : (
+                    <p className="mt-0.5 text-sm font-medium">{profile.businessDetails?.gstNumber || 'Not provided'}</p>
+                  )}
                 </div>
-
                 <div>
-                  <Label>PAN Number</Label>
-                  <p className="mt-1 font-medium">{profile.businessDetails?.panNumber || 'Not provided'}</p>
+                  <Label className="text-xs">PAN Number</Label>
+                  {editMode ? (
+                    <Input className="h-8 text-xs" value={formData.businessDetails?.panNumber || ''} onChange={(e) => setFormData({...formData, businessDetails: {...formData.businessDetails, panNumber: e.target.value}})} />
+                  ) : (
+                    <p className="mt-0.5 text-sm font-medium">{profile.businessDetails?.panNumber || 'Not provided'}</p>
+                  )}
                 </div>
-
                 <div>
-                  <Label>Aadhar Number</Label>
-                  <p className="mt-1 font-medium">{profile.businessDetails?.aadharNumber || 'Not provided'}</p>
+                  <Label className="text-xs">Aadhar Number</Label>
+                  {editMode ? (
+                    <Input className="h-8 text-xs" value={formData.businessDetails?.aadharNumber || ''} onChange={(e) => setFormData({...formData, businessDetails: {...formData.businessDetails, aadharNumber: e.target.value}})} />
+                  ) : (
+                    <p className="mt-0.5 text-sm font-medium">{profile.businessDetails?.aadharNumber || 'Not provided'}</p>
+                  )}
                 </div>
               </div>
-
               <div>
-                <Label>Business Description</Label>
+                <Label className="text-xs">Business Description</Label>
                 {editMode ? (
-                  <Textarea
-                    value={formData.businessDetails?.description || ''}
-                    onChange={(e) => setFormData({
-                      ...formData,
-                      businessDetails: {...formData.businessDetails, description: e.target.value}
-                    })}
-                    placeholder="Describe your business..."
-                  />
+                  <Textarea className="text-xs min-h-[60px]" value={formData.businessDetails?.description || ''} onChange={(e) => setFormData({...formData, businessDetails: {...formData.businessDetails, description: e.target.value}})} />
                 ) : (
-                  <p className="mt-1 font-medium">{profile.businessDetails?.description || 'No description provided'}</p>
+                  <p className="mt-0.5 text-sm">{profile.businessDetails?.description || 'No description'}</p>
                 )}
               </div>
-
               {editMode && (
-                <div className="flex gap-2">
-                  <Button onClick={handleUpdate} disabled={updating}>
-                    {updating ? 'Updating...' : 'Save Changes'}
-                  </Button>
-                  <Button variant="outline" onClick={() => setEditMode(false)}>
-                    Cancel
-                  </Button>
+                <div className="flex gap-2 pt-2 border-t">
+                  <Button size="sm" className="h-7 text-xs" onClick={handleUpdate} disabled={updating}>{updating ? 'Saving...' : 'Save'}</Button>
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditMode(false)}>Cancel</Button>
                 </div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="bank" className="space-y-4">
+        <TabsContent value="bank" className="space-y-3">
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5" />
-                Bank Details
-              </CardTitle>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2"><CreditCard className="h-4 w-4" />Bank Details</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label>Account Holder Name</Label>
-                  {editMode ? (
-                    <Input
-                      value={formData.bankDetails?.accountHolderName || ''}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        bankDetails: {...formData.bankDetails, accountHolderName: e.target.value}
-                      })}
-                    />
-                  ) : (
-                    <p className="mt-1 font-medium">{profile.bankDetails?.accountHolderName || 'Not provided'}</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label>Account Number</Label>
-                  {editMode ? (
-                    <Input
-                      value={formData.bankDetails?.accountNumber || ''}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        bankDetails: {...formData.bankDetails, accountNumber: e.target.value}
-                      })}
-                    />
-                  ) : (
-                    <p className="mt-1 font-medium">
-                      {profile.bankDetails?.accountNumber ? 
-                        `****${profile.bankDetails?.accountNumber.slice(-4)}` : 
-                        'Not provided'
-                      }
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <Label>Bank Name</Label>
-                  {editMode ? (
-                    <Input
-                      value={formData.bankDetails?.bankName || ''}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        bankDetails: {...formData.bankDetails, bankName: e.target.value}
-                      })}
-                    />
-                  ) : (
-                    <p className="mt-1 font-medium">{profile.bankDetails?.bankName || 'Not provided'}</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label>IFSC Code</Label>
-                  {editMode ? (
-                    <Input
-                      value={formData.bankDetails?.ifscCode || ''}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        bankDetails: {...formData.bankDetails, ifscCode: e.target.value}
-                      })}
-                    />
-                  ) : (
-                    <p className="mt-1 font-medium">{profile.bankDetails?.ifscCode || 'Not provided'}</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label>UPI ID</Label>
-                  {editMode ? (
-                    <Input
-                      value={formData.bankDetails?.upiId || ''}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        bankDetails: {...formData.bankDetails, upiId: e.target.value}
-                      })}
-                    />
-                  ) : (
-                    <p className="mt-1 font-medium">{profile.bankDetails?.upiId || 'Not provided'}</p>
-                  )}
-                </div>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {[
+                  { key: 'accountHolderName', label: 'Account Holder Name' },
+                  { key: 'accountNumber', label: 'Account Number' },
+                  { key: 'bankName', label: 'Bank Name' },
+                  { key: 'ifscCode', label: 'IFSC Code' },
+                  { key: 'upiId', label: 'UPI ID' },
+                ].map(({ key, label }) => (
+                  <div key={key}>
+                    <Label className="text-xs">{label}</Label>
+                    {editMode ? (
+                      <Input className="h-8 text-xs" value={(formData.bankDetails as any)?.[key] || ''} onChange={(e) => setFormData({...formData, bankDetails: {...formData.bankDetails, [key]: e.target.value}})} />
+                    ) : (
+                      <p className="mt-0.5 text-sm font-medium">
+                        {key === 'accountNumber' && (profile.bankDetails as any)?.[key]
+                          ? `****${(profile.bankDetails as any)[key].slice(-4)}`
+                          : (profile.bankDetails as any)?.[key] || 'Not provided'}
+                      </p>
+                    )}
+                  </div>
+                ))}
               </div>
-
               {editMode && (
-                <div className="flex gap-2">
-                  <Button onClick={handleUpdate} disabled={updating}>
-                    {updating ? 'Updating...' : 'Save Changes'}
-                  </Button>
-                  <Button variant="outline" onClick={() => setEditMode(false)}>
-                    Cancel
-                  </Button>
+                <div className="flex gap-2 pt-2 border-t">
+                  <Button size="sm" className="h-7 text-xs" onClick={handleUpdate} disabled={updating}>{updating ? 'Saving...' : 'Save'}</Button>
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditMode(false)}>Cancel</Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="documents" className="space-y-3">
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2"><FileText className="h-4 w-4" />Business Documents</CardTitle>
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => fileInputRef.current?.click()} disabled={uploadingDoc}>
+                  <Upload className="h-3 w-3 mr-1" />
+                  {uploadingDoc ? 'Uploading...' : 'Upload'}
+                </Button>
+                <input ref={fileInputRef} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" className="hidden" onChange={handleDocUpload} />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-[10px] text-muted-foreground mb-3">
+                Upload business documents: Aadhar, PAN, GST Certificate, Cancelled Cheque, Site Photos, etc.
+              </p>
+              {documents.length === 0 ? (
+                <div className="text-center py-8">
+                  <FileIcon className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
+                  <p className="text-xs text-muted-foreground">No documents uploaded yet</p>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {documents.map((doc) => (
+                    <div key={doc.name} className="flex items-center justify-between py-1.5 px-2.5 bg-muted/30 rounded text-xs">
+                      <a href={doc.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate flex-1">
+                        {doc.name}
+                      </a>
+                      <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-destructive hover:text-destructive ml-2" onClick={() => handleDocDelete(doc.name)}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
               )}
             </CardContent>

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,17 +6,15 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { vendorService } from '@/api/vendorService';
-import { VendorEmployee } from '@/types/vendor';
+import { vendorEmployeeService, VendorEmployeeData } from '@/api/vendorEmployeeService';
 
 interface VendorEmployeeFormProps {
-  employee?: VendorEmployee;
+  employee?: VendorEmployeeData;
   onSubmit: () => void;
   onCancel: () => void;
 }
 
 const PERMISSIONS = [
-  
   { id: 'view_dashboard', label: 'Dashboard' },
   { id: 'view_bookings', label: 'View Bookings' },
   { id: 'manage_bookings', label: 'Manage Bookings' },
@@ -28,8 +25,9 @@ const PERMISSIONS = [
   { id: 'view_reports', label: 'View Reports' },
   { id: 'manage_employees', label: 'Manage Employees' },
   { id: 'seats_available_map', label: 'Seat Availability Map' },
-  { id: 'seats_available_edit', label: 'Seat Availability Map > Update' },
-  { id: 'manage_reviews', label: 'Manage Reviews' }
+  { id: 'seats_available_edit', label: 'Seat Map > Update' },
+  { id: 'manage_reviews', label: 'Manage Reviews' },
+  { id: 'view_payouts', label: 'View Payouts' },
 ];
 
 export const VendorEmployeeForm: React.FC<VendorEmployeeFormProps> = ({
@@ -41,53 +39,48 @@ export const VendorEmployeeForm: React.FC<VendorEmployeeFormProps> = ({
     name: employee?.name || '',
     email: employee?.email || '',
     phone: employee?.phone || '',
-    role: employee?.role || 'staff' as 'manager' | 'staff' | 'admin',
-    permissions: employee?.permissions || [],
-    salary: employee?.salary || 0
+    role: employee?.role || 'staff',
+    permissions: employee?.permissions || [] as string[],
+    salary: employee?.salary || 0,
+    status: employee?.status || 'active',
   });
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
   const handlePermissionChange = (permissionId: string) => {
-    const updatedPermissions = formData.permissions.includes(permissionId)
+    const updated = formData.permissions.includes(permissionId)
       ? formData.permissions.filter(p => p !== permissionId)
       : [...formData.permissions, permissionId];
-    
-    setFormData(prev => ({ ...prev, permissions: updatedPermissions }));
-  };
-
-  const handleRoleChange = (value: string) => {
-    setFormData(prev => ({ 
-      ...prev, 
-      role: value as 'manager' | 'staff' | 'admin'
-    }));
+    setFormData(prev => ({ ...prev, permissions: updated }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.name || !formData.email || !formData.phone) {
+      toast({ title: "Error", description: "Please fill all required fields", variant: "destructive" });
+      return;
+    }
     setLoading(true);
-
     try {
       if (employee) {
-        await vendorService.updateEmployee(employee._id, formData);
-        toast({
-          title: "Success",
-          description: "Employee updated successfully"
-        });
+        const res = await vendorEmployeeService.updateEmployee(employee.id, formData);
+        if (res.success) {
+          toast({ title: "Success", description: "Employee updated successfully" });
+          onSubmit();
+        } else {
+          throw new Error(res.error);
+        }
       } else {
-        await vendorService.createEmployee(formData);
-        toast({
-          title: "Success",
-          description: "Employee created successfully"
-        });
+        const res = await vendorEmployeeService.createEmployee(formData);
+        if (res.success) {
+          toast({ title: "Success", description: "Employee added successfully" });
+          onSubmit();
+        } else {
+          throw new Error(res.error);
+        }
       }
-      onSubmit();
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to save employee",
-        variant: "destructive"
-      });
+    } catch (error: any) {
+      toast({ title: "Error", description: error?.message || "Failed to save employee", variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -95,72 +88,57 @@ export const VendorEmployeeForm: React.FC<VendorEmployeeFormProps> = ({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{employee ? 'Edit Employee' : 'Add New Employee'}</CardTitle>
+      <CardHeader className="pb-4">
+        <CardTitle className="text-sm">{employee ? 'Edit Employee' : 'Add New Employee'}</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <Label htmlFor="name">Full Name</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                required
-              />
+              <Label className="text-xs">Full Name *</Label>
+              <Input className="h-8 text-xs" value={formData.name} onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))} required />
             </div>
             <div>
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                required
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="phone">Phone</Label>
-              <Input
-                id="phone"
-                value={formData.phone}
-                onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                required
-              />
+              <Label className="text-xs">Email *</Label>
+              <Input className="h-8 text-xs" type="email" value={formData.email} onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))} required />
             </div>
             <div>
-              <Label htmlFor="role">Role</Label>
-              <Select value={formData.role} onValueChange={handleRoleChange}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+              <Label className="text-xs">Phone *</Label>
+              <Input className="h-8 text-xs" value={formData.phone} onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))} required />
+            </div>
+            <div>
+              <Label className="text-xs">Role</Label>
+              <Select value={formData.role} onValueChange={(v) => setFormData(prev => ({ ...prev, role: v }))}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="staff">Staff</SelectItem>
-                  <SelectItem value="manager">Manager</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="staff" className="text-xs">Staff</SelectItem>
+                  <SelectItem value="manager" className="text-xs">Manager</SelectItem>
+                  <SelectItem value="admin" className="text-xs">Admin</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Label className="text-xs">Monthly Salary (₹)</Label>
+              <Input className="h-8 text-xs" type="number" min="0" value={formData.salary} onChange={(e) => setFormData(prev => ({ ...prev, salary: parseInt(e.target.value) || 0 }))} />
+            </div>
+            {employee && (
+              <div>
+                <Label className="text-xs">Status</Label>
+                <Select value={formData.status} onValueChange={(v) => setFormData(prev => ({ ...prev, status: v }))}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active" className="text-xs">Active</SelectItem>
+                    <SelectItem value="inactive" className="text-xs">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           <div>
-            <Label htmlFor="salary">Default Password : defaultPassword123</Label>
-            {/* <Label htmlFor="salary">Salary (Monthly)</Label>
-            <Input
-              id="salary"
-              type="number"
-              value={formData.salary}
-              onChange={(e) => setFormData(prev => ({ ...prev, salary: parseInt(e.target.value) || 0 }))}
-            /> */}
-          </div>
-
-          <div>
-            <Label>Permissions</Label>
-            <div className="grid grid-cols-2 gap-2 mt-2">
+            <Label className="text-xs font-medium">Sidebar Permissions</Label>
+            <p className="text-[10px] text-muted-foreground mb-2">Select which sections this employee can access</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
               {PERMISSIONS.map((permission) => (
                 <div key={permission.id} className="flex items-center space-x-2">
                   <Checkbox
@@ -168,7 +146,7 @@ export const VendorEmployeeForm: React.FC<VendorEmployeeFormProps> = ({
                     checked={formData.permissions.includes(permission.id)}
                     onCheckedChange={() => handlePermissionChange(permission.id)}
                   />
-                  <Label htmlFor={permission.id} className="text-sm">
+                  <Label htmlFor={permission.id} className="text-[11px] cursor-pointer">
                     {permission.label}
                   </Label>
                 </div>
@@ -176,11 +154,9 @@ export const VendorEmployeeForm: React.FC<VendorEmployeeFormProps> = ({
             </div>
           </div>
 
-          <div className="flex justify-end space-x-2">
-            <Button type="button" variant="outline" onClick={onCancel}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading}>
+          <div className="flex justify-end gap-2 pt-2 border-t">
+            <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={onCancel}>Cancel</Button>
+            <Button type="submit" size="sm" className="h-7 text-xs" disabled={loading}>
               {loading ? "Saving..." : employee ? "Update Employee" : "Add Employee"}
             </Button>
           </div>

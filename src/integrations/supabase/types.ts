@@ -2073,6 +2073,48 @@ export type Database = {
         }
         Relationships: []
       }
+      vendor_employees: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          name: string
+          partner_user_id: string
+          permissions: string[]
+          phone: string
+          role: string
+          salary: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          partner_user_id: string
+          permissions?: string[]
+          phone?: string
+          role?: string
+          salary?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          partner_user_id?: string
+          permissions?: string[]
+          phone?: string
+          role?: string
+          salary?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

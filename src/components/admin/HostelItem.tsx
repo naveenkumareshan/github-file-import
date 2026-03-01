@@ -93,9 +93,11 @@ export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePac
                 <Edit className="h-3 w-3 mr-1" />Edit
               </Button>
             )}
-            <Button size="sm" className="h-7 px-2 text-xs" onClick={() => navigate(`/admin/hostels/${hostel.id}/beds`)}>
-              <Bed className="h-3 w-3 mr-1" />Beds
-            </Button>
+            {isAdmin && (
+              <Button size="sm" className="h-7 px-2 text-xs" onClick={() => navigate(`/admin/hostels/${hostel.id}/beds`)}>
+                <Bed className="h-3 w-3 mr-1" />Beds
+              </Button>
+            )}
             {isAdmin && (
               <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => onManagePackages(hostel)}>
                 <Package className="h-3 w-3 mr-1" />Packages
