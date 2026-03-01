@@ -1,119 +1,121 @@
 
-# Partner Data Isolation and Feature Fixes
+# Fix Partner Profile, Coupons, Create User, Employee Permissions, Routes, and Sidebar Merges
 
-This is a large set of changes to ensure partners only see their own data and have the correct level of access across the entire application.
+## 1. Partner Profile Not Showing Data
+
+**Root Cause**: The `partners` table has no record for the TestPartner user (user_id: `b7223bac-ef5c-48aa-ba49-d530d15f6f8e`). This user was created before the `admin-create-user` edge function had the partner record creation logic.
+
+**Fix**:
+- Modify `VendorProfile.tsx` to auto-create a partner record if one doesn't exist (using data from the `profiles` table) instead of showing "Profile not found".
+- In `vendorProfileService.ts`, add a `createProfile()` method that inserts a new partner row using the authenticated user's profile data.
+- When `getProfile()` returns "Profile not found", the component will call `createProfile()` to bootstrap the record, then display it for editing.
+
+**Files**: `src/api/vendorProfileService.ts`, `src/components/vendor/VendorProfile.tsx`
 
 ---
 
-## Issues and Fixes
+## 2. Partner-Created Coupons Visible Only to Partner + Admin
 
-### 1. Reading Rooms showing all properties to all partners
-
-**Problem**: `adminCabinsService.getAllCabins()` queries `supabase.from('cabins').select('*')` without filtering. RLS has RESTRICTIVE policies for "Anyone can view active cabins" and "Partners can manage own cabins" -- but all restrictive policies with no permissive policies means NO rows are returned. The fact that it works at all suggests the policies may be behaving as permissive. Partners currently see all cabins.
-
-**Fix**: Add explicit `created_by` filter in `adminCabinsService.getAllCabins()` when the logged-in user is not an admin. Pass the user ID from the calling component (RoomManagement.tsx) so the service filters `created_by = userId`.
-
-**Files**: `src/api/adminCabinsService.ts`, `src/pages/RoomManagement.tsx`
-
-### 2. Hide Seats/Beds buttons from partners in Manage Rooms/Hostels
-
-**Problem**: CabinItem shows a "Seats" button and HostelItem shows a "Beds" button for partners. Partners should not have access to seat/bed management -- only view-only + pause/enable.
-
-**Fix**: In `CabinItem.tsx`, hide the "Seats" button for non-admin users. In `HostelItem.tsx`, hide the "Beds" and "Packages" buttons for non-admin users.
-
-**Files**: `src/components/admin/CabinItem.tsx`, `src/components/admin/HostelItem.tsx`
-
-### 3. Students/Employees filtering for partners
-
-**Problem**: Partners see ALL students/employees instead of only those related to their properties. Also, partners should not be able to view full student details -- only name, phone, email, and related bookings.
+**Current State**: The filtering on line 105-111 of `CouponManagement.tsx` already filters by `vendorId` for partners. However, the backend coupon service uses the legacy MongoDB/axios API, so partner filtering depends on what the backend returns.
 
 **Fix**:
-- In `adminUsersService.getUsers()`, add a `partnerUserId` filter parameter. When set, first fetch the partner's cabin/hostel IDs, then get user IDs from bookings on those properties, and filter profiles to only those users.
-- In `AdminStudents.tsx`, pass the current user's ID as `partnerUserId` when role is `vendor`.
-- For partner's "View" action on students, show a simplified dialog with only name, phone, email, and their bookings at the partner's properties (not full details with edit).
-
-**Files**: `src/api/adminUsersService.ts`, `src/pages/AdminStudents.tsx`
-
-### 4. Partner-scoped coupons
-
-**Problem**: Coupons use the legacy MongoDB/axios backend (`couponService.ts`). Partners can see all coupons and create coupons that are globally visible.
-
-**Fix**: This is a significant migration since the entire coupon system runs on the legacy backend. For now, the practical fix is:
-- Filter the coupon list on the frontend: when a partner is logged in, only show coupons where `scope === 'vendor'` and `vendorId` matches the partner's ID, or `scope === 'global'` (read-only).
-- When a partner creates a coupon, force `scope = 'vendor'` and auto-set `vendorId` to the partner's own ID.
-- Hide Edit/Delete buttons for global coupons when logged in as a partner.
+- The client-side filter already works. Strengthen it by also ensuring coupons created by a partner (via `createdBy` field) are included in the filter.
+- When a partner creates a coupon, force `scope = 'vendor'` and auto-populate `vendorId` -- already partially done but needs verification that the `vendorId` is correctly set from `user.vendorId`.
 
 **Files**: `src/components/admin/CouponManagement.tsx`
 
-### 5. Employee management with new UI
+---
 
-**Problem**: Employee management (`VendorEmployees.tsx`) uses the legacy MongoDB/axios backend (`vendorService.getEmployees()`). It needs migration to the Supabase backend and a refreshed UI with salary fields, edit/view mode, and sidebar permission sharing.
+## 3. Create User Page: Restrict Role Options for Partners
 
-**Fix**:
-- Create a `vendor_employees` table in the database (id, partner_user_id, user_id, name, email, phone, role, permissions, status, salary, created_at, updated_at) with RLS policies.
-- Create a new `vendorEmployeeService.ts` using Supabase queries.
-- Rewrite `VendorEmployees.tsx` with a modern table-based UI showing employee name, role, permissions, salary, status, and Edit/View actions.
-- Update `VendorEmployeeForm.tsx` to include salary field and permission checkboxes matching sidebar items.
-
-**Database Migration**: Create `vendor_employees` table with RLS.
-
-**Files**: New migration, `src/api/vendorEmployeeService.ts` (new), `src/pages/vendor/VendorEmployees.tsx`, `src/components/vendor/VendorEmployeeForm.tsx`
-
-### 6. Partner profile page not showing data
-
-**Problem**: The profile page fetches from `vendorProfileService.getProfile()` which queries the `partners` table. The issue is likely that the partner record doesn't exist (wasn't created when the user was created), or RLS is blocking the read.
+**Current State**: The Create User form shows all 4 role options (Student, Partner, Admin, Employee) for everyone. Partners should only see "Student" and "Employee".
 
 **Fix**:
-- Debug and verify the `partners` table has a record for the logged-in partner with matching `user_id`.
-- Ensure RLS SELECT policy for "Partners can view own record" is correct (it uses `auth.uid() = user_id` which should work).
-- Add a "Documents" tab to the profile page for uploading business documents (Aadhar, PAN, GST certificate, cancelled cheque, site photos) using the existing storage system.
-- Add all editable fields: business name, type, contact person, phone, address, GST number, PAN, Aadhar, bank details (account holder, account number, bank name, IFSC, UPI ID).
+- In `CreateStudentForm.tsx`, filter `ROLE_OPTIONS` based on the logged-in user's role.
+- If `user?.role === 'vendor'`, only show `student` and `vendor_employee` options.
+- Remove duplicate "Create" under Employees sidebar (already has "Create User" under Users).
 
-**Files**: `src/components/vendor/VendorProfile.tsx`, `src/api/vendorProfileService.ts`
+**Files**: `src/components/admin/CreateStudentForm.tsx`, `src/components/admin/AdminSidebar.tsx`
 
-### 7. Complaints visible only for partner's own properties
+---
 
-**Problem**: Complaints page is admin-only in the sidebar (`roles: ['admin']`). Partners cannot see complaints at all.
+## 4. Employee Permissions: Edit vs View Toggle per Sidebar Menu
+
+**Current State**: Permissions are simple checkboxes (e.g., `view_dashboard`, `view_bookings`). There's no distinction between "edit" and "view" access per menu item.
 
 **Fix**:
-- Add Complaints to the partner's sidebar menu under a suitable section.
-- Filter complaints to only show those linked to the partner's cabins/hostels (`cabin_id` or `hostel_id` belonging to the partner).
-- Add RLS policy for vendors to view complaints for their own properties.
+- Restructure the permissions UI in `VendorEmployeeForm.tsx` to group each sidebar section with two toggle options: "View" and "Edit".
+- Map existing permissions: `view_bookings` = View, `manage_bookings` = Edit, etc.
+- Display as a table with rows for each sidebar module and columns for View/Edit checkboxes.
+- Only "ticked" permissions will be active for the employee.
 
-**Database Migration**: Add RLS policy on `complaints` table for vendors to SELECT complaints where `cabin_id` is in their cabins or `hostel_id` is in their hostels.
+**Files**: `src/components/vendor/VendorEmployeeForm.tsx`, `src/pages/vendor/VendorEmployees.tsx`
 
-**Files**: `src/components/admin/AdminSidebar.tsx`, RLS migration for complaints
+---
+
+## 5. Partner Routes: Use `/partner/` Prefix Instead of `/admin/`
+
+**Current State**: All partner pages use `/admin/` routes (e.g., `/admin/dashboard`, `/admin/rooms`). The breadcrumb says "Partner Panel" but the URL says `/admin/`.
+
+**Fix**:
+- This is a significant routing change. Instead of changing all routes (which would break many things), add route aliases so `/partner/*` redirects to the same components.
+- Actually, the simpler and safer approach: Add a set of `/partner/*` routes in `App.tsx` that render the same `AdminLayout` and child components. Then update the sidebar links for vendor users to use `/partner/` prefix.
+- Update `AdminSidebar.tsx` to dynamically prefix all URLs with `/partner/` when the user role is `vendor` or `vendor_employee`.
+- Update `AdminLayout.tsx` breadcrumb mapping to include `/partner/` paths.
+
+**Files**: `src/App.tsx`, `src/components/admin/AdminSidebar.tsx`, `src/components/AdminLayout.tsx`
+
+---
+
+## 6. Merge "Manage Rooms" + "Manage Hostels" and Reviews into Single Sidebar Items
+
+**Current State**: Sidebar has separate "Reading Rooms" and "Hostels" sections, each with their own "Manage" and "Reviews" sub-items for partners.
+
+**Fix for Partners Only**:
+- In `AdminSidebar.tsx`, when user is `vendor` or `vendor_employee`, merge "Manage Rooms" and "Manage Hostels" into a single "Manage Properties" sidebar heading.
+- Create a new `ManageProperties.tsx` page with two tabs: "Reading Rooms" and "Hostels" that embed existing management components.
+- Merge the two "Reviews" links into one "Reviews" page with tab headers for "Reading Rooms" and "Hostels" (the current `ReviewsManagement.tsx` already supports `?module=` query param, so the merged page can use tabs that switch the module).
+- Admin sidebar remains unchanged -- only partner sidebar gets the merged view.
+
+**Files**: `src/components/admin/AdminSidebar.tsx`, new `src/pages/partner/ManageProperties.tsx`, new `src/pages/partner/PartnerReviews.tsx`, `src/App.tsx`
+
+---
+
+## Database Migration
+
+- Insert a partner record for the existing TestPartner user so the profile works immediately:
+```sql
+INSERT INTO partners (user_id, business_name, contact_person, email, phone, status)
+SELECT id, COALESCE(name, 'Partner'), COALESCE(name, ''), COALESCE(email, ''), COALESCE(phone, ''), 'approved'
+FROM profiles
+WHERE id IN (SELECT user_id FROM user_roles WHERE role = 'vendor')
+AND id NOT IN (SELECT user_id FROM partners);
+```
 
 ---
 
 ## Implementation Order
 
-1. **Database migrations**: Create `vendor_employees` table + RLS; add vendor complaint access policy
-2. **Property filtering**: Fix cabin/hostel services to filter by partner
-3. **Hide Seats/Beds buttons**: Update CabinItem and HostelItem
-4. **Student/Employee filtering**: Update AdminStudents and adminUsersService
-5. **Coupon scoping**: Filter CouponManagement for partners
-6. **Employee management rewrite**: New service + UI with salary and permissions
-7. **Partner profile fix**: Debug data, add documents tab
-8. **Complaints access**: Add sidebar item + filtering for partners
+1. Database migration to backfill missing partner records
+2. Fix partner profile auto-creation fallback
+3. Restrict Create User role options for partners
+4. Restructure employee permissions UI (View/Edit toggles)
+5. Add `/partner/` route aliases and update sidebar links
+6. Merge Manage Rooms/Hostels and Reviews for partner sidebar
+7. Fix coupon visibility for partners
 
-## Files to Create/Modify
+## Technical Details
 
-### New Files:
-- Database migration for `vendor_employees` table
-- Database migration for complaints RLS vendor policy
-- `src/api/vendorEmployeeService.ts`
+### New Files
+- `src/pages/partner/ManageProperties.tsx` -- Tabbed page combining Room and Hostel management
+- `src/pages/partner/PartnerReviews.tsx` -- Tabbed reviews page for both modules
 
-### Modified Files:
-- `src/api/adminCabinsService.ts` -- add partner filter
-- `src/pages/RoomManagement.tsx` -- pass partner filter
-- `src/components/admin/CabinItem.tsx` -- hide Seats button for partners
-- `src/components/admin/HostelItem.tsx` -- hide Beds/Packages buttons for partners
-- `src/api/adminUsersService.ts` -- add partner-scoped user filtering
-- `src/pages/AdminStudents.tsx` -- simplified view for partners, filter users
-- `src/components/admin/CouponManagement.tsx` -- partner-scoped coupon filtering
-- `src/pages/vendor/VendorEmployees.tsx` -- full rewrite with new UI
-- `src/components/vendor/VendorEmployeeForm.tsx` -- add salary, permissions
-- `src/components/vendor/VendorProfile.tsx` -- add documents tab, fix data display
-- `src/api/vendorProfileService.ts` -- add document upload support
-- `src/components/admin/AdminSidebar.tsx` -- add Complaints for partners
+### Modified Files
+- `src/api/vendorProfileService.ts` -- Add `createProfile()` method
+- `src/components/vendor/VendorProfile.tsx` -- Auto-create on "not found"
+- `src/components/admin/CreateStudentForm.tsx` -- Filter role options by user role
+- `src/components/vendor/VendorEmployeeForm.tsx` -- View/Edit permission toggles
+- `src/components/admin/AdminSidebar.tsx` -- Partner route prefix, merged sidebar items, remove duplicate employee create
+- `src/components/AdminLayout.tsx` -- Add `/partner/` breadcrumb mappings
+- `src/App.tsx` -- Add `/partner/*` route aliases, new page routes
+- `src/components/admin/CouponManagement.tsx` -- Strengthen partner coupon filtering
