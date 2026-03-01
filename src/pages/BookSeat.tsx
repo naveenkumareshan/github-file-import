@@ -8,6 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { CabinImageSlider } from "@/components/CabinImageSlider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import { ShareButton } from "@/components/ShareButton";
+import { generateCabinShareText } from "@/utils/shareUtils";
+import { useAuth } from "@/hooks/use-auth";
 
 const SeatBookingForm = lazy(() =>
   import("@/components/seats/SeatBookingForm").then((m) => ({
@@ -88,6 +91,7 @@ const BookSeat = () => {
   const { cabinId } = useParams<{ cabinId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const bookingFormRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
 
@@ -248,9 +252,21 @@ const BookSeat = () => {
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               {/* Category badge */}
-              <Badge className={`absolute top-3 right-3 ${getCategoryColor(cabin.category)} border-0 text-xs shadow-lg`}>
-                {cabin.category.charAt(0).toUpperCase() + cabin.category.slice(1)}
-              </Badge>
+              <div className="absolute top-3 right-3 flex items-center gap-2">
+                <ShareButton
+                  {...generateCabinShareText({
+                    id: cabin.id,
+                    name: cabin.name,
+                    price: cabin.price,
+                    fullAddress: cabin.fullAddress,
+                    averageRating: cabin.averageRating,
+                    serialNumber: cabin.serialNumber,
+                  }, user?.id)}
+                />
+                <Badge className={`${getCategoryColor(cabin.category)} border-0 text-xs shadow-lg`}>
+                  {cabin.category.charAt(0).toUpperCase() + cabin.category.slice(1)}
+                </Badge>
+              </div>
             </div>
 
             {/* Name, Rating & Address - Below the image */}

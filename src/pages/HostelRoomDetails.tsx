@@ -52,6 +52,8 @@ import { HostelBedLayoutView } from "@/components/hostels/HostelBedLayoutView";
 import { StayDurationPackages } from "@/components/hostels/StayDurationPackages";
 import { StayPackage, DurationType } from "@/api/hostelStayPackageService";
 import { FoodMenuModal } from "@/components/hostels/FoodMenuModal";
+import { ShareButton } from "@/components/ShareButton";
+import { generateHostelShareText } from "@/utils/shareUtils";
 
 /* ─── Skeleton ─── */
 const HostelDetailSkeleton = () => (
@@ -435,9 +437,22 @@ const HostelRoomDetails = () => {
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
-                <Badge className={`absolute top-3 right-3 ${getGenderColor(hostel.gender)} border-0 text-xs shadow-lg`}>
-                  {hostel.gender?.charAt(0).toUpperCase() + hostel.gender?.slice(1)}
-                </Badge>
+                <div className="absolute top-3 right-3 flex items-center gap-2">
+                  <ShareButton
+                    {...generateHostelShareText({
+                      id: hostel.id,
+                      name: hostel.name,
+                      gender: hostel.gender,
+                      stay_type: hostel.stay_type,
+                      food_enabled: hostel.food_enabled,
+                      location: hostel.location,
+                      serial_number: hostel.serial_number,
+                    }, lowestPrice, user?.id)}
+                  />
+                  <Badge className={`${getGenderColor(hostel.gender)} border-0 text-xs shadow-lg`}>
+                    {hostel.gender?.charAt(0).toUpperCase() + hostel.gender?.slice(1)}
+                  </Badge>
+                </div>
               </div>
 
               {/* Name, Rating & Location */}
