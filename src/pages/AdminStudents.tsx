@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { getImageUrl } from "@/lib/utils";
 import { getPublicAppUrl } from "@/utils/appUrl";
 import { Button } from "@/components/ui/button";
@@ -77,6 +77,8 @@ const AdminStudents = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const fetchCounter = useRef(0);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -108,20 +110,32 @@ const AdminStudents = () => {
   const [toggleStatusUser, setToggleStatusUser] = useState<Student | null>(null);
   const [togglingStatus, setTogglingStatus] = useState(false);
 
+  // Debounce search input by 400ms
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Fetch when filters change (using debouncedSearch, not raw searchQuery)
   useEffect(() => {
     fetchStudents();
-  }, [currentPage, searchQuery, pageSize, includeInactive, role]);
+  }, [currentPage, debouncedSearch, pageSize, includeInactive, role]);
 
   const fetchStudents = async () => {
+    const currentFetch = ++fetchCounter.current;
     try {
       setLoading(true);
       const res = await adminUsersService.getUsers({
         role,
         page: currentPage,
         limit: pageSize,
-        search: searchQuery || undefined,
+        search: debouncedSearch || undefined,
         includeInactive,
       });
+      // Discard stale responses
+      if (currentFetch !== fetchCounter.current) return;
       if (res.success && Array.isArray(res.data)) {
         setStudents(res.data);
         setTotalUsers(res.totalCount || res.count);
@@ -129,9 +143,12 @@ const AdminStudents = () => {
         toast({ title: "Error", description: "Failed to load users", variant: "destructive" });
       }
     } catch {
+      if (currentFetch !== fetchCounter.current) return;
       toast({ title: "Error", description: "Failed to load users", variant: "destructive" });
     } finally {
-      setLoading(false);
+      if (currentFetch === fetchCounter.current) {
+        setLoading(false);
+      }
     }
   };
 
@@ -162,9 +179,10 @@ const AdminStudents = () => {
   };
 
   const handleTabChange = (val: string) => {
-    setRole(val);
-    setCurrentPage(1);
     setSearchQuery("");
+    setDebouncedSearch("");
+    setCurrentPage(1);
+    setRole(val);
   };
 
   const handleViewDetails = (s: Student) => {
