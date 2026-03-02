@@ -28,7 +28,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import {
   ArrowLeft,
   Bed,
-  Building,
+  
   CalendarIcon,
   CheckCircle2,
   ChevronDown,
@@ -381,7 +381,7 @@ const HostelRoomDetails = () => {
     return Math.min(min, roomMin);
   }, Infinity);
 
-  const stayTypeLabel = hostel?.stay_type === "long_term" ? "Long-term" : hostel?.stay_type === "short_term" ? "Short-term" : "Both";
+  
 
   // Effective price for selected bed
   const selectedBedPrice = selectedBed
@@ -514,10 +514,6 @@ const HostelRoomDetails = () => {
                   <div className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap shadow-sm border ${getGenderChipColor(hostel.gender)}`}>
                     <Users className="h-3.5 w-3.5" />
                     {hostel.gender?.charAt(0).toUpperCase() + hostel.gender?.slice(1)}
-                  </div>
-                  <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-500/10 text-purple-700 dark:text-purple-400 text-xs font-semibold whitespace-nowrap shadow-sm border border-purple-500/20">
-                    <Building className="h-3.5 w-3.5" />
-                    {stayTypeLabel}
                   </div>
                   {hostel.security_deposit > 0 && (
                     <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs font-semibold whitespace-nowrap shadow-sm border border-amber-500/20">
