@@ -30,6 +30,7 @@ const routeLabels: Record<string, string> = {
   "/admin/complaints": "Complaints",
   "/admin/operations": "Operations",
   "/admin/manage-properties": "Manage Properties",
+  "/admin/laundry": "Laundry",
   // Partner route aliases
   "/partner/dashboard": "Dashboard",
   "/partner/bookings": "All Transactions",
@@ -55,6 +56,7 @@ const routeLabels: Record<string, string> = {
   "/partner/hostel-due-management": "Hostel Due Management",
   "/partner/due-management": "Due Management",
   "/partner/receipts": "Receipts",
+  "/partner/laundry": "Laundry",
 };
 
 const getPageLabel = (pathname: string): string => {

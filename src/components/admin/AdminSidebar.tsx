@@ -45,7 +45,8 @@ import {
   UserCheck,
   ClipboardCheck,
   Megaphone,
-  Crown
+  Crown,
+  Shirt
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronRight } from 'lucide-react';
@@ -249,6 +250,14 @@ export function AdminSidebar() {
       subItems: hostelSubItems,
     });
   }
+
+  // ===== LAUNDRY SECTION =====
+  menuItems.push({
+    title: 'Laundry',
+    url: `${routePrefix}/laundry`,
+    icon: Shirt,
+    roles: ['admin', 'vendor', 'vendor_employee'],
+  });
 
   // ===== USERS SECTION (moved BELOW Hostels) =====
   if (user?.role === 'admin' || hasPermission('manage_students')) {
