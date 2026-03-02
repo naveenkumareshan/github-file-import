@@ -9,11 +9,13 @@
     "build:prod": "vite build --mode production",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "cap:sync": "npx cap sync",
+    "cap:android": "npx cap run android",
+    "cap:ios": "npx cap run ios"
   },
   "dependencies": {
     "@capacitor/android": "^8.1.0",
-    "@capacitor/cli": "^8.1.0",
     "@capacitor/core": "^8.1.0",
     "@capacitor/ios": "^8.1.0",
     "@capacitor/splash-screen": "^8.0.1",
@@ -80,6 +82,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.1.0",
     "@eslint/js": "^9.9.0",
     "@tailwindcss/typography": "^0.5.15",
     "@types/node": "^22.5.5",
