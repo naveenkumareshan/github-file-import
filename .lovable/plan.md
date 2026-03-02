@@ -1,40 +1,36 @@
 
-
-# Fix Admin Students Page Performance
+# Fix "invalid input syntax for type uuid" Error
 
 ## Problem
-The Admin Students page is slow and sometimes fails to display users due to:
-1. **No debounce on search** -- Every keystroke triggers a full API call (3 sequential DB queries), causing race conditions where an older response overwrites a newer one
-2. **Double fetch on tab change** -- `handleTabChange` sets both `role` and `searchQuery("")`, triggering the `useEffect` twice in quick succession
-3. **Three sequential queries per fetch** -- The `getUsers` service queries `user_roles`, then `profiles`, then `user_roles` again
+When saving a hostel (especially after editing food policy), the save sends empty strings `""` for UUID columns like `area_id`, `state_id`, `city_id`, and `created_by`. PostgreSQL rejects `""` as invalid UUID syntax.
 
-## Changes
+This happens because `HostelEditor.tsx` initializes these fields as `''` (empty string) on lines 59-64 when no value exists. When the full hostel object is passed to `hostelService.updateHostel()`, these empty strings hit the database.
 
-### 1. Add search debounce in `AdminStudents.tsx`
-- Add a `debouncedSearch` state that updates 400ms after the user stops typing
-- Use `debouncedSearch` in the `useEffect` dependency instead of `searchQuery`
-- This eliminates race conditions from rapid typing
+## Fix
 
-### 2. Fix double-fetch on tab change in `AdminStudents.tsx`
-- In `handleTabChange`, batch the state updates so only one fetch is triggered
-- Use the debounced search value, not raw `searchQuery`, in the effect
+### Update `src/api/hostelService.ts` -- Sanitize UUID fields before insert/update
 
-### 3. Optimize `adminUsersService.getUsers`
-- Run the second `user_roles` query in parallel with profile mapping instead of sequentially
-- Add error handling that doesn't silently fail
+Add a helper function that converts empty string values to `null` for known UUID columns before sending to the database:
 
-### 4. Add abort controller for race condition prevention
-- Use an AbortController or a fetch counter to ensure only the latest request's response is applied to state
+```typescript
+const UUID_FIELDS = ['state_id', 'city_id', 'area_id', 'created_by', 'vendor_id'];
 
-## Technical Details
+function sanitizeUUIDs(data: Record<string, any>) {
+  const cleaned = { ...data };
+  for (const field of UUID_FIELDS) {
+    if (cleaned[field] === '' || cleaned[field] === undefined) {
+      cleaned[field] = null;
+    }
+  }
+  return cleaned;
+}
+```
 
+Apply this in both `createHostel` and `updateHostel` methods before passing data to Supabase.
+
+### Files to modify
 | File | Change |
 |------|--------|
-| `src/pages/AdminStudents.tsx` | Add debounced search (useEffect with setTimeout), fix tab change double-fetch, add stale request prevention |
-| `src/api/adminUsersService.ts` | Minor: no structural changes needed, queries are already reasonable for ~10 users |
+| `src/api/hostelService.ts` | Add UUID sanitizer helper, apply in `createHostel` and `updateHostel` |
 
-The core fix is in `AdminStudents.tsx`:
-- Introduce `debouncedSearch` with a 400ms delay
-- Use a fetch counter (`useRef`) to discard stale responses
-- Remove `searchQuery` from useEffect deps, use `debouncedSearch` instead
-
+This is a one-file, minimal fix that prevents empty strings from reaching UUID columns.
