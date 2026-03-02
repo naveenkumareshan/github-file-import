@@ -131,12 +131,17 @@ const HostelConfirmation = () => {
                   <p className="font-medium">{formatDate(booking?.end_date)}</p>
                 </div>
 
-                {booking?.food_opted && (
+                {booking?.food_policy_type === 'mandatory' ? (
+                  <div className="bg-orange-100 dark:bg-orange-900/30 p-4 rounded-md">
+                    <p className="text-sm text-muted-foreground mb-1">Food Plan</p>
+                    <p className="font-medium">Included in Rent — {formatCurrency(booking.food_amount || booking.food_price_snapshot || 0)}</p>
+                  </div>
+                ) : booking?.food_opted ? (
                   <div className="bg-muted/30 p-4 rounded-md">
                     <p className="text-sm text-muted-foreground mb-1">Food Plan</p>
-                    <p className="font-medium">Opted — {formatCurrency(booking.food_amount || 0)}</p>
+                    <p className="font-medium">Add-on — {formatCurrency(booking.food_amount || 0)}</p>
                   </div>
-                )}
+                ) : null}
 
                 <div className={`p-4 rounded-md ${
                   booking?.payment_status === "completed" || booking?.payment_status === "advance_paid"

@@ -295,6 +295,9 @@ const HostelRoomDetails = () => {
         payment_method: 'online',
         food_opted: foodOpted,
         food_amount: foodAmount,
+        food_policy_type: effectiveFoodPolicy,
+        food_price_snapshot: effectiveFoodPrice,
+        total_amount_snapshot: totalPrice,
       };
 
       const booking = await hostelBookingService.createBooking(bookingData);
@@ -390,9 +393,32 @@ const HostelRoomDetails = () => {
     : effectiveBasePrice;
   const priceLabel = durationType === 'daily' ? '/day' : durationType === 'weekly' ? '/wk' : '/mo';
 
+  /* ─── Food policy resolution ─── */
+  const effectiveFoodPolicy = useMemo(() => {
+    if (!hostel) return 'not_available';
+    if (selectedSharingOption) {
+      const override = (selectedSharingOption as any).food_policy_override;
+      if (override && override !== 'inherit') return override;
+    }
+    return hostel.food_policy_type || (hostel.food_enabled ? 'optional' : 'not_available');
+  }, [hostel, selectedSharingOption]);
+
+  const effectiveFoodPrice = useMemo(() => {
+    if (selectedSharingOption) {
+      const priceOverride = (selectedSharingOption as any).food_price_override;
+      if (priceOverride != null && priceOverride > 0) return priceOverride;
+    }
+    return hostel?.food_price_monthly || 0;
+  }, [hostel, selectedSharingOption]);
+
+  // Auto-set foodOpted based on policy
+  useEffect(() => {
+    if (effectiveFoodPolicy === 'mandatory') setFoodOpted(true);
+    else if (effectiveFoodPolicy === 'not_available') setFoodOpted(false);
+  }, [effectiveFoodPolicy]);
+
   /* ─── Price calculations (after discountedPrice is defined) ─── */
-  const foodPriceMonthly = hostel?.food_price_monthly || 0;
-  const foodAmount = foodOpted ? (durationType === 'daily' ? Math.round(foodPriceMonthly / 30) * durationCount : durationType === 'weekly' ? Math.round(foodPriceMonthly / 4) * durationCount : foodPriceMonthly * durationCount) : 0;
+  const foodAmount = foodOpted ? (durationType === 'daily' ? Math.round(effectiveFoodPrice / 30) * durationCount : durationType === 'weekly' ? Math.round(effectiveFoodPrice / 4) * durationCount : effectiveFoodPrice * durationCount) : 0;
   const totalPrice = (discountedPrice * durationCount) + foodAmount;
   const calculateAdvanceAmount = () => {
     if (!hostel?.advance_booking_enabled) return null;
@@ -445,6 +471,7 @@ const HostelRoomDetails = () => {
                       gender: hostel.gender,
                       stay_type: hostel.stay_type,
                       food_enabled: hostel.food_enabled,
+                      food_policy_type: hostel.food_policy_type,
                       location: hostel.location,
                       serial_number: hostel.serial_number,
                     }, lowestPrice, user?.id)}
@@ -504,10 +531,20 @@ const HostelRoomDetails = () => {
                       {rooms.length} room{rooms.length > 1 ? "s" : ""}
                     </div>
                   )}
-                  {hostel.food_enabled && (
+                  {hostel.food_policy_type === 'mandatory' ? (
                     <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-orange-500/10 text-orange-700 dark:text-orange-400 text-xs font-semibold whitespace-nowrap shadow-sm border border-orange-500/20">
                       <Utensils className="h-3.5 w-3.5" />
+                      Food Included
+                    </div>
+                  ) : hostel.food_policy_type === 'optional' || hostel.food_enabled ? (
+                    <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs font-semibold whitespace-nowrap shadow-sm border border-emerald-500/20">
+                      <Utensils className="h-3.5 w-3.5" />
                       Food Available
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-muted text-muted-foreground text-xs font-semibold whitespace-nowrap shadow-sm border border-border">
+                      <Utensils className="h-3.5 w-3.5" />
+                      No Food Facility
                     </div>
                   )}
                 </div>
@@ -799,8 +836,8 @@ const HostelRoomDetails = () => {
               </div>
             </>)}
 
-            {/* ═══ Food Plan (optional) ═══ */}
-            {selectedBed && selectedStayPackage && hostel.food_enabled && (<>
+            {/* ═══ Food Plan ═══ */}
+            {selectedBed && selectedStayPackage && effectiveFoodPolicy !== 'not_available' && (<>
               <Separator className="my-0" />
               <div className="px-3 pt-2">
                 <div className="flex items-center gap-2 mb-1.5">
@@ -808,16 +845,25 @@ const HostelRoomDetails = () => {
                   <Label className="text-sm font-semibold text-foreground">Food Plan</Label>
                 </div>
                 <div className="bg-muted/30 rounded-xl border border-border/50 p-3 space-y-2">
-                  <div className="flex items-start gap-2">
-                    <Checkbox
-                      id="food-opt"
-                      checked={foodOpted}
-                      onCheckedChange={(checked) => setFoodOpted(checked === true)}
-                    />
-                    <label htmlFor="food-opt" className="text-xs font-medium text-foreground cursor-pointer leading-tight">
-                      Add Monthly Food Plan (+{formatCurrency(foodPriceMonthly)}/mo)
-                    </label>
-                  </div>
+                  {effectiveFoodPolicy === 'mandatory' ? (
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-orange-500/10 text-orange-700 dark:text-orange-400 border border-orange-500/20 text-xs">
+                        <Utensils className="h-3 w-3 mr-1" /> Food Included
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">({formatCurrency(effectiveFoodPrice)}/mo included in rent)</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-2">
+                      <Checkbox
+                        id="food-opt"
+                        checked={foodOpted}
+                        onCheckedChange={(checked) => setFoodOpted(checked === true)}
+                      />
+                      <label htmlFor="food-opt" className="text-xs font-medium text-foreground cursor-pointer leading-tight">
+                        Add Food Plan (+{formatCurrency(effectiveFoodPrice)}/mo)
+                      </label>
+                    </div>
+                  )}
                   <FoodMenuModal
                     hostelId={hostel.id}
                     menuImage={hostel.food_menu_image}
@@ -844,7 +890,7 @@ const HostelRoomDetails = () => {
               <Separator className="my-0" />
               <div className="px-3 pt-2 pb-6">
                 <div className="flex items-center gap-2 mb-1.5">
-                  <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">{categories.length > 0 ? (hostel.food_enabled ? 7 : 6) : (hostel.food_enabled ? 6 : 5)}</div>
+                  <div className="h-6 w-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">{categories.length > 0 ? (effectiveFoodPolicy !== 'not_available' ? 7 : 6) : (effectiveFoodPolicy !== 'not_available' ? 6 : 5)}</div>
                   <Label className="text-sm font-semibold text-foreground">Review & Pay</Label>
                 </div>
 

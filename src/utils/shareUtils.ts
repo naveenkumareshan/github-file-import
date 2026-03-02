@@ -15,6 +15,7 @@ export interface HostelShareData {
   gender?: string;
   stay_type?: string;
   food_enabled?: boolean;
+  food_policy_type?: string;
   location?: string;
   serial_number?: string;
 }
@@ -49,7 +50,9 @@ export const generateHostelShareText = (hostel: HostelShareData, lowestPrice?: n
   if (hostel.gender) meta.push(hostel.gender);
   if (hostel.stay_type) meta.push(hostel.stay_type === "long_term" ? "Long-term" : hostel.stay_type === "short_term" ? "Short-term" : "Both");
   if (meta.length) lines.push(meta.join(" | "));
-  if (hostel.food_enabled) lines.push(`🍽 Food Available`);
+  if (hostel.food_policy_type === 'mandatory') lines.push(`🍽 Food Included`);
+  else if (hostel.food_policy_type === 'optional') lines.push(`🍽 Food Available`);
+  else if (hostel.food_enabled) lines.push(`🍽 Food Available`);
   if (hostel.location) lines.push(`📍 ${hostel.location}`);
   if (lowestPrice && lowestPrice < Infinity) lines.push(`💰 Starting from ₹${lowestPrice}`);
   lines.push(`🔗 View details: ${url}`);

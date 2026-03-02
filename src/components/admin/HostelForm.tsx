@@ -52,6 +52,9 @@ export interface HostelData {
   max_advance_booking_days?: number;
   allowed_durations?: string[];
   advance_applicable_durations?: string[];
+  food_policy_type?: 'not_available' | 'mandatory' | 'optional';
+  food_price_monthly?: number;
+  food_enabled?: boolean;
 }
 
 export const HostelForm: React.FC<HostelFormProps> = ({
@@ -85,6 +88,8 @@ export const HostelForm: React.FC<HostelFormProps> = ({
     max_advance_booking_days: 30,
     allowed_durations: ['daily', 'weekly', 'monthly'],
     advance_applicable_durations: ['daily', 'weekly', 'monthly'],
+    food_policy_type: 'not_available',
+    food_price_monthly: 0,
   });
 
   const [loading, setLoading] = useState(false);
@@ -118,6 +123,8 @@ export const HostelForm: React.FC<HostelFormProps> = ({
         max_advance_booking_days: initialData.max_advance_booking_days || 30,
         allowed_durations: initialData.allowed_durations || ['daily', 'weekly', 'monthly'],
         advance_applicable_durations: initialData.advance_applicable_durations || ['daily', 'weekly', 'monthly'],
+        food_policy_type: initialData.food_policy_type || 'not_available',
+        food_price_monthly: initialData.food_price_monthly || 0,
       });
     }
   }, [initialData]);
@@ -157,10 +164,14 @@ export const HostelForm: React.FC<HostelFormProps> = ({
     e.preventDefault();
     setLoading(true);
     try {
+      const submitData = {
+        ...formData,
+        food_enabled: formData.food_policy_type !== 'not_available',
+      };
       if (hostelId) {
-        await hostelService.updateHostel(hostelId, formData);
+        await hostelService.updateHostel(hostelId, submitData);
       } else {
-        await hostelService.createHostel(formData);
+        await hostelService.createHostel(submitData);
       }
       toast({
         title: "Success",
@@ -247,6 +258,25 @@ export const HostelForm: React.FC<HostelFormProps> = ({
           <div>
             <Label htmlFor="security_deposit">Security Deposit (₹)</Label>
             <Input id="security_deposit" name="security_deposit" type="number" value={formData.security_deposit} onChange={handleNumberChange} min="0" />
+          </div>
+
+          {/* Food Policy */}
+          <div className="space-y-3 border rounded-lg p-3">
+            <Label className="text-sm font-semibold">Food Policy</Label>
+            <Select value={formData.food_policy_type} onValueChange={(value) => handleSelectChange("food_policy_type", value)}>
+              <SelectTrigger><SelectValue placeholder="Select food policy" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="not_available">Not Available</SelectItem>
+                <SelectItem value="mandatory">Mandatory (Included in Rent)</SelectItem>
+                <SelectItem value="optional">Optional (Add-on)</SelectItem>
+              </SelectContent>
+            </Select>
+            {(formData.food_policy_type === 'mandatory' || formData.food_policy_type === 'optional') && (
+              <div>
+                <Label className="text-xs">Food Price (₹/month)</Label>
+                <Input name="food_price_monthly" type="number" value={formData.food_price_monthly} onChange={handleNumberChange} min="0" />
+              </div>
+            )}
           </div>
         </div>
 
