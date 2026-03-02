@@ -1,18 +1,21 @@
 
+# Add "View Food Menu" Button in Details & Amenities Section
 
-# Remove Confusing "Both" Stay Type Badge
-
-## Problem
-The purple "Both" badge (showing stay type) appears on all hostel detail pages since most hostels default to "Both" for stay type. This is confusing for students as it doesn't convey useful information.
-
-## Solution
-Remove the stay type badge from the hostel details page entirely. The stay type info is still available in admin views and doesn't add value for students.
+## What This Does
+Add a "View Food Menu" button inside the **Details & Amenities** card (alongside amenities) so users can quickly access the food menu from the top of the page -- not just from the food plan section further down.
 
 ## Changes
 
+### `src/pages/HostelRoomDetails.tsx`
+
+**In the Details & Amenities section (around line 566)**, after the amenities list and before the closing `</div>`, add a `FoodMenuModal` button that shows only when the hostel has food available (mandatory or optional):
+
+- Condition: `hostel.food_policy_type === 'mandatory' || hostel.food_policy_type === 'optional' || hostel.food_enabled`
+- Render a styled button wrapped in the existing `FoodMenuModal` component
+- Button style: matches the amenity chip style but with a distinct food/menu icon (Utensils) and a clickable appearance
+
+The existing `FoodMenuModal` in the food plan section (line ~863) stays as-is -- this adds a second entry point for convenience.
+
 | File | Change |
 |------|--------|
-| `src/pages/HostelRoomDetails.tsx` | Remove the purple stay type badge (lines ~518-521) and the `stayTypeLabel` variable (line ~384). Also remove the `Building` icon import if no longer used. |
-
-This is a simple UI cleanup -- no database or logic changes needed.
-
+| `src/pages/HostelRoomDetails.tsx` | Add `FoodMenuModal` button inside Details & Amenities section, visible when food facility exists |
