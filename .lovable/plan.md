@@ -1,36 +1,53 @@
 
-# Fix "invalid input syntax for type uuid" Error
+
+# Fix Google OAuth Login Not Redirecting After Account Selection
 
 ## Problem
-When saving a hostel (especially after editing food policy), the save sends empty strings `""` for UUID columns like `area_id`, `state_id`, `city_id`, and `created_by`. PostgreSQL rejects `""` as invalid UUID syntax.
+After a user selects their Google account, they are returned to the login page instead of being redirected to the dashboard. This happens because:
 
-This happens because `HostelEditor.tsx` initializes these fields as `''` (empty string) on lines 59-64 when no value exists. When the full hostel object is passed to `hostelService.updateHostel()`, these empty strings hit the database.
+1. In `SocialLoginButtons.tsx`, the success case after OAuth is not handled -- `onLoginSuccess` is never called
+2. The component relies entirely on `onAuthStateChange` to propagate the session, but there is a timing gap
+3. For users accessing the app directly (not in preview), the page-redirect flow returns to the login page without explicit session re-detection
 
 ## Fix
 
-### Update `src/api/hostelService.ts` -- Sanitize UUID fields before insert/update
-
-Add a helper function that converts empty string values to `null` for known UUID columns before sending to the database:
+### 1. Handle OAuth success explicitly in `SocialLoginButtons.tsx`
+After the `result.error` check, add a success handler that calls `onLoginSuccess`:
 
 ```typescript
-const UUID_FIELDS = ['state_id', 'city_id', 'area_id', 'created_by', 'vendor_id'];
+if (result.redirected) return;
 
-function sanitizeUUIDs(data: Record<string, any>) {
-  const cleaned = { ...data };
-  for (const field of UUID_FIELDS) {
-    if (cleaned[field] === '' || cleaned[field] === undefined) {
-      cleaned[field] = null;
-    }
-  }
-  return cleaned;
+if (result.error) {
+  // ... existing error handling ...
 }
+
+// OAuth succeeded -- session was set by lovable module
+onLoginSuccess?.({ success: true });
 ```
 
-Apply this in both `createHostel` and `updateHostel` methods before passing data to Supabase.
+### 2. Add session re-check on login page mount in `StudentLogin.tsx`
+When the login page loads (e.g., after an OAuth redirect in production mode), explicitly check for an existing session and redirect if found. This covers the redirect flow where the page navigates away and returns:
+
+```typescript
+useEffect(() => {
+  // Handle OAuth redirect return -- check if session exists on mount
+  supabase.auth.getSession().then(({ data: { session } }) => {
+    if (session?.user) {
+      navigate(redirectPath, { replace: true });
+    }
+  });
+}, []);
+```
 
 ### Files to modify
+
 | File | Change |
 |------|--------|
-| `src/api/hostelService.ts` | Add UUID sanitizer helper, apply in `createHostel` and `updateHostel` |
+| `src/components/auth/SocialLoginButtons.tsx` | Add explicit success handling after OAuth completes (call `onLoginSuccess`) |
+| `src/pages/StudentLogin.tsx` | Add `useEffect` to check for existing session on mount (covers redirect flow) |
 
-This is a one-file, minimal fix that prevents empty strings from reaching UUID columns.
+### Why this works
+- **Popup flow (preview)**: After `setSession` succeeds, `onLoginSuccess` is called immediately, which triggers `navigate(redirectPath)` in `StudentLogin`
+- **Redirect flow (production)**: When the page reloads after OAuth redirect, the session check on mount detects the active session and redirects to dashboard
+- **Returning users**: If a user navigates to `/student/login` while already logged in, they are immediately redirected
+
