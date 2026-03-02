@@ -1,49 +1,96 @@
 
 
-# Rebuild Admin Payouts Page
+# Food Policy System for InhaleStays Hostels
 
-## Problem
-The current Admin Payouts page (`/admin/payouts`) has two issues:
-1. **Wrong data source** -- It calls the old MongoDB-based `adminPayoutService` (axios to `/admin/payouts`), which no longer works since the backend migrated to Lovable Cloud.
-2. **Non-standard UI** -- It uses large analytics cards, a bulky filter Card with separate "Fetch Payouts" and "Get Analytics" buttons, and the generic `DataTable` component instead of the standardized compact admin table pattern used elsewhere (e.g., Partner Settlements).
+## Overview
+Replace the current simple `food_enabled` boolean + `food_price_monthly` flat price on hostels with a 3-tier Food Policy system (Not Available / Mandatory / Optional) configurable at both the hostel level and sharing-option level, with proper booking snapshots and invoice logic.
 
-## Solution
-Completely rewrite `AdminPayouts.tsx` to:
-- Use the **Supabase-based settlement data** (the `settlements` table with partner joins) instead of the old axios-based payout service
-- Match the **standardized admin UI pattern**: compact stat cards, single-row inline filters with `text-[11px]` typography, `Table` component with dense rows, and proper S.No. continuity
+## Current State
+- Hostels have `food_enabled` (boolean) and `food_price_monthly` (numeric) columns
+- During booking, if `food_enabled`, a checkbox lets the student opt in/out
+- `hostel_bookings` stores `food_opted` (boolean) and `food_amount` (numeric)
+- Invoice shows food as a separate line item when opted
 
-## Changes
+## Database Changes
 
-### 1. Rewrite `src/pages/admin/AdminPayouts.tsx`
-- Remove all imports/usage of `adminPayoutService` and `DataTable`
-- Query the `settlements` table from Supabase directly (same data source as PartnerSettlements but focused on payout-specific view)
-- Compact stat row: Total Payable, Pending, Paid, Settlements Count
-- Inline filter row: Status dropdown, Partner dropdown, Date From/To inputs -- all in one line, `text-[10px]` labels, `h-8` inputs
-- Dense table with columns: S.No., Settlement ID, Partner, Period, Total Collected, Commission, Net Payable, Status, Paid Date, UTR
-- Action buttons: View detail, Mark Paid (reusing existing `SettlementDetailDialog`)
-- Pagination support with cross-page S.No. continuity
-
-### 2. No database changes needed
-The `settlements` table and all related infrastructure already exist and are used by PartnerSettlements.
-
-### 3. No new API services needed
-All queries go directly through the Supabase client, joining `settlements` with `partners` for business name display.
-
-## Technical Details
-
-| File | Action |
-|------|--------|
-| `src/pages/admin/AdminPayouts.tsx` | Full rewrite -- Supabase queries, compact UI matching PartnerSettlements pattern |
-
-The page will query:
+### 1. Add `food_policy_type` to `hostels` table
 ```sql
-SELECT s.*, p.business_name 
-FROM settlements s 
-JOIN partners p ON s.partner_id = p.id 
-ORDER BY s.created_at DESC
+ALTER TABLE hostels ADD COLUMN food_policy_type text NOT NULL DEFAULT 'not_available';
+-- Values: 'not_available', 'mandatory', 'optional'
+```
+The existing `food_enabled` and `food_price_monthly` columns remain for backward compatibility. New logic reads `food_policy_type` instead.
+
+### 2. Add `food_policy_override` to `hostel_sharing_options` table
+```sql
+ALTER TABLE hostel_sharing_options ADD COLUMN food_policy_override text NOT NULL DEFAULT 'inherit';
+ALTER TABLE hostel_sharing_options ADD COLUMN food_price_override numeric;
+-- food_policy_override values: 'inherit', 'mandatory', 'optional', 'not_available'
 ```
 
-Filters applied via `.eq()`, `.gte()`, `.lte()` on status, partner_id, period_start/period_end.
+### 3. Add snapshot columns to `hostel_bookings`
+```sql
+ALTER TABLE hostel_bookings ADD COLUMN food_policy_type text NOT NULL DEFAULT 'not_available';
+ALTER TABLE hostel_bookings ADD COLUMN food_price_snapshot numeric NOT NULL DEFAULT 0;
+ALTER TABLE hostel_bookings ADD COLUMN total_amount_snapshot numeric NOT NULL DEFAULT 0;
+```
 
-Stats computed from the fetched data or via aggregate queries (count by status, sum of net_payable by status).
+## Code Changes
+
+### 1. Hostel Form (`src/components/admin/HostelForm.tsx`)
+- Add a "Food Policy" section with a `Select` dropdown: Not Available / Mandatory / Optional
+- When Mandatory or Optional is selected, show the `food_price_monthly` input
+- Replace the old `food_enabled` toggle logic; map the new field on save:
+  - `food_policy_type` saved directly
+  - `food_enabled` kept in sync (`true` for mandatory/optional, `false` for not_available`)
+
+### 2. Sharing Option Form (where sharing options are managed)
+- Add "Food Policy Override" dropdown: Inherit from Hostel / Mandatory / Optional / Not Available
+- When override is Mandatory or Optional, show optional `food_price_override` input
+- Inherit means the hostel-level policy applies
+
+### 3. Student Booking Flow (`src/pages/HostelRoomDetails.tsx`)
+- Compute effective food policy: if sharing option has override != 'inherit', use it; otherwise use hostel's `food_policy_type`
+- Compute effective food price: if sharing option has `food_price_override`, use it; otherwise use hostel's `food_price_monthly`
+- **Mandatory**: Auto-set `foodOpted = true`, hide the checkbox, show badge "Food Included", include food in rent line
+- **Optional**: Show checkbox "Add Food (+Rs.X)", show badge "Food Available", update total dynamically
+- **Not Available**: Show badge "No Food Facility", hide food section entirely
+
+### 4. Booking Submission
+- Store snapshot fields in the booking record:
+  - `food_policy_type`: the effective policy at booking time
+  - `food_price_snapshot`: the food price used
+  - `total_amount_snapshot`: the final total
+- Continue storing `food_opted` and `food_amount` as before for compatibility
+
+### 5. Badges in Property Cards / Detail Pages
+- Replace the current single "Food Available" chip logic:
+  - Mandatory: orange badge "Food Included"
+  - Optional: green badge "Food Available"  
+  - Not Available: gray badge "No Food Facility"
+
+### 6. Invoice Logic (`src/utils/invoiceGenerator.ts` + `AdminBookingDetail.tsx`)
+- If `food_policy_type === 'mandatory'`: Show single line "Room Rent (Including Food)" with combined amount
+- If `food_policy_type === 'optional'` and `food_opted`: Show separate line "Food Add-on" with food amount
+- If not_available or not opted: No food line
+
+### 7. Hostel Room View / Sharing Options Table
+- Show effective food policy badge per sharing option in the management table
+
+## Files to Modify
+
+| File | Change |
+|------|--------|
+| **Migration** | Add 3 columns to `hostels`, 2 to `hostel_sharing_options`, 3 to `hostel_bookings` |
+| `src/components/admin/HostelForm.tsx` | Add Food Policy section (Select + conditional price input) |
+| `src/api/hostelService.ts` | Include `food_policy_type` in data types |
+| `src/pages/HostelRoomDetails.tsx` | Effective policy resolution, conditional UI (badge/checkbox/auto-select) |
+| `src/api/hostelBookingService.ts` | Add snapshot fields to booking creation payload |
+| `src/utils/invoiceGenerator.ts` | Conditional line items based on policy type |
+| `src/pages/AdminBookingDetail.tsx` | Use snapshot fields for invoice generation |
+| `src/pages/HostelConfirmation.tsx` | Show policy-aware food display |
+| Sharing option management components | Add override dropdown + price override input |
+| `src/utils/shareUtils.ts` | Update share text to reflect policy type |
+
+## Migration to run
+Existing hostels with `food_enabled = true` will be migrated: `UPDATE hostels SET food_policy_type = 'optional' WHERE food_enabled = true;`
 
