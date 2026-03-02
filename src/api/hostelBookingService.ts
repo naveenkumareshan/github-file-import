@@ -22,6 +22,9 @@ export interface CreateHostelBookingData {
   transaction_id?: string;
   food_opted?: boolean;
   food_amount?: number;
+  food_policy_type?: string;
+  food_price_snapshot?: number;
+  total_amount_snapshot?: number;
 }
 
 export const hostelBookingService = {

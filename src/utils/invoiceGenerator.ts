@@ -19,6 +19,7 @@ export interface InvoiceData {
   lockerPrice: number;
   foodOpted?: boolean;
   foodAmount?: number;
+  foodPolicyType?: 'not_available' | 'mandatory' | 'optional';
   totalAmount: number;
   paymentMethod: string;
   transactionId: string;
@@ -109,10 +110,13 @@ export const generateInvoiceHTML = (data: InvoiceData): string => {
     <table>
       <thead><tr><th>Description</th><th>Amount</th></tr></thead>
       <tbody>
-        <tr><td>Seat Booking</td><td>${formatCurrency(data.seatAmount)}</td></tr>
+        ${data.foodPolicyType === 'mandatory' 
+          ? `<tr><td>Room Rent (Including Food)</td><td>${formatCurrency(data.seatAmount + (data.foodAmount || 0))}</td></tr>`
+          : `<tr><td>Seat Booking</td><td>${formatCurrency(data.seatAmount)}</td></tr>`
+        }
         ${data.discountAmount > 0 ? `<tr class="discount-row"><td>Discount${data.discountReason ? ` (${data.discountReason})` : ''}</td><td>-${formatCurrency(data.discountAmount)}</td></tr>` : ''}
         ${data.lockerIncluded ? `<tr><td>Locker</td><td>${formatCurrency(data.lockerPrice)}</td></tr>` : ''}
-        ${data.foodOpted && data.foodAmount ? `<tr><td>Food Charges</td><td>${formatCurrency(data.foodAmount)}</td></tr>` : ''}
+        ${data.foodPolicyType === 'optional' && data.foodOpted && data.foodAmount ? `<tr><td>Food Add-on</td><td>${formatCurrency(data.foodAmount)}</td></tr>` : ''}
         <tr class="total-row"><td>Total</td><td>${formatCurrency(data.totalAmount)}</td></tr>
       </tbody>
     </table>

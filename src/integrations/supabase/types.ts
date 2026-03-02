@@ -950,6 +950,8 @@ export type Database = {
           end_date: string
           food_amount: number
           food_opted: boolean
+          food_policy_type: string
+          food_price_snapshot: number
           hostel_id: string
           id: string
           payment_method: string | null
@@ -966,6 +968,7 @@ export type Database = {
           sharing_option_id: string
           start_date: string
           status: string
+          total_amount_snapshot: number
           total_price: number
           transaction_id: string | null
           updated_at: string
@@ -988,6 +991,8 @@ export type Database = {
           end_date: string
           food_amount?: number
           food_opted?: boolean
+          food_policy_type?: string
+          food_price_snapshot?: number
           hostel_id: string
           id?: string
           payment_method?: string | null
@@ -1004,6 +1009,7 @@ export type Database = {
           sharing_option_id: string
           start_date: string
           status?: string
+          total_amount_snapshot?: number
           total_price?: number
           transaction_id?: string | null
           updated_at?: string
@@ -1026,6 +1032,8 @@ export type Database = {
           end_date?: string
           food_amount?: number
           food_opted?: boolean
+          food_policy_type?: string
+          food_price_snapshot?: number
           hostel_id?: string
           id?: string
           payment_method?: string | null
@@ -1042,6 +1050,7 @@ export type Database = {
           sharing_option_id?: string
           start_date?: string
           status?: string
+          total_amount_snapshot?: number
           total_price?: number
           transaction_id?: string | null
           updated_at?: string
@@ -1484,6 +1493,8 @@ export type Database = {
         Row: {
           capacity: number
           created_at: string
+          food_policy_override: string
+          food_price_override: number | null
           id: string
           is_active: boolean
           price_daily: number
@@ -1495,6 +1506,8 @@ export type Database = {
         Insert: {
           capacity?: number
           created_at?: string
+          food_policy_override?: string
+          food_price_override?: number | null
           id?: string
           is_active?: boolean
           price_daily?: number
@@ -1506,6 +1519,8 @@ export type Database = {
         Update: {
           capacity?: number
           created_at?: string
+          food_policy_override?: string
+          food_price_override?: number | null
           id?: string
           is_active?: boolean
           price_daily?: number
@@ -1638,6 +1653,7 @@ export type Database = {
           description: string | null
           food_enabled: boolean
           food_menu_image: string | null
+          food_policy_type: string
           food_price_monthly: number
           gender: string
           id: string
@@ -1681,6 +1697,7 @@ export type Database = {
           description?: string | null
           food_enabled?: boolean
           food_menu_image?: string | null
+          food_policy_type?: string
           food_price_monthly?: number
           gender?: string
           id?: string
@@ -1724,6 +1741,7 @@ export type Database = {
           description?: string | null
           food_enabled?: boolean
           food_menu_image?: string | null
+          food_policy_type?: string
           food_price_monthly?: number
           gender?: string
           id?: string

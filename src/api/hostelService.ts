@@ -29,6 +29,7 @@ export interface HostelData {
   commission_percentage?: number;
   security_deposit?: number;
   food_enabled?: boolean;
+  food_policy_type?: 'not_available' | 'mandatory' | 'optional';
   food_price_monthly?: number;
   food_menu_image?: string;
   advance_booking_enabled?: boolean;

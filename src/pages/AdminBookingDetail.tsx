@@ -165,6 +165,7 @@ const AdminBookingDetail = () => {
     let invoiceData: InvoiceData;
 
     if (bookingType === 'hostel') {
+      const foodPolicy = booking.food_policy_type || (booking.food_opted ? 'optional' : 'not_available');
       invoiceData = {
         serialNumber: booking.serial_number || booking.id || '',
         bookingDate: booking.created_at || new Date().toISOString(),
@@ -177,13 +178,16 @@ const AdminBookingDetail = () => {
         startDate: booking.start_date || '',
         endDate: booking.end_date || '',
         duration: booking.booking_duration || '-',
-        seatAmount: (booking.total_price || 0) - (booking.food_amount || 0),
+        seatAmount: foodPolicy === 'mandatory'
+          ? (booking.total_price || 0)
+          : (booking.total_price || 0) - (booking.food_amount || 0),
         discountAmount: 0,
         discountReason: '',
         lockerIncluded: false,
         lockerPrice: 0,
         foodOpted: booking.food_opted || false,
         foodAmount: booking.food_amount || 0,
+        foodPolicyType: foodPolicy as any,
         totalAmount: booking.total_price || 0,
         paymentMethod: booking.payment_method || 'cash',
         transactionId: booking.transaction_id || '',
