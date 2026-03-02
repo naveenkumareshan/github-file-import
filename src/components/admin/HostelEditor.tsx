@@ -64,6 +64,7 @@ export function HostelEditor({ onSave, onCancel, existingHostel, isAdmin = true 
     created_by: existingHostel?.created_by || '',
     is_active: existingHostel?.is_active ?? true,
     food_enabled: existingHostel?.food_enabled ?? false,
+    food_policy_type: existingHostel?.food_policy_type || 'not_available',
     food_price_monthly: existingHostel?.food_price_monthly ?? 0,
     food_menu_image: existingHostel?.food_menu_image || '',
   });
@@ -173,8 +174,8 @@ export function HostelEditor({ onSave, onCancel, existingHostel, isAdmin = true 
     setValidationError(null);
     setIsSaving(true);
 
-    // Save food menu items if food is enabled and hostel exists
-    if (hostel.food_enabled && existingHostel?.id) {
+    // Save food menu items if food policy is not 'not_available' and hostel exists
+    if (hostel.food_policy_type !== 'not_available' && existingHostel?.id) {
       try {
         // Delete existing items and re-insert
         await supabase.from('hostel_food_menu').delete().eq('hostel_id', existingHostel.id);
@@ -197,7 +198,7 @@ export function HostelEditor({ onSave, onCancel, existingHostel, isAdmin = true 
     }
 
     setTimeout(() => {
-      onSave({ ...hostel });
+      onSave({ ...hostel, food_enabled: hostel.food_policy_type !== 'not_available' });
       toast({ title: "Hostel Saved", description: `${existingHostel ? "Updated" : "Created"} hostel "${hostel.name}" successfully.` });
       setIsSaving(false);
     }, 500);
@@ -473,15 +474,22 @@ export function HostelEditor({ onSave, onCancel, existingHostel, isAdmin = true 
             </CollapsibleTrigger>
             <CollapsibleContent>
               <CardContent className="px-4 pb-4 pt-0 space-y-4">
-                <div className="flex items-center gap-3">
-                  <Switch
-                    checked={hostel.food_enabled}
-                    onCheckedChange={(checked) => setHostel(prev => ({ ...prev, food_enabled: checked }))}
-                  />
-                  <Label className="text-sm font-medium">Offer Food Facility</Label>
+                <div>
+                  <Label className="text-sm font-medium mb-1 block">Food Policy Type</Label>
+                  <Select
+                    value={hostel.food_policy_type}
+                    onValueChange={(v) => setHostel(prev => ({ ...prev, food_policy_type: v }))}
+                  >
+                    <SelectTrigger className="max-w-[280px]"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="not_available">Not Available</SelectItem>
+                      <SelectItem value="mandatory">Mandatory (Included in Rent)</SelectItem>
+                      <SelectItem value="optional">Optional (Add-on)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
-                {hostel.food_enabled && (
+                {hostel.food_policy_type !== 'not_available' && (
                   <div className="space-y-4 pl-2 border-l-2 border-primary/20 ml-2">
                     <div>
                       <Label className="text-xs font-medium">Monthly Food Price (₹)</Label>
