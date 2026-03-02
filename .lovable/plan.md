@@ -1,48 +1,19 @@
 
 
-# Add Laundry to Admin Sidebar and Student Navigation
+# Store Razorpay API Keys as Secrets
 
-## Problem
-The laundry routes (`/admin/laundry`, `/partner/laundry`, `/laundry`, `/student/laundry-orders`) exist in `App.tsx` but are not linked from any navigation -- neither the admin sidebar nor the student bottom nav. Users cannot access any laundry features.
+## What Needs to Happen
 
-## Changes
+1. **Store `RAZORPAY_KEY_ID`** as a backend secret with value `rzp_live_SMR8KHzhG3dzxM`
+2. **Store `RAZORPAY_KEY_SECRET`** -- need to ask the user for this value
+3. Optionally store `RAZORPAY_WEBHOOK_SECRET` if the user has one
 
-### 1. Admin Sidebar (`src/components/admin/AdminSidebar.tsx`)
+## No Code Changes Needed
 
-Add a **"Laundry"** top-level menu item (with a `Shirt` icon) to the sidebar for admin and partner roles. Place it after the "Hostels" section (before "Users").
+The edge functions (`razorpay-create-order` and `razorpay-verify-payment`) already read these secrets via `Deno.env.get("RAZORPAY_KEY_ID")` and `Deno.env.get("RAZORPAY_KEY_SECRET")`. Once the secrets are configured, Razorpay will work automatically in live mode instead of test mode.
 
-```typescript
-import { Shirt } from 'lucide-react';
-```
-
-Add to `menuItems` array (after the Hostels block, around line 251):
-```typescript
-menuItems.push({
-  title: 'Laundry',
-  url: `${routePrefix}/laundry`,
-  icon: Shirt,
-  roles: ['admin', 'vendor', 'vendor_employee'],
-});
-```
-
-This gives both admins (`/admin/laundry`) and partners (`/partner/laundry`) access to the laundry management dashboard.
-
-### 2. Student Mobile Bottom Nav (`src/components/student/MobileBottomNav.tsx`)
-
-This is trickier since the bottom nav only has 4 slots and they're already used. Instead of modifying the bottom nav, laundry is already accessible from the student landing page (`/laundry` route). No change needed here -- the student can navigate to `/laundry` from the home page or profile.
-
-### 3. Add Laundry link to AdminLayout route labels (`src/components/AdminLayout.tsx`)
-
-Add route label entries so the breadcrumb header shows "Laundry" correctly:
-```typescript
-"/admin/laundry": "Laundry",
-"/partner/laundry": "Laundry",
-```
-
-### Summary of File Changes
-
-| File | Change |
-|------|--------|
-| `src/components/admin/AdminSidebar.tsx` | Add `Shirt` import + "Laundry" menu item after Hostels section |
-| `src/components/AdminLayout.tsx` | Add `/admin/laundry` and `/partner/laundry` route labels |
+## Steps
+1. Add `RAZORPAY_KEY_ID` secret
+2. Ask for and add `RAZORPAY_KEY_SECRET` secret
+3. Verify integration works by testing the edge function
 
