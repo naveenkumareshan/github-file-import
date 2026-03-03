@@ -304,6 +304,7 @@ export function CouponManagement() {
                     <SelectItem value="all" className="text-xs">All (Reading Room + Hostel)</SelectItem>
                     <SelectItem value="cabin" className="text-xs">Reading Room</SelectItem>
                     <SelectItem value="hostel" className="text-xs">Hostel</SelectItem>
+                    {user?.role === 'admin' && <SelectItem value="subscription" className="text-xs">Subscription</SelectItem>}
                   </SelectContent>
                 </Select>
               </div>
@@ -398,6 +399,7 @@ export function CouponManagement() {
           <TabsTrigger value="all" className="text-xs px-3 py-1">All</TabsTrigger>
           <TabsTrigger value="cabin" className="text-xs px-3 py-1">Reading Room</TabsTrigger>
           <TabsTrigger value="hostel" className="text-xs px-3 py-1">Hostel</TabsTrigger>
+          {user?.role === 'admin' && <TabsTrigger value="subscription" className="text-xs px-3 py-1">Subscription</TabsTrigger>}
         </TabsList>
       </Tabs>
 
@@ -489,7 +491,7 @@ export function CouponManagement() {
                     </TableCell>
                     <TableCell className="py-1.5 px-3">
                       <Badge variant="outline" className="text-[9px] h-4 px-1.5">
-                        {coupon.applicable_for?.includes('all') ? 'All' : coupon.applicable_for?.includes('hostel') ? 'Hostel' : 'Room'}
+                        {coupon.applicable_for?.includes('all') ? 'All' : coupon.applicable_for?.includes('subscription') ? 'Subscription' : coupon.applicable_for?.includes('hostel') ? 'Hostel' : 'Room'}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-[11px] py-1.5 px-3">
