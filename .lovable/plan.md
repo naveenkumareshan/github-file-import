@@ -1,54 +1,105 @@
 
 
-# Differentiate Reading Room and Hostel Color Themes
+# Fix: Booked Seats/Beds Showing as Available + Pre-Payment Safety Check
 
 ## Problem
-Both the Reading Room (BookSeat + SeatBookingForm) and Hostel (HostelRoomDetails) booking pages use identical `bg-primary` (deep blue) for all interactive elements -- step numbers, active pills, duration toggles, badges, and end-date chips. This creates a monotone blue experience that doesn't leverage the full brand palette (blue, green, teal) established on the public homepage, and makes the two product types visually indistinguishable.
+Students see all seats/beds as "available" even when they have active bookings, risking duplicate bookings for the same date/time. Two root causes:
 
-## Solution
-Assign each product type its own color identity from the brand palette while keeping them harmonious:
-
-- **Reading Rooms**: Keep `primary` (deep blue) as the dominant color -- this is the core product
-- **Hostels**: Use `secondary` (green) as the dominant accent -- differentiates hostels visually
-
-This way, when a student navigates from a Reading Room booking to a Hostel booking, the color shift signals they're in a different product context, making the experience feel more polished and premium.
+1. **Hostel beds**: The booking data is fetched but only used for tooltip display (`occupantName`), not to override the `is_available` flag
+2. **Reading room seats (SeatMap)**: Uses `getSeatsByCabin()` which reads the static `is_available` column without checking the `bookings` table
+3. **No safety net**: Neither booking flow re-checks availability right before payment, so two users could book the same seat/bed simultaneously
 
 ## Changes
 
-### 1. `src/pages/HostelRoomDetails.tsx` -- Hostel Booking Page
-Switch all `bg-primary` interactive accents to the green/secondary palette:
-- **Step number circles**: `bg-primary` to `bg-secondary` (green circles instead of blue)
-- **Active filter pills** (sharing type, category): `bg-primary text-primary-foreground border-primary` to `bg-secondary text-secondary-foreground border-secondary`
-- **Duration toggle active**: `bg-primary text-primary-foreground` to `bg-secondary text-secondary-foreground`
-- **View toggle (grid/layout) active**: same change to secondary
-- **End date badge**: `bg-primary/10 text-primary` to `bg-secondary/10 text-secondary`
-- **Amenity checkmarks**: `text-primary` to `text-secondary`
-- **Food menu button**: `bg-primary/10 text-primary border-primary/20` to `bg-secondary/10 text-secondary border-secondary/20`
-- **Review section accents**: primary references to secondary
-- Keep info chips (emerald for price, blue for rooms, amber for deposit, pink/blue for gender) as they are -- these are semantic and already work well
+### 1. Fix Hostel Bed Availability -- `src/components/hostels/HostelBedMap.tsx`
+Override the `is_available` field using the `bookingMap` that already contains overlapping bookings:
 
-### 2. `src/pages/BookSeat.tsx` -- Reading Room Detail Page
-Already uses `bg-primary` throughout -- **no changes needed**. Blue is the correct identity for Reading Rooms.
+**Line 113** change:
+```
+is_available: b.is_available,
+```
+to:
+```
+is_available: b.is_available && !b.is_blocked && !bookingMap.has(b.id),
+```
 
-### 3. `src/components/seats/SeatBookingForm.tsx` -- Reading Room Booking Form
-Already uses `bg-primary` throughout -- **no changes needed**. Blue is correct here.
+This ensures any bed with an active overlapping booking renders as "Not Available" (blue).
 
-### 4. `src/pages/Cabins.tsx` -- Reading Rooms List
-Already uses `bg-primary` for active filter pills -- **no changes needed**.
+### 2. Fix Hostel Bed Layout View -- `src/components/hostels/HostelBedLayoutView.tsx`
+Same fix at **line 127**:
+```
+is_available: b.is_available,
+```
+to:
+```
+is_available: b.is_available && !b.is_blocked && !bookingMap.has(b.id),
+```
 
-### 5. `src/pages/Hostels.tsx` -- Hostels List
-Switch active filter pills and gender badges to secondary green to match the hostel identity:
-- Active filter pill: `bg-primary text-primary-foreground border-primary` to `bg-secondary text-secondary-foreground border-secondary`
-- Gender badge on cards: `bg-primary text-primary-foreground` to `bg-secondary text-secondary-foreground`
+### 3. Fix Reading Room SeatMap -- `src/components/SeatMap.tsx`
+Add `startDate` and `endDate` props. When provided, use `seatsService.getAvailableSeatsForDateRange()` (which already checks for booking conflicts) instead of `getSeatsByCabin()`.
 
-## Summary
+- Add optional `startDate?: string` and `endDate?: string` to `SeatMapProps`
+- In `fetchSeats()`: if both dates are provided, call `seatsService.getAvailableSeatsForDateRange(cabinId, '1', startDate, endDate)` instead of `getSeatsByCabin(cabinId, 1)`
+- Re-fetch when `startDate` or `endDate` changes (add to useEffect deps)
+
+### 4. Pass dates from Booking page -- `src/pages/Booking.tsx`
+Pass `startDate` and `endDate` to `SeatMap`:
+```tsx
+<SeatMap
+  cabinId={cabinId}
+  onSeatSelect={handleSeatSelect}
+  selectedSeat={selectedSeat}
+  startDate={bookingDate ? format(bookingDate, 'yyyy-MM-dd') : undefined}
+  endDate={endDate ? format(endDate, 'yyyy-MM-dd') : undefined}
+/>
+```
+
+### 5. Pre-payment availability re-check -- `src/components/seats/SeatBookingForm.tsx`
+Before creating the booking in `handleCreateBooking()`, add a quick availability check:
+
+```typescript
+// Right before bookingsService.createBooking(...)
+const availCheck = await seatsService.checkSeatAvailability(
+  selectedSeat._id || selectedSeat.id,
+  format(startDate, 'yyyy-MM-dd'),
+  format(endDate, 'yyyy-MM-dd')
+);
+if (!availCheck.success || !availCheck.data?.isAvailable) {
+  toast({ title: "Seat No Longer Available", description: "This seat was just booked. Please select another.", variant: "destructive" });
+  setIsSubmitting(false);
+  return;
+}
+```
+
+### 6. Pre-payment availability re-check -- `src/pages/HostelRoomDetails.tsx`
+Before creating the hostel booking in `handleProceedToPayment()`, verify the bed is still free:
+
+```typescript
+// Right before hostelBookingService.createBooking(...)
+const { data: conflictBookings } = await supabase
+  .from('hostel_bookings')
+  .select('id')
+  .eq('bed_id', selectedBed.id)
+  .in('status', ['confirmed', 'pending'])
+  .lte('start_date', format(endDate, 'yyyy-MM-dd'))
+  .gte('end_date', format(checkInDate, 'yyyy-MM-dd'))
+  .limit(1);
+
+if (conflictBookings && conflictBookings.length > 0) {
+  toast({ title: "Bed No Longer Available", description: "This bed was just booked. Please select another.", variant: "destructive" });
+  setIsProcessing(false);
+  return;
+}
+```
+
+## Files Modified
 
 | File | Change |
 |------|--------|
-| `src/pages/HostelRoomDetails.tsx` | Replace ~15 instances of `bg-primary` interactive accents with `bg-secondary` equivalents |
-| `src/pages/Hostels.tsx` | Replace active filter pill and gender badge colors to secondary |
-| `src/pages/BookSeat.tsx` | No changes -- blue is correct |
-| `src/components/seats/SeatBookingForm.tsx` | No changes -- blue is correct |
-| `src/pages/Cabins.tsx` | No changes -- blue is correct |
+| `src/components/hostels/HostelBedMap.tsx` | Override `is_available` using `bookingMap` |
+| `src/components/hostels/HostelBedLayoutView.tsx` | Same booking-aware availability fix |
+| `src/components/SeatMap.tsx` | Accept date props, use date-range-aware fetch |
+| `src/pages/Booking.tsx` | Pass selected dates to SeatMap |
+| `src/components/seats/SeatBookingForm.tsx` | Add pre-booking availability re-check |
+| `src/pages/HostelRoomDetails.tsx` | Add pre-booking availability re-check |
 
-This creates a clear visual language: **Blue = Study Rooms**, **Green = Hostels**, while both still feel part of the same brand family.
