@@ -262,6 +262,8 @@ const Booking = () => {
                   cabinId={cabinId}
                   onSeatSelect={handleSeatSelect}
                   selectedSeat={selectedSeat}
+                  startDate={bookingDate ? format(bookingDate, 'yyyy-MM-dd') : undefined}
+                  endDate={endDate ? format(endDate, 'yyyy-MM-dd') : undefined}
                 />
               </CardContent>
             </Card>
