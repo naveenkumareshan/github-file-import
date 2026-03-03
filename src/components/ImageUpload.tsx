@@ -12,7 +12,7 @@ export interface ImageUploadProps {
   existingImages?: string[];
   className?: string;
   maxSize?: number; // in MB
-  maxCount?: number;
+  maxCount?: number; // undefined = unlimited
   allowedTypes?: string[];
   cabinId?: string; // Optional cabinId for cabin-specific uploads
 }
@@ -22,7 +22,7 @@ export function ImageUpload({
   existingImages = [],
   className = '',
   maxSize = 5, // 5MB default
-  maxCount = 5,
+  maxCount,
   allowedTypes = ['image/jpeg', 'image/png', 'image/webp'],
   cabinId
 }: ImageUploadProps) {
@@ -58,7 +58,7 @@ export function ImageUpload({
     }
     
     // Validate max count
-    if (allImages.length >= maxCount) {
+    if (maxCount !== undefined && allImages.length >= maxCount) {
       toast({
         variant: "destructive",
         title: "Too many images",
@@ -135,7 +135,7 @@ export function ImageUpload({
           variant="outline"
           className="relative overflow-hidden"
           size="sm"
-          disabled={isUploading || allImages.length >= maxCount}
+          disabled={isUploading || (maxCount !== undefined && allImages.length >= maxCount)}
         >
           {isUploading ? (
             <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -147,15 +147,13 @@ export function ImageUpload({
             type="file"
             className="absolute inset-0 opacity-0 cursor-pointer"
             onChange={handleUpload}
-            disabled={isUploading || allImages.length >= maxCount}
+            disabled={isUploading || (maxCount !== undefined && allImages.length >= maxCount)}
             accept={allowedTypes.join(',')}
           />
         </Button>
-        {maxCount && (
-          <span className="text-xs text-muted-foreground">
-            {allImages.length} / {maxCount} images
-          </span>
-        )}
+        <span className="text-xs text-muted-foreground">
+          {maxCount !== undefined ? `${allImages.length} / ${maxCount} images` : `${allImages.length} images uploaded`}
+        </span>
       </div>
       
       {allImages.length > 0 && (
