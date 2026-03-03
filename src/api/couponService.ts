@@ -256,6 +256,7 @@ export const couponService = {
         discountAmount = coupon.value;
       }
       discountAmount = Math.min(discountAmount, amount);
+      discountAmount = Math.round(discountAmount * 100) / 100;
 
       return {
         success: true,
