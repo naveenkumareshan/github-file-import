@@ -1,74 +1,108 @@
 
-# Dynamic Partner Sidebar and Property Type Management
 
-## Problem
-Currently all partners see all sidebar sections (Reading Rooms, Hostels, Laundry) regardless of what properties they actually manage. A laundry-only partner sees hostel and reading room options, and vice versa.
+# Payment Proof Upload for Non-Cash Offline Payments
 
-## Solution
+## Summary
+Add payment proof (screenshot) upload when collecting non-cash payments (UPI, bank transfer). Skip for cash. Show proof links beside receipt numbers in all booking detail views.
 
-### 1. Create a `usePartnerPropertyTypes` hook
-A new hook that queries the database to determine which property types a partner has linked:
-- **Reading Rooms**: Check if any rows in `cabins` have `created_by = user.id`
-- **Hostels**: Check if any rows in `hostels` have `created_by = user.id`
-- **Laundry**: Check if any rows in `laundry_partners` have `user_id = user.id`
+## Database Changes
 
-Returns: `{ hasReadingRooms, hasHostels, hasLaundry, loading }`
+### 1. Add `payment_proof_url` column to receipt tables
+- `receipts` -- add `payment_proof_url TEXT DEFAULT ''`
+- `hostel_receipts` -- add `payment_proof_url TEXT DEFAULT ''`
+- `due_payments` -- add `payment_proof_url TEXT DEFAULT ''`
+- `hostel_due_payments` -- add `payment_proof_url TEXT DEFAULT ''`
+- `bookings` -- add `payment_proof_url TEXT DEFAULT ''`
+- `hostel_bookings` -- add `payment_proof_url TEXT DEFAULT ''`
 
-File: `src/hooks/usePartnerPropertyTypes.ts` (new)
+### 2. Add `payment_proof_required` setting to property tables
+- `cabins` -- add `payment_proof_required BOOLEAN DEFAULT false`
+- `hostels` -- add `payment_proof_required BOOLEAN DEFAULT false`
 
-### 2. Update AdminSidebar to conditionally show sections
-In `src/components/admin/AdminSidebar.tsx`:
-- Import and use the new hook (only for partner roles)
-- **Reading Rooms section** (line 109): Only show if `hasReadingRooms` is true OR user is admin
-- **Hostels section** (line 190): Only show if `hasHostels` is true OR user is admin
-- **Laundry section** (line 255): Only show if `hasLaundry` is true OR user is admin
-- **Manage Properties** (line 284): Always show for partners (so they can add new properties)
+### 3. Storage bucket
+- Create `payment-proofs` public bucket with authenticated upload RLS
 
-Admin users always see everything -- no change for them.
+## New Component
 
-### 3. Update ManageProperties page to include Laundry tab
-In `src/pages/partner/ManageProperties.tsx`:
-- Add a third "Laundry" tab alongside Reading Rooms and Hostels
-- Use the hook to only show tabs for property types the partner actually has (or show all if none yet, for new partners)
-- The Laundry tab content will lazy-load the existing laundry management page
+### `src/components/payment/PaymentProofUpload.tsx`
+A small reusable component:
+- File input accepting images (JPEG, PNG, WebP) with camera capture on mobile
+- Uploads to `payment-proofs` bucket
+- Shows thumbnail preview with remove option
+- Props: `required`, `value`, `onChange`
+- Only rendered when payment method is NOT cash
 
-### 4. Property type selection when adding a new property
-Currently the "Add New Property" button navigates to `/partner/profile`. This will be updated:
-- Show a dialog/dropdown asking the partner to choose: Reading Room, Hostel, or Laundry
-- Reading Room: Navigate to partner profile / property creation flow (existing)
-- Hostel: Navigate to hostel creation flow (existing)
-- Laundry: Navigate to laundry partner setup (existing admin flow, adapted for self-service)
+## Payment Form Changes
 
----
+### `src/pages/vendor/VendorSeats.tsx`
+- Add `paymentProofUrl` state
+- After the Transaction ID field (line ~1515), conditionally show `PaymentProofUpload` when `paymentMethod !== 'cash'`
+- Check property's `payment_proof_required` to set `required` prop
+- Pass `paymentProofUrl` into the booking/receipt insert calls
 
-## Technical Details
+### Due collection forms (same file, ~line 1653)
+- Add proof upload after the due collection payment method selection, when method is not cash
 
-### New Hook (`src/hooks/usePartnerPropertyTypes.ts`)
+### `src/pages/admin/HostelBedMap.tsx`
+- Same pattern: show proof upload for non-cash payments in booking and due collection forms
+
+### `src/components/admin/BookingExtensionDialog.tsx`
+- Add proof upload for non-cash extension payments
+
+### `src/pages/admin/ManualBookingManagement.tsx`
+- Add proof upload for non-cash manual bookings
+
+### `src/pages/admin/HostelDueManagement.tsx`
+- Add proof upload for non-cash due collections
+
+## Display Changes -- Proof Links in Receipts
+
+### `src/pages/AdminBookingDetail.tsx` (Receipts Table)
+- Add a "Proof" column header after "Txn ID"
+- For each receipt row, if `payment_proof_url` exists, show a clickable camera/image icon that opens the screenshot in a new tab
+- If no proof, show "-"
+
+### `src/components/booking/BookingTransactionView.tsx` (Receipt Cards)
+- Beside each receipt's `serial_number` (line 220), if `payment_proof_url` exists, add a small clickable "View Proof" link/icon
+- Clicking opens the image in a dialog or new tab
+
+## Property Settings
+
+### `src/components/admin/CabinForm.tsx`
+- Add "Require Payment Proof for Non-Cash Payments" switch
+
+### `src/components/admin/HostelEditor.tsx`
+- Add same switch
+
+## Logic Summary
+
 ```text
-Queries:
-  supabase.from('cabins').select('id').eq('created_by', userId).limit(1)
-  supabase.from('hostels').select('id').eq('created_by', userId).limit(1)
-  supabase.from('laundry_partners').select('id').eq('user_id', userId).limit(1)
+When payment method is selected:
+  - If "cash" -> NO proof upload shown
+  - If "upi" or "bank_transfer" -> Show PaymentProofUpload
+    - If property.payment_proof_required = true -> field is mandatory
+    - If false -> field is optional
 
-Returns: { hasReadingRooms: boolean, hasHostels: boolean, hasLaundry: boolean, loading: boolean }
+In receipt display views:
+  - Beside receipt serial number, show camera icon linking to proof image
+  - Only visible when payment_proof_url is not empty
 ```
 
-### AdminSidebar Changes
-- Wrap Reading Rooms block (lines 109-187) with: `if (user?.role === 'admin' || (isPartner && propertyTypes.hasReadingRooms))`
-- Wrap Hostels block (lines 190-252) with: `if (user?.role === 'admin' || (isPartner && propertyTypes.hasHostels))`
-- Wrap Laundry item (lines 255-260) with: `if (user?.role === 'admin' || (isPartner && propertyTypes.hasLaundry))`
-- Also conditionally show partner-specific vendor menu items like "Reports > Hostel Reports" only if they have hostels
-
-### ManageProperties Changes
-- Import the hook to determine which tabs to show
-- Add Laundry tab with `Shirt` icon
-- Only render tabs for property types the partner has
-- Update "Add New Property" to show a selection dialog (Reading Room / Hostel / Laundry)
+## Files to Create
+| File | Purpose |
+|------|---------|
+| `src/components/payment/PaymentProofUpload.tsx` | Reusable upload component |
 
 ## Files to Modify
-
 | File | Change |
 |------|--------|
-| `src/hooks/usePartnerPropertyTypes.ts` | New hook to detect partner's linked property types |
-| `src/components/admin/AdminSidebar.tsx` | Conditionally show sidebar sections based on property types |
-| `src/pages/partner/ManageProperties.tsx` | Add Laundry tab, conditionally show tabs, property type selector for "Add New" |
+| Migration SQL | Add columns + storage bucket |
+| `src/pages/vendor/VendorSeats.tsx` | Add proof upload for non-cash bookings and due collections |
+| `src/pages/admin/HostelBedMap.tsx` | Add proof upload for non-cash hostel payments |
+| `src/components/admin/BookingExtensionDialog.tsx` | Add proof upload for non-cash extensions |
+| `src/pages/admin/ManualBookingManagement.tsx` | Add proof upload for non-cash manual bookings |
+| `src/pages/admin/HostelDueManagement.tsx` | Add proof upload for non-cash due collections |
+| `src/pages/AdminBookingDetail.tsx` | Add "Proof" column with clickable link in receipts table |
+| `src/components/booking/BookingTransactionView.tsx` | Add proof icon beside receipt serial numbers |
+| `src/components/admin/CabinForm.tsx` | Add "Require Payment Proof" toggle |
+| `src/components/admin/HostelEditor.tsx` | Add "Require Payment Proof" toggle |
