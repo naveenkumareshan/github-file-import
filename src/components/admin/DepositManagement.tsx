@@ -127,15 +127,16 @@ export const DepositManagement: React.FC<ReportDateRangePickerProps> = ({ type }
               <TableHead className="text-xs">Reading Room</TableHead>
               <TableHead className="text-xs">Seat</TableHead>
               <TableHead className="text-xs">Deposit</TableHead>
+              <TableHead className="text-xs">Due Amount</TableHead>
               <TableHead className="text-xs">Date</TableHead>
               <TableHead className="text-xs">Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground text-xs">Loading...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground text-xs">Loading...</TableCell></TableRow>
             ) : deposits.length === 0 ? (
-              <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground text-xs">No deposits found</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground text-xs">No deposits found</TableCell></TableRow>
             ) : (
               deposits.map((deposit, index) => (
                 <TableRow key={deposit._id}>
@@ -151,6 +152,13 @@ export const DepositManagement: React.FC<ReportDateRangePickerProps> = ({ type }
                   <TableCell className="text-xs">{deposit.cabin?.name || 'N/A'}</TableCell>
                   <TableCell className="text-xs">{deposit.seat?.number || 'N/A'}</TableCell>
                   <TableCell className="text-xs font-semibold">{formatCurrency(deposit.keyDeposit)}</TableCell>
+                  <TableCell className="text-xs">
+                    {deposit.dueAmount > 0 ? (
+                      <span className="text-destructive font-semibold">{formatCurrency(deposit.dueAmount)}</span>
+                    ) : (
+                      <span className="text-muted-foreground">No Dues</span>
+                    )}
+                  </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     <div>End: {format(new Date(deposit.endDate), "dd MMM yyyy")}</div>
                     {deposit.keyDepositRefundDate && <div>Refund: {format(new Date(deposit.keyDepositRefundDate), "dd MMM yyyy")}</div>}
