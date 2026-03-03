@@ -12,10 +12,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { settlementService, SettlementFilters, PaymentData } from '@/api/settlementService';
 import { SettlementDetailDialog } from '@/components/admin/SettlementDetailDialog';
-import { PartnerPayoutSettingsDialog } from '@/components/admin/PartnerPayoutSettingsDialog';
+
 import { AdjustmentManager } from '@/components/admin/AdjustmentManager';
 import { PartnerLedgerView } from '@/components/admin/PartnerLedgerView';
-import { Loader2, Eye, CheckCircle, Lock, CreditCard, Plus, Settings, BookOpen, Wallet, Clock, IndianRupee, Download } from 'lucide-react';
+import { Loader2, Eye, CheckCircle, Lock, CreditCard, Plus, BookOpen, Wallet, Clock, IndianRupee, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { formatCurrency } from '@/utils/currency';
 import ExcelJS from 'exceljs';
@@ -30,7 +30,7 @@ const PartnerSettlements: React.FC = () => {
   const [showGenerate, setShowGenerate] = useState(false);
   const [showPayDialog, setShowPayDialog] = useState(false);
   const [paySettlementId, setPaySettlementId] = useState<string | null>(null);
-  const [showSettings, setShowSettings] = useState<string | null>(null);
+  
   const [showAdjustments, setShowAdjustments] = useState<string | null>(null);
   const [showLedger, setShowLedger] = useState<string | null>(null);
   const [generateForm, setGenerateForm] = useState({ partner_id: '', period_start: '', period_end: '' });
@@ -288,7 +288,7 @@ const PartnerSettlements: React.FC = () => {
                       {(s.status === 'approved' || s.status === 'locked') && (
                         <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px] text-emerald-600" onClick={() => { setPaySettlementId(s.id); setShowPayDialog(true); }}><CreditCard className="h-3 w-3" /></Button>
                       )}
-                      <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => setShowSettings(s.partner_id)}><Settings className="h-3 w-3" /></Button>
+                      
                       <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => setShowAdjustments(s.partner_id)}><Plus className="h-3 w-3" /></Button>
                       <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" onClick={() => setShowLedger(s.partner_id)}><BookOpen className="h-3 w-3" /></Button>
                     </div>
@@ -354,10 +354,6 @@ const PartnerSettlements: React.FC = () => {
         <SettlementDetailDialog settlementId={selectedSettlement} open={!!selectedSettlement} onClose={() => setSelectedSettlement(null)} />
       )}
 
-      {/* Settings Dialog */}
-      {showSettings && (
-        <PartnerPayoutSettingsDialog partnerId={showSettings} open={!!showSettings} onClose={() => setShowSettings(null)} />
-      )}
 
       {/* Adjustments Dialog */}
       {showAdjustments && (
