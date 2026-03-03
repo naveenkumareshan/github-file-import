@@ -56,8 +56,10 @@ Deno.serve(async (req) => {
     // Test mode: skip signature verification, directly confirm booking
     if (testMode) {
       const updateData: Record<string, any> = { payment_status: "completed" };
-      if (!isLaundry) updateData.status = "confirmed";
-      if (isLaundry) updateData.status = "confirmed";
+      // Only hostel_bookings and laundry_orders have a 'status' column
+      if (isHostel || isLaundry) {
+        updateData.status = "confirmed";
+      }
 
       const { error: updateError } = await adminClient
         .from(tableName)
@@ -70,6 +72,28 @@ Deno.serve(async (req) => {
           JSON.stringify({ error: "Failed to update booking status" }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
+      }
+
+      // Create receipt for reading room/cabin bookings in test mode
+      if (!isHostel && !isLaundry) {
+        const { data: booking } = await adminClient
+          .from("bookings")
+          .select("cabin_id, seat_id, user_id, total_price")
+          .eq("id", bookingId)
+          .single();
+
+        if (booking) {
+          await adminClient.from("receipts").insert({
+            booking_id: bookingId,
+            user_id: booking.user_id,
+            cabin_id: booking.cabin_id,
+            seat_id: booking.seat_id,
+            amount: booking.total_price,
+            payment_method: "online",
+            transaction_id: `test_pay_${Date.now()}`,
+            receipt_type: "booking_payment",
+          });
+        }
       }
 
       // Create hostel receipt in test mode
@@ -159,10 +183,14 @@ Deno.serve(async (req) => {
     // Update booking in the correct table
     const updateData: Record<string, any> = {
       payment_status: "completed",
-      status: "confirmed",
       razorpay_payment_id,
       razorpay_signature,
     };
+
+    // Only hostel_bookings and laundry_orders have a 'status' column
+    if (isHostel || isLaundry) {
+      updateData.status = "confirmed";
+    }
 
     // For hostel bookings with advance, check if it's advance_paid
     if (isHostel) {
@@ -229,6 +257,28 @@ Deno.serve(async (req) => {
           payment_method: "online",
           transaction_id: razorpay_payment_id,
           receipt_type: "laundry_payment",
+        });
+      }
+    }
+
+    // Create receipt for reading room/cabin bookings
+    if (!isHostel && !isLaundry) {
+      const { data: booking } = await adminClient
+        .from("bookings")
+        .select("cabin_id, seat_id, user_id, total_price")
+        .eq("id", bookingId)
+        .single();
+
+      if (booking) {
+        await adminClient.from("receipts").insert({
+          booking_id: bookingId,
+          user_id: booking.user_id,
+          cabin_id: booking.cabin_id,
+          seat_id: booking.seat_id,
+          amount: booking.total_price,
+          payment_method: "online",
+          transaction_id: razorpay_payment_id,
+          receipt_type: "booking_payment",
         });
       }
     }
