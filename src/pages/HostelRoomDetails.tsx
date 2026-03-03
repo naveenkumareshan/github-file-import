@@ -283,6 +283,24 @@ const HostelRoomDetails = () => {
       }
       setIsProcessing(true);
 
+      // Pre-payment availability re-check
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data: conflictBookings } = await supabase
+        .from('hostel_bookings')
+        .select('id')
+        .eq('bed_id', selectedBed.id)
+        .in('status', ['confirmed', 'pending'])
+        .lte('start_date', format(endDate, 'yyyy-MM-dd'))
+        .gte('end_date', format(checkInDate, 'yyyy-MM-dd'))
+        .limit(1);
+
+      if (conflictBookings && conflictBookings.length > 0) {
+        toast({ title: "Bed No Longer Available", description: "This bed was just booked by someone else. Please select another bed.", variant: "destructive" });
+        setIsProcessing(false);
+        setSelectedBed(null);
+        return;
+      }
+
       const bookingData = {
         hostel_id: hostel.id,
         room_id: selectedRoom.id,

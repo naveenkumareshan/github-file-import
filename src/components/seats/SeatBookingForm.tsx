@@ -45,6 +45,7 @@ import { seatCategoryService, SeatCategory } from "@/api/seatCategoryService";
 import { couponService } from "@/api/couponService";
 import { cabinSlotService, CabinSlot } from "@/api/cabinSlotService";
 import { formatTime } from "@/utils/timingUtils";
+import { seatsService } from "@/api/seatsService";
 
 const PaymentTimer = lazy(() =>
   import("@/components/booking/PaymentTimer").then((m) => ({
@@ -483,6 +484,18 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
 
     try {
       setIsSubmitting(true);
+
+      // Pre-payment availability re-check
+      const availCheck = await seatsService.checkSeatAvailability(
+        selectedSeat._id || selectedSeat.id,
+        format(startDate, 'yyyy-MM-dd'),
+        format(endDate!, 'yyyy-MM-dd')
+      );
+      if (!availCheck.success || !availCheck.data?.isAvailable) {
+        toast({ title: "Seat No Longer Available", description: "This seat was just booked by someone else. Please select another seat.", variant: "destructive" });
+        setIsSubmitting(false);
+        return;
+      }
 
       const effectiveLockerIncluded = lockerMandatory || lockerOptedIn;
       const effectiveLockerPrice = effectiveLockerIncluded ? keyDeposit : 0;

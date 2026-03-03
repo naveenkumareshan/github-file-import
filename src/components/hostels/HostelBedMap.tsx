@@ -110,7 +110,7 @@ export const HostelBedMap: React.FC<HostelBedMapProps> = ({
             .map(b => ({
               id: b.id,
               bed_number: b.bed_number,
-              is_available: b.is_available,
+              is_available: b.is_available && !b.is_blocked && !bookingMap.has(b.id),
               is_blocked: b.is_blocked,
               room_id: b.room_id,
               sharing_option_id: b.sharing_option_id,

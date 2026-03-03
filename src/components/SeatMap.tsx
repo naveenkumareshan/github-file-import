@@ -13,23 +13,21 @@ interface SeatMapProps {
   onSeatSelect: (seat: Seat) => void;
   selectedSeat?: Seat | null;
   onGoBack?: () => void;
-  isAdmin?: boolean; // Add this prop to fix the type error
+  isAdmin?: boolean;
+  startDate?: string;
+  endDate?: string;
 }
 
-export function SeatMap({ cabinId, onSeatSelect, selectedSeat, onGoBack, isAdmin = false }: SeatMapProps) {
+export function SeatMap({ cabinId, onSeatSelect, selectedSeat, onGoBack, isAdmin = false, startDate, endDate }: SeatMapProps) {
   const [hoveredSeat, setHoveredSeat] = useState<Seat | null>(null);
   const [seats, setSeats] = useState<Seat[]>([]);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   
   // Fetch seats when component mounts or cabinId changes
   useEffect(() => {
-    // Initialize seats if needed
     initializeSeats();
     fetchSeats();
-    // Get the latest seats data for the cabin
-    // const cabinSeats = getSeatsByCabin(cabinId);
-    // setSeats(cabinSeats);
-  }, [cabinId]);
+  }, [cabinId, startDate, endDate]);
 
 
   
@@ -40,7 +38,9 @@ export function SeatMap({ cabinId, onSeatSelect, selectedSeat, onGoBack, isAdmin
       console.log("Fetching seats for cabin:", cabinId);
       
       try {
-        const response = await seatsService.getSeatsByCabin(cabinId, 1);
+        const response = startDate && endDate
+          ? await seatsService.getAvailableSeatsForDateRange(cabinId, '1', startDate, endDate)
+          : await seatsService.getSeatsByCabin(cabinId, 1);
         
         if (response.success && Array.isArray(response.data)) {
           console.log("Seats data received:", response.data);
