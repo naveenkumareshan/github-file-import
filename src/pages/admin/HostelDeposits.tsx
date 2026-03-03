@@ -79,7 +79,7 @@ function HostelDepositList() {
     try {
       const { data, error } = await supabase
         .from('hostel_bookings')
-        .select('*, hostels(name), hostel_rooms(room_number), hostel_beds(bed_number), profiles:user_id(name, email, phone)')
+        .select('*, hostels(name), hostel_rooms(room_number), hostel_beds(bed_number), profiles:user_id(name, email, phone), hostel_dues!fk_hostel_dues_booking(due_amount)')
         .gt('security_deposit', 0)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -135,15 +135,16 @@ function HostelDepositList() {
               <TableHead className="text-xs">Hostel</TableHead>
               <TableHead className="text-xs">Room / Bed</TableHead>
               <TableHead className="text-xs">Deposit</TableHead>
+              <TableHead className="text-xs">Due Amount</TableHead>
               <TableHead className="text-xs">End Date</TableHead>
               <TableHead className="text-xs">Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground text-xs">Loading...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground text-xs">Loading...</TableCell></TableRow>
             ) : paginated.length === 0 ? (
-              <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground text-xs">No deposits found</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground text-xs">No deposits found</TableCell></TableRow>
             ) : (
               paginated.map((b, index) => (
                 <TableRow key={b.id}>
@@ -156,6 +157,17 @@ function HostelDepositList() {
                   <TableCell className="text-xs">{b.hostels?.name || 'N/A'}</TableCell>
                   <TableCell className="text-xs">R{b.hostel_rooms?.room_number || '-'} / B#{b.hostel_beds?.bed_number || '-'}</TableCell>
                   <TableCell className="text-xs font-semibold">{formatCurrency(b.security_deposit)}</TableCell>
+                  <TableCell className="text-xs">
+                    {(() => {
+                      const duesArr = Array.isArray(b.hostel_dues) ? b.hostel_dues : [];
+                      const totalDue = duesArr.reduce((acc: number, d: any) => acc + (d.due_amount || 0), 0);
+                      return totalDue > 0 ? (
+                        <span className="text-destructive font-semibold">{formatCurrency(totalDue)}</span>
+                      ) : (
+                        <span className="text-muted-foreground">No Dues</span>
+                      );
+                    })()}
+                  </TableCell>
                   <TableCell className="text-xs text-muted-foreground">{b.end_date ? format(new Date(b.end_date), 'dd MMM yyyy') : '-'}</TableCell>
                   <TableCell className="text-xs">
                     <Badge variant={b.status === 'confirmed' ? 'secondary' : 'outline'} className="text-[10px] capitalize">{b.status}</Badge>
@@ -202,7 +214,7 @@ function HostelRefundManagement({ status }: { status: 'pending' | 'refunded' }) 
     try {
       const { data: allBookings, error } = await supabase
         .from('hostel_bookings')
-        .select('*, hostels(name), hostel_rooms(room_number), hostel_beds(bed_number), profiles:user_id(name, email, phone)')
+        .select('*, hostels(name), hostel_rooms(room_number), hostel_beds(bed_number), profiles:user_id(name, email, phone), hostel_dues!fk_hostel_dues_booking(due_amount)')
         .gt('security_deposit', 0)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -317,6 +329,7 @@ function HostelRefundManagement({ status }: { status: 'pending' | 'refunded' }) 
               <TableHead className="text-xs">Hostel</TableHead>
               <TableHead className="text-xs">Room / Bed</TableHead>
               <TableHead className="text-xs">Deposit</TableHead>
+              <TableHead className="text-xs">Due Amount</TableHead>
               <TableHead className="text-xs">Date</TableHead>
               <TableHead className="text-xs">Status</TableHead>
               {status === 'pending' && <TableHead className="text-xs">Actions</TableHead>}
@@ -324,9 +337,9 @@ function HostelRefundManagement({ status }: { status: 'pending' | 'refunded' }) 
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground text-xs">Loading...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground text-xs">Loading...</TableCell></TableRow>
             ) : paginated.length === 0 ? (
-              <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground text-xs">No records found</TableCell></TableRow>
+              <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground text-xs">No records found</TableCell></TableRow>
             ) : (
               paginated.map((b, index) => (
                 <TableRow key={b.id}>
@@ -342,6 +355,17 @@ function HostelRefundManagement({ status }: { status: 'pending' | 'refunded' }) 
                   <TableCell className="text-xs">{b.hostels?.name || 'N/A'}</TableCell>
                   <TableCell className="text-xs">R{b.hostel_rooms?.room_number || '-'} / B#{b.hostel_beds?.bed_number || '-'}</TableCell>
                   <TableCell className="text-xs font-semibold">{formatCurrency(b.security_deposit || b.refundReceipt?.amount || 0)}</TableCell>
+                  <TableCell className="text-xs">
+                    {(() => {
+                      const duesArr = Array.isArray(b.hostel_dues) ? b.hostel_dues : [];
+                      const totalDue = duesArr.reduce((acc: number, d: any) => acc + (d.due_amount || 0), 0);
+                      return totalDue > 0 ? (
+                        <span className="text-destructive font-semibold">{formatCurrency(totalDue)}</span>
+                      ) : (
+                        <span className="text-muted-foreground">No Dues</span>
+                      );
+                    })()}
+                  </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     <div>End: {b.end_date ? format(new Date(b.end_date), 'dd MMM yyyy') : '-'}</div>
                     {b.refundReceipt?.created_at && <div>Refund: {format(new Date(b.refundReceipt.created_at), 'dd MMM yyyy')}</div>}

@@ -14,6 +14,7 @@ export interface DepositRefund {
   refundAmount?: number;
   refundReason?: string;
   refundMethod?: string;
+  dueAmount: number;
   endDate: string;
   status: string;
   paymentStatus: string;
@@ -84,26 +85,32 @@ const applyDateFilter = (query: any, dateFilter?: string, startDate?: string, en
 };
 
 // Map Supabase booking row to DepositRefund interface
-const mapToDepositRefund = (booking: any): DepositRefund => ({
-  _id: booking.id,
-  transactionId: booking.locker_refund_transaction_id || '',
-  booking: { bookingId: booking.serial_number || booking.id },
-  user: booking.profiles || { name: 'N/A' },
-  cabin: booking.cabins || { name: 'N/A' },
-  seat: { number: booking.seat_number || 'N/A' },
-  keyDeposit: booking.locker_price || 0,
-  isKeyDepositPaid: booking.locker_included,
-  keyDepositRefunded: booking.locker_refunded,
-  keyDepositRefundDate: booking.locker_refund_date,
-  refundAmount: booking.locker_refund_amount,
-  refundReason: '',
-  refundMethod: booking.locker_refund_method,
-  endDate: booking.end_date,
-  status: booking.payment_status,
-  paymentStatus: booking.payment_status,
-  createdAt: booking.created_at,
-  updatedAt: booking.updated_at,
-});
+const mapToDepositRefund = (booking: any): DepositRefund => {
+  const duesArray = Array.isArray(booking.dues) ? booking.dues : [];
+  const totalDueAmount = duesArray.reduce((acc: number, due: any) => acc + (due.due_amount || 0), 0);
+
+  return {
+    _id: booking.id,
+    transactionId: booking.locker_refund_transaction_id || '',
+    booking: { bookingId: booking.serial_number || booking.id },
+    user: booking.profiles || { name: 'N/A' },
+    cabin: booking.cabins || { name: 'N/A' },
+    seat: { number: booking.seat_number || 'N/A' },
+    keyDeposit: booking.locker_price || 0,
+    isKeyDepositPaid: booking.locker_included,
+    keyDepositRefunded: booking.locker_refunded,
+    keyDepositRefundDate: booking.locker_refund_date,
+    refundAmount: booking.locker_refund_amount,
+    refundReason: '',
+    refundMethod: booking.locker_refund_method,
+    dueAmount: totalDueAmount,
+    endDate: booking.end_date,
+    status: booking.payment_status,
+    paymentStatus: booking.payment_status,
+    createdAt: booking.created_at,
+    updatedAt: booking.updated_at,
+  };
+};
 
 export const depositRefundService = {
   // Get deposits (all bookings with locker_included = true)
@@ -111,7 +118,7 @@ export const depositRefundService = {
     try {
       let query = supabase
         .from('bookings')
-        .select('*, profiles!bookings_user_id_fkey(name, email, phone), cabins(name)', { count: 'exact' })
+        .select('*, profiles!bookings_user_id_fkey(name, email, phone), cabins(name), dues!dues_booking_id_fkey(due_amount, paid_amount, status)', { count: 'exact' })
         .eq('locker_included', true)
         .gt('locker_price', 0)
         .in('payment_status', ['completed', 'advance_paid']);
@@ -166,7 +173,7 @@ export const depositRefundService = {
 
       let query = supabase
         .from('bookings')
-        .select('*, profiles!bookings_user_id_fkey(name, email, phone), cabins(name)', { count: 'exact' })
+        .select('*, profiles!bookings_user_id_fkey(name, email, phone), cabins(name), dues!dues_booking_id_fkey(due_amount, paid_amount, status)', { count: 'exact' })
         .eq('locker_included', true)
         .gt('locker_price', 0)
         .in('payment_status', ['completed', 'advance_paid']);
@@ -280,7 +287,7 @@ export const depositRefundService = {
     try {
       let query = supabase
         .from('bookings')
-        .select('*, profiles!bookings_user_id_fkey(name, email, phone), cabins(name)')
+        .select('*, profiles!bookings_user_id_fkey(name, email, phone), cabins(name), dues!dues_booking_id_fkey(due_amount)')
         .eq('locker_included', true)
         .gt('locker_price', 0)
         .in('payment_status', ['completed', 'advance_paid'])
@@ -295,18 +302,23 @@ export const depositRefundService = {
       if (error) throw error;
 
       // Generate CSV
-      const rows = (data || []).map((b: any) => ({
-        'Booking ID': b.serial_number || b.id,
-        'Student': b.profiles?.name || 'N/A',
-        'Room': b.cabins?.name || 'N/A',
-        'Seat': b.seat_number || 'N/A',
-        'Locker Deposit': b.locker_price,
-        'End Date': b.end_date,
-        'Refunded': b.locker_refunded ? 'Yes' : 'No',
-        'Refund Amount': b.locker_refund_amount || 0,
-        'Refund Method': b.locker_refund_method || '',
-        'Refund Date': b.locker_refund_date || '',
-      }));
+      const rows = (data || []).map((b: any) => {
+        const duesArr = Array.isArray(b.dues) ? b.dues : [];
+        const totalDue = duesArr.reduce((acc: number, d: any) => acc + (d.due_amount || 0), 0);
+        return {
+          'Booking ID': b.serial_number || b.id,
+          'Student': b.profiles?.name || 'N/A',
+          'Room': b.cabins?.name || 'N/A',
+          'Seat': b.seat_number || 'N/A',
+          'Locker Deposit': b.locker_price,
+          'Due Amount': totalDue,
+          'End Date': b.end_date,
+          'Refunded': b.locker_refunded ? 'Yes' : 'No',
+          'Refund Amount': b.locker_refund_amount || 0,
+          'Refund Method': b.locker_refund_method || '',
+          'Refund Date': b.locker_refund_date || '',
+        };
+      });
 
       const headers = Object.keys(rows[0] || {});
       const csv = [headers.join(','), ...rows.map((r: any) => headers.map(h => `"${r[h]}"`).join(','))].join('\n');
