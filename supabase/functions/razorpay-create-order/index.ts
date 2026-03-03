@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         amount: Math.round(amount * 100),
         currency,
-        receipt: `booking_${bookingId}`,
+        receipt: `bk_${bookingId.replace(/-/g, '').slice(0, 36)}`,
         notes: {
           bookingId,
           bookingType,
