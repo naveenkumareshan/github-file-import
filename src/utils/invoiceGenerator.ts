@@ -12,6 +12,8 @@ export interface InvoiceData {
   startDate: string;
   endDate: string;
   duration: string;
+  durationCount?: number;
+  bookingDuration?: string;
   seatAmount: number;
   discountAmount: number;
   discountReason: string;
@@ -110,10 +112,15 @@ export const generateInvoiceHTML = (data: InvoiceData): string => {
     <table>
       <thead><tr><th>Description</th><th>Amount</th></tr></thead>
       <tbody>
-        ${data.foodPolicyType === 'mandatory' 
-          ? `<tr><td>Room Rent (Including Food)</td><td>${formatCurrency(data.seatAmount + (data.foodAmount || 0))}</td></tr>`
-          : `<tr><td>Seat Booking</td><td>${formatCurrency(data.seatAmount)}</td></tr>`
-        }
+        ${(() => {
+          const durationSuffix = data.durationCount && data.bookingDuration
+            ? ` (${data.durationCount} ${data.bookingDuration === 'daily' ? 'day' : data.bookingDuration === 'weekly' ? 'week' : 'month'}${data.durationCount > 1 ? 's' : ''})`
+            : '';
+          if (data.foodPolicyType === 'mandatory') {
+            return `<tr><td>Room Rent (Including Food)${durationSuffix}</td><td>${formatCurrency(data.seatAmount + (data.foodAmount || 0))}</td></tr>`;
+          }
+          return `<tr><td>Seat Booking${durationSuffix}</td><td>${formatCurrency(data.seatAmount)}</td></tr>`;
+        })()}
         ${data.discountAmount > 0 ? `<tr class="discount-row"><td>Discount${data.discountReason ? ` (${data.discountReason})` : ''}</td><td>-${formatCurrency(data.discountAmount)}</td></tr>` : ''}
         ${data.lockerIncluded ? `<tr><td>Locker</td><td>${formatCurrency(data.lockerPrice)}</td></tr>` : ''}
         ${data.foodPolicyType === 'optional' && data.foodOpted && data.foodAmount ? `<tr><td>Food Add-on</td><td>${formatCurrency(data.foodAmount)}</td></tr>` : ''}

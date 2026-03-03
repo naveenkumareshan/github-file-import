@@ -178,6 +178,8 @@ const AdminBookingDetail = () => {
         startDate: booking.start_date || '',
         endDate: booking.end_date || '',
         duration: booking.booking_duration || '-',
+        durationCount: Number(booking.duration_count || 1),
+        bookingDuration: booking.booking_duration || 'monthly',
         seatAmount: foodPolicy === 'mandatory'
           ? (booking.total_price || 0)
           : (booking.total_price || 0) - (booking.food_amount || 0),
@@ -197,6 +199,7 @@ const AdminBookingDetail = () => {
       const user = typeof booking.userId === 'object' ? booking.userId : {};
       const cabin = typeof booking.cabinId === 'object' ? booking.cabinId : {};
       const seat = typeof booking.seatId === 'object' ? booking.seatId : {};
+      const cabinSeatPrice = (booking.totalPrice || 0) + (booking.discountAmount || 0) - (booking.lockerPrice || 0);
       invoiceData = {
         serialNumber: booking.serialNumber || booking.bookingId || booking._id || '',
         bookingDate: booking.createdAt || new Date().toISOString(),
@@ -209,7 +212,9 @@ const AdminBookingDetail = () => {
         startDate: booking.startDate || '',
         endDate: booking.endDate || '',
         duration: booking.bookingDuration || booking.duration || '-',
-        seatAmount: booking.seatPrice || 0,
+        durationCount: Number(booking.durationCount || booking.duration_count || 1),
+        bookingDuration: booking.bookingDuration || booking.booking_duration || 'monthly',
+        seatAmount: cabinSeatPrice,
         discountAmount: booking.discountAmount || 0,
         discountReason: booking.discountReason || '',
         lockerIncluded: booking.lockerIncluded || false,
@@ -258,6 +263,15 @@ const AdminBookingDetail = () => {
   const foodAmount = bookingType === 'hostel' ? (booking.food_amount || 0) : 0;
   const lockerAmount = bookingType === 'hostel' ? 0 : (booking.lockerPrice || 0);
   const discountAmount = bookingType === 'hostel' ? 0 : (booking.discountAmount || 0);
+
+  // Duration label
+  const rawDurationCount = bookingType === 'hostel' 
+    ? (booking.duration_count || 1)
+    : (booking.durationCount || booking.duration_count || 1);
+  const rawBookingDuration = bookingType === 'hostel'
+    ? (booking.booking_duration || 'monthly')
+    : (booking.bookingDuration || booking.booking_duration || 'monthly');
+  const durationLabel = ` (${rawDurationCount} ${rawBookingDuration === 'daily' ? 'day' : rawBookingDuration === 'weekly' ? 'week' : 'month'}${Number(rawDurationCount) > 1 ? 's' : ''})`;
 
   const advancePaid = bookingType === 'hostel'
     ? (booking.advance_amount || 0)
@@ -387,7 +401,7 @@ const AdminBookingDetail = () => {
             </p>
             <div className="grid grid-cols-3 gap-3 mb-2">
               <div>
-                <p className="text-[11px] text-muted-foreground">{bookingType === 'hostel' ? 'Room Rent' : 'Seat Price'}</p>
+                <p className="text-[11px] text-muted-foreground">{bookingType === 'hostel' ? `Room Rent${durationLabel}` : `Seat Price${durationLabel}`}</p>
                 <p className="text-sm font-semibold">₹{seatPrice.toLocaleString()}</p>
               </div>
               {bookingType === 'hostel' && foodAmount > 0 && (
