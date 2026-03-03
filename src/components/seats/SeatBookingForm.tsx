@@ -289,7 +289,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
       switch (selectedDuration.type) {
         case "daily":
           setSelection(daily);
-          newEndDate = addDays(startDate, selectedDuration.count);
+          newEndDate = addDays(startDate, Math.max(0, selectedDuration.count - 1));
           break;
         case "weekly":
           setSelection(weekly);
@@ -353,7 +353,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
       switch (selectedDuration.type) {
         case "daily":
           setSelection(daily);
-          newEndDate = addDays(startDate, selectedDuration.count);
+          newEndDate = addDays(startDate, Math.max(0, selectedDuration.count - 1));
           break;
         case "weekly":
           setSelection(weekly);
@@ -869,7 +869,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                   <Separator className="opacity-30" />
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Seat Price:</span>
-                    <span>₹{Math.round(selectedSeat?.price || 0)} / {selectedDuration.type === 'daily' ? 'day' : selectedDuration.type === 'weekly' ? 'week' : 'month'}</span>
+                    <span>₹{Math.round(seatPrice)} / {selectedDuration.type === 'daily' ? (selectedDuration.count === 1 ? 'day' : `${selectedDuration.count} days`) : selectedDuration.type === 'weekly' ? (selectedDuration.count === 1 ? 'week' : `${selectedDuration.count} weeks`) : (selectedDuration.count === 1 ? 'month' : `${selectedDuration.count} months`)}</span>
                   </div>
 
                   {/* Locker - inline in summary */}
@@ -905,7 +905,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                       <Separator className="opacity-30" />
                       <div className="flex justify-between text-sm text-green-600">
                         <span>Coupon ({appliedCoupon.coupon.code}):</span>
-                        <span>- ₹{Number(appliedCoupon.discountAmount).toFixed(2)}</span>
+                        <span>- ₹{(Math.round(Number(appliedCoupon.discountAmount) * 100) / 100).toFixed(2)}</span>
                       </div>
                     </>
                   )}
@@ -921,7 +921,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                     <div className="flex items-center gap-2">
                       <TicketPercent className="h-3.5 w-3.5 text-green-600" />
                       <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs">
-                        {appliedCoupon.coupon.code} — ₹{appliedCoupon.discountAmount} off
+                        {appliedCoupon.coupon.code} — ₹{Math.round(Number(appliedCoupon.discountAmount) * 100) / 100} off
                       </Badge>
                       <button onClick={handleCouponRemove} className="text-destructive hover:text-destructive/80 ml-auto">
                         <X className="h-3.5 w-3.5" />
