@@ -26,6 +26,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
 
 type ViewMode = 'grid' | 'table';
 type StatusFilter = 'all' | 'available' | 'booked' | 'expiring_soon' | 'blocked';
@@ -125,6 +126,7 @@ const HostelBedMap: React.FC = () => {
   const [discountReason, setDiscountReason] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<string>('cash');
   const [transactionId, setTransactionId] = useState('');
+  const [paymentProofUrl, setPaymentProofUrl] = useState('');
   const [collectSecurityDeposit, setCollectSecurityDeposit] = useState(true);
   const [securityDepositAmount, setSecurityDepositAmount] = useState('');
 
@@ -1431,6 +1433,10 @@ const HostelBedMap: React.FC = () => {
                         </div>
                       )}
 
+                      {paymentMethod !== 'cash' && (
+                        <PaymentProofUpload value={paymentProofUrl} onChange={setPaymentProofUrl} />
+                      )}
+
                       <div className="text-muted-foreground text-[10px] px-1">Collected by: {user?.name || user?.email || 'Admin'}</div>
 
                       <div className="flex gap-2">
@@ -1507,6 +1513,9 @@ const HostelBedMap: React.FC = () => {
                                   </div>
                                   {(dueCollectMethod === 'upi' || dueCollectMethod === 'bank_transfer') && (
                                     <div><Label className="text-[10px]">Transaction ID</Label><Input className="h-7 text-xs" value={dueCollectTxnId} onChange={e => setDueCollectTxnId(e.target.value)} /></div>
+                                  )}
+                                  {dueCollectMethod !== 'cash' && (
+                                    <PaymentProofUpload value={paymentProofUrl} onChange={setPaymentProofUrl} />
                                   )}
                                   <Button size="sm" className="w-full h-7 text-[10px]" onClick={() => handleInlineDueCollect(b.bookingId)} disabled={collectingDue || !dueCollectAmount}>
                                     {collectingDue ? 'Processing...' : `Collect ₹${dueCollectAmount}`}

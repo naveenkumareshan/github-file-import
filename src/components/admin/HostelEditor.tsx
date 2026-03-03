@@ -68,6 +68,7 @@ export function HostelEditor({ onSave, onCancel, existingHostel, isAdmin = true 
     food_price_monthly: existingHostel?.food_price_monthly ?? 0,
     food_menu_image: existingHostel?.food_menu_image || '',
     show_food_price: existingHostel?.show_food_price ?? true,
+    payment_proof_required: existingHostel?.payment_proof_required ?? false,
   });
 
   const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
@@ -452,6 +453,26 @@ export function HostelEditor({ onSave, onCancel, existingHostel, isAdmin = true 
             </CollapsibleContent>
           </Card>
         </Collapsible>
+
+        {/* Section 4: Booking Configuration */}
+
+        {/* Payment Proof Requirement */}
+        <Card>
+          <CardContent className="px-4 py-4 space-y-0">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-sm font-medium">Require Payment Proof for Non-Cash Payments</Label>
+                <p className="text-xs text-muted-foreground">
+                  When enabled, partners must upload a payment screenshot for UPI/Bank payments
+                </p>
+              </div>
+              <Switch
+                checked={hostel.payment_proof_required}
+                onCheckedChange={(checked) => setHostel(prev => ({ ...prev, payment_proof_required: checked }))}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Section 4: Booking Configuration */}
         <Collapsible open={openSection === 4} onOpenChange={(isOpen) => setOpenSection(isOpen ? 4 : null)}>

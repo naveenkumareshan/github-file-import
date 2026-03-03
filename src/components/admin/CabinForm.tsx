@@ -88,6 +88,7 @@ interface CabinFormProps {
 export function CabinForm({ initialData, onSuccess, cabinId }: CabinFormProps) {
   const isEditing = !!cabinId;
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [paymentProofRequired, setPaymentProofRequired] = useState(initialData?.payment_proof_required ?? initialData?.paymentProofRequired ?? false);
   
   const ALL_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -152,6 +153,7 @@ export function CabinForm({ initialData, onSuccess, cabinId }: CabinFormProps) {
         openingTime: values.is24Hours ? '00:00' : values.openingTime,
         closingTime: values.is24Hours ? '23:59' : values.closingTime,
         workingDays: values.is24Hours ? ALL_DAYS : values.workingDays,
+        paymentProofRequired: paymentProofRequired,
       } as any;
       
       if (values.imageSrc) cabinData.imageSrc = values.imageSrc;
@@ -337,6 +339,24 @@ export function CabinForm({ initialData, onSuccess, cabinId }: CabinFormProps) {
               )} />
             </>
           )}
+        </div>
+
+        {/* Slot-Based Booking Toggle */}
+
+        {/* Payment Proof Requirement */}
+        <div className="space-y-4 border rounded-lg p-4">
+          <div className="flex flex-row items-center justify-between rounded-lg border p-3">
+            <div className="space-y-0.5">
+              <Label className="text-sm font-medium">Require Payment Proof for Non-Cash Payments</Label>
+              <p className="text-xs text-muted-foreground">
+                When enabled, partners must upload a payment screenshot for UPI/Bank payments
+              </p>
+            </div>
+            <Switch
+              checked={paymentProofRequired}
+              onCheckedChange={setPaymentProofRequired}
+            />
+          </div>
         </div>
 
         {/* Slot-Based Booking Toggle */}

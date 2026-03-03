@@ -29,6 +29,7 @@ import { couponService } from '@/api/couponService';
 import { seatsService } from '@/api/seatsService';
 import { cn } from '@/lib/utils';
 import { transactionService } from '@/api/transactionService';
+import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
 
 interface BookingExtensionDialogProps {
   open: boolean;
@@ -61,6 +62,7 @@ export const BookingExtensionDialog = ({
   const [couponValidating, setCouponValidating] = useState(false);
   const [seatAvailable, setSeatAvailable] = useState<boolean | null>(null);
   const [checkingAvailability, setCheckingAvailability] = useState(false);
+  const [paymentProofUrl, setPaymentProofUrl] = useState('');
 
 
   const calculateNewEndDate = () => {
@@ -437,6 +439,10 @@ export const BookingExtensionDialog = ({
             </Select>
           </div>
           
+          {paymentMethod && paymentMethod !== 'cash' && (
+            <PaymentProofUpload value={paymentProofUrl} onChange={setPaymentProofUrl} />
+          )}
+
           <div className="grid gap-2">
             <Label htmlFor="notes">Notes (Optional)</Label>
             <Textarea

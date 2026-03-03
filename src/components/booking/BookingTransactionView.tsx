@@ -7,7 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { vendorSeatsService } from '@/api/vendorSeatsService';
 import { DuePaymentHistory } from '@/components/booking/DuePaymentHistory';
 import { format, differenceInDays } from 'date-fns';
-import { CreditCard, Calendar, RefreshCw, IndianRupee, Clock, TicketPercent, Wallet, Receipt } from 'lucide-react';
+import { CreditCard, Calendar, RefreshCw, IndianRupee, Clock, TicketPercent, Wallet, Receipt, ImageIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ReceiptRow {
@@ -20,6 +20,7 @@ interface ReceiptRow {
   notes: string;
   created_at: string;
   transaction_id: string;
+  payment_proof_url?: string;
 }
 
 interface BookingTransactionViewProps {
@@ -217,7 +218,14 @@ export const BookingTransactionView = ({ bookingId, bookingType, booking }: Book
             {receipts.map((r) => (
               <div key={r.id} className="border rounded-lg p-2 space-y-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-medium text-primary">{r.serial_number || '-'}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-medium text-primary">{r.serial_number || '-'}</span>
+                    {r.payment_proof_url && (
+                      <a href={r.payment_proof_url} target="_blank" rel="noopener noreferrer" title="View Payment Proof">
+                        <ImageIcon className="h-3.5 w-3.5 text-primary hover:text-primary/80" />
+                      </a>
+                    )}
+                  </div>
                   <Badge variant="outline" className="text-[9px]">
                     {r.receipt_type === 'due_collection' ? 'Due Collection' : 'Booking Payment'}
                   </Badge>
