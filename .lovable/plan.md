@@ -1,88 +1,123 @@
 
-# Add Release Seat, Cancel Booking, and Fix Seat Availability During Due Period
 
-## Two Changes
+# Fix Partner Subscriptions Razorpay + Add Discount Model + Create Admin Employees Page
 
-### 1. Add "Release Seat" and "Cancel Booking" Buttons
+## 1. Fix Razorpay Not Working in Partner Subscriptions
 
-Add two new action buttons in the Partner Seat Control Center (VendorSeats) sheet when viewing a booked seat, with AlertDialog confirmation popups.
+**Problem**: `MySubscriptions.tsx` calls `window.Razorpay` directly without first loading the Razorpay SDK script. Other pages (HostelBooking, BookingRenewal, etc.) all have a `loadRazorpayScript()` helper that dynamically injects the `<script>` tag -- this page is missing it.
 
-**Release Seat** (terminates booking, frees seat):
-- Updates `bookings.payment_status` to `'terminated'`
-- Updates `bookings.end_date` to today (checkout_date effect)
-- Does NOT delete the booking record
-- Seat becomes available immediately for new bookings
+**Fix**: Add the same `loadRazorpayScript()` helper function to `MySubscriptions.tsx` and call it before opening the Razorpay checkout in `handlePayment()`.
 
-**Cancel Booking** (cancels entirely, cleans up dues):
-- Updates `bookings.payment_status` to `'cancelled'`
-- Seat becomes available immediately
-- Updates any pending `dues` record for this booking to `status = 'cancelled'`
-- Keeps all `receipts` and `due_payments` history unchanged
+## 2. Add Discount Model to Subscription Plans
 
-Both actions show an AlertDialog confirmation popup before executing.
+**Problem**: Admin cannot offer discounts to partners on subscription plans.
 
-### 2. Keep Seats/Beds Unavailable Throughout Booked Period (Even With Dues)
+**Changes**:
 
-Currently, seats with `advance_paid` status auto-release after `proportional_end_date`. The user wants seats to stay **unavailable for the full booked period** regardless of due status. The partner should manually release the seat if needed.
+### Database Migration
+Add discount columns to `subscription_plans` table:
+- `discount_percentage` (numeric, default 0) -- percentage discount off yearly price
+- `discount_label` (text, default '') -- e.g. "Launch Offer", "Early Bird"
+- `discount_active` (boolean, default false) -- toggle to enable/disable the discount
 
-**Changes to availability logic:**
-- Remove the `proportional_end_date` check from `computeDateStatus()` in `vendorSeatsService.ts` -- seats with active bookings stay booked through `end_date`
-- Remove the same check from `currentBookingRaw` selection logic
-- Remove the `proportional_end_date` check from `HostelBedMap.tsx` and `HostelBedLayoutView.tsx` (student-facing hostel bed maps)
-- The `check_seat_available` and `check_hostel_bed_available` RPCs already check the full date range (no proportional_end_date logic), so they're already correct
-- The `getAvailableSeatsForDateRange` in `seatsService.ts` uses those RPCs, so student booking view is already correct
+### Admin UI (`SubscriptionPlans.tsx`)
+Add three fields to the plan create/edit form:
+- Discount Percentage input
+- Discount Label input
+- Discount Active toggle
+
+Show the discount info in the plans table (new "Discount" column).
+
+### Partner UI (`MySubscriptions.tsx`)
+- Show original price with strikethrough when discount is active
+- Show discounted price and discount label badge
+- Calculate `totalAmount` using discounted price when applicable
+- Pass discounted amount to the backend
+
+### Edge Function (`subscription-create-order/index.ts`)
+- Read discount fields from the plan record
+- If discount is active, apply the percentage discount to `price_yearly` before calculating `totalAmount`
+- Store original and discounted amounts in the subscription record
+
+## 3. Create Admin Employees Page
+
+**Problem**: Admin needs a page to manage admin-level employees with sidebar permission controls and password management.
+
+**Approach**: Reuse the exact same pattern as the Partner Employee system (`VendorEmployees.tsx` + `VendorEmployeeForm.tsx`), but scoped to admin employees who get access to admin sidebar items.
+
+### Database Migration
+Create `admin_employees` table:
+- `id` (uuid, PK)
+- `admin_user_id` (uuid) -- the admin who created this employee
+- `employee_user_id` (uuid) -- the auth user ID of the employee
+- `name`, `email`, `phone` (text)
+- `role` (text, default 'staff')
+- `permissions` (text[], default '{}') -- admin sidebar permission keys
+- `status` (text, default 'active')
+- `created_at`, `updated_at` (timestamptz)
+
+Enable RLS with policies:
+- Admins can manage all admin employees
+- Admin employees can view their own record
+
+### New Files
+
+**`src/api/adminEmployeeService.ts`**
+Service layer for CRUD on `admin_employees` table (modeled after `vendorEmployeeService.ts`).
+
+**`src/pages/admin/AdminEmployees.tsx`**
+Main page with:
+- Employee list table (Name, Email, Phone, Role, Status, Permissions, Actions)
+- Add Employee button -- opens form
+- View, Edit, Delete actions per employee
+- Employee creation uses the existing `admin-create-user` Edge Function with role `admin` (or a new `admin_employee` role if needed)
+- Password Change button -- calls `admin-reset-password` Edge Function
+- Shows the login URL for employees (e.g., `/admin/login`)
+
+**`src/components/admin/AdminEmployeeForm.tsx`**
+Form with:
+- Name, Email, Phone, Password (for new employees)
+- Permission grid with View/Edit toggles for all admin sidebar modules:
+  - **General**: Dashboard, Operations
+  - **Reading Rooms**: Seat Map, Due Management, Bookings, Receipts, Key Deposits, Manage Rooms, Reviews
+  - **Hostels**: Bed Map, Due Management, Bookings, Receipts, Deposits, Manage Hostels, Reviews
+  - **Laundry**: Laundry Management
+  - **Users**: All Users, Create User, Import Users, Coupons
+  - **Partners**: All Partners, Property Approvals, Settlements, Payouts
+  - **Reports, Messaging, Locations, Banners, Complaints, Support, Sponsored, Subscriptions**
+
+### Routing
+Add route in `App.tsx`:
+```
+/admin/employees --> AdminEmployees
+```
+
+### Sidebar
+Add "Admin Employees" menu item under Settings or as a standalone item for admin role in `AdminSidebar.tsx`.
 
 ---
+
+## Files to Create
+
+| File | Purpose |
+|------|---------|
+| `src/pages/admin/AdminEmployees.tsx` | Admin employees management page |
+| `src/components/admin/AdminEmployeeForm.tsx` | Employee form with permission grid |
+| `src/api/adminEmployeeService.ts` | CRUD service for admin_employees |
 
 ## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/api/vendorSeatsService.ts` | Add `releaseSeat()` and `cancelBooking()` service methods; remove `proportional_end_date` auto-release logic from `computeDateStatus()` and `getSeatsForDate()` |
-| `src/pages/vendor/VendorSeats.tsx` | Add Release Seat and Cancel Booking buttons with AlertDialog confirmation; import AlertDialog components |
-| `src/components/hostels/HostelBedMap.tsx` | Remove proportional_end_date-based availability override |
-| `src/components/hostels/HostelBedLayoutView.tsx` | Remove proportional_end_date-based availability override |
+| `src/pages/partner/MySubscriptions.tsx` | Add `loadRazorpayScript()`, apply discount pricing |
+| `src/pages/admin/SubscriptionPlans.tsx` | Add discount fields to form and table |
+| `supabase/functions/subscription-create-order/index.ts` | Apply discount in amount calculation |
+| `src/App.tsx` | Add `/admin/employees` route |
+| `src/components/admin/AdminSidebar.tsx` | Add "Admin Employees" menu item |
+| `src/components/AdminLayout.tsx` | Add page title mapping |
 
-## Technical Details
+## Database Migrations
 
-### New Service Methods in `vendorSeatsService.ts`
+1. Add `discount_percentage`, `discount_label`, `discount_active` columns to `subscription_plans`
+2. Create `admin_employees` table with RLS policies
 
-```typescript
-releaseSeat: async (bookingId: string) => {
-  // 1. Update booking status to terminated, set end_date to today
-  await supabase.from('bookings').update({
-    payment_status: 'terminated',
-    end_date: new Date().toISOString().split('T')[0],
-  }).eq('id', bookingId);
-  return { success: true };
-}
-
-cancelBooking: async (bookingId: string) => {
-  // 1. Update booking status to cancelled
-  await supabase.from('bookings').update({
-    payment_status: 'cancelled',
-  }).eq('id', bookingId);
-  // 2. Cancel pending dues (don't delete)
-  await supabase.from('dues').update({
-    status: 'cancelled',
-  }).eq('booking_id', bookingId).eq('status', 'pending');
-  return { success: true };
-}
-```
-
-### Availability Logic Change
-
-In `computeDateStatus()`, remove lines 156-161 that check `proportional_end_date` and return `'available'`. The seat stays `'booked'` or `'expiring_soon'` for the full booking period.
-
-In `getSeatsForDate()`, remove lines 344-351 that skip `currentBooking` display for advance_paid bookings past proportional_end_date.
-
-In hostel bed maps, remove the dues lookup and the availability override that marks beds as available after proportional_end_date.
-
-### UI: Action Buttons in Sheet
-
-Add "Release Seat" and "Cancel Booking" in the action buttons grid (alongside Renew, Book Future, Transfer, Block) for each current booking. Each opens an AlertDialog:
-
-- **Release Seat**: Warning text "This will terminate the booking and free the seat immediately. The student will no longer have access. This cannot be undone."
-- **Cancel Booking**: Warning text "This will cancel the booking, free the seat, and cancel any pending dues. Transaction history will be preserved. This cannot be undone."
-
-On confirmation, call the service method, close the sheet, and refresh seats.
