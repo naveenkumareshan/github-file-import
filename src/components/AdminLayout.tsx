@@ -79,11 +79,11 @@ const AdminLayout: React.FC = () => {
   const pageLabel = getPageLabel(location.pathname);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen overflow-hidden">
       <SidebarProvider>
-        <div className="flex flex-1 w-full overflow-x-hidden">
+        <div className="flex min-h-screen w-full">
           <AdminSidebar />
-          <SidebarInset className="flex-1 flex flex-col min-h-screen min-w-0">
+          <SidebarInset className="flex-1 flex flex-col min-w-0 overflow-y-auto">
             <header
               className="flex h-13 shrink-0 items-center gap-2 border-b px-3 sm:px-4 sticky top-0 z-10"
               style={{ background: 'linear-gradient(90deg, hsl(var(--primary) / 0.04) 0%, hsl(var(--background)) 60%)' }}
@@ -97,9 +97,9 @@ const AdminLayout: React.FC = () => {
               </div>
             </header>
 
-            <main className="flex-1 p-3 sm:p-6 bg-muted/10 min-h-full overflow-x-hidden">
+            <div className="flex-1 p-3 sm:p-6 bg-muted/10 overflow-x-hidden">
               <Outlet key={location.pathname} />
-            </main>
+            </div>
           </SidebarInset>
         </div>
       </SidebarProvider>
