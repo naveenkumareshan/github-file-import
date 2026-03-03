@@ -13,16 +13,29 @@ import { Crown, Building, Hotel, Check, ArrowRight, CreditCard, Calendar, Loader
 
 const PLAN_ICONS: Record<string, string> = { silver: '🥈', gold: '🥇', platinum: '💎', diamond: '👑' };
 
+const loadRazorpayScript = (): Promise<boolean> => {
+  return new Promise((resolve) => {
+    if ((window as any).Razorpay) {
+      resolve(true);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
+
 export default function MySubscriptions() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [selectedProperty, setSelectedProperty] = useState<any>(null);
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
   const [capacityUpgrades, setCapacityUpgrades] = useState(0);
-  const [step, setStep] = useState(0); // 0=closed, 1=select plan, 2=capacity, 3=summary
+  const [step, setStep] = useState(0);
   const [processing, setProcessing] = useState(false);
 
-  // Get partner
   const { data: partner } = useQuery({
     queryKey: ['my-partner', user?.id],
     queryFn: async () => {
@@ -32,7 +45,6 @@ export default function MySubscriptions() {
     enabled: !!user?.id,
   });
 
-  // Get properties
   const { data: cabins = [] } = useQuery({
     queryKey: ['my-cabins', user?.id],
     queryFn: async () => {
@@ -51,7 +63,6 @@ export default function MySubscriptions() {
     enabled: !!user?.id,
   });
 
-  // Get all subscriptions
   const { data: subscriptions = [] } = useQuery({
     queryKey: ['my-subscriptions', partner?.id],
     queryFn: async () => {
@@ -66,7 +77,6 @@ export default function MySubscriptions() {
     enabled: !!partner?.id,
   });
 
-  // Get plans
   const { data: plans = [] } = useQuery({
     queryKey: ['subscription-plans-active'],
     queryFn: async () => {
@@ -101,11 +111,23 @@ export default function MySubscriptions() {
 
   const availablePlans = plans.filter((p: any) => p.display_order > currentPlanOrder());
 
+  const getDiscountedPrice = (plan: any) => {
+    if (plan.discount_active && plan.discount_percentage > 0) {
+      return plan.price_yearly - (plan.price_yearly * plan.discount_percentage / 100);
+    }
+    return plan.price_yearly;
+  };
+
   const handlePayment = async () => {
     if (!selectedPlan || !selectedProperty) return;
     setProcessing(true);
 
     try {
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        throw new Error('Failed to load payment SDK. Please check your internet connection.');
+      }
+
       const { data, error } = await supabase.functions.invoke('subscription-create-order', {
         body: {
           planId: selectedPlan.id,
@@ -118,7 +140,6 @@ export default function MySubscriptions() {
       if (error) throw error;
 
       if (data.testMode) {
-        // Test mode: directly verify
         const { error: verifyError } = await supabase.functions.invoke('subscription-verify-payment', {
           body: { subscriptionId: data.subscriptionId, testMode: true },
         });
@@ -130,7 +151,6 @@ export default function MySubscriptions() {
         return;
       }
 
-      // Real Razorpay flow
       const options = {
         key: data.KEY_ID,
         amount: data.amount,
@@ -159,12 +179,8 @@ export default function MySubscriptions() {
         theme: { color: '#6366f1' },
       };
 
-      if (window.Razorpay) {
-        const rzp = new window.Razorpay(options);
-        rzp.open();
-      } else {
-        throw new Error('Razorpay SDK not loaded');
-      }
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
     } catch (e: any) {
       toast({ title: 'Payment Error', description: e.message, variant: 'destructive' });
     } finally {
@@ -172,8 +188,9 @@ export default function MySubscriptions() {
     }
   };
 
+  const planYearlyPrice = selectedPlan ? getDiscountedPrice(selectedPlan) : 0;
   const totalAmount = selectedPlan
-    ? selectedPlan.price_yearly + (capacityUpgrades > 0 && selectedPlan.capacity_upgrade_enabled ? capacityUpgrades * selectedPlan.capacity_upgrade_price : 0)
+    ? planYearlyPrice + (capacityUpgrades > 0 && selectedPlan.capacity_upgrade_enabled ? capacityUpgrades * selectedPlan.capacity_upgrade_price : 0)
     : 0;
 
   return (
@@ -235,7 +252,6 @@ export default function MySubscriptions() {
         </div>
       )}
 
-      {/* Subscribe/Upgrade Dialog */}
       <Dialog open={step > 0} onOpenChange={() => setStep(0)}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
@@ -250,39 +266,55 @@ export default function MySubscriptions() {
             <div className="grid gap-3 md:grid-cols-2">
               {availablePlans.length === 0 ? (
                 <p className="col-span-2 text-center text-sm text-muted-foreground py-6">You are on the highest plan. No upgrades available.</p>
-              ) : availablePlans.map((plan: any) => (
-                <Card
-                  key={plan.id}
-                  className={`cursor-pointer transition-all hover:border-primary ${selectedPlan?.id === plan.id ? 'border-primary ring-2 ring-primary/20' : ''}`}
-                  onClick={() => setSelectedPlan(plan)}
-                >
-                  <CardContent className="p-4 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xl">{PLAN_ICONS[plan.slug] || '📋'}</span>
-                      <div>
-                        <p className="font-semibold text-sm">{plan.name}</p>
-                        <p className="text-xs text-muted-foreground">₹{plan.price_monthly_display}/mo (billed yearly)</p>
+              ) : availablePlans.map((plan: any) => {
+                const hasDiscount = plan.discount_active && plan.discount_percentage > 0;
+                const discountedPrice = getDiscountedPrice(plan);
+                return (
+                  <Card
+                    key={plan.id}
+                    className={`cursor-pointer transition-all hover:border-primary ${selectedPlan?.id === plan.id ? 'border-primary ring-2 ring-primary/20' : ''}`}
+                    onClick={() => setSelectedPlan(plan)}
+                  >
+                    <CardContent className="p-4 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{PLAN_ICONS[plan.slug] || '📋'}</span>
+                        <div>
+                          <p className="font-semibold text-sm">{plan.name}</p>
+                          <p className="text-xs text-muted-foreground">₹{plan.price_monthly_display}/mo (billed yearly)</p>
+                        </div>
+                        {hasDiscount && (
+                          <Badge variant="destructive" className="text-[9px] ml-auto">{plan.discount_label || `${plan.discount_percentage}% OFF`}</Badge>
+                        )}
                       </div>
-                    </div>
-                    <p className="text-xs font-medium">₹{plan.price_yearly}/year</p>
-                    <div className="text-xs text-muted-foreground space-y-0.5">
-                      <p>Hostel: {plan.hostel_bed_limit === 0 ? 'Unlimited' : `Up to ${plan.hostel_bed_limit} beds`}</p>
-                      <p>Reading Room: {plan.reading_room_seat_limit === 0 ? 'Unlimited' : `Up to ${plan.reading_room_seat_limit} seats`}</p>
-                    </div>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {(Array.isArray(plan.features) ? plan.features : []).slice(0, 5).map((f: string) => (
-                        <Badge key={f} variant="secondary" className="text-[9px]">{f.replace(/_/g, ' ')}</Badge>
-                      ))}
-                      {(Array.isArray(plan.features) ? plan.features : []).length > 5 && (
-                        <Badge variant="secondary" className="text-[9px]">+{plan.features.length - 5} more</Badge>
+                      <div className="flex items-center gap-2">
+                        {hasDiscount ? (
+                          <>
+                            <p className="text-xs line-through text-muted-foreground">₹{plan.price_yearly}</p>
+                            <p className="text-xs font-bold text-primary">₹{Math.round(discountedPrice)}/year</p>
+                          </>
+                        ) : (
+                          <p className="text-xs font-medium">₹{plan.price_yearly}/year</p>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground space-y-0.5">
+                        <p>Hostel: {plan.hostel_bed_limit === 0 ? 'Unlimited' : `Up to ${plan.hostel_bed_limit} beds`}</p>
+                        <p>Reading Room: {plan.reading_room_seat_limit === 0 ? 'Unlimited' : `Up to ${plan.reading_room_seat_limit} seats`}</p>
+                      </div>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {(Array.isArray(plan.features) ? plan.features : []).slice(0, 5).map((f: string) => (
+                          <Badge key={f} variant="secondary" className="text-[9px]">{f.replace(/_/g, ' ')}</Badge>
+                        ))}
+                        {(Array.isArray(plan.features) ? plan.features : []).length > 5 && (
+                          <Badge variant="secondary" className="text-[9px]">+{plan.features.length - 5} more</Badge>
+                        )}
+                      </div>
+                      {selectedPlan?.id === plan.id && (
+                        <div className="flex items-center gap-1 text-primary text-xs font-medium"><Check className="h-3 w-3" />Selected</div>
                       )}
-                    </div>
-                    {selectedPlan?.id === plan.id && (
-                      <div className="flex items-center gap-1 text-primary text-xs font-medium"><Check className="h-3 w-3" />Selected</div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
               {selectedPlan && (
                 <div className="col-span-full flex justify-end">
                   <Button onClick={() => setStep(selectedPlan.capacity_upgrade_enabled ? 2 : 3)}>
@@ -326,42 +358,59 @@ export default function MySubscriptions() {
             </div>
           )}
 
-          {step === 3 && selectedPlan && selectedProperty && (
-            <div className="space-y-4">
-              <div className="border rounded-lg p-4 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Property</span>
-                  <span className="font-medium">{selectedProperty.name}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Plan</span>
-                  <span className="font-medium">{PLAN_ICONS[selectedPlan.slug]} {selectedPlan.name}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Plan Price (Yearly)</span>
-                  <span>₹{selectedPlan.price_yearly}</span>
-                </div>
-                {capacityUpgrades > 0 && (
+          {step === 3 && selectedPlan && selectedProperty && (() => {
+            const hasDiscount = selectedPlan.discount_active && selectedPlan.discount_percentage > 0;
+            const discountedYearly = getDiscountedPrice(selectedPlan);
+            return (
+              <div className="space-y-4">
+                <div className="border rounded-lg p-4 space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span>Capacity Upgrades ({capacityUpgrades} slabs)</span>
-                    <span>₹{capacityUpgrades * selectedPlan.capacity_upgrade_price}</span>
+                    <span>Property</span>
+                    <span className="font-medium">{selectedProperty.name}</span>
                   </div>
-                )}
-                <hr />
-                <div className="flex justify-between text-sm font-bold">
-                  <span>Total (Yearly)</span>
-                  <span>₹{totalAmount}</span>
+                  <div className="flex justify-between text-sm">
+                    <span>Plan</span>
+                    <span className="font-medium">{PLAN_ICONS[selectedPlan.slug]} {selectedPlan.name}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>Plan Price (Yearly)</span>
+                    {hasDiscount ? (
+                      <span>
+                        <span className="line-through text-muted-foreground mr-2">₹{selectedPlan.price_yearly}</span>
+                        <span className="font-medium text-primary">₹{Math.round(discountedYearly)}</span>
+                      </span>
+                    ) : (
+                      <span>₹{selectedPlan.price_yearly}</span>
+                    )}
+                  </div>
+                  {hasDiscount && (
+                    <div className="flex justify-between text-sm text-primary">
+                      <span>Discount ({selectedPlan.discount_percentage}%)</span>
+                      <Badge variant="destructive" className="text-[9px]">{selectedPlan.discount_label || 'Discount Applied'}</Badge>
+                    </div>
+                  )}
+                  {capacityUpgrades > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span>Capacity Upgrades ({capacityUpgrades} slabs)</span>
+                      <span>₹{capacityUpgrades * selectedPlan.capacity_upgrade_price}</span>
+                    </div>
+                  )}
+                  <hr />
+                  <div className="flex justify-between text-sm font-bold">
+                    <span>Total (Yearly)</span>
+                    <span>₹{Math.round(totalAmount)}</span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">No refunds. No downgrades. Billed yearly.</p>
                 </div>
-                <p className="text-[10px] text-muted-foreground">No refunds. No downgrades. Billed yearly.</p>
+                <div className="flex justify-between">
+                  <Button variant="outline" onClick={() => setStep(selectedPlan.capacity_upgrade_enabled ? 2 : 1)}>Back</Button>
+                  <Button onClick={handlePayment} disabled={processing}>
+                    {processing ? <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />Processing...</> : <>Pay ₹{Math.round(totalAmount)}</>}
+                  </Button>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <Button variant="outline" onClick={() => setStep(selectedPlan.capacity_upgrade_enabled ? 2 : 1)}>Back</Button>
-                <Button onClick={handlePayment} disabled={processing}>
-                  {processing ? <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />Processing...</> : <>Pay ₹{totalAmount}</>}
-                </Button>
-              </div>
-            </div>
-          )}
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </div>

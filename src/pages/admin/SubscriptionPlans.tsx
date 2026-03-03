@@ -45,6 +45,7 @@ const defaultForm = {
   capacity_upgrade_enabled: false, capacity_upgrade_price: 300,
   capacity_upgrade_slab_beds: 50, capacity_upgrade_slab_seats: 75,
   display_order: 0, description: '', is_active: true,
+  discount_percentage: 0, discount_label: '', discount_active: false,
 };
 
 export default function SubscriptionPlans() {
@@ -113,6 +114,9 @@ export default function SubscriptionPlans() {
       capacity_upgrade_slab_seats: plan.capacity_upgrade_slab_seats,
       display_order: plan.display_order, description: plan.description,
       is_active: plan.is_active,
+      discount_percentage: plan.discount_percentage || 0,
+      discount_label: plan.discount_label || '',
+      discount_active: plan.discount_active || false,
     });
     setDialogOpen(true);
   };
@@ -175,6 +179,7 @@ export default function SubscriptionPlans() {
                     <TableHead className="text-xs">Bed Limit</TableHead>
                     <TableHead className="text-xs">Seat Limit</TableHead>
                     <TableHead className="text-xs">Features</TableHead>
+                    <TableHead className="text-xs">Discount</TableHead>
                     <TableHead className="text-xs">Status</TableHead>
                     <TableHead className="text-xs">Actions</TableHead>
                   </TableRow>
@@ -194,6 +199,13 @@ export default function SubscriptionPlans() {
                       <TableCell className="text-xs">{plan.hostel_bed_limit === 0 ? '∞' : plan.hostel_bed_limit}</TableCell>
                       <TableCell className="text-xs">{plan.reading_room_seat_limit === 0 ? '∞' : plan.reading_room_seat_limit}</TableCell>
                       <TableCell className="text-xs">{Array.isArray(plan.features) ? plan.features.length : 0}</TableCell>
+                      <TableCell className="text-xs">
+                        {plan.discount_active ? (
+                          <Badge variant="destructive" className="text-[9px]">{plan.discount_percentage}% {plan.discount_label && `- ${plan.discount_label}`}</Badge>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
                       <TableCell><Badge variant={plan.is_active ? 'default' : 'secondary'} className="text-[10px]">{plan.is_active ? 'Active' : 'Inactive'}</Badge></TableCell>
                       <TableCell><Button variant="ghost" size="sm" onClick={() => openEdit(plan)}><Edit className="h-3.5 w-3.5" /></Button></TableCell>
                     </TableRow>
@@ -326,6 +338,28 @@ export default function SubscriptionPlans() {
                 <Switch checked={form.is_active} onCheckedChange={v => setForm(p => ({ ...p, is_active: v }))} />
                 <Label className="text-xs">Active</Label>
               </div>
+            </div>
+            <div className="border rounded-lg p-3 space-y-3">
+              <Label className="text-xs font-semibold">Discount Settings</Label>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <Label className="text-xs">Discount %</Label>
+                  <Input type="number" min={0} max={100} value={form.discount_percentage} onChange={e => setForm(p => ({ ...p, discount_percentage: Number(e.target.value) }))} className="h-8 text-sm" />
+                </div>
+                <div>
+                  <Label className="text-xs">Discount Label</Label>
+                  <Input value={form.discount_label} onChange={e => setForm(p => ({ ...p, discount_label: e.target.value }))} className="h-8 text-sm" placeholder="e.g. Launch Offer" />
+                </div>
+                <div className="flex items-center gap-3 pt-5">
+                  <Switch checked={form.discount_active} onCheckedChange={v => setForm(p => ({ ...p, discount_active: v }))} />
+                  <Label className="text-xs">Active</Label>
+                </div>
+              </div>
+              {form.discount_active && form.discount_percentage > 0 && (
+                <p className="text-[10px] text-muted-foreground">
+                  Discounted yearly price: ₹{Math.round(form.price_yearly - (form.price_yearly * form.discount_percentage / 100))}
+                </p>
+              )}
             </div>
             <div>
               <Label className="text-xs">Description</Label>
