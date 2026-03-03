@@ -68,6 +68,48 @@ export type Database = {
           },
         ]
       }
+      admin_employees: {
+        Row: {
+          admin_user_id: string
+          created_at: string
+          email: string
+          employee_user_id: string | null
+          id: string
+          name: string
+          permissions: string[]
+          phone: string
+          role: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          admin_user_id: string
+          created_at?: string
+          email?: string
+          employee_user_id?: string | null
+          id?: string
+          name?: string
+          permissions?: string[]
+          phone?: string
+          role?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          admin_user_id?: string
+          created_at?: string
+          email?: string
+          employee_user_id?: string | null
+          id?: string
+          name?: string
+          permissions?: string[]
+          phone?: string
+          role?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       areas: {
         Row: {
           city_id: string
@@ -3284,6 +3326,9 @@ export type Database = {
           capacity_upgrade_slab_seats: number
           created_at: string
           description: string
+          discount_active: boolean
+          discount_label: string
+          discount_percentage: number
           display_order: number
           features: Json
           hostel_bed_limit: number
@@ -3304,6 +3349,9 @@ export type Database = {
           capacity_upgrade_slab_seats?: number
           created_at?: string
           description?: string
+          discount_active?: boolean
+          discount_label?: string
+          discount_percentage?: number
           display_order?: number
           features?: Json
           hostel_bed_limit?: number
@@ -3324,6 +3372,9 @@ export type Database = {
           capacity_upgrade_slab_seats?: number
           created_at?: string
           description?: string
+          discount_active?: boolean
+          discount_label?: string
+          discount_percentage?: number
           display_order?: number
           features?: Json
           hostel_bed_limit?: number

@@ -114,8 +114,14 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Calculate amount
-    let totalAmount = plan.price_yearly;
+    // Calculate amount with discount
+    let basePrice = plan.price_yearly;
+    let discountAmount = 0;
+    if (plan.discount_active && plan.discount_percentage > 0) {
+      discountAmount = Math.round(basePrice * plan.discount_percentage / 100);
+      basePrice = basePrice - discountAmount;
+    }
+    let totalAmount = basePrice;
     let capacityUpgradeAmount = 0;
     if (capacityUpgrades > 0 && plan.capacity_upgrade_enabled) {
       capacityUpgradeAmount = capacityUpgrades * plan.capacity_upgrade_price;

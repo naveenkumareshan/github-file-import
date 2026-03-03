@@ -375,6 +375,12 @@ export function AdminSidebar() {
         icon: Crown,
         roles: ['admin'],
         url: '/admin/subscription-plans'
+      },
+      {
+        title: 'Admin Employees',
+        icon: Users2,
+        roles: ['admin'],
+        url: '/admin/admin-employees'
       }
     );
   } else {

@@ -72,6 +72,7 @@ const BusinessPerformance = lazy(() => import("./pages/partner/BusinessPerforman
 const SubscriptionPlans = lazy(() => import("./pages/admin/SubscriptionPlans"));
 const MySubscriptions = lazy(() => import("./pages/partner/MySubscriptions"));
 const AdminLaundry = lazy(() => import("./pages/admin/AdminLaundry"));
+const AdminEmployees = lazy(() => import("./pages/admin/AdminEmployees"));
 const StudentLaundryOrders = lazy(() => import("./pages/StudentLaundryOrders"));
 const LaundryPartnerDashboard = lazy(() => import("./pages/LaundryPartnerDashboard"));
 // Student / public pages
@@ -202,6 +203,7 @@ function App() {
               <Route path="business-performance" element={<BusinessPerformance />} />
               <Route path="subscription-plans" element={<SubscriptionPlans />} />
               <Route path="laundry" element={<AdminLaundry />} />
+              <Route path="admin-employees" element={<AdminEmployees />} />
             </Route>
 
             {/* ── Partner routes (alias for vendor/host admin panel) ── */}
