@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { addDays, addWeeks, addMonths } from 'date-fns';
 import { adminManualBookingService } from '../../api/adminManualBookingService';
 import { adminUsersService } from '../../api/adminUsersService';
 import { seatsService } from '../../api/seatsService';
+import { vendorSeatsService } from '../../api/vendorSeatsService';
 import { useToast } from '../../hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,8 +16,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { adminCabinsService } from '@/api/adminCabinsService';
 import { cabinSlotService, CabinSlot } from '@/api/cabinSlotService';
 import { Badge } from '@/components/ui/badge';
-import { Clock } from 'lucide-react';
+import { Clock, UserPlus, Search, Loader2 } from 'lucide-react';
 import { formatTime } from '@/utils/timingUtils';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { supabase } from '@/integrations/supabase/client';
 
 // Define bookingType type to fix TypeScript errors
 type BookingType = 'cabin' | 'hostel';
@@ -64,6 +67,19 @@ const ManualBookingManagement: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Student search & create
+  const [studentQuery, setStudentQuery] = useState('');
+  const [studentResults, setStudentResults] = useState<any[]>([]);
+  const [studentSearching, setStudentSearching] = useState(false);
+  const [showStudentResults, setShowStudentResults] = useState(false);
+  const [selectedStudentName, setSelectedStudentName] = useState('');
+  const [showNewStudent, setShowNewStudent] = useState(false);
+  const [newStudentName, setNewStudentName] = useState('');
+  const [newStudentEmail, setNewStudentEmail] = useState('');
+  const [newStudentPhone, setNewStudentPhone] = useState('');
+  const [creatingStudent, setCreatingStudent] = useState(false);
+  const studentSearchRef = useRef<HTMLDivElement>(null);
+
   // State for booking flow
   const [step, setStep] = useState<'select-user' | 'select-cabin' | 'select-dates' | 'select-slot' | 'select-seat' | 'booking-details'>('select-user');
   const [cabins, setCabins] = useState<Cabin[]>([]);
@@ -101,7 +117,7 @@ const ManualBookingManagement: React.FC = () => {
 
    const navigate = useNavigate();
 
-  // Load users on component mount
+  // Load users (legacy - kept for compatibility)
   const fetchUsers = async (searchTerm) => {
     setLoading(true);
     try {
@@ -117,6 +133,54 @@ const ManualBookingManagement: React.FC = () => {
     }
   };
 
+  // Student search with debounce
+  useEffect(() => {
+    if (studentQuery.length < 2) {
+      setStudentResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setStudentSearching(true);
+      const res = await vendorSeatsService.searchStudents(studentQuery);
+      if (res.success && res.data) {
+        setStudentResults(res.data);
+        setShowStudentResults(true);
+      }
+      setStudentSearching(false);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [studentQuery]);
+
+  const handleStudentSelect = (student: any) => {
+    setSelectedUser(student.id);
+    setSelectedStudentName(`${student.name} (${student.email})`);
+    setStudentQuery(student.name);
+    setShowStudentResults(false);
+    setStep('select-cabin');
+  };
+
+  const handleCreateNewStudent = async () => {
+    if (!newStudentName || !newStudentEmail) {
+      toast({ title: 'Name and email are required', variant: 'destructive' });
+      return;
+    }
+    setCreatingStudent(true);
+    const res = await vendorSeatsService.createStudent(newStudentName, newStudentEmail, newStudentPhone);
+    if (res.success && res.userId) {
+      setSelectedUser(res.userId);
+      setSelectedStudentName(`${newStudentName} (${newStudentEmail})`);
+      setStudentQuery(newStudentName);
+      setShowNewStudent(false);
+      setNewStudentName('');
+      setNewStudentEmail('');
+      setNewStudentPhone('');
+      toast({ title: res.existing ? 'Existing student selected' : 'Student created & selected' });
+      setStep('select-cabin');
+    } else {
+      toast({ title: 'Error', description: res.error || 'Failed to create student', variant: 'destructive' });
+    }
+    setCreatingStudent(false);
+  };
 
 useEffect(() => {
     fetchUsers(searchTerm);
@@ -469,33 +533,86 @@ useEffect(() => {
   const renderUserSelection = () => (
     <Card className="mb-6">
       <CardHeader>
-        <CardTitle>Select User</CardTitle>
+        <CardTitle>Select Student</CardTitle>
       </CardHeader>
-      <CardContent>
-        <Select 
-          value={selectedUser} 
-          onValueChange={handleUserChange}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select a user" />
-          </SelectTrigger>
-            <SelectContent className="max-h-80">
-              <div className="p-2">
-                <input
-                  type="text"
-                  placeholder="Search user..."
-                  className="w-full p-1 border rounded text-sm"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-                {users.map(user => (
-                  <SelectItem key={user._id} value={user._id}>
-                    {user.userId} {user.name} ({user.email})
-                  </SelectItem>
-                ))}
-            </SelectContent>
-        </Select>
+      <CardContent className="space-y-4">
+        {/* Search Input */}
+        <div className="relative" ref={studentSearchRef}>
+          <Label className="text-sm mb-1 block">Search by Name, Phone or Email</Label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Type to search students..."
+              value={studentQuery}
+              onChange={(e) => {
+                setStudentQuery(e.target.value);
+                setShowStudentResults(true);
+                if (!e.target.value) {
+                  setSelectedUser('');
+                  setSelectedStudentName('');
+                }
+              }}
+              className="pl-9"
+            />
+            {studentSearching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
+          </div>
+
+          {/* Search Results Dropdown */}
+          {showStudentResults && studentResults.length > 0 && (
+            <div className="absolute z-50 w-full mt-1 bg-card border rounded-md shadow-lg max-h-60 overflow-y-auto">
+              {studentResults.map((student) => (
+                <button
+                  key={student.id}
+                  className="w-full text-left px-3 py-2 hover:bg-muted/50 border-b last:border-0 transition-colors"
+                  onClick={() => handleStudentSelect(student)}
+                >
+                  <p className="text-sm font-medium">{student.name}</p>
+                  <p className="text-xs text-muted-foreground">{student.email} {student.phone ? `• ${student.phone}` : ''}</p>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {showStudentResults && studentQuery.length >= 2 && !studentSearching && studentResults.length === 0 && (
+            <div className="absolute z-50 w-full mt-1 bg-card border rounded-md shadow-lg p-3">
+              <p className="text-sm text-muted-foreground">No students found. Create a new one below.</p>
+            </div>
+          )}
+        </div>
+
+        {selectedStudentName && (
+          <div className="flex items-center gap-2 p-2 bg-muted/30 rounded-md">
+            <Badge variant="outline" className="text-xs">Selected</Badge>
+            <span className="text-sm font-medium">{selectedStudentName}</span>
+          </div>
+        )}
+
+        {/* Create New Student */}
+        <Collapsible open={showNewStudent} onOpenChange={setShowNewStudent}>
+          <CollapsibleTrigger asChild>
+            <Button variant="outline" size="sm" className="w-full gap-2">
+              <UserPlus className="h-4 w-4" />
+              {showNewStudent ? 'Hide' : 'Create New Student'}
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-3 space-y-3 border rounded-md p-3">
+            <div>
+              <Label className="text-sm">Name *</Label>
+              <Input value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} placeholder="Student name" />
+            </div>
+            <div>
+              <Label className="text-sm">Email *</Label>
+              <Input type="email" value={newStudentEmail} onChange={(e) => setNewStudentEmail(e.target.value)} placeholder="student@email.com" />
+            </div>
+            <div>
+              <Label className="text-sm">Phone</Label>
+              <Input value={newStudentPhone} onChange={(e) => setNewStudentPhone(e.target.value)} placeholder="Phone number" />
+            </div>
+            <Button size="sm" onClick={handleCreateNewStudent} disabled={creatingStudent} className="w-full">
+              {creatingStudent ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Creating...</> : 'Create & Select Student'}
+            </Button>
+          </CollapsibleContent>
+        </Collapsible>
       </CardContent>
     </Card>
   );

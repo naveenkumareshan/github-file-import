@@ -83,13 +83,13 @@ const BookingDetail = () => {
   
   const formatDuration = (booking: any) => {
     if (!booking || !booking.bookingDuration) return "N/A";
-    
+    const count = booking.durationCount || 1;
     if (booking.bookingDuration === 'daily') {
-      return `${booking.durationCount || 1} day(s)`;
+      return `${count} day${count > 1 ? 's' : ''}`;
     } else if (booking.bookingDuration === 'weekly') {
-      return `${booking.durationCount || 1} week(s)`;
+      return `${count} week${count > 1 ? 's' : ''}`;
     } else {
-      return `${booking.durationCount || 1} month(s)`;
+      return `${count} month${count > 1 ? 's' : ''}`;
     }
   };
   
@@ -185,10 +185,29 @@ const BookingDetail = () => {
                 </div>
               </div>
               <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">Payment Details</h3>
-                <div className="flex items-center">
-                  <IndianRupee className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <span className="font-medium">₹{booking.totalPrice.toFixed(2)}</span>
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">Price Breakdown</h3>
+                <div className="space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span>Seat Price ({formatDuration(booking)})</span>
+                    <span>₹{((booking.totalPrice || 0) + (booking.discountAmount || 0) - (booking.lockerPrice || 0)).toFixed(2)}</span>
+                  </div>
+                  {booking.lockerIncluded && (
+                    <div className="flex justify-between text-sm">
+                      <span>Locker</span>
+                      <span>₹{(booking.lockerPrice || 0).toFixed(2)}</span>
+                    </div>
+                  )}
+                  {(booking.discountAmount || 0) > 0 && (
+                    <div className="flex justify-between text-sm text-green-600">
+                      <span>Discount{booking.discountReason ? ` (${booking.discountReason})` : ''}</span>
+                      <span>-₹{(booking.discountAmount || 0).toFixed(2)}</span>
+                    </div>
+                  )}
+                  <Separator className="my-1" />
+                  <div className="flex justify-between text-sm font-semibold">
+                    <span>Total</span>
+                    <span>₹{(booking.totalPrice || 0).toFixed(2)}</span>
+                  </div>
                 </div>
                 {booking.paymentMethod && (
                   <div className="mt-1 text-sm text-muted-foreground">

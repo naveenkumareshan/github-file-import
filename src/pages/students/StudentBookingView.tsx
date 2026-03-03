@@ -300,7 +300,7 @@ export default function StudentBookingView() {
   // Derived values
   const cabinName = booking.cabins?.name || "Reading Room";
   const seatNumber = booking.seats?.number || booking.seat_number || 0;
-  const seatPrice = booking.seats?.price ?? (booking.total_price - (booking.locker_included ? booking.locker_price : 0));
+  const seatPrice = (booking.total_price || 0) + (booking.discount_amount || 0) - (booking.locker_included ? (booking.locker_price || 0) : 0);
   const totalPrice = booking.total_price || 0;
   const lockerIncluded = booking.locker_included || false;
   const lockerPrice = booking.locker_price || 0;
@@ -402,7 +402,7 @@ export default function StudentBookingView() {
 
         {/* Payment Summary */}
         <CollapsibleSection title="Payment Summary" icon={CreditCard}>
-          <InfoRow label="Seat Price" value={`₹${Number(seatPrice).toFixed(2)}`} />
+          <InfoRow label={`Seat Price (${durationLabel})`} value={`₹${Number(seatPrice).toFixed(2)}`} />
           {lockerIncluded && <InfoRow label="Locker" value={`₹${Number(lockerPrice).toFixed(2)}`} />}
           {discountAmount > 0 && (
             <InfoRow label="Discount" value={<span className="text-green-600">-₹{Number(discountAmount).toFixed(2)}</span>} />
