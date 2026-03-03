@@ -103,7 +103,7 @@ const StudentLogin = () => {
         // Handle login failure without page reload
         const errorMessage =
           result.error || "Invalid email or password. Please try again.";
-        console.log("Login failed:", errorMessage);
+        
 
         toast({
           title: "Login Failed",

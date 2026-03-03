@@ -257,7 +257,6 @@ export const HostelRoomForm: React.FC<HostelRoomFormProps> = ({
   async function onSubmit(data: RoomFormValues) {
     try {
 
-      console.log(data)
       setIsSubmitting(true);
       let response;
       

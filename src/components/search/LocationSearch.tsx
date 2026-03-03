@@ -63,7 +63,7 @@ export const LocationSearch = ({ onSearch, onLocationSelect, loading }: Location
           setFilters(prev => ({ ...prev, userLocation: location }));
         },
         (error) => {
-          console.log('Geolocation error:', error);
+          console.error('Geolocation error:', error);
         }
       );
     }

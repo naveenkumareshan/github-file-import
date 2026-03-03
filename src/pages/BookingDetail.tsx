@@ -32,7 +32,6 @@ const BookingDetail = () => {
       const response = await bookingsService.getBookingById(bookingId);
       
       if (response.success && response.data) {
-        console.log("Booking details:", response.data);
         setBooking(response.data);
       } else {
         toast({
@@ -75,7 +74,6 @@ const BookingDetail = () => {
   };
 
   const handleRetryPayment = () => {
-    console.log('Retrying Payment')
     toast({
       title: "Retrying Payment",
       description: "Please complete your payment below.",

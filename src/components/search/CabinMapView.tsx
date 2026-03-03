@@ -217,7 +217,6 @@ export const CabinMapView = ({ cabins, selectedLocation, loading }: CabinMapView
       // Add click event to marker
       el.addEventListener('click', () => {
         setSelectedCabin(cabin);
-        console.log(cabin)
         // mapRef.current?.flyTo({
         //   center: [longitude, latitude],
         //   zoom: 15
@@ -293,6 +292,7 @@ export const CabinMapView = ({ cabins, selectedLocation, loading }: CabinMapView
                 src={getImageUrl(selectedCabin.imageSrc) || '/placeholder.svg'} 
                 alt={selectedCabin.name}
                 className="w-20 h-20 object-cover rounded-lg"
+                loading="lazy"
               />
               <div className="flex-1">
                 <div className="flex items-start justify-between mb-2">

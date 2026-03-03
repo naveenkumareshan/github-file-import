@@ -173,7 +173,7 @@ function excelDateToJSEndOfDay(serial: number): Date {
         });
       }
     } catch (error) {
-      console.log(error)
+      console.error('Excel import error:', error)
       toast({
         title: "Import Failed",
         description: "Failed to read Excel file",

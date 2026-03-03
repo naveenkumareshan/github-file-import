@@ -156,7 +156,7 @@ export const BookingsList = ({
               {/* Thumbnail */}
               <div className="w-14 h-14 rounded-xl bg-muted flex-shrink-0 overflow-hidden">
                 {booking.itemImage ? (
-                  <img src={booking.itemImage} alt={booking.itemName} className="w-full h-full object-cover" />
+                  <img src={booking.itemImage} alt={booking.itemName} className="w-full h-full object-cover" loading="lazy" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-secondary/20">
                     <Calendar className="h-6 w-6 text-muted-foreground" />

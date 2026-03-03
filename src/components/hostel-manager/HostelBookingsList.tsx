@@ -103,7 +103,6 @@ export const HostelBookingsList = () => {
 
   const handleViewDetails = (bookingId: string) => {
     // Navigate to booking details
-    console.log("View booking details:", bookingId);
   };
 
   if (loading) {
