@@ -56,7 +56,8 @@ export function CouponManagement() {
     is_referral_coupon: false,
     referral_type: undefined,
     specific_users: [],
-    exclude_users: []
+    exclude_users: [],
+    applies_to: 'fees_only' as any,
   });
 
   useEffect(() => {
@@ -187,7 +188,8 @@ export function CouponManagement() {
       partner_id: '',
       usage_limit: undefined, user_usage_limit: 1, start_date: '', end_date: '',
       is_active: true, first_time_user_only: false, is_referral_coupon: false,
-      referral_type: undefined, specific_users: [], exclude_users: []
+      referral_type: undefined, specific_users: [], exclude_users: [],
+      applies_to: 'fees_only' as any,
     });
   };
 
@@ -202,7 +204,8 @@ export function CouponManagement() {
       end_date: coupon.end_date?.split('T')[0], is_active: coupon.is_active,
       first_time_user_only: coupon.first_time_user_only, is_referral_coupon: coupon.is_referral_coupon,
       referral_type: coupon.referral_type, specific_users: coupon.specific_users,
-      exclude_users: coupon.exclude_users
+      exclude_users: coupon.exclude_users,
+      applies_to: (coupon as any).applies_to || 'fees_only',
     });
     setIsDialogOpen(true);
   };
@@ -301,6 +304,17 @@ export function CouponManagement() {
                     <SelectItem value="all" className="text-xs">All (Reading Room + Hostel)</SelectItem>
                     <SelectItem value="cabin" className="text-xs">Reading Room</SelectItem>
                     <SelectItem value="hostel" className="text-xs">Hostel</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Applies To</Label>
+                <Select value={(formData as any).applies_to || 'fees_only'} onValueChange={(v) => setFormData({ ...formData, applies_to: v as any })}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="fees_only" className="text-xs">Fees Only</SelectItem>
+                    <SelectItem value="locker_only" className="text-xs">Locker/Deposit Only</SelectItem>
+                    <SelectItem value="both" className="text-xs">Both (Fees + Locker)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

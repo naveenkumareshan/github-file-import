@@ -336,9 +336,17 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
         const totalWithoutCoupon = Math.round((finalSeatPrice + effectiveLockerDeposit) * 100) / 100;
         setOriginalPrice(totalWithoutCoupon);
         
-        // Apply coupon discount if exists
+        // Apply coupon discount based on applies_to field
         if (appliedCoupon) {
-          const discountedTotal = totalWithoutCoupon - appliedCoupon.discountAmount;
+          const appliesTo = appliedCoupon.coupon?.applies_to || 'fees_only';
+          let discountedTotal: number;
+          if (appliesTo === 'fees_only') {
+            discountedTotal = Math.max(0, finalSeatPrice - appliedCoupon.discountAmount) + effectiveLockerDeposit;
+          } else if (appliesTo === 'locker_only') {
+            discountedTotal = finalSeatPrice + Math.max(0, effectiveLockerDeposit - appliedCoupon.discountAmount);
+          } else {
+            discountedTotal = totalWithoutCoupon - appliedCoupon.discountAmount;
+          }
           setTotalPrice(Math.max(0, discountedTotal));
         } else {
           setTotalPrice(totalWithoutCoupon);
@@ -400,8 +408,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
 
   const handleCouponApply = (couponData) => {
     setAppliedCoupon(couponData);
-    const discountedTotal = originalPrice - couponData.discountAmount;
-    setTotalPrice(Math.max(0, discountedTotal));
+    // Price recalculation happens in the useEffect above based on applies_to
   };
 
   const handleCouponRemove = () => {

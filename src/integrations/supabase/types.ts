@@ -605,6 +605,7 @@ export type Database = {
       coupons: {
         Row: {
           applicable_for: string[] | null
+          applies_to: string
           code: string
           created_at: string | null
           created_by: string | null
@@ -634,6 +635,7 @@ export type Database = {
         }
         Insert: {
           applicable_for?: string[] | null
+          applies_to?: string
           code: string
           created_at?: string | null
           created_by?: string | null
@@ -663,6 +665,7 @@ export type Database = {
         }
         Update: {
           applicable_for?: string[] | null
+          applies_to?: string
           code?: string
           created_at?: string | null
           created_by?: string | null
