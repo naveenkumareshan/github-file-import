@@ -12,6 +12,7 @@ export interface CouponData {
   min_order_amount: number;
   applicable_for: string[];
   scope?: 'global' | 'vendor' | 'user_referral';
+  applies_to?: 'fees_only' | 'locker_only' | 'both';
   partner_id?: string;
   is_referral_coupon?: boolean;
   referral_type?: 'user_generated' | 'welcome_bonus' | 'friend_referral';
@@ -40,6 +41,7 @@ export interface CouponValidationResponse {
     value: number;
     scope?: string;
     is_referral_coupon?: boolean;
+    applies_to?: string;
   };
   originalAmount: number;
   discountAmount: number;
@@ -114,6 +116,7 @@ export const couponService = {
         min_order_amount: couponData.min_order_amount || 0,
         applicable_for: couponData.applicable_for || ['all'],
         scope: couponData.scope || 'global',
+        applies_to: couponData.applies_to || 'fees_only',
         partner_id: couponData.partner_id || null,
         is_referral_coupon: couponData.is_referral_coupon || false,
         referral_type: couponData.referral_type || null,
@@ -155,6 +158,7 @@ export const couponService = {
       if (couponData.partner_id !== undefined) updateData.partner_id = couponData.partner_id || null;
       if (couponData.is_referral_coupon !== undefined) updateData.is_referral_coupon = couponData.is_referral_coupon;
       if (couponData.referral_type !== undefined) updateData.referral_type = couponData.referral_type;
+      if (couponData.applies_to !== undefined) updateData.applies_to = couponData.applies_to;
       if (couponData.usage_limit !== undefined) updateData.usage_limit = couponData.usage_limit || null;
       if (couponData.user_usage_limit !== undefined) updateData.user_usage_limit = couponData.user_usage_limit;
       if (couponData.start_date !== undefined) updateData.start_date = couponData.start_date;
@@ -269,6 +273,7 @@ export const couponService = {
             value: coupon.value,
             scope: coupon.scope,
             is_referral_coupon: coupon.is_referral_coupon,
+            applies_to: (coupon as any).applies_to || 'fees_only',
           },
           originalAmount: amount,
           discountAmount,

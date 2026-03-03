@@ -119,7 +119,7 @@ const AdminBookings = () => {
       </div>
       <div className="flex items-center justify-between pt-1 border-t">
         <div className="text-[11px]">
-          <span className="font-semibold">₹{((b.totalPrice || 0) - (b.lockerPrice || 0)).toLocaleString()}</span>
+          <span className="font-semibold">₹{(b.seatPrice || 0).toLocaleString()}</span>
           <span className="text-muted-foreground ml-2">Paid: ₹{(b.totalPaid || 0).toLocaleString()}</span>
         </div>
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(`/admin/bookings/${b._id}/cabin`)}>
@@ -205,8 +205,9 @@ const AdminBookings = () => {
                         </TableCell>
                         <TableCell className="py-1 px-2 text-[11px]">
                           <div className="grid grid-cols-2 gap-x-4 gap-y-0 min-w-[140px]">
-                            <div className="font-semibold whitespace-nowrap">Seat: ₹{((b.totalPrice || 0) - (b.lockerPrice || 0)).toLocaleString()}</div>
+                            <div className="font-semibold whitespace-nowrap">Seat: ₹{(b.seatPrice || 0).toLocaleString()}</div>
                             <div className="text-[10px] text-muted-foreground whitespace-nowrap">Locker: {(b.lockerPrice || 0) > 0 ? `₹${(b.lockerPrice || 0).toLocaleString()}` : '-'}</div>
+                            {(b.discountAmount || 0) > 0 && <div className="text-[10px] text-destructive whitespace-nowrap">Discount: -₹{(b.discountAmount || 0).toLocaleString()}</div>}
                             <div className="text-[10px] text-emerald-600 whitespace-nowrap">Paid: ₹{(b.totalPaid || 0).toLocaleString()}</div>
                             <div className="text-[10px] text-amber-600 whitespace-nowrap">Due: ₹{(b.duePending || 0).toLocaleString()}</div>
                           </div>

@@ -396,12 +396,14 @@ const VendorSeats: React.FC = () => {
     return addDays(bookingStartDate, Math.max(0, selectedDuration.count - 1));
   }, [selectedDuration, bookingStartDate]);
 
-  // Computed total with locker
+  // Computed total with locker — discount target depends on coupon applies_to (manual bookings always use fees_only)
   const computedTotal = useMemo(() => {
     const base = parseFloat(bookingPrice) || 0;
     const locker = lockerIncluded && selectedCabinInfo ? selectedCabinInfo.lockerPrice : 0;
     const discount = parseFloat(discountAmount) || 0;
-    return Math.max(0, base - discount + locker);
+    // Vendor/admin manual bookings: discount always applies to fees only
+    const discountedBase = Math.max(0, base - discount);
+    return discountedBase + locker;
   }, [bookingPrice, lockerIncluded, selectedCabinInfo, discountAmount]);
 
   // Advance booking computed values

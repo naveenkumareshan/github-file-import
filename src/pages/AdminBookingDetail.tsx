@@ -252,7 +252,9 @@ const AdminBookingDetail = () => {
   // ── Payment calculations ──
   const totalPrice = bookingType === 'hostel' ? (booking.total_price || 0) : (booking.totalPrice || 0);
   const securityDeposit = bookingType === 'hostel' ? (booking.security_deposit || 0) : 0;
-  const seatPrice = bookingType === 'hostel' ? (totalPrice - (booking.food_amount || 0)) : (booking.seatPrice || 0);
+  const seatPrice = bookingType === 'hostel' 
+    ? (totalPrice - (booking.food_amount || 0)) 
+    : ((booking.totalPrice || 0) + (booking.discountAmount || 0) - (booking.lockerPrice || 0));
   const foodAmount = bookingType === 'hostel' ? (booking.food_amount || 0) : 0;
   const lockerAmount = bookingType === 'hostel' ? 0 : (booking.lockerPrice || 0);
   const discountAmount = bookingType === 'hostel' ? 0 : (booking.discountAmount || 0);
