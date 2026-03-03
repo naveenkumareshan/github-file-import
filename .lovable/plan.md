@@ -1,86 +1,54 @@
 
 
-# Consistent Brand Color Theme Across All Pages
+# Differentiate Reading Room and Hostel Color Themes
 
 ## Problem
-The public homepage (Index.tsx) establishes a premium brand identity using the CSS variable-based theme (`primary` deep blue, `secondary` green, `accent` teal) with gradients like `bg-gradient-to-br from-primary via-primary/90 to-accent/80`. However, many other pages use ad-hoc colors (hardcoded purples, violets, arbitrary gradients) that break the cohesive brand feel. The Laundry page, for example, was recently restyled with violet/fuchsia gradients that clash with the blue/green/teal brand palette.
+Both the Reading Room (BookSeat + SeatBookingForm) and Hostel (HostelRoomDetails) booking pages use identical `bg-primary` (deep blue) for all interactive elements -- step numbers, active pills, duration toggles, badges, and end-date chips. This creates a monotone blue experience that doesn't leverage the full brand palette (blue, green, teal) established on the public homepage, and makes the two product types visually indistinguishable.
 
-## Brand Color Reference (from public homepage)
-- **Primary**: Deep Blue (`hsl(207, 52%, 33%)`) -- headers, CTAs, active states
-- **Secondary**: Fresh Green (`hsl(105, 35%, 55%)`) -- accent badges, secondary actions  
-- **Accent**: Teal/Aqua (`hsl(180, 45%, 70%)`) -- highlights, gradient endpoints
-- **Hero gradient**: `from-primary via-primary/90 to-accent/80`
-- **Info chips**: Use semantic colors (emerald for price, blue for capacity, etc.) -- these are fine
+## Solution
+Assign each product type its own color identity from the brand palette while keeping them harmonious:
 
-## Changes by File
+- **Reading Rooms**: Keep `primary` (deep blue) as the dominant color -- this is the core product
+- **Hostels**: Use `secondary` (green) as the dominant accent -- differentiates hostels visually
 
-### 1. `src/pages/Laundry.tsx` -- Student Laundry Page
-The recent redesign used violet/fuchsia gradients that don't match the brand. Align to brand:
-- **Hero header gradient**: Change `from-violet-600 via-purple-600 to-fuchsia-500` to `from-primary via-primary/90 to-accent/80` (matching the homepage hero)
-- **Step indicator active color**: Change violet/purple gradient to `from-primary to-accent`
-- **Floating bottom bar**: Change `from-violet-600 to-purple-700` to `from-primary to-primary/90`
-- **Category styles**: Keep the blue/emerald/amber coding (these are semantic and work well)
-- **Confirmation step**: Change violet/purple gradient to primary/accent brand gradient
+This way, when a student navigates from a Reading Room booking to a Hostel booking, the color shift signals they're in a different product context, making the experience feel more polished and premium.
 
-### 2. `src/components/student/MobileBottomNav.tsx` -- Bottom Navigation Bar
-Currently uses generic `text-primary` for active state and plain `bg-card` background. Enhance to feel more premium:
-- Add a subtle gradient or tinted background to the nav bar (e.g., `bg-card/95 backdrop-blur-md`)
-- Keep the active indicator using `bg-primary` (already brand-consistent)
-- This is mostly fine -- minor polish only
+## Changes
 
-### 3. `src/pages/BookSeat.tsx` -- Reading Room Detail
-The info chips use specific semantic colors (emerald, blue, purple, amber) which work well for differentiation. The main areas to check:
-- Category badge colors: `bg-purple-500/90` for premium, `bg-amber-500/90` for luxury -- these are fine as category identifiers
-- Sticky collapsed header: already uses `bg-background/95` -- consistent
-- Overall: This page is largely consistent. No major changes needed.
+### 1. `src/pages/HostelRoomDetails.tsx` -- Hostel Booking Page
+Switch all `bg-primary` interactive accents to the green/secondary palette:
+- **Step number circles**: `bg-primary` to `bg-secondary` (green circles instead of blue)
+- **Active filter pills** (sharing type, category): `bg-primary text-primary-foreground border-primary` to `bg-secondary text-secondary-foreground border-secondary`
+- **Duration toggle active**: `bg-primary text-primary-foreground` to `bg-secondary text-secondary-foreground`
+- **View toggle (grid/layout) active**: same change to secondary
+- **End date badge**: `bg-primary/10 text-primary` to `bg-secondary/10 text-secondary`
+- **Amenity checkmarks**: `text-primary` to `text-secondary`
+- **Food menu button**: `bg-primary/10 text-primary border-primary/20` to `bg-secondary/10 text-secondary border-secondary/20`
+- **Review section accents**: primary references to secondary
+- Keep info chips (emerald for price, blue for rooms, amber for deposit, pink/blue for gender) as they are -- these are semantic and already work well
 
-### 4. `src/pages/HostelRoomDetails.tsx` -- Hostel Detail
-Similar to BookSeat -- uses semantic chip colors. Check:
-- Gender badge colors (blue/pink/purple) are semantic and appropriate
-- Main structure uses `bg-background`, `text-foreground`, `bg-card` -- consistent
-- No major changes needed.
+### 2. `src/pages/BookSeat.tsx` -- Reading Room Detail Page
+Already uses `bg-primary` throughout -- **no changes needed**. Blue is the correct identity for Reading Rooms.
 
-### 5. `src/pages/Cabins.tsx` -- Reading Rooms List
-- Filter pills use `bg-primary text-primary-foreground` for active -- consistent
-- "Book" button uses `text-primary bg-primary/10` -- consistent
-- No changes needed.
+### 3. `src/components/seats/SeatBookingForm.tsx` -- Reading Room Booking Form
+Already uses `bg-primary` throughout -- **no changes needed**. Blue is correct here.
 
-### 6. `src/pages/Hostels.tsx` -- Hostels List
-- Filter and card styling uses theme tokens -- consistent
-- "View Rooms" button uses `text-primary bg-primary/10` -- consistent
-- No changes needed.
+### 4. `src/pages/Cabins.tsx` -- Reading Rooms List
+Already uses `bg-primary` for active filter pills -- **no changes needed**.
 
-### 7. `src/components/profile/ProfileManagement.tsx` -- Student Profile
-- Uses `bg-card`, `text-foreground`, `bg-primary text-primary-foreground` for avatar -- consistent
-- Camera button uses `bg-primary` -- consistent
-- No changes needed.
-
-### 8. `src/components/admin/AdminSidebar.tsx` -- Admin/Partner Sidebar
-- Header gradient uses `hsl(var(--primary) / 0.06)` -- brand-consistent
-- Active state uses `border-primary bg-primary/8 text-primary` -- consistent
-- Role badges use blue/emerald/amber which are fine for role differentiation
-- No changes needed.
-
-### 9. `src/components/AdminLayout.tsx` -- Admin Layout Header
-- Uses `hsl(var(--primary) / 0.04)` gradient -- consistent
-- No changes needed.
+### 5. `src/pages/Hostels.tsx` -- Hostels List
+Switch active filter pills and gender badges to secondary green to match the hostel identity:
+- Active filter pill: `bg-primary text-primary-foreground border-primary` to `bg-secondary text-secondary-foreground border-secondary`
+- Gender badge on cards: `bg-primary text-primary-foreground` to `bg-secondary text-secondary-foreground`
 
 ## Summary
 
-The main offender is the **Laundry page** which was recently redesigned with violet/fuchsia colors that clash with the blue/green/teal brand. All other pages are already reasonably consistent with the brand theme.
-
-### Files Modified
 | File | Change |
 |------|--------|
-| `src/pages/Laundry.tsx` | Replace violet/fuchsia gradients with brand primary/accent gradients |
-| `src/components/student/MobileBottomNav.tsx` | Minor: add backdrop-blur for premium feel |
+| `src/pages/HostelRoomDetails.tsx` | Replace ~15 instances of `bg-primary` interactive accents with `bg-secondary` equivalents |
+| `src/pages/Hostels.tsx` | Replace active filter pill and gender badge colors to secondary |
+| `src/pages/BookSeat.tsx` | No changes -- blue is correct |
+| `src/components/seats/SeatBookingForm.tsx` | No changes -- blue is correct |
+| `src/pages/Cabins.tsx` | No changes -- blue is correct |
 
-### No changes needed
-- `src/pages/BookSeat.tsx` -- already consistent
-- `src/pages/HostelRoomDetails.tsx` -- already consistent
-- `src/pages/Cabins.tsx` -- already consistent
-- `src/pages/Hostels.tsx` -- already consistent
-- `src/components/profile/ProfileManagement.tsx` -- already consistent
-- `src/components/admin/AdminSidebar.tsx` -- already consistent
-- `src/components/AdminLayout.tsx` -- already consistent
-
+This creates a clear visual language: **Blue = Study Rooms**, **Green = Hostels**, while both still feel part of the same brand family.
