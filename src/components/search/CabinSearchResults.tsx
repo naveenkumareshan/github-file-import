@@ -136,6 +136,7 @@ export const CabinSearchResults = ({
                   src={getImageUrl(imgSrc) || '/placeholder.svg'}
                   alt={cabin.name}
                   className="w-full h-full object-cover"
+                  loading="lazy"
                 />
                 {/* Category badge */}
                 <span className={`absolute top-1 left-1 text-[9px] font-bold text-white px-1.5 py-0.5 rounded-md ${getCategoryColor(cabin.category)}`}>

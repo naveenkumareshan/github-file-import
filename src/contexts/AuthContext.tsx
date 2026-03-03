@@ -212,7 +212,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateUserProfile = async (data: unknown): Promise<boolean> => {
     if (user) {
-      console.log('Updating user profile with data:', data);
       return true;
     }
     return false;

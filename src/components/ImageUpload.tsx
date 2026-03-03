@@ -111,7 +111,7 @@ export function ImageUpload({
       if (!url.startsWith('blob:')) {
         // await uploadService.deleteImage(url);
       }
-      console.log(allImages)
+      
       setUploadedImages(prev => prev.filter(img => img !== url));
       onRemove(url);
       
@@ -166,6 +166,7 @@ export function ImageUpload({
                 src={getImageUrl(img)} 
                 alt={`Uploaded image ${index + 1}`} 
                 className="w-full h-24 object-cover"
+                loading="lazy"
               />
               {onRemove && (
                 <Button

@@ -99,9 +99,7 @@ const VendorPayouts: React.FC = () => {
     setLoading(false);
   };
 
-  console.log(payoutAmount)
   const handleRequestPayout = async () => {
-    console.log(payoutAmount)
     if (!payoutAmount || parseFloat(payoutAmount) < 0) {
       toast({
         title: "Error",

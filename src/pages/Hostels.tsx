@@ -197,7 +197,7 @@ export default function Hostels() {
                 {/* Thumbnail */}
                 <div className="relative flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden bg-muted">
                   {hostel.logo_image ? (
-                    <img src={hostel.logo_image} alt={hostel.name} className="w-full h-full object-cover" />
+                    <img src={hostel.logo_image} alt={hostel.name} className="w-full h-full object-cover" loading="lazy" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                       <Hotel className="h-6 w-6 text-muted-foreground" />

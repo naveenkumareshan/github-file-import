@@ -44,7 +44,6 @@ export const bookingEmailService = {
 
   // Trigger booking failed email
   triggerBookingFailed: async (bookingData: BookingEmailData, errorMessage: string) => {
-    console.log('Triggering booking failed email for:', bookingData.userEmail);
     
     const bookingDetails = {
       id: bookingData.bookingId,
@@ -66,7 +65,7 @@ export const bookingEmailService = {
         errorMessage
       );
       
-      console.log('Booking failed email job created:', result);
+      
       return result;
     } catch (error) {
       console.error('Error triggering booking failed email:', error);
@@ -76,7 +75,6 @@ export const bookingEmailService = {
 
   // Trigger booking reminder email
   triggerBookingReminder: async (bookingData: BookingEmailData, daysUntilExpiry: number = 3) => {
-    console.log('Triggering booking reminder email for:', bookingData.userEmail);
     
     const bookingDetails = {
       id: bookingData.bookingId,
@@ -96,7 +94,7 @@ export const bookingEmailService = {
         bookingDetails
       );
       
-      console.log('Booking reminder email job created:', result);
+      
       return result;
     } catch (error) {
       console.error('Error triggering booking reminder email:', error);

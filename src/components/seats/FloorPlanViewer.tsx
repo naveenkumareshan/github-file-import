@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, memo } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   TooltipProvider, Tooltip, TooltipContent, TooltipTrigger,
@@ -31,6 +31,61 @@ interface FloorPlanViewerProps {
   layoutImageOpacity?: number;
   sections?: any[];
 }
+
+interface SeatButtonProps {
+  seat: ViewerSeat;
+  isSelected: boolean;
+  onSelect?: (seat: ViewerSeat) => void;
+}
+
+const MemoizedSeatButton = memo(({ seat, isSelected, onSelect }: SeatButtonProps) => {
+  const isBooked = !seat.isAvailable;
+  let seatClass = 'bg-emerald-50 border-emerald-400 text-emerald-800 hover:bg-emerald-100 cursor-pointer';
+  if (isSelected) seatClass = 'bg-primary border-primary text-primary-foreground ring-2 ring-primary/50 cursor-pointer';
+  else if (isBooked) seatClass = 'bg-muted border-muted-foreground/30 text-muted-foreground cursor-not-allowed';
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          className={`absolute flex items-center justify-center rounded border text-[10px] font-bold transition-all ${seatClass}`}
+          style={{
+            left: seat.position.x - 18,
+            top: seat.position.y - 13,
+            width: 36,
+            height: 26,
+            zIndex: isSelected ? 20 : 10,
+          }}
+          onClick={e => {
+            e.stopPropagation();
+            if (seat.isAvailable && onSelect) onSelect(seat);
+          }}
+          disabled={isBooked}
+        >
+          {seat.number}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>
+        <div className="text-xs">
+          <p className="font-bold">Seat {seat.number}</p>
+          {seat.category && <p>{seat.category}</p>}
+          <p>₹{seat.price}/month</p>
+          <p>{seat.isAvailable ? '✅ Available' : '❌ Booked'}</p>
+          {!seat.isAvailable && seat.unavailableUntil && (
+            <p>Until: {format(new Date(seat.unavailableUntil), 'dd MMM yyyy')}</p>
+          )}
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  );
+}, (prev, next) => 
+  prev.seat._id === next.seat._id &&
+  prev.seat.isAvailable === next.seat.isAvailable &&
+  prev.isSelected === next.isSelected &&
+  prev.seat.price === next.seat.price
+);
+
+MemoizedSeatButton.displayName = 'MemoizedSeatButton';
 
 export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
   seats,
@@ -187,49 +242,14 @@ export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
           )}
 
           <TooltipProvider>
-            {seats.map(seat => {
-              const isSelected = selectedSeat?._id === seat._id;
-              const isBooked = !seat.isAvailable;
-
-              let seatClass = 'bg-emerald-50 border-emerald-400 text-emerald-800 hover:bg-emerald-100 cursor-pointer';
-              if (isSelected) seatClass = 'bg-primary border-primary text-primary-foreground ring-2 ring-primary/50 cursor-pointer';
-              else if (isBooked) seatClass = 'bg-muted border-muted-foreground/30 text-muted-foreground cursor-not-allowed';
-
-              return (
-                <Tooltip key={seat._id}>
-                  <TooltipTrigger asChild>
-                    <button
-                      className={`absolute flex items-center justify-center rounded border text-[10px] font-bold transition-all ${seatClass}`}
-                      style={{
-                        left: seat.position.x - 18,
-                        top: seat.position.y - 13,
-                        width: 36,
-                        height: 26,
-                        zIndex: isSelected ? 20 : 10,
-                      }}
-                      onClick={e => {
-                        e.stopPropagation();
-                        if (seat.isAvailable && onSeatSelect) onSeatSelect(seat);
-                      }}
-                      disabled={isBooked}
-                    >
-                      {seat.number}
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <div className="text-xs">
-                      <p className="font-bold">Seat {seat.number}</p>
-                      {seat.category && <p>{seat.category}</p>}
-                      <p>₹{seat.price}/month</p>
-                      <p>{seat.isAvailable ? '✅ Available' : '❌ Booked'}</p>
-                      {!seat.isAvailable && seat.unavailableUntil && (
-                        <p>Until: {format(new Date(seat.unavailableUntil), 'dd MMM yyyy')}</p>
-                      )}
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
-              );
-            })}
+            {seats.map(seat => (
+              <MemoizedSeatButton
+                key={seat._id}
+                seat={seat}
+                isSelected={selectedSeat?._id === seat._id}
+                onSelect={onSeatSelect}
+              />
+            ))}
           </TooltipProvider>
         </div>
 

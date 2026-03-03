@@ -87,7 +87,7 @@ const BookConfirmation = lazy(() => import("./pages/Confirmation"));
 const HostelBookConfirmation = lazy(() => import("./pages/HostelConfirmation"));
 const CabinDetails = lazy(() => import("./pages/Cabins"));
 const Hostels = lazy(() => import("./pages/Hostels"));
-const Booking = lazy(() => import("./pages/Booking"));
+
 const BookSeat = lazy(() => import("./pages/BookSeat"));
 const CabinSearch = lazy(() => import("./pages/CabinSearch"));
 const StudentBookings = lazy(() => import("./pages/StudentBookings"));
@@ -293,7 +293,7 @@ function App() {
               <Route path="/laundry-request" element={<StudentSuspense><Laundry /></StudentSuspense>} />
               <Route path="/privacy-policy" element={<StudentSuspense><PrivacyPolicy /></StudentSuspense>} />
               <Route path="/terms" element={<StudentSuspense><TermsAndConditions /></StudentSuspense>} />
-              <Route path="/booking/:cabinId" element={<StudentSuspense><Booking /></StudentSuspense>} />
+              
               <Route path="/book-seat/:cabinId" element={<StudentSuspense><BookSeat /></StudentSuspense>} />
               <Route path="/book-confirmation/:bookingId" element={<StudentSuspense><BookConfirmation /></StudentSuspense>} />
 
