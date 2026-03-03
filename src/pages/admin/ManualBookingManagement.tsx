@@ -20,6 +20,7 @@ import { Clock, UserPlus, Search, Loader2 } from 'lucide-react';
 import { formatTime } from '@/utils/timingUtils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { supabase } from '@/integrations/supabase/client';
+import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
 
 // Define bookingType type to fix TypeScript errors
 type BookingType = 'cabin' | 'hostel';
@@ -108,6 +109,7 @@ const ManualBookingManagement: React.FC = () => {
   const [finalPrice, setFinalPrice] = useState<number>(0);
   const [paymentStatus, setPaymentStatus] = useState<'pending' | 'completed' | 'failed'>('pending');
   const [paymentMethod, setPaymentMethod] = useState<string>('cash');
+  const [paymentProofUrl, setPaymentProofUrl] = useState('');
   const [notes, setNotes] = useState<string>('');
   const [months, setMonths] = useState<number>(1);
   const [durationCount, setDurationCount] = useState<number>(1);
@@ -954,6 +956,9 @@ useEffect(() => {
               <Input type="text" id="transaction_id" value={transaction_id}  onChange={(e) => setTransactionId(e.target.value)}
 />
             </div>
+            {paymentMethod !== 'cash' && (
+              <PaymentProofUpload value={paymentProofUrl} onChange={setPaymentProofUrl} />
+            )}
              <div>
               <Label htmlFor="receipt_no">Receipt No</Label>
               <Input type="text" id="receipt_no" value={receipt_no} onChange={(e) => setReceiptNo(e.target.value)}

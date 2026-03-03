@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Textarea } from '@/components/ui/textarea';
 import { HostelDuePaymentHistory } from '@/components/booking/HostelDuePaymentHistory';
+import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
 
 const HostelDueManagement: React.FC = () => {
   const [dues, setDues] = useState<any[]>([]);
@@ -41,6 +42,7 @@ const HostelDueManagement: React.FC = () => {
   const [collectTxnId, setCollectTxnId] = useState('');
   const [collectNotes, setCollectNotes] = useState('');
   const [collecting, setCollecting] = useState(false);
+  const [collectProofUrl, setCollectProofUrl] = useState('');
 
   // Date editing state
   const [editingField, setEditingField] = useState<'due_date' | 'bed_valid' | null>(null);
@@ -462,6 +464,10 @@ const HostelDueManagement: React.FC = () => {
                   <Label className="text-xs">Transaction ID</Label>
                   <Input className="h-8 text-xs" value={collectTxnId} onChange={e => setCollectTxnId(e.target.value)} />
                 </div>
+              )}
+
+              {collectMethod !== 'cash' && (
+                <PaymentProofUpload value={collectProofUrl} onChange={setCollectProofUrl} />
               )}
 
               <div>

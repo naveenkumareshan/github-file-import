@@ -35,6 +35,7 @@ import { useVendorEmployeePermissions } from '@/hooks/useVendorEmployeePermissio
 import { DuePaymentHistory } from '@/components/booking/DuePaymentHistory';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
 
 type ViewMode = 'grid' | 'table';
 type StatusFilter = 'all' | 'available' | 'booked' | 'expiring_soon' | 'blocked';
@@ -95,6 +96,7 @@ const VendorSeats: React.FC = () => {
   const [discountReason, setDiscountReason] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<string>('cash');
   const [transactionId, setTransactionId] = useState('');
+  const [paymentProofUrl, setPaymentProofUrl] = useState('');
 
   // Slot selection state
   const [selectedSlot, setSelectedSlot] = useState<CabinSlot | null>(null);
@@ -229,6 +231,7 @@ const VendorSeats: React.FC = () => {
     setDiscountReason('');
     setPaymentMethod('cash');
     setTransactionId('');
+    setPaymentProofUrl('');
     setBookingSuccess(false);
     setLastInvoiceData(null);
     setShowFutureBooking(false);
@@ -1514,6 +1517,11 @@ const VendorSeats: React.FC = () => {
                         </div>
                       )}
 
+                      {/* Payment Proof Upload for non-cash */}
+                      {paymentMethod !== 'cash' && (
+                        <PaymentProofUpload value={paymentProofUrl} onChange={setPaymentProofUrl} />
+                      )}
+
                       {/* Collected by */}
                       <div className="text-muted-foreground text-[10px] px-1">
                         Collected by: {user?.name || user?.email || 'Partner'}
@@ -1677,6 +1685,9 @@ const VendorSeats: React.FC = () => {
                                       <Label className="text-[10px]">Transaction ID</Label>
                                       <Input className="h-7 text-xs" value={dueCollectTxnId} onChange={e => setDueCollectTxnId(e.target.value)} />
                                     </div>
+                                  )}
+                                  {dueCollectMethod !== 'cash' && (
+                                    <PaymentProofUpload value={paymentProofUrl} onChange={setPaymentProofUrl} />
                                   )}
                                   <Button
                                     size="sm"

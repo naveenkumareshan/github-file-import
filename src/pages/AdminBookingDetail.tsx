@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { adminBookingsService } from '@/api/adminBookingsService';
 import { hostelService } from '@/api/hostelService';
-import { ChevronLeft, CreditCard, IndianRupee, RefreshCw, Receipt, FileDown } from 'lucide-react';
+import { ChevronLeft, CreditCard, IndianRupee, RefreshCw, Receipt, FileDown, ImageIcon } from 'lucide-react';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -492,6 +492,7 @@ const AdminBookingDetail = () => {
                       <TableHead className="text-[10px] py-1.5">Amount</TableHead>
                       <TableHead className="text-[10px] py-1.5">Method</TableHead>
                       <TableHead className="text-[10px] py-1.5">Txn ID</TableHead>
+                      <TableHead className="text-[10px] py-1.5">Proof</TableHead>
                       <TableHead className="text-[10px] py-1.5">Date</TableHead>
                       <TableHead className="text-[10px] py-1.5">Collected By</TableHead>
                       <TableHead className="text-[10px] py-1.5">Notes</TableHead>
@@ -514,6 +515,13 @@ const AdminBookingDetail = () => {
                         </TableCell>
                         <TableCell className="text-[11px] py-1.5 capitalize">{r.payment_method}</TableCell>
                         <TableCell className="text-[11px] py-1.5">{r.transaction_id || '-'}</TableCell>
+                        <TableCell className="py-1.5">
+                          {r.payment_proof_url ? (
+                            <a href={r.payment_proof_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                              <ImageIcon className="h-4 w-4" />
+                            </a>
+                          ) : '-'}
+                        </TableCell>
                         <TableCell className="text-[11px] py-1.5">{r.created_at ? format(new Date(r.created_at), 'dd MMM yy, HH:mm') : '-'}</TableCell>
                         <TableCell className="text-[11px] py-1.5">{r.collected_by_name || '-'}</TableCell>
                         <TableCell className="text-[11px] py-1.5 text-muted-foreground">{r.notes || '-'}</TableCell>
@@ -524,7 +532,7 @@ const AdminBookingDetail = () => {
                       <TableCell className="py-1.5">
                         <span className="text-[11px] text-green-600 font-semibold">₹{grandTotal.toLocaleString()}</span>
                       </TableCell>
-                      <TableCell colSpan={5}></TableCell>
+                      <TableCell colSpan={6}></TableCell>
                     </TableRow>
                   </TableBody>
                 </Table>

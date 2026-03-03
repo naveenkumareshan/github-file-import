@@ -176,6 +176,7 @@ export type Database = {
           locker_refund_transaction_id: string
           locker_refunded: boolean
           payment_method: string
+          payment_proof_url: string | null
           payment_status: string | null
           razorpay_order_id: string | null
           razorpay_payment_id: string | null
@@ -216,6 +217,7 @@ export type Database = {
           locker_refund_transaction_id?: string
           locker_refunded?: boolean
           payment_method?: string
+          payment_proof_url?: string | null
           payment_status?: string | null
           razorpay_order_id?: string | null
           razorpay_payment_id?: string | null
@@ -256,6 +258,7 @@ export type Database = {
           locker_refund_transaction_id?: string
           locker_refunded?: boolean
           payment_method?: string
+          payment_proof_url?: string | null
           payment_status?: string | null
           razorpay_order_id?: string | null
           razorpay_payment_id?: string | null
@@ -386,6 +389,7 @@ export type Database = {
           locker_price: number
           name: string
           opening_time: string
+          payment_proof_required: boolean | null
           price: number | null
           room_elements: Json | null
           room_height: number
@@ -431,6 +435,7 @@ export type Database = {
           locker_price?: number
           name: string
           opening_time?: string
+          payment_proof_required?: boolean | null
           price?: number | null
           room_elements?: Json | null
           room_height?: number
@@ -476,6 +481,7 @@ export type Database = {
           locker_price?: number
           name?: string
           opening_time?: string
+          payment_proof_required?: boolean | null
           price?: number | null
           room_elements?: Json | null
           room_height?: number
@@ -713,6 +719,7 @@ export type Database = {
           id: string
           notes: string
           payment_method: string
+          payment_proof_url: string | null
           transaction_id: string
         }
         Insert: {
@@ -724,6 +731,7 @@ export type Database = {
           id?: string
           notes?: string
           payment_method?: string
+          payment_proof_url?: string | null
           transaction_id?: string
         }
         Update: {
@@ -735,6 +743,7 @@ export type Database = {
           id?: string
           notes?: string
           payment_method?: string
+          payment_proof_url?: string | null
           transaction_id?: string
         }
         Relationships: [
@@ -961,6 +970,7 @@ export type Database = {
           hostel_id: string
           id: string
           payment_method: string | null
+          payment_proof_url: string | null
           payment_status: string
           razorpay_order_id: string | null
           razorpay_payment_id: string | null
@@ -1002,6 +1012,7 @@ export type Database = {
           hostel_id: string
           id?: string
           payment_method?: string | null
+          payment_proof_url?: string | null
           payment_status?: string
           razorpay_order_id?: string | null
           razorpay_payment_id?: string | null
@@ -1043,6 +1054,7 @@ export type Database = {
           hostel_id?: string
           id?: string
           payment_method?: string | null
+          payment_proof_url?: string | null
           payment_status?: string
           razorpay_order_id?: string | null
           razorpay_payment_id?: string | null
@@ -1117,6 +1129,7 @@ export type Database = {
           id: string
           notes: string
           payment_method: string
+          payment_proof_url: string | null
           transaction_id: string
         }
         Insert: {
@@ -1128,6 +1141,7 @@ export type Database = {
           id?: string
           notes?: string
           payment_method?: string
+          payment_proof_url?: string | null
           transaction_id?: string
         }
         Update: {
@@ -1139,6 +1153,7 @@ export type Database = {
           id?: string
           notes?: string
           payment_method?: string
+          payment_proof_url?: string | null
           transaction_id?: string
         }
         Relationships: [
@@ -1334,6 +1349,7 @@ export type Database = {
           id: string
           notes: string | null
           payment_method: string
+          payment_proof_url: string | null
           receipt_type: string
           serial_number: string | null
           settlement_id: string | null
@@ -1351,6 +1367,7 @@ export type Database = {
           id?: string
           notes?: string | null
           payment_method?: string
+          payment_proof_url?: string | null
           receipt_type?: string
           serial_number?: string | null
           settlement_id?: string | null
@@ -1368,6 +1385,7 @@ export type Database = {
           id?: string
           notes?: string | null
           payment_method?: string
+          payment_proof_url?: string | null
           receipt_type?: string
           serial_number?: string | null
           settlement_id?: string | null
@@ -1675,6 +1693,7 @@ export type Database = {
           logo_image: string | null
           max_advance_booking_days: number
           name: string
+          payment_proof_required: boolean | null
           refund_policy: string | null
           review_count: number
           security_deposit: number
@@ -1720,6 +1739,7 @@ export type Database = {
           logo_image?: string | null
           max_advance_booking_days?: number
           name: string
+          payment_proof_required?: boolean | null
           refund_policy?: string | null
           review_count?: number
           security_deposit?: number
@@ -1765,6 +1785,7 @@ export type Database = {
           logo_image?: string | null
           max_advance_booking_days?: number
           name?: string
+          payment_proof_required?: boolean | null
           refund_policy?: string | null
           review_count?: number
           security_deposit?: number
@@ -2674,6 +2695,7 @@ export type Database = {
           id: string
           notes: string
           payment_method: string
+          payment_proof_url: string | null
           receipt_type: string
           seat_id: string | null
           serial_number: string | null
@@ -2693,6 +2715,7 @@ export type Database = {
           id?: string
           notes?: string
           payment_method?: string
+          payment_proof_url?: string | null
           receipt_type?: string
           seat_id?: string | null
           serial_number?: string | null
@@ -2712,6 +2735,7 @@ export type Database = {
           id?: string
           notes?: string
           payment_method?: string
+          payment_proof_url?: string | null
           receipt_type?: string
           seat_id?: string | null
           serial_number?: string | null
