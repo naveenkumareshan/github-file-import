@@ -1,64 +1,33 @@
 
-# Fix Share Button, URL, and Bottom Navigation
+# Fix Payment Failures: Razorpay Receipt Length Error
 
-## 1. Update Share URL to `inhalestays.com`
+## Root Cause
 
-**File: `src/utils/appUrl.ts`**
-Change `"https://bookmynook.com"` to `"https://inhalestays.com"`. This single change fixes all share links, credential links, and partner links across the entire app.
+The edge function logs show the exact error:
 
-## 2. Move Share Button Below Image (beside photo counter)
-
-Currently the ShareButton sits in the top-right image overlay. Move it to the property info section below the image, next to the property name, making it more visible and accessible.
-
-**File: `src/pages/BookSeat.tsx`** (lines 256-266)
-- Remove `ShareButton` from the `absolute top-3 right-3` overlay div
-- Add it in the info section (line ~274) next to the property name, as a small inline icon button
-
-**File: `src/pages/HostelRoomDetails.tsx`** (lines 486-498)
-- Same change: remove from overlay, place next to hostel name below the image
-
-**File: `src/components/CabinImageSlider.tsx`**
-- No changes needed -- the photo counter stays inside the carousel as-is
-
-### Layout after change (BookSeat example):
-```text
-[  Image Carousel with photo counter "1/5"  ]
-PropertyName                    [Share icon]
-Star 4.5 (12 reviews)
-Pin Location address
+```
+receipt: the length must be no more than 40.
 ```
 
-## 3. Clean Up Share Text
+In `razorpay-create-order/index.ts`, the receipt is set as `booking_${bookingId}` where `bookingId` is a UUID (36 chars). This makes the receipt **44 characters**, exceeding Razorpay's **40-character limit**.
 
-**File: `src/utils/shareUtils.ts`**
-- Make the share text cleaner and more readable
-- Put property name prominently first
-- Keep emojis but format better with line breaks
+This causes all payments (initial booking payments AND due payments) to fail with "Edge Function returned a non-2xx status code."
 
-## 4. Bigger Bottom Navigation Icons with Theme Color
+## Fix
 
-**File: `src/components/student/MobileBottomNav.tsx`**
-- Increase icon size: `w-5 h-5` (20px) to `w-6 h-6` (24px)
-- Increase text: `text-[10px]` to `text-[11px]`
-- Increase nav height: `min-h-[56px]` to `min-h-[64px]`
-- Active tab: add light primary background (`bg-primary/10 rounded-xl px-3 py-1`)
-- Widen active indicator bar: `w-8` to `w-10`
-- Increase active scale: `scale-110` to `scale-[1.15]`
+### File: `supabase/functions/razorpay-create-order/index.ts` (line 76)
 
-### Visual result:
-```text
-Before: tiny icons, no color distinction
-After:  larger icons, active tab has soft primary-tinted background pill
+Change the receipt field to use a shortened ID:
+
+```
+Before: receipt: `booking_${bookingId}`        // 44 chars - FAILS
+After:  receipt: `bk_${bookingId.replace(/-/g, '').slice(0, 36)}`  // 39 chars - OK
 ```
 
----
+This strips hyphens from the UUID and truncates to fit within Razorpay's 40-char limit while keeping the booking traceable.
 
-## Summary
+This single fix resolves both issues:
+1. Initial booking payments failing
+2. Due payments failing (same edge function is used)
 
-| File | Change |
-|------|--------|
-| `src/utils/appUrl.ts` | URL to `https://inhalestays.com` |
-| `src/utils/shareUtils.ts` | Cleaner share text formatting |
-| `src/pages/BookSeat.tsx` | Move ShareButton below image beside name |
-| `src/pages/HostelRoomDetails.tsx` | Move ShareButton below image beside name |
-| `src/components/student/MobileBottomNav.tsx` | Larger icons, themed active state |
+No frontend changes needed -- the error originates entirely from the Razorpay API rejecting the receipt length.
