@@ -10,11 +10,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, subDays, parseISO } from 'date-fns';
-import { Search, AlertTriangle, CheckCircle2, Eye, Upload } from 'lucide-react';
+import { Search, AlertTriangle, CheckCircle2, Eye, Upload, Receipt, IndianRupee } from 'lucide-react';
 import CheckInUploadDialog from './CheckInUploadDialog';
 import ReportedTodaySection from './ReportedTodaySection';
 import CheckInViewDetailsDialog from './CheckInViewDetailsDialog';
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
+import { CollectDrawer, ReceiptsDialog, fmtAmt } from './CheckInFinancials';
 
 type Module = 'reading_room' | 'hostel';
 
@@ -30,6 +31,13 @@ const CheckInTracker = () => {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+
+  // Collect & Receipts state
+  const [collectDue, setCollectDue] = useState<any>(null);
+  const [collectOpen, setCollectOpen] = useState(false);
+  const [receiptsBooking, setReceiptsBooking] = useState<any>(null);
+  const [receiptsOpen, setReceiptsOpen] = useState(false);
+
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -37,7 +45,7 @@ const CheckInTracker = () => {
   const today = format(new Date(), 'yyyy-MM-dd');
   const yesterday = format(subDays(new Date(), 1), 'yyyy-MM-dd');
 
-  // Reading room bookings query - only today & yesterday
+  // Reading room bookings query
   const { data: rrBookings = [], isLoading: rrLoading } = useQuery({
     queryKey: ['checkin-rr-bookings', today, yesterday],
     queryFn: async () => {
@@ -54,7 +62,7 @@ const CheckInTracker = () => {
     enabled: module === 'reading_room',
   });
 
-  // Hostel bookings query - only today & yesterday
+  // Hostel bookings query
   const { data: hostelBookings = [], isLoading: hostelLoading } = useQuery({
     queryKey: ['checkin-hostel-bookings', today, yesterday],
     queryFn: async () => {
@@ -69,6 +77,25 @@ const CheckInTracker = () => {
       return data || [];
     },
     enabled: module === 'hostel',
+  });
+
+  // Fetch dues for current bookings (reading room)
+  const bookingIds = (module === 'reading_room' ? rrBookings : hostelBookings).map((b: any) => b.id);
+  
+  const { data: duesMap = {} } = useQuery({
+    queryKey: ['checkin-dues', module, bookingIds],
+    queryFn: async () => {
+      if (bookingIds.length === 0) return {};
+      const table = module === 'reading_room' ? 'dues' : 'hostel_dues';
+      const { data } = await supabase
+        .from(table)
+        .select('*')
+        .in('booking_id', bookingIds);
+      const map: Record<string, any> = {};
+      (data || []).forEach((d: any) => { map[d.booking_id] = d; });
+      return map;
+    },
+    enabled: bookingIds.length > 0,
   });
 
   const markReportedMutation = useMutation({
@@ -120,6 +147,18 @@ const CheckInTracker = () => {
     setViewDialogOpen(true);
   };
 
+  const handleCollect = (booking: any) => {
+    const due = duesMap[booking.id];
+    if (!due) return;
+    setCollectDue({ ...due, profiles: booking.profiles });
+    setCollectOpen(true);
+  };
+
+  const handleReceipts = (booking: any) => {
+    setReceiptsBooking(booking);
+    setReceiptsOpen(true);
+  };
+
   const isLoading = module === 'reading_room' ? rrLoading : hostelLoading;
   const bookings = module === 'reading_room' ? rrBookings : hostelBookings;
 
@@ -133,6 +172,31 @@ const CheckInTracker = () => {
   });
 
   const isNoShow = (startDate: string) => startDate === yesterday;
+
+  const getFinancials = (b: any) => {
+    const due = duesMap[b.id];
+    if (module === 'reading_room') {
+      const price = Number(b.total_price || 0);
+      const deposit = Number(b.locker_price || 0);
+      if (due) {
+        const paid = Number(due.advance_paid || 0) + Number(due.paid_amount || 0);
+        const remaining = Math.max(0, Number(due.due_amount || 0) - Number(due.paid_amount || 0));
+        return { price, deposit, paid, due: remaining, hasDue: !!due };
+      }
+      // No due record - assume fully paid
+      return { price, deposit, paid: price + deposit, due: 0, hasDue: false };
+    } else {
+      const price = Number(b.total_price || 0);
+      const deposit = Number(b.security_deposit || 0);
+      if (due) {
+        const paid = Number(due.advance_paid || 0) + Number(due.paid_amount || 0);
+        const remaining = Math.max(0, Number(due.due_amount || 0) - Number(due.paid_amount || 0));
+        return { price, deposit, paid, due: remaining, hasDue: !!due };
+      }
+      const paid = Number(b.advance_amount || 0);
+      return { price, deposit, paid, due: Math.max(0, price + deposit - paid), hasDue: false };
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -186,6 +250,10 @@ const CheckInTracker = () => {
                   {module === 'reading_room' ? 'Room / Seat' : 'Hostel / Bed'}
                 </th>
                 <th className="text-left py-2 px-3 font-medium">Start Date</th>
+                <th className="text-right py-2 px-3 font-medium">{module === 'reading_room' ? 'Seat Price' : 'Bed Price'}</th>
+                <th className="text-right py-2 px-3 font-medium">Deposit</th>
+                <th className="text-right py-2 px-3 font-medium">Paid</th>
+                <th className="text-right py-2 px-3 font-medium">Due</th>
                 <th className="text-left py-2 px-3 font-medium">Payment</th>
                 <th className="text-right py-2 px-3 font-medium">Actions</th>
               </tr>
@@ -194,6 +262,7 @@ const CheckInTracker = () => {
               {filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((b: any, index: number) => {
                 const startDate = b.start_date;
                 const noShow = isNoShow(startDate);
+                const fin = getFinancials(b);
                 return (
                   <tr key={b.id} className={`border-b last:border-0 ${noShow ? 'bg-destructive/5' : 'hover:bg-muted/30'}`}>
                     <td className="py-1.5 px-3 text-muted-foreground">{getSerialNumber(index, currentPage, pageSize)}</td>
@@ -217,6 +286,12 @@ const CheckInTracker = () => {
                       </div>
                       {noShow && <div className="text-[10px] text-destructive">Yesterday - No show</div>}
                     </td>
+                    <td className="py-1.5 px-3 text-right font-medium">{fmtAmt(fin.price)}</td>
+                    <td className="py-1.5 px-3 text-right">{fmtAmt(fin.deposit)}</td>
+                    <td className="py-1.5 px-3 text-right text-emerald-600">{fmtAmt(fin.paid)}</td>
+                    <td className={`py-1.5 px-3 text-right font-medium ${fin.due > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                      {fmtAmt(fin.due)}
+                    </td>
                     <td className="py-1.5 px-3">
                       <Badge variant={b.payment_status === 'completed' ? 'default' : 'secondary'} className="text-[10px]">
                         {b.payment_status}
@@ -230,6 +305,14 @@ const CheckInTracker = () => {
                         <Button size="sm" variant="ghost" className="h-6 w-6 p-0" title="Upload Documents" onClick={() => handleUploadDocs(b)}>
                           <Upload className="h-3 w-3" />
                         </Button>
+                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0" title="Receipts" onClick={() => handleReceipts(b)}>
+                          <Receipt className="h-3 w-3" />
+                        </Button>
+                        {fin.due > 0 && fin.hasDue && (
+                          <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => handleCollect(b)}>
+                            <IndianRupee className="h-3 w-3 mr-0.5" />Collect
+                          </Button>
+                        )}
                         <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => handleMarkReported(b)}>
                           Mark Reported
                         </Button>
@@ -305,6 +388,27 @@ const CheckInTracker = () => {
           }}
         />
       )}
+
+      {/* Collect Drawer */}
+      <CollectDrawer
+        open={collectOpen}
+        onOpenChange={setCollectOpen}
+        due={collectDue}
+        module={module}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['checkin-rr-bookings'] });
+          queryClient.invalidateQueries({ queryKey: ['checkin-hostel-bookings'] });
+          queryClient.invalidateQueries({ queryKey: ['checkin-dues'] });
+        }}
+      />
+
+      {/* Receipts Dialog */}
+      <ReceiptsDialog
+        open={receiptsOpen}
+        onOpenChange={setReceiptsOpen}
+        booking={receiptsBooking}
+        module={module}
+      />
     </div>
   );
 };
