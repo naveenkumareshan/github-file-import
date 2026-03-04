@@ -1,52 +1,36 @@
 
 
-# Plan: Fix Add Property Navigation + Add Multi-Seat/Bed Placement
+# Fix: All Generated Seats Not Visible
 
-## Issue 1: "Add New Property" button navigates to profile instead of starting property creation
+## Root Cause
 
-Currently all three property type buttons in the `ManageProperties` dialog navigate to `/partner/profile`. They should instead open the property creation flow directly within the current page.
+The `AutoSeatGenerator` has a boundary check (line 69) that **silently skips** any seat whose position exceeds `roomWidth` or `roomHeight`:
 
-**Fix in `src/pages/partner/ManageProperties.tsx`:**
-- For **Reading Room**: Set `showEditor(true)` on the RoomManagement tab by switching to the `rooms` tab and triggering a "new cabin" action. Since `RoomManagement` is a lazy-loaded page with its own `showEditor` state, the simplest approach is to:
-  - Switch the active tab to the correct property type
-  - Pass a query param or use a shared state/ref to signal "create new"
-  - Alternative (simpler): navigate to a dedicated route like `/partner/properties?tab=rooms&action=new`
+```typescript
+if (x + 32 > roomWidth - gridSize || y + 22 > roomHeight - gridSize) continue;
+```
 
-Actually, the cleanest approach: Instead of navigating away, switch the active tab and communicate the "add new" intent via a state prop passed to the lazy-loaded child components.
+With default room dimensions of 800×600 and a `startY` of ~200, only a handful of rows fit before seats start getting dropped. The user generates e.g. 80 seats but only ~30 appear because the rest fall outside the canvas boundary.
 
-**Changes:**
-- `ManageProperties.tsx`: Convert `defaultTab` to controlled state. On dialog button click, set the active tab and a `triggerNew` flag. Pass `triggerNew` as a prop to `RoomManagement` / `HostelManagement` / `LaundryPartnerDashboard`.
-- `RoomManagement.tsx`: Accept an optional `autoCreateNew` prop. When it transitions from false to true, call `handleNewCabin()` to open the editor.
-- `HostelManagement.tsx`: Same pattern — accept `autoCreateNew` and trigger the hostel creation flow.
+## Fix
 
-## Issue 2: Add option to place multiple seats/beds at once by specifying a count
+**Remove the boundary check** in `AutoSeatGenerator` and instead **auto-expand the room dimensions** to accommodate all generated seats. Additionally, auto-fit the zoom after generation so all seats are visible.
 
-Currently, the `FloorPlanDesigner` (seats) and `HostelBedPlanDesigner` (beds) place one seat/bed per click. The user wants a "place multiple" option that asks for a count and auto-arranges them.
-
-**Note:** An `AutoSeatGenerator` component already exists but is not wired into the `FloorPlanDesigner`. For beds, no such component exists.
-
-**Changes:**
-
-### Seats (`FloorPlanDesigner.tsx`)
-- Add a "Add Multiple Seats" button to the toolbar (next to "Place Seats")
-- Wire up the existing `AutoSeatGenerator` component: open it on button click, pass `roomWidth`, `roomHeight`, `GRID_SNAP`, and `seats.length`
-- On generate, call `onPlaceSeat` for each generated seat
-
-### Beds (`HostelBedPlanDesigner.tsx`)
-- Add a "Add Multiple Beds" button to the toolbar
-- Create a simple dialog (inline or new component) that asks for count, sharing option, and category
-- On confirm, auto-place beds in a grid pattern within the room, calling `onPlaceBed` for each
-
-### Seat Placement Dialog Enhancement
-- In `SeatPlacementDialog` (inside `FloorPlanDesigner.tsx`), add a "Count" field (default 1). When count > 1, place that many seats starting from the clicked position, auto-incrementing seat numbers and arranging in a row/grid pattern.
-
-## Files to Change
+### Changes
 
 | File | Change |
 |------|--------|
-| `src/pages/partner/ManageProperties.tsx` | Use controlled tab state; pass create-new signal to children |
-| `src/pages/RoomManagement.tsx` | Accept `autoCreateNew` prop, trigger editor open |
-| `src/pages/hotelManager/HostelManagement.tsx` | Accept `autoCreateNew` prop, trigger create flow |
-| `src/components/seats/FloorPlanDesigner.tsx` | Add "Add Multiple" button, integrate `AutoSeatGenerator`, add count field to placement dialog |
-| `src/components/hostels/HostelBedPlanDesigner.tsx` | Add "Add Multiple Beds" button with count dialog |
+| `src/components/seats/AutoSeatGenerator.tsx` | Remove the boundary skip on line 69. Instead, calculate the max X/Y needed and return it alongside the seats. |
+| `src/components/seats/FloorPlanDesigner.tsx` | After `handleAutoGenerate`, if seats extend beyond current room dimensions, call a new optional `onRoomResize` callback to expand the canvas. |
+| `src/pages/SeatManagement.tsx` | Add `onRoomResize` handler that updates `roomWidth`/`roomHeight` state and persists via `adminCabinsService.updateCabinLayout`. |
+
+### Detailed approach
+
+1. **AutoSeatGenerator**: Remove the `continue` on line 69. Let all seats generate regardless of room bounds.
+
+2. **FloorPlanDesigner**: In `handleAutoGenerate`, after placing seats, compute `maxX = max(all seat positions.x) + padding` and `maxY = max(all seat positions.y) + padding`. If these exceed current `roomWidth`/`roomHeight`, call `onRoomResize(newWidth, newHeight)`.
+
+3. **SeatManagement**: Pass an `onRoomResize` prop to `FloorPlanDesigner`. The handler updates `roomWidth`/`roomHeight` state and saves via `adminCabinsService.updateCabinLayout`.
+
+4. **FloorPlanDesigner**: After auto-generation completes, call `handleFitToScreen()` to auto-zoom so all seats are visible.
 
