@@ -258,13 +258,13 @@ function App() {
             </Route>
 
             {/* ── Partner routes (formerly vendor/host) ── */}
-            <Route path="/partner/login" element={<VendorLogin />} />
+            <Route path="/partner/login" element={<Suspense fallback={<div className="p-6 text-center">Loading...</div>}><VendorLogin /></Suspense>} />
             <Route path="/partner/register" element={<Suspense fallback={<div className="p-6 text-center">Loading...</div>}><PartnerOnboard /></Suspense>} />
             <Route path="/partner/onboard" element={<Suspense fallback={<div className="p-6 text-center">Loading...</div>}><PartnerOnboard /></Suspense>} />
             <Route path="/partner/forgot-password" element={<Suspense fallback={<div className="p-6 text-center">Loading...</div>}><ForgotPassword /></Suspense>} />
-            <Route path="/vendor/login" element={<VendorLogin />} />
+            <Route path="/vendor/login" element={<Suspense fallback={<div className="p-6 text-center">Loading...</div>}><VendorLogin /></Suspense>} />
             <Route path="/vendor/register" element={<Suspense fallback={<div className="p-6 text-center">Loading...</div>}><PartnerOnboard /></Suspense>} />
-            <Route path="/host/login" element={<VendorLogin />} />
+            <Route path="/host/login" element={<Suspense fallback={<div className="p-6 text-center">Loading...</div>}><VendorLogin /></Suspense>} />
             <Route path="/host/register" element={<Suspense fallback={<div className="p-6 text-center">Loading...</div>}><PartnerOnboard /></Suspense>} />
 
             {/* ── Laundry agent ── */}
