@@ -1,34 +1,29 @@
 
 
-# Plan: Delete All Seats + Remove Aisle/Spacing from Generator
+# Fix: Seat Overlap & Show Seat Count
+
+## Problems
+
+1. **Seats overlap**: The Reset Layout uses `SEAT_W + GRID_SNAP` (36+40=76) as spacing, then `snapToGrid` rounds to nearest 40, causing some seats to snap to the **same position**. The auto-generator's `snap()` with 40px grid also collapses close positions.
+2. **Seat count not visible**: No indicator showing total seats on the layout.
 
 ## Changes
 
-### 1. Add "Delete All Seats" button (`FloorPlanDesigner.tsx`)
-- Add a "Delete All" button in the toolbar (next to Reset Layout), shown when seats exist
-- On click, show a confirmation dialog, then call a new `onDeleteAllSeats` prop
-- Add `onDeleteAllSeats?: () => Promise<void>` to the props interface
+### 1. Fix Reset Layout spacing (`FloorPlanDesigner.tsx`)
+- Use **pixel-based spacing without snapping** to prevent overlap: `SEAT_W + 6` (42px) horizontally, `SEAT_H + 6` (32px) vertically
+- Remove `snapToGrid` calls from reset positioning — use exact pixel positions so no two seats land on the same spot
+- Use a fixed column count matching the user's seatsPerRow (or calculate based on available width)
 
-### 2. Add bulk delete handler (`SeatManagement.tsx`)
-- Add `handleDeleteAllSeats` that deletes all seats on the current floor by calling `supabase.from('seats').delete().eq('cabin_id', id).eq('floor', selectedFloor)` via a new `adminSeatsService.deleteAllSeatsByCabin` method
-- After deletion, clear the local `seats` state and `selectedSeat`
-- Pass as `onDeleteAllSeats` prop to `FloorPlanDesigner`
+### 2. Fix Auto-Generator spacing (`AutoSeatGenerator.tsx`)
+- Remove `snap()` calls from seat position calculation — the snap function with gridSize=40 collapses seats that are 40px apart into the same position
+- Use raw pixel positions: `startX + c * (SEAT_W + 6)` and `startY + r * (SEAT_H + 6)` for tight continuous arrangement
 
-### 3. Add `deleteAllSeatsByCabin` to `adminSeatsService.ts`
-- New method: delete all seats matching `cabin_id` and `floor`
+### 3. Show seat count in toolbar (`FloorPlanDesigner.tsx`)
+- Add a badge/text next to the Delete All button showing `{seats.length} Seats`
 
-### 4. Remove aisle and spacing from `AutoSeatGenerator.tsx`
-- Remove the "Aisle after X Seats" and "Seat Spacing" input fields
-- Use a fixed tight spacing: `SEAT_W + 4` horizontally, `SEAT_H + 4` vertically (continuous arrangement with no gaps)
-- Remove the `aisleAfter` and `spacing` state variables
-- Seats will be arranged continuously in rows without any aisle breaks
-
-## Files to Change
-
+### Files
 | File | Change |
 |------|--------|
-| `src/api/adminSeatsService.ts` | Add `deleteAllSeatsByCabin(cabinId, floor)` method |
-| `src/components/seats/AutoSeatGenerator.tsx` | Remove aisle/spacing fields, use tight continuous layout |
-| `src/components/seats/FloorPlanDesigner.tsx` | Add "Delete All" button with confirmation, add `onDeleteAllSeats` prop |
-| `src/pages/SeatManagement.tsx` | Add `handleDeleteAllSeats` handler, pass to designer |
+| `src/components/seats/AutoSeatGenerator.tsx` | Remove `snap()` from position calc, use raw pixel positions with tight spacing |
+| `src/components/seats/FloorPlanDesigner.tsx` | Fix Reset Layout spacing, remove snapToGrid; add seat count display |
 
