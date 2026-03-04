@@ -1,39 +1,27 @@
 
 
-# Fix: Seat Drag Alignment + Category in Auto-Generator + Floor Filter in Seat Map
+# Fix: Floor Selection in Seat Map (VendorSeats)
 
-## Issues
+## Root Cause
 
-1. **Dragged seats don't align to grid**: Seats are generated with `SEAT_W + 6 = 42px` spacing, but when dragged they snap to `GRID_SNAP = 40px` grid via `snapToGrid()`. This causes misalignment — a seat at x=102 snaps to x=120 on drag.
+The `cabins.floors` JSONB field stores an array of **objects** (e.g., `[{name: "Floor 1", image: "..."}, {name: "Floor 2"}]`), not simple numbers. The current code does `String(f)` which produces `"[object Object]"` for every floor — so all floors get the same select value and filtering breaks.
 
-2. **Auto-generator doesn't ask for category**: `handleAutoGenerate` hardcodes `categories[0]?.name || 'Non-AC'` for all bulk-generated seats. The `AutoSeatGenerator` dialog has no category selector.
-
-3. **Seat Map page (VendorSeats) has no floor filter**: The `/admin/seats-available-map` page fetches all seats across all floors but provides no UI to filter by floor. Users see seats from every floor mixed together.
+Additionally, seats have a numeric `floor` field (1, 2, 3...) which needs to be matched against the floor index/number, not the object.
 
 ## Changes
 
-### 1. Fix drag snapping (`FloorPlanDesigner.tsx`)
-- Remove `snapToGrid` from `handleCanvasMouseMove` (lines 178-179) and `handleCanvasMouseDown` placement (line 159)
-- Use the same 42px-aligned snap: change `GRID_SNAP` to match `SEAT_W + 6 = 42` for consistent alignment, OR remove snapping entirely during drag (use raw positions like generation does)
-- Simplest fix: set `GRID_SNAP = SEAT_W + 6` (42) so dragged seats align to the same grid as generated ones
+### `src/pages/vendor/VendorSeats.tsx`
 
-### 2. Add category selector to AutoSeatGenerator (`AutoSeatGenerator.tsx`)
-- Add `categories` prop: `SeatCategoryOption[]`
-- Add a `selectedCategory` state with a `Select` or `RadioGroup` to pick category
-- Pass selected category name back through `GeneratedSeat` (add `category` field)
-- In `FloorPlanDesigner.tsx`, pass `categories` prop to `AutoSeatGenerator` and use `gs.category` instead of hardcoded `categories[0]?.name`
+**Fix `availableFloors` memo** (lines 198-207):
+- When `cabin.floors` is an array of objects, map them to `{ label, value }` pairs where `value` is the floor number (1-indexed) and `label` is `f.name || "Floor N"`
+- Fallback: derive from seat floor numbers as before, but also produce `{ label, value }` pairs
 
-### 3. Add floor filter to Seat Map page (`VendorSeats.tsx`)
-- Add `selectedFloor` state (default `'all'`)
-- When a specific cabin is selected, read its `floors` array from `cabins` to populate a floor selector dropdown
-- Filter `filteredSeats` by `seat.floor === selectedFloor` when not `'all'`
-- Place the floor selector in the filter row, after the cabin selector
+**Fix floor selector rendering** (lines 724-728):
+- Use `floor.value` as the SelectItem value
+- Use `floor.label` as the display text
 
-## Files to Change
+**Fix filter comparison** (line 218):
+- Compare `String(s.floor) === selectedFloor` — already correct once values are proper numbers
 
-| File | Change |
-|------|--------|
-| `src/components/seats/FloorPlanDesigner.tsx` | Change GRID_SNAP to 42 to match generation spacing; pass categories to AutoSeatGenerator; use `gs.category` from generated seats |
-| `src/components/seats/AutoSeatGenerator.tsx` | Add categories prop, category selector UI, include category in GeneratedSeat output |
-| `src/pages/vendor/VendorSeats.tsx` | Add selectedFloor state, floor selector dropdown, filter seats by floor |
+This is a focused fix in one file — approximately 15 lines changed.
 
