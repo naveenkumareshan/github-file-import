@@ -64,9 +64,12 @@ const METHOD_LABELS: Record<string, { label: string; icon: any }> = {
   online: { label: 'Online', icon: CreditCard },
 };
 
-function getMethodDisplay(key: string) {
+function getMethodDisplay(key: string, customLabels?: Record<string, string>) {
   if (METHOD_LABELS[key]) return METHOD_LABELS[key];
-  // Custom payment mode - clean up the key for display
+  // Custom payment mode - look up label from partner_payment_modes
+  if (customLabels && customLabels[key]) {
+    return { label: customLabels[key], icon: Building2 };
+  }
   const label = key.startsWith('custom_') ? key.replace('custom_', '') : key;
   return { label: label.charAt(0).toUpperCase() + label.slice(1), icon: Building2 };
 }
@@ -229,7 +232,7 @@ export default function BusinessPerformance() {
               </TableHeader>
               <TableBody>
                 {methodEntries.map(([method, amount]) => {
-                  const display = getMethodDisplay(method);
+                  const display = getMethodDisplay(method, d.paymentModeLabels);
                   const prevAmt = (d.prevCollectionsByMethod || {})[method] || 0;
                   const MethodIcon = display.icon;
                   return (
