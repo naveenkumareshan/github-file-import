@@ -82,6 +82,7 @@ export interface PerformanceData {
   properties: { id: string; name: string; type: 'reading_room' | 'hostel' }[];
   collectionsByMethod: CollectionsByMethod;
   prevCollectionsByMethod: CollectionsByMethod;
+  paymentModeLabels: Record<string, string>;
 }
 
 const defaultData: PerformanceData = {
@@ -101,6 +102,7 @@ const defaultData: PerformanceData = {
   properties: [],
   collectionsByMethod: {},
   prevCollectionsByMethod: {},
+  paymentModeLabels: {},
 };
 
 function getDateRange(filter: string, startDate?: Date, endDate?: Date): { start: Date; end: Date } {
@@ -163,10 +165,17 @@ export function usePartnerPerformance(filters: PerformanceFilters) {
         .eq('user_id', user.id)
         .maybeSingle();
 
-      const [cabinsRes, hostelsRes] = await Promise.all([
+      const [cabinsRes, hostelsRes, paymentModesRes] = await Promise.all([
         supabase.from('cabins').select('id, name').eq('created_by', user.id),
         supabase.from('hostels').select('id, name').eq('created_by', user.id),
+        supabase.from('partner_payment_modes').select('id, label').eq('partner_user_id', user.id).eq('is_active', true),
       ]);
+
+      // Build custom payment mode label map
+      const paymentModeLabels: Record<string, string> = {};
+      ((paymentModesRes as any).data || []).forEach((m: any) => {
+        paymentModeLabels[`custom_${m.id}`] = m.label;
+      });
 
       const cabins = cabinsRes.data || [];
       const hostels = hostelsRes.data || [];
@@ -473,6 +482,7 @@ export function usePartnerPerformance(filters: PerformanceFilters) {
         properties,
         collectionsByMethod,
         prevCollectionsByMethod,
+        paymentModeLabels,
       };
     },
     enabled: !!user?.id,
