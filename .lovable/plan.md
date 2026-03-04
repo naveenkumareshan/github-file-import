@@ -1,42 +1,39 @@
 
 
-# Add InhaleStays Branded Splash Screen for Native App
+# Investigation: Share Links Not Opening
 
-## Current State
-- Capacitor splash screen plugin is already configured with `launchAutoHide: false`, dark background (`#0f172a`), and a spinner
-- `hideSplashScreen()` is called in `App.tsx` on mount with a 300ms delay
-- No custom splash screen image exists — it just shows a dark background with a spinner
+## Findings
 
-## What Needs to Change
+I tested the share link routing thoroughly:
 
-### 1. Create a branded HTML/CSS splash screen overlay
-Since Capacitor's native splash screen requires actual native image assets (which must be placed in `android/res/` and `ios/Assets.xcassets/` manually), the best approach within Lovable is to create an **in-app branded splash overlay** that displays while the app loads.
+1. **Routes work correctly** — `/book-seat/IS-ROOM-2026-00001` loads "Scholar's Den" properly in the preview
+2. **RLS allows public access** — The `cabins` table has a policy allowing anyone to view active+approved cabins
+3. **Serial number lookup works** — `getCabinBySerialNumber` correctly queries the database
+4. **Share URL generation is correct** — `generateCabinShareText` produces `https://inhalestays.com/book-seat/IS-ROOM-2026-XXXX`
 
-This will:
-- Show the InhaleStays logo (`src/assets/inhalestays-logo.png`) centered on a dark branded background
-- Display the app name "InhaleStays" with the tagline
-- Include a subtle loading animation
-- Fade out gracefully once the app is ready
+## Root Cause
 
-### 2. Create `src/components/SplashOverlay.tsx`
-- Full-screen fixed overlay with `z-50`, dark background matching `#0f172a`
-- Centered logo image + "InhaleStays" text + "Reading Room Booking" tagline
-- Fade-out animation triggered after a short delay
-- Removed from DOM after animation completes
+The share links point to `https://inhalestays.com`, your custom domain. The code is correct, but the **published version on your custom domain needs to be updated**. If the deployed version is behind the current codebase, the routes or serial number lookup may not work for visitors.
 
-### 3. Update `src/App.tsx`
-- Import and render `SplashOverlay` at the top level
-- Pass a state to control visibility, hiding it after the app mounts (1.5–2 seconds)
+**Additionally**, there is one code issue: the share text passed to `navigator.share` already contains the URL (in the `🔗 https://...` line), and the `url` parameter is also passed separately. Some platforms concatenate both, which can produce a malformed link when students click it.
 
-### 4. Update `capacitor.config.ts`
-- Keep existing native splash config (dark background) as a brief pre-load screen
-- Increase the `hideSplashScreen` delay slightly so the branded overlay is visible before the native one hides
+## Fix
 
-### 5. Copy logo to public directory
-- Copy `src/assets/inhalestays-logo.png` to `public/splash-logo.png` so it's available in the built output without being hashed
+### 1. Clean up ShareButton to avoid double-URL issue
+In `src/components/ShareButton.tsx`, the `encoded` variable for WhatsApp/Telegram/Email concatenates `shareText + "\n" + url`, but `shareText` already includes the URL. This causes the URL to appear twice and sometimes malformed.
+
+Fix: Use only the `url` prop separately, and strip the URL line from the display text when building platform-specific share links.
+
+### 2. Ensure `navigator.share` doesn't double-encode
+Pass a simplified `text` (without the URL line) to `navigator.share`, since the `url` field is passed separately and platforms append it automatically.
+
+### 3. Update shareUtils to separate text and URL
+Modify `generateCabinShareText` and `generateHostelShareText` to return the text body **without** the URL line, since the URL is already returned as a separate field.
+
+### 4. Publish the app
+After the code fix, you need to click **Publish → Update** to deploy the latest version to `inhalestays.com`.
 
 ## Files Changed
-- **New**: `src/components/SplashOverlay.tsx`
-- **Modified**: `src/App.tsx` — add splash overlay
-- **Modified**: `src/utils/splashScreen.ts` — slightly longer delay for smoother transition
+- `src/utils/shareUtils.ts` — Remove URL line from the text body (it's passed separately)
+- `src/components/ShareButton.tsx` — Use `url` directly instead of appending it to text again
 
