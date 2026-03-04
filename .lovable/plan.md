@@ -1,61 +1,48 @@
 
 
-# Fix: Correct End Date Calculation Across All Booking Flows
+# Plan: Per-Duration Locker Mandatory Settings
 
-## Problem
-End date calculations are inconsistent across the app. The correct logic should be:
-- **Daily**: end = start date (same day, count=1 means 1 day)
-- **Weekly**: end = start + (count × 7 - 1) days (e.g., 1 week from Mar 1 = Mar 7)
-- **Monthly**: end = last day of the period (e.g., start Mar 1 → end Mar 31; start Mar 21 → end Apr 20)
+## What Changes
 
-## Current Issues by File
+Currently, locker is either **mandatory for all durations** or **optional for all**. The user wants granular control — e.g., locker mandatory for monthly but optional for daily/weekly.
 
-| File | Daily | Weekly | Monthly |
-|------|-------|--------|---------|
-| `SeatBookingForm.tsx` (student reading room) | `addDays(start, count-1)` ✅ | `addWeeks(start, count)` ❌ off by 1 | `addMonths - 1 day` ✅ |
-| `VendorSeats.tsx` (partner reading room) | `addDays(start, count-1)` ✅ | `addWeeks(start, count)` ❌ | `addMonths(start, count)` ❌ no -1 day |
-| `HostelBedMap.tsx` (partner hostel) | `addDays(start, count)` ❌ | `addWeeks(start, count)` ❌ | `addMonths(start, count)` ❌ |
-| `HostelBooking.tsx` (student hostel) | `addDays(start, duration)` ❌ | `addWeeks(start, duration)` ❌ | `addMonths(start, duration)` ❌ |
-| `ManualBookingManagement.tsx` (admin) | `addDays(start, count-1)` ✅ | `addWeeks(start, count)` ❌ | `addMonths(start, count)` ❌ |
-| `BookingExtensionDialog.tsx` (renewal) | N/A | N/A | `addMonths(end, dur)` ❌ |
+## Approach
 
-## Correct Formulas
+### 1. Add new DB column: `locker_mandatory_durations` (JSONB)
+- Add a `locker_mandatory_durations` JSONB column to the `cabins` table, defaulting to `'["daily", "weekly", "monthly"]'`
+- When locker is available and this array contains the selected duration, locker is mandatory for that duration; otherwise optional
+- Keep existing `locker_mandatory` as a master toggle (if true = use duration-specific list; if false = always optional)
 
-```typescript
-// Helper: calculate booking end date
-function calcEndDate(start: Date, type: string, count: number): Date {
-  if (type === 'daily') {
-    // 1 day = same day, 2 days = start + 1
-    return addDays(start, Math.max(0, count - 1));
-  }
-  if (type === 'weekly') {
-    // 1 week from Mar 1 = Mar 7 (start + 6 days)
-    return addDays(start, count * 7 - 1);
-  }
-  // monthly: Mar 1, 1 month → Mar 31; Mar 21, 1 month → Apr 20
-  const raw = addMonths(start, count);
-  return subDays(raw, 1);
-}
+### 2. Update CabinEditor UI (`src/components/admin/CabinEditor.tsx`)
+- Below the existing Mandatory/Optional radio buttons, when "Mandatory" is selected, add duration checkboxes (Daily, Weekly, Monthly) — same pattern as advance applicable durations
+- Only show durations that are in `allowed_durations`
+
+### 3. Update admin cabins service (`src/api/adminCabinsService.ts`)
+- Persist `locker_mandatory_durations` on create/update
+
+### 4. Update student booking form (`src/components/seats/SeatBookingForm.tsx`)
+- Instead of `const lockerMandatory = cabin.lockerMandatory`, check if selected duration is in `locker_mandatory_durations` array
+- If duration is in the list → mandatory; otherwise → optional checkbox
+
+### 5. Update partner booking (`src/pages/vendor/VendorSeats.tsx`)
+- Same logic: check selected duration against `locker_mandatory_durations`
+
+### 6. Update vendor seats service (`src/api/vendorSeatsService.ts`)
+- Map `locker_mandatory_durations` from cabin data
+
+## DB Migration
+```sql
+ALTER TABLE public.cabins 
+ADD COLUMN locker_mandatory_durations jsonb NOT NULL DEFAULT '["daily", "weekly", "monthly"]';
 ```
 
-## Plan
-
-### 1. Create shared utility `src/utils/dateCalculations.ts`
-A single `calculateBookingEndDate(startDate, durationType, count)` function used everywhere.
-
-### 2. Update all 6 files to use the shared utility
-
-| File | Lines to change |
-|------|----------------|
-| `src/components/seats/SeatBookingForm.tsx` | ~291-303 and ~363-375 (two useEffect blocks) — weekly fix |
-| `src/pages/vendor/VendorSeats.tsx` | ~468-471 (computedEndDate memo) — weekly + monthly fix |
-| `src/pages/admin/HostelBedMap.tsx` | ~559-562 (computedEndDate memo) — all three fixes |
-| `src/pages/HostelBooking.tsx` | ~115-118 (calculateEndDate) — all three fixes |
-| `src/pages/admin/ManualBookingManagement.tsx` | ~337-343, ~352-358, ~369-375 (three blocks) — weekly + monthly fix |
-| `src/components/admin/BookingExtensionDialog.tsx` | ~68-71 (calculateNewEndDate) — monthly fix |
-
-### Summary of Corrections
-- **Daily**: `start + (count - 1)` — already correct in most reading room files, needs fixing in hostel files
-- **Weekly**: `start + (count × 7 - 1)` days — wrong everywhere (currently uses `addWeeks` which gives +7 per week instead of +6)
-- **Monthly**: `addMonths(start, count) - 1 day` — only correct in `SeatBookingForm.tsx`, needs fixing in 5 other files
+## Files to modify
+| File | Change |
+|------|--------|
+| DB migration | Add `locker_mandatory_durations` column |
+| `src/components/admin/CabinEditor.tsx` | Add duration checkboxes under locker mandatory |
+| `src/api/adminCabinsService.ts` | Persist new field |
+| `src/api/vendorSeatsService.ts` | Map new field |
+| `src/components/seats/SeatBookingForm.tsx` | Duration-aware mandatory check |
+| `src/pages/vendor/VendorSeats.tsx` | Duration-aware mandatory check |
 
