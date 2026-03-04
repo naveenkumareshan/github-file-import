@@ -1311,7 +1311,10 @@ const HostelBedMap: React.FC = () => {
                           <Calendar mode="single" selected={bookingStartDate} onSelect={d => d && setBookingStartDate(d)} className="p-3 pointer-events-auto"
                             disabled={(date) => {
                               if (showFutureBooking && selectedBed?.currentBooking?.endDate) return date <= new Date(selectedBed.currentBooking.endDate);
-                              return date < new Date(new Date().toDateString());
+                              // Allow past dates (up to 90 days back) for first-time offline bookings
+                              const ninetyDaysAgo = new Date();
+                              ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+                              return date < new Date(ninetyDaysAgo.toDateString());
                             }} />
                         </PopoverContent>
                       </Popover>

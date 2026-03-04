@@ -1423,7 +1423,10 @@ const VendorSeats: React.FC = () => {
                             if (isRenewMode || showFutureBooking) {
                               return date < bookingStartDate;
                             }
-                            return date < new Date(new Date().toDateString());
+                            // Allow past dates (up to 90 days back) for first-time offline bookings
+                            const ninetyDaysAgo = new Date();
+                            ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+                            return date < new Date(ninetyDaysAgo.toDateString());
                           }} />
                         </PopoverContent>
                       </Popover>
