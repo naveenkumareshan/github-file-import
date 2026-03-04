@@ -24,7 +24,7 @@ const VendorLogin: React.FC = () => {
 
   // Redirect if already logged in as vendor
   if (isAuthenticated && (user?.role === 'vendor' || user?.role === 'vendor_employee')) {
-    return <Navigate to="/admin/dashboard" replace />;
+    return <Navigate to="/partner/dashboard" replace />;
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -78,7 +78,7 @@ const VendorLogin: React.FC = () => {
           title: "Welcome back!",
           description: "Successfully logged in to Partner portal",
         });
-        navigate('/admin/dashboard');
+        navigate('/partner/dashboard');
       } else {
         toast({
           title: "Login Failed",

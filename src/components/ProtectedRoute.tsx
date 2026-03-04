@@ -35,7 +35,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     if (user?.role === 'student') {
       return <Navigate to="/student/dashboard" replace />;
     }
-    if (user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'vendor' || user?.role === 'vendor_employee') {
+    if (user?.role === 'vendor' || user?.role === 'vendor_employee') {
+      return <Navigate to="/partner/dashboard" replace />;
+    }
+    if (user?.role === 'admin' || user?.role === 'super_admin') {
       return <Navigate to="/admin/dashboard" replace />;
     }
     return <Navigate to={redirectPath} replace />;
