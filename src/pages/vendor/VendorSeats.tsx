@@ -48,6 +48,7 @@ const VendorSeats: React.FC = () => {
   const [cabins, setCabins] = useState<VendorCabin[]>([]);
   const [seats, setSeats] = useState<VendorSeat[]>([]);
   const [selectedCabinId, setSelectedCabinId] = useState<string>('all');
+  const [selectedFloor, setSelectedFloor] = useState<string>('all');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -193,9 +194,29 @@ const VendorSeats: React.FC = () => {
     }
   }, [seats]);
 
+  // Available floors for selected cabin
+  const availableFloors = useMemo(() => {
+    if (selectedCabinId === 'all') return [];
+    const cabin = cabins.find(c => c._id === selectedCabinId);
+    if (!cabin) return [];
+    const floors = (cabin as any).floors;
+    if (Array.isArray(floors) && floors.length > 0) return floors;
+    // Derive from seats
+    const floorSet = new Set(seats.map(s => s.floor).filter(Boolean));
+    return Array.from(floorSet).sort((a: any, b: any) => a - b);
+  }, [selectedCabinId, cabins, seats]);
+
+  // Reset floor when cabin changes
+  useEffect(() => {
+    setSelectedFloor('all');
+  }, [selectedCabinId]);
+
   // Filtered seats
   const filteredSeats = useMemo(() => {
     let result = seats;
+    if (selectedFloor !== 'all') {
+      result = result.filter(s => String((s as any).floor) === selectedFloor);
+    }
     if (statusFilter !== 'all') {
       result = result.filter(s => s.dateStatus === statusFilter);
     }
@@ -204,7 +225,7 @@ const VendorSeats: React.FC = () => {
       result = result.filter(s => String(s.number).includes(q) || s.category.toLowerCase().includes(q));
     }
     return result;
-  }, [seats, statusFilter, searchTerm]);
+  }, [seats, statusFilter, searchTerm, selectedFloor]);
 
   // Stats
   const stats = useMemo(() => {
@@ -692,6 +713,22 @@ const VendorSeats: React.FC = () => {
             ))}
           </SelectContent>
         </Select>
+
+        {selectedCabinId !== 'all' && availableFloors.length > 0 && (
+          <Select value={selectedFloor} onValueChange={setSelectedFloor}>
+            <SelectTrigger className="h-8 w-[120px] text-xs">
+              <SelectValue placeholder="Floor" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="text-xs font-medium">All Floors</SelectItem>
+              {availableFloors.map((f: any, i: number) => (
+                <SelectItem key={String(f)} value={String(f)} className="text-xs">
+                  {typeof f === 'object' ? f.name || `Floor ${i + 1}` : `Floor ${f}`}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
 
         <Popover>
           <PopoverTrigger asChild>
