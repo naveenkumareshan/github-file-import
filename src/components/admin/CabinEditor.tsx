@@ -104,6 +104,7 @@ export function CabinEditor({
     lockerAvailable: existingCabin?.lockerAvailable ?? existingCabin?.locker_available ?? false,
     lockerPrice: existingCabin?.lockerPrice ?? existingCabin?.locker_price ?? 0,
     lockerMandatory: existingCabin?.lockerMandatory ?? existingCabin?.locker_mandatory ?? true,
+    lockerMandatoryDurations: existingCabin?.lockerMandatoryDurations ?? existingCabin?.locker_mandatory_durations ?? ['daily', 'weekly', 'monthly'],
     created_by: existingCabin?.created_by || "",
     advanceBookingEnabled: existingCabin?.advanceBookingEnabled ?? existingCabin?.advance_booking_enabled ?? false,
     advancePercentage: existingCabin?.advancePercentage ?? existingCabin?.advance_percentage ?? 50,
@@ -455,8 +456,32 @@ export function CabinEditor({
                             <span className="text-xs">Optional</span>
                           </label>
                         </div>
+                        {cabin.lockerMandatory && (
+                          <div className="mt-2">
+                            <Label className="text-xs text-muted-foreground mb-1 block">Mandatory for durations:</Label>
+                            <div className="flex gap-3">
+                              {(['daily', 'weekly', 'monthly'] as const).filter(d => (cabin.allowedDurations || ['daily','weekly','monthly']).includes(d)).map(dur => (
+                                <label key={dur} className="flex items-center gap-1.5 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={(cabin.lockerMandatoryDurations || []).includes(dur)}
+                                    onChange={(e) => {
+                                      setCabin(prev => {
+                                        const current = prev.lockerMandatoryDurations || ['daily','weekly','monthly'];
+                                        const updated = e.target.checked ? [...current, dur] : current.filter((d: string) => d !== dur);
+                                        return { ...prev, lockerMandatoryDurations: updated };
+                                      });
+                                    }}
+                                    className="h-3.5 w-3.5"
+                                  />
+                                  <span className="text-xs capitalize">{dur}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                         <p className="text-xs text-muted-foreground mt-1">
-                          {cabin.lockerMandatory ? "Students must pay locker deposit during booking" : "Students can choose whether to add a locker"}
+                          {cabin.lockerMandatory ? "Students must pay locker deposit for selected durations" : "Students can choose whether to add a locker"}
                         </p>
                       </div>
                     </>

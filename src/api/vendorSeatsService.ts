@@ -72,6 +72,7 @@ export interface VendorCabin {
   lockerAvailable: boolean;
   lockerPrice: number;
   lockerMandatory: boolean;
+  lockerMandatoryDurations: string[];
   advanceBookingEnabled: boolean;
   advancePercentage: number;
   advanceFlatAmount: number | null;
@@ -239,6 +240,7 @@ export const vendorSeatsService = {
           lockerAvailable: cabin.locker_available,
           lockerPrice: Number(cabin.locker_price),
           lockerMandatory: cabin.locker_mandatory,
+          lockerMandatoryDurations: Array.isArray((cabin as any).locker_mandatory_durations) ? (cabin as any).locker_mandatory_durations : ['daily','weekly','monthly'],
           advanceBookingEnabled: (cabin as any).advance_booking_enabled ?? false,
           advancePercentage: Number((cabin as any).advance_percentage) || 50,
           advanceFlatAmount: (cabin as any).advance_flat_amount ? Number((cabin as any).advance_flat_amount) : null,

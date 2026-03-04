@@ -98,6 +98,7 @@ export const adminCabinsService = {
         locker_available: data.lockerAvailable ?? false,
         locker_price: data.lockerPrice ?? 0,
         locker_mandatory: data.lockerMandatory ?? true,
+        locker_mandatory_durations: data.lockerMandatoryDurations || ['daily','weekly','monthly'],
         full_address: data.fullAddress || '',
         created_by: data.created_by || currentUser?.id || null,
         advance_booking_enabled: data.advanceBookingEnabled ?? false,
@@ -151,6 +152,7 @@ export const adminCabinsService = {
       if (data.lockerAvailable !== undefined) (updateData as any).locker_available = data.lockerAvailable;
       if (data.lockerPrice !== undefined) (updateData as any).locker_price = data.lockerPrice;
       if (data.lockerMandatory !== undefined) (updateData as any).locker_mandatory = data.lockerMandatory;
+      if (data.lockerMandatoryDurations !== undefined) (updateData as any).locker_mandatory_durations = data.lockerMandatoryDurations;
       if (data.fullAddress !== undefined) (updateData as any).full_address = data.fullAddress;
       if (data.created_by !== undefined) (updateData as any).created_by = data.created_by;
       if (data.advanceBookingEnabled !== undefined) (updateData as any).advance_booking_enabled = data.advanceBookingEnabled;

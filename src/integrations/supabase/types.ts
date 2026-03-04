@@ -428,6 +428,7 @@ export type Database = {
           layout_image: string | null
           locker_available: boolean
           locker_mandatory: boolean
+          locker_mandatory_durations: Json
           locker_price: number
           name: string
           opening_time: string
@@ -474,6 +475,7 @@ export type Database = {
           layout_image?: string | null
           locker_available?: boolean
           locker_mandatory?: boolean
+          locker_mandatory_durations?: Json
           locker_price?: number
           name: string
           opening_time?: string
@@ -520,6 +522,7 @@ export type Database = {
           layout_image?: string | null
           locker_available?: boolean
           locker_mandatory?: boolean
+          locker_mandatory_durations?: Json
           locker_price?: number
           name?: string
           opening_time?: string

@@ -1,0 +1,1 @@
+ALTER TABLE public.cabins ADD COLUMN locker_mandatory_durations jsonb NOT NULL DEFAULT '["daily", "weekly", "monthly"]';
