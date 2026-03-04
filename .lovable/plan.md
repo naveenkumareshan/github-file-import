@@ -1,33 +1,34 @@
 
 
-# Fix: Show All 180 Generated Seats + Add Reset Button
+# Plan: Delete All Seats + Remove Aisle/Spacing from Generator
 
-## Root Cause
+## Changes
 
-`handleAutoGenerate` calls `onPlaceSeat` (→ `handlePlaceSeat`) individually for each seat. Each call makes a **separate API request** to insert one row. With 180 seats, that's 180 concurrent API calls — many fail silently due to rate limiting or connection exhaustion. A `bulkCreateSeats` method already exists in `adminSeatsService` but isn't being used.
+### 1. Add "Delete All Seats" button (`FloorPlanDesigner.tsx`)
+- Add a "Delete All" button in the toolbar (next to Reset Layout), shown when seats exist
+- On click, show a confirmation dialog, then call a new `onDeleteAllSeats` prop
+- Add `onDeleteAllSeats?: () => Promise<void>` to the props interface
 
-## Fix
+### 2. Add bulk delete handler (`SeatManagement.tsx`)
+- Add `handleDeleteAllSeats` that deletes all seats on the current floor by calling `supabase.from('seats').delete().eq('cabin_id', id).eq('floor', selectedFloor)` via a new `adminSeatsService.deleteAllSeatsByCabin` method
+- After deletion, clear the local `seats` state and `selectedSeat`
+- Pass as `onDeleteAllSeats` prop to `FloorPlanDesigner`
 
-### 1. Add bulk placement handler in `SeatManagement.tsx`
-- Add a new `handleBulkPlaceSeats` function that accepts an array of generated seats
-- Uses `adminSeatsService.bulkCreateSeats()` (single INSERT with 180 rows) instead of 180 individual calls
-- After success, appends all returned seats to state at once
+### 3. Add `deleteAllSeatsByCabin` to `adminSeatsService.ts`
+- New method: delete all seats matching `cabin_id` and `floor`
 
-### 2. Add `onBulkPlaceSeats` prop to `FloorPlanDesigner`
-- New optional prop: `onBulkPlaceSeats?: (seats: Array<{position, number, price, category}>) => Promise<void>`
-- In `handleAutoGenerate`, if `onBulkPlaceSeats` is provided, collect all valid seats and call it once instead of looping `onPlaceSeat`
-
-### 3. Add "Reset Layout" button to toolbar
-- Add a "Reset Layout" button in `FloorPlanDesigner.tsx` toolbar that rearranges all existing seats into a clean grid pattern (sorted by seat number, placed in rows with aisle gaps)
-- This re-positions seats in-place and calls `onSeatMove` for each, or better, a bulk position update
-
-### 4. Add bulk move handler in `SeatManagement.tsx`
-- Use existing `adminSeatsService.updateSeatPositions()` to persist all repositioned seats after reset
+### 4. Remove aisle and spacing from `AutoSeatGenerator.tsx`
+- Remove the "Aisle after X Seats" and "Seat Spacing" input fields
+- Use a fixed tight spacing: `SEAT_W + 4` horizontally, `SEAT_H + 4` vertically (continuous arrangement with no gaps)
+- Remove the `aisleAfter` and `spacing` state variables
+- Seats will be arranged continuously in rows without any aisle breaks
 
 ## Files to Change
 
 | File | Change |
 |------|--------|
-| `src/pages/SeatManagement.tsx` | Add `handleBulkPlaceSeats` using `bulkCreateSeats`, pass as prop |
-| `src/components/seats/FloorPlanDesigner.tsx` | Add `onBulkPlaceSeats` prop, use in `handleAutoGenerate`; add "Reset Layout" button that re-grids all seats |
+| `src/api/adminSeatsService.ts` | Add `deleteAllSeatsByCabin(cabinId, floor)` method |
+| `src/components/seats/AutoSeatGenerator.tsx` | Remove aisle/spacing fields, use tight continuous layout |
+| `src/components/seats/FloorPlanDesigner.tsx` | Add "Delete All" button with confirmation, add `onDeleteAllSeats` prop |
+| `src/pages/SeatManagement.tsx` | Add `handleDeleteAllSeats` handler, pass to designer |
 
