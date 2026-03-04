@@ -1,36 +1,33 @@
 
 
-# Fix: All Generated Seats Not Visible
+# Fix: Show All 180 Generated Seats + Add Reset Button
 
 ## Root Cause
 
-The `AutoSeatGenerator` has a boundary check (line 69) that **silently skips** any seat whose position exceeds `roomWidth` or `roomHeight`:
-
-```typescript
-if (x + 32 > roomWidth - gridSize || y + 22 > roomHeight - gridSize) continue;
-```
-
-With default room dimensions of 800×600 and a `startY` of ~200, only a handful of rows fit before seats start getting dropped. The user generates e.g. 80 seats but only ~30 appear because the rest fall outside the canvas boundary.
+`handleAutoGenerate` calls `onPlaceSeat` (→ `handlePlaceSeat`) individually for each seat. Each call makes a **separate API request** to insert one row. With 180 seats, that's 180 concurrent API calls — many fail silently due to rate limiting or connection exhaustion. A `bulkCreateSeats` method already exists in `adminSeatsService` but isn't being used.
 
 ## Fix
 
-**Remove the boundary check** in `AutoSeatGenerator` and instead **auto-expand the room dimensions** to accommodate all generated seats. Additionally, auto-fit the zoom after generation so all seats are visible.
+### 1. Add bulk placement handler in `SeatManagement.tsx`
+- Add a new `handleBulkPlaceSeats` function that accepts an array of generated seats
+- Uses `adminSeatsService.bulkCreateSeats()` (single INSERT with 180 rows) instead of 180 individual calls
+- After success, appends all returned seats to state at once
 
-### Changes
+### 2. Add `onBulkPlaceSeats` prop to `FloorPlanDesigner`
+- New optional prop: `onBulkPlaceSeats?: (seats: Array<{position, number, price, category}>) => Promise<void>`
+- In `handleAutoGenerate`, if `onBulkPlaceSeats` is provided, collect all valid seats and call it once instead of looping `onPlaceSeat`
+
+### 3. Add "Reset Layout" button to toolbar
+- Add a "Reset Layout" button in `FloorPlanDesigner.tsx` toolbar that rearranges all existing seats into a clean grid pattern (sorted by seat number, placed in rows with aisle gaps)
+- This re-positions seats in-place and calls `onSeatMove` for each, or better, a bulk position update
+
+### 4. Add bulk move handler in `SeatManagement.tsx`
+- Use existing `adminSeatsService.updateSeatPositions()` to persist all repositioned seats after reset
+
+## Files to Change
 
 | File | Change |
 |------|--------|
-| `src/components/seats/AutoSeatGenerator.tsx` | Remove the boundary skip on line 69. Instead, calculate the max X/Y needed and return it alongside the seats. |
-| `src/components/seats/FloorPlanDesigner.tsx` | After `handleAutoGenerate`, if seats extend beyond current room dimensions, call a new optional `onRoomResize` callback to expand the canvas. |
-| `src/pages/SeatManagement.tsx` | Add `onRoomResize` handler that updates `roomWidth`/`roomHeight` state and persists via `adminCabinsService.updateCabinLayout`. |
-
-### Detailed approach
-
-1. **AutoSeatGenerator**: Remove the `continue` on line 69. Let all seats generate regardless of room bounds.
-
-2. **FloorPlanDesigner**: In `handleAutoGenerate`, after placing seats, compute `maxX = max(all seat positions.x) + padding` and `maxY = max(all seat positions.y) + padding`. If these exceed current `roomWidth`/`roomHeight`, call `onRoomResize(newWidth, newHeight)`.
-
-3. **SeatManagement**: Pass an `onRoomResize` prop to `FloorPlanDesigner`. The handler updates `roomWidth`/`roomHeight` state and saves via `adminCabinsService.updateCabinLayout`.
-
-4. **FloorPlanDesigner**: After auto-generation completes, call `handleFitToScreen()` to auto-zoom so all seats are visible.
+| `src/pages/SeatManagement.tsx` | Add `handleBulkPlaceSeats` using `bulkCreateSeats`, pass as prop |
+| `src/components/seats/FloorPlanDesigner.tsx` | Add `onBulkPlaceSeats` prop, use in `handleAutoGenerate`; add "Reset Layout" button that re-grids all seats |
 
