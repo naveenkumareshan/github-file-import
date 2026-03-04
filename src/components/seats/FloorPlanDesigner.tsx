@@ -18,7 +18,7 @@ import { toast } from '@/hooks/use-toast';
 import { AutoSeatGenerator, GeneratedSeat } from './AutoSeatGenerator';
 
 // ── Constants ──────────────────────────────────────────────────────
-const GRID_SNAP = 40;
+const GRID_SNAP = 42; // SEAT_W + 6 to match generation spacing
 const SEAT_W = 36;
 const SEAT_H = 26;
 const snapToGrid = (v: number) => Math.round(v / GRID_SNAP) * GRID_SNAP;
@@ -289,12 +289,12 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
         position: gs.position,
         number: gs.number,
         price: gs.price,
-        category: categories[0]?.name || 'Non-AC',
+        category: gs.category || categories[0]?.name || 'Non-AC',
       }));
       await onBulkPlaceSeats(bulkData);
     } else if (onPlaceSeat) {
       for (const gs of validSeats) {
-        onPlaceSeat(gs.position, gs.number, gs.price, categories[0]?.name || 'Non-AC');
+        onPlaceSeat(gs.position, gs.number, gs.price, gs.category || categories[0]?.name || 'Non-AC');
       }
     }
 
@@ -571,6 +571,7 @@ export const FloorPlanDesigner: React.FC<FloorPlanDesignerProps> = ({
         roomHeight={roomHeight}
         gridSize={GRID_SNAP}
         existingSeatCount={seats.length}
+        categories={categories}
       />
 
       {/* Delete All Confirmation */}
