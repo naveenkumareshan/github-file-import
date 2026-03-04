@@ -286,9 +286,10 @@ const VendorSeats: React.FC = () => {
     setSelectedSlot(null);
     setAvailableSlots([]);
 
-    // Set locker default based on cabin
+    // Set locker default based on cabin + duration
     const cabin = cabins.find(c => c._id === seat.cabinId);
-    setLockerIncluded(cabin?.lockerMandatory || false);
+    const durations = cabin?.lockerMandatoryDurations || ['daily','weekly','monthly'];
+    setLockerIncluded(cabin?.lockerMandatory && durations.includes(selectedDuration.type) || false);
 
     // Fetch slots if cabin has slots enabled
     if (cabin?.slotsEnabled) {
@@ -1449,11 +1450,11 @@ const VendorSeats: React.FC = () => {
                             id="locker"
                             checked={lockerIncluded}
                             onCheckedChange={(v) => setLockerIncluded(v === true)}
-                            disabled={selectedCabinInfo.lockerMandatory}
+                            disabled={selectedCabinInfo.lockerMandatory && (selectedCabinInfo.lockerMandatoryDurations || ['daily','weekly','monthly']).includes(selectedDuration.type)}
                             className="h-3.5 w-3.5"
                           />
                           <Label htmlFor="locker" className="text-[11px] cursor-pointer">
-                            Locker{selectedCabinInfo.lockerMandatory ? ' (Mandatory)' : ''}
+                            Locker{selectedCabinInfo.lockerMandatory && (selectedCabinInfo.lockerMandatoryDurations || ['daily','weekly','monthly']).includes(selectedDuration.type) ? ' (Mandatory)' : ''}
                           </Label>
                         </div>
                         {lockerIncluded && <span>₹{selectedCabinInfo.lockerPrice}</span>}

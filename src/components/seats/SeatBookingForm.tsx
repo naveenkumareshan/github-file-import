@@ -160,12 +160,14 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
 
 
   const [lockerOptedIn, setLockerOptedIn] = useState(true);
-  const lockerMandatory = (cabin as any)?.lockerMandatory ?? true;
+  const lockerMandatoryDurations: string[] = (cabin as any)?.lockerMandatoryDurations ?? (cabin as any)?.locker_mandatory_durations ?? ['daily','weekly','monthly'];
+  const lockerMandatoryMaster = (cabin as any)?.lockerMandatory ?? true;
   const [selectedDuration, setSelectedDuration] = useState<BookingDuration>({
     type: "monthly",
     count: 1,
     price: 0,
   });
+  const lockerMandatory = lockerMandatoryMaster && lockerMandatoryDurations.includes(selectedDuration.type);
   const [agree, setAgree] = useState<boolean>(false);
   const [bookingCreatedAt, setBookingCreatedAt] = useState<string | null>(null);
   const [showSeatSelection, setShowSeatSelection] = useState<boolean>(false);
