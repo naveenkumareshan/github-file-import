@@ -1,28 +1,32 @@
 
 
-# Fix: Show Partner Custom Payment Mode Labels in Business Performance
+# Fix: Blank Pages & Slow Loading in Admin/Partner Panel
 
-## Problem
-Collections by payment mode currently shows raw keys like `custom_uuid` for partner-configured payment modes instead of their actual labels (e.g., "ICICI Bank 303"). The `getMethodDisplay` function in `BusinessPerformance.tsx` doesn't fetch custom mode labels from the database.
+## Root Causes Identified
 
-## Solution
+1. **`<Outlet key={location.pathname} />`** in `AdminLayout.tsx` forces a **full component remount** on every navigation. This destroys and recreates the entire child page, making navigation feel extremely slow and causing blank flashes.
 
-### 1. Fetch partner payment modes in `usePartnerPerformance.ts`
-Add a query for `partner_payment_modes` where `partner_user_id = user.id` and return the mapping as part of `PerformanceData`.
+2. **No Suspense boundary around child routes** — All admin/partner child routes use `lazy()` imports, but there is no `<Suspense>` wrapping the `<Outlet>`. When a lazy component is loading, React has nothing to render, resulting in a blank screen.
 
-**File**: `src/hooks/usePartnerPerformance.ts`
-- Add `paymentModeLabels: Record<string, string>` to `PerformanceData` interface
-- Query `partner_payment_modes` table in the parallel queries block
-- Build a `{ [custom_uuid]: label }` map and return it
+## Fix (Single File Change)
 
-### 2. Use labels in Business Performance dashboard
-Replace the static `getMethodDisplay` with one that uses the fetched labels.
+**File: `src/components/AdminLayout.tsx`**
 
-**File**: `src/pages/partner/BusinessPerformance.tsx`
-- Pass `d.paymentModeLabels` into `getMethodDisplay`
-- When key starts with `custom_`, look up the UUID in the labels map to show "ICICI Bank 303" instead of the raw ID
+- **Remove** `key={location.pathname}` from `<Outlet />` — this eliminates the forced remount on every navigation, making page transitions instant when components are already loaded.
+- **Wrap** `<Outlet />` in a `<Suspense>` with a centered spinner fallback — so lazy-loaded child routes show a loading indicator instead of a blank screen.
 
-### Files Changed
-- `src/hooks/usePartnerPerformance.ts` — fetch `partner_payment_modes`, return label map
-- `src/pages/partner/BusinessPerformance.tsx` — resolve custom mode labels in the collections table
+```tsx
+// Before
+<Outlet key={location.pathname} />
+
+// After
+<Suspense fallback={<div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}>
+  <Outlet />
+</Suspense>
+```
+
+This single change fixes both the blank page issue and the slow navigation. Pages will:
+- Show a spinner while first loading (lazy import)
+- Navigate instantly once cached (no remount)
+- Preserve component state during tab switches within the same page
 
