@@ -1,32 +1,32 @@
 
 
-# Fix: Blank Pages & Slow Loading in Admin/Partner Panel
+# Fix: Partner Pages Not Opening
 
-## Root Causes Identified
+## Root Cause
 
-1. **`<Outlet key={location.pathname} />`** in `AdminLayout.tsx` forces a **full component remount** on every navigation. This destroys and recreates the entire child page, making navigation feel extremely slow and causing blank flashes.
+The `VendorLogin.tsx` redirects partners to `/admin/dashboard` (lines 27 and 81) instead of `/partner/dashboard`. Meanwhile, the sidebar generates all links with the `/partner/` prefix. This creates a critical mismatch:
 
-2. **No Suspense boundary around child routes** — All admin/partner child routes use `lazy()` imports, but there is no `<Suspense>` wrapping the `<Outlet>`. When a lazy component is loading, React has nothing to render, resulting in a blank screen.
+1. Partner logs in → lands on `/admin/dashboard` (under the `/admin` route tree)
+2. Sidebar shows `/partner/*` links (because `isPartner = true`)
+3. Clicking ANY sidebar link causes a **full route tree switch** from `/admin` to `/partner`
+4. React Router unmounts the entire `/admin` tree and remounts a new `/partner` tree
+5. During this remount, `ProtectedRoute` and `AdminSidebar` re-initialize their hooks (`useAuth`, `useVendorEmployeePermissions`, `usePartnerPropertyTypes`) — all start with `loading: true`
+6. This causes a blank flash or stuck loading state on every single click
 
-## Fix (Single File Change)
+After the first click lands the partner in `/partner/*`, subsequent clicks should stay in the same tree. But if the user navigates back to dashboard or refreshes, they end up on `/admin/dashboard` again, restarting the cycle.
 
-**File: `src/components/AdminLayout.tsx`**
+## Fix
 
-- **Remove** `key={location.pathname}` from `<Outlet />` — this eliminates the forced remount on every navigation, making page transitions instant when components are already loaded.
-- **Wrap** `<Outlet />` in a `<Suspense>` with a centered spinner fallback — so lazy-loaded child routes show a loading indicator instead of a blank screen.
+### File: `src/pages/vendor/VendorLogin.tsx`
+- **Line 27**: Change redirect from `/admin/dashboard` to `/partner/dashboard`
+- **Line 81**: Change post-login navigation from `/admin/dashboard` to `/partner/dashboard`
 
-```tsx
-// Before
-<Outlet key={location.pathname} />
+### File: `src/contexts/AuthContext.tsx` (no change needed)
+Auth context is fine — `isLoading` stays `false` after initial auth check. The issue is purely the route mismatch causing full tree remounts.
 
-// After
-<Suspense fallback={<div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}>
-  <Outlet />
-</Suspense>
-```
+### File: `src/pages/Index.tsx` (verify)
+Check if the homepage redirect for authenticated vendors also sends them to `/admin/dashboard` instead of `/partner/dashboard`. If so, fix it too.
 
-This single change fixes both the blank page issue and the slow navigation. Pages will:
-- Show a spinner while first loading (lazy import)
-- Navigate instantly once cached (no remount)
-- Preserve component state during tab switches within the same page
+## Summary
+Two-line fix in `VendorLogin.tsx` to redirect partners to `/partner/dashboard` instead of `/admin/dashboard`, keeping all navigation within the correct route tree and preventing full layout remounts.
 
