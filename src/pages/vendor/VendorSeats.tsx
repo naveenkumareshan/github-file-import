@@ -169,7 +169,7 @@ const VendorSeats: React.FC = () => {
 
   // Fetch seats when cabin or date changes
   const fetchSeats = useCallback(async () => {
-    if (cabins.length === 0 && selectedCabinId !== 'all') return;
+    if (cabins.length === 0) return; // Wait for cabins to load regardless of filter
     setRefreshing(true);
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
     // Pass partner cabin IDs to restrict "All" view to only partner-owned cabins
@@ -628,7 +628,10 @@ const VendorSeats: React.FC = () => {
       setBookingSuccess(true);
       setBookingStep('details');
       toast({ title: paymentMethod === 'send_link' ? 'Payment link sent' : 'Booking created successfully' });
-      fetchSeats();
+      await fetchSeats();
+      // Close sheet so the refreshed grid is visible
+      setSheetOpen(false);
+      setBookingSuccess(false);
     } else {
       toast({ title: 'Error', description: res.error || 'Failed to create booking', variant: 'destructive' });
     }
