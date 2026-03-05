@@ -1,79 +1,119 @@
 
 
-# Fix: Support Tickets Visibility + Chat-Style Messaging for Both Complaints & Support
+# Plan: Subscription Gate for Property Creation + Free Trial + Seat Refresh Fix
 
-## Issue 1: Admin Cannot See Support Tickets
+## Issues Identified
 
-The RLS policy uses `public.has_role(auth.uid(), 'admin')` without the `::app_role` cast. The `has_role` function signature requires `app_role` enum type. PostgreSQL may fail to auto-cast the text literal, causing the admin SELECT to silently return zero rows. The admin ALL policy needs to be recreated with proper casting.
+### Issue 1: Partners adding properties without subscription
+Currently, `ManageProperties` and `RoomManagement`/`HostelManagement` have no subscription check before allowing property creation. Any partner can click "Add New Property" and create cabins/hostels without paying.
 
-**Fix**: Drop and recreate the admin policy with `'admin'::app_role`.
+### Issue 2: Free trial days for new partners
+No `free_trial_days` setting exists. New partners should get a configurable number of free trial days when adding their first property.
 
-## Issue 2: Chat-Style Messaging for Both Complaints & Support Tickets
+### Issue 3: Seat auto-refresh not happening after partner booking
+`fetchSeats()` IS called after booking (line 631 of VendorSeats.tsx), but the sheet stays open with stale data. The issue is that `bookingSuccess` is set to `true` and the booking step changes to `'details'` — the user sees a success view inside the sheet but the grid behind doesn't visually update because the sheet's stale `selectedSeat` isn't refreshed. Additionally, the "seats not shown" issue likely means when `cabins` array loads async and `selectedCabinId` is still `'all'`, `fetchSeats` fires before `cabins` are loaded — resulting in an empty `partnerCabinIds` being passed, which returns no seats.
 
-Currently both systems use a single `response`/`admin_response` field — one message from each side. The user wants back-and-forth chat until resolved/closed, then lock the thread.
+## Approach
 
-### Approach: Create a shared `ticket_messages` table
-
-A single messages table serving both complaints and support tickets, with a `ticket_type` discriminator.
-
-### DB Changes
+### 1. DB: Add `platform_config` table + `partner_trial_days` setting
 
 ```sql
--- 1. Fix admin RLS for support_tickets
-DROP POLICY IF EXISTS "Admins can manage all tickets" ON public.support_tickets;
-CREATE POLICY "Admins can manage all tickets"
-  ON public.support_tickets FOR ALL TO authenticated
+CREATE TABLE public.platform_config (
+  key text PRIMARY KEY,
+  value jsonb NOT NULL DEFAULT '{}',
+  updated_at timestamptz DEFAULT now()
+);
+
+ALTER TABLE public.platform_config ENABLE ROW LEVEL SECURITY;
+
+-- Everyone can read config
+CREATE POLICY "Anyone can read config" ON public.platform_config
+  FOR SELECT TO authenticated USING (true);
+
+-- Only admins can modify
+CREATE POLICY "Admins can manage config" ON public.platform_config
+  FOR ALL TO authenticated
   USING (public.has_role(auth.uid(), 'admin'::app_role))
   WITH CHECK (public.has_role(auth.uid(), 'admin'::app_role));
 
-DROP POLICY IF EXISTS "Students can view own tickets" ON public.support_tickets;
-CREATE POLICY "Students can view own tickets"
-  ON public.support_tickets FOR SELECT TO authenticated
-  USING (auth.uid() = user_id OR public.has_role(auth.uid(), 'admin'::app_role));
-
--- 2. Create ticket_messages table
-CREATE TABLE public.ticket_messages (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  ticket_type text NOT NULL, -- 'complaint' or 'support'
-  ticket_id uuid NOT NULL,
-  sender_id uuid NOT NULL,
-  sender_role text NOT NULL DEFAULT 'student', -- 'student', 'vendor', 'admin'
-  message text NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-
-ALTER TABLE public.ticket_messages ENABLE ROW LEVEL SECURITY;
-
--- Students can insert messages on their own tickets
--- Students can view messages on their own tickets
--- Admins can manage all messages
--- Vendors can manage messages on complaints for their properties
+-- Insert default trial days setting
+INSERT INTO public.platform_config (key, value) VALUES ('partner_trial_days', '{"days": 7}');
 ```
 
-### UI Changes
+### 2. Subscription gate in ManageProperties
+
+When partner clicks "Add New Property":
+- Check if partner has an active universal subscription OR active trial
+- If universal subscription exists → show "Universal Package active, no payment needed" and proceed
+- If within free trial period → proceed with a "Trial" badge
+- If no subscription and trial expired → redirect to My Subscriptions page with a toast
+
+**Logic**: Query `property_subscriptions` for the partner. Also query `partners.created_at` + `platform_config.partner_trial_days` to determine if trial is still active.
+
+### 3. Admin settings: Free trial days control
+
+Add a "Partner Trial Days" input to `AdminSettingsNew.tsx` (or a new section) that reads/writes to `platform_config` table with key `partner_trial_days`.
+
+### 4. Fix seat auto-refresh after partner booking
+
+In `VendorSeats.tsx`:
+- After successful booking, close the sheet OR refresh the `selectedSeat` from the newly fetched seats
+- Fix the `fetchSeats` dependency: ensure `cabins` are loaded before first fetch by guarding `fetchSeats` with `cabins.length > 0`
+
+### 5. Fix "seats not shown" issue
+
+The `fetchSeats` callback (line 171) has condition: `if (cabins.length === 0 && selectedCabinId !== 'all') return;`
+When `selectedCabinId` is `'all'` and `cabins.length` is 0 (still loading), it proceeds but passes empty `partnerCabinIds` → query returns nothing.
+
+**Fix**: Change guard to `if (cabins.length === 0) return;` — wait for cabins to load regardless of selected cabin.
+
+## Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/components/profile/SupportPage.tsx` | When clicking a ticket, open a chat view showing all `ticket_messages` for that ticket. Add message input at bottom. Disable input when status is `resolved` or `closed`. |
-| `src/components/profile/ComplaintsPage.tsx` | Same chat-style view when clicking a complaint card. Disable input when resolved/closed. |
-| `src/components/admin/SupportTicketsManagement.tsx` | Replace the dialog's single textarea with a chat thread from `ticket_messages`. Admin can send messages and change status. Disable messaging when resolved/closed. |
-| `src/components/admin/operations/ComplaintTracker.tsx` | Replace single response field with chat thread. Disable when resolved/closed. |
+| DB migration | Create `platform_config` table with `partner_trial_days` default |
+| `src/pages/partner/ManageProperties.tsx` | Add subscription/trial gate before property creation |
+| `src/pages/admin/AdminSettingsNew.tsx` | Add "Partner Trial Days" config input |
+| `src/pages/vendor/VendorSeats.tsx` | Fix `fetchSeats` guard + close sheet or refresh after booking |
 
-### Chat UI Pattern (shared across all 4 components)
+## Key Logic
 
-- Messages shown in a scrollable area, student messages on right (blue), admin/vendor on left (gray)
-- Each message shows sender name, time, and text
-- Text input + send button at bottom
-- "This ticket is resolved" banner when status is resolved/closed, no input shown
-- Initial `description` shown as the first "message" (read from the parent ticket, not duplicated)
+```typescript
+// ManageProperties - subscription gate
+const handleAddProperty = async (tab: string) => {
+  // Check universal subscription
+  if (universalSub) {
+    toast({ title: 'Universal Package Active' });
+    proceed();
+    return;
+  }
+  // Check free trial
+  const trialDays = config?.days || 7;
+  const partnerAge = daysSince(partner.created_at);
+  if (partnerAge <= trialDays) {
+    proceed(); // within trial
+    return;
+  }
+  // Check any active property subscription
+  if (hasActiveSubscription) {
+    proceed();
+    return;
+  }
+  // No subscription, no trial → redirect
+  toast({ title: 'Subscription Required', variant: 'destructive' });
+  navigate('/partner/subscriptions');
+};
+```
 
-### Files to Modify
+```typescript
+// VendorSeats.tsx - fix seat loading guard
+const fetchSeats = useCallback(async () => {
+  if (cabins.length === 0) return; // Wait for cabins regardless
+  // ... rest unchanged
+}, [selectedCabinId, selectedDate, cabins]);
 
-| File | Change |
-|------|--------|
-| DB migration | Fix RLS cast + create `ticket_messages` table with RLS |
-| `src/components/profile/SupportPage.tsx` | Add chat view per ticket |
-| `src/components/profile/ComplaintsPage.tsx` | Add chat view per complaint |
-| `src/components/admin/SupportTicketsManagement.tsx` | Replace single response with chat thread |
-| `src/components/admin/operations/ComplaintTracker.tsx` | Replace single response with chat thread |
+// After successful booking - close sheet
+fetchSeats();
+setSheetOpen(false); // Close sheet so grid updates are visible
+```
 
