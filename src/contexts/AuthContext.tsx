@@ -77,12 +77,27 @@ const fetchUserRole = async (userId: string): Promise<UserRole> => {
 
 const buildUser = async (supabaseUser: SupabaseUser): Promise<User> => {
   const role = await fetchUserRole(supabaseUser.id);
+  let permissions: any = undefined;
+  let vendorId: string | undefined = undefined;
+
+  if (role === 'vendor_employee') {
+    const { data: empData } = await supabase
+      .from('vendor_employees')
+      .select('permissions, partner_user_id')
+      .eq('employee_user_id', supabaseUser.id)
+      .maybeSingle();
+    permissions = empData?.permissions || [];
+    vendorId = empData?.partner_user_id || undefined;
+  }
+
   return {
     id: supabaseUser.id,
     name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'User',
     email: supabaseUser.email || '',
     role,
     profileImage: supabaseUser.user_metadata?.avatar_url,
+    permissions,
+    vendorId,
   };
 };
 
