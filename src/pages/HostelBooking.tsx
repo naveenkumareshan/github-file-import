@@ -164,6 +164,8 @@ const HostelBooking = () => {
       return;
     }
 
+    let createdBookingId: string | null = null;
+    
     try {
       const isScriptLoaded = await loadRazorpayScript();
       if (!isScriptLoaded) {
@@ -195,6 +197,7 @@ const HostelBooking = () => {
       };
       
       const booking = await hostelBookingService.createBooking(bookingData);
+      createdBookingId = booking.id;
 
       // Create Razorpay order
       const orderResponse = await razorpayService.createOrder({
@@ -212,6 +215,8 @@ const HostelBooking = () => {
       });
 
       if (!orderResponse.success || !orderResponse.data) {
+        await hostelBookingService.cancelBooking(booking.id, 'Payment order creation failed');
+        createdBookingId = null;
         throw new Error(orderResponse.error?.message || 'Failed to create order');
       }
       
@@ -228,6 +233,7 @@ const HostelBooking = () => {
         });
         
         if (verifyResponse.success) {
+          createdBookingId = null; // Payment succeeded, don't cancel
           toast({ title: "Booking Confirmed!", description: "Your hostel booking has been confirmed (Test Mode)" });
           navigate(`/hostel-confirmation/${booking.id}`);
         } else {
@@ -263,12 +269,25 @@ const HostelBooking = () => {
               toast({ title: "Payment Successful", description: "Your booking has been confirmed!" });
               navigate(`/hostel-confirmation/${booking.id}`);
             } else {
+              await hostelBookingService.cancelBooking(booking.id, 'Payment verification failed');
               throw new Error('Payment verification failed');
             }
           } catch (err) {
             console.error('Payment verification error:', err);
+            await hostelBookingService.cancelBooking(booking.id, 'Payment verification failed').catch(() => {});
             toast({ title: "Payment Verification Failed", description: "Please contact support", variant: "destructive" });
+          } finally {
+            setIsProcessing(false);
           }
+        },
+        modal: {
+          ondismiss: async () => {
+            await hostelBookingService.cancelBooking(booking.id, 'Payment cancelled by user').catch(() => {});
+            toast({ title: "Booking Cancelled", description: "Payment was not completed", variant: "destructive" });
+            setIsProcessing(false);
+          },
+          animation: false,
+          backdropclose: false,
         },
       };
       
@@ -276,12 +295,14 @@ const HostelBooking = () => {
       rzp.open();
     } catch (error: any) {
       console.error('Error processing booking:', error);
+      if (createdBookingId) {
+        await hostelBookingService.cancelBooking(createdBookingId, 'Booking process failed').catch(() => {});
+      }
       toast({
         title: "Booking Failed",
         description: error.message || 'An error occurred during booking',
         variant: "destructive"
       });
-    } finally {
       setIsProcessing(false);
     }
   };
