@@ -41,7 +41,7 @@ export function SocialLoginButtons({ onLoginSuccess, onLoginError }: SocialLogin
       }
 
       const result = await lovable.auth.signInWithOAuth(provider, {
-        redirect_uri: window.location.origin,
+        redirect_uri: 'https://inhalestays-com.lovable.app',
       });
 
       if (result.redirected) return;
