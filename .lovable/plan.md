@@ -1,28 +1,27 @@
 
 
-# Fix: Hostel Bed Map — Booked bed colors not visible
+# Move Date Filter Inline with Property Selector
 
-## Investigation Summary
+Currently the `DateFilterSelector` sits on its own row below the header. The user wants it moved to the same line as "All Properties", creating a single compact filter bar.
 
-After thorough code review, the booking detection logic is correct — the query fetches active bookings, maps them by `bed_id`, and sets `dateStatus` to `'booked'` or `'expiring_soon'` when a matching booking exists.
+## Change in `src/pages/partner/BusinessPerformance.tsx`
 
-The actual problem is that the color values used are extremely subtle pastel tints (`bg-red-50`, `bg-emerald-50`, `bg-amber-50`) which are nearly indistinguishable from each other and from the white background, especially on typical screens. The reading room seat map uses much more vivid colors (`bg-[#d4f7c4]`, `bg-[#D3E4FD]`) which are clearly distinguishable.
+Move the `<DateFilterSelector>` from its standalone position (lines 159-166) into the header's right-side flex container (line 146), right after the property selector. Remove the standalone usage.
 
-## Fix in `src/pages/admin/HostelBedMap.tsx`
+**Before (simplified):**
+```
+Header row:  [Title]  ................  [All Properties]
+Row 2:       [Date Filter]
+```
 
-Update the `statusColors` function (~line 868) to use stronger, more distinguishable colors:
+**After:**
+```
+Header row:  [Title]  ......  [All Properties] [Date Filter]
+```
 
-| Status | Current (too subtle) | Proposed (vivid) |
-|--------|---------------------|-------------------|
-| available | `bg-emerald-50 border-emerald-400` | `bg-emerald-100 border-emerald-500` |
-| booked | `bg-red-50 border-red-400` | `bg-red-100 border-red-500` |
-| expiring_soon | `bg-amber-50 border-amber-400` | `bg-amber-100 border-amber-500` |
-| blocked | `bg-muted border-muted-foreground/30` | (keep as-is) |
+### Implementation
+1. Remove lines 159-166 (the standalone `<DateFilterSelector>`)
+2. Insert the `<DateFilterSelector>` inside the `<div className="flex items-center gap-2 flex-wrap">` block (line 146), after the property `<Select>`
 
-Also update the legend color indicators (~line 1029) to match the new stronger colors:
-- Available: `bg-emerald-400` → `bg-emerald-500`
-- Booked: `bg-red-400` → `bg-red-500`
-- Expiring: `bg-amber-400` → `bg-amber-500`
-
-Single file change: `src/pages/admin/HostelBedMap.tsx`
+Single file: `src/pages/partner/BusinessPerformance.tsx`
 
