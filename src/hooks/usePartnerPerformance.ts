@@ -37,10 +37,19 @@ export interface CollectionsByMethod {
 export interface PerformanceData {
   totalSeats: number;
   occupiedSeats: number;
+  availableSeats: number;
   occupancyPercent: number;
   totalCollections: number;
   feesCollected: number;
   depositsCollected: number;
+  seatFees: number;
+  lockerAmount: number;
+  bedFees: number;
+  securityDeposit: number;
+  prevSeatFees: number;
+  prevLockerAmount: number;
+  prevBedFees: number;
+  prevSecurityDeposit: number;
   pendingDues: number;
   pendingRefunds: number;
   netEarnings: number;
@@ -87,8 +96,10 @@ export interface PerformanceData {
 }
 
 const defaultData: PerformanceData = {
-  totalSeats: 0, occupiedSeats: 0, occupancyPercent: 0,
+  totalSeats: 0, occupiedSeats: 0, availableSeats: 0, occupancyPercent: 0,
   totalCollections: 0, feesCollected: 0, depositsCollected: 0,
+  seatFees: 0, lockerAmount: 0, bedFees: 0, securityDeposit: 0,
+  prevSeatFees: 0, prevLockerAmount: 0, prevBedFees: 0, prevSecurityDeposit: 0,
   pendingDues: 0, pendingRefunds: 0, netEarnings: 0,
   prevCollections: 0, prevOccupancy: 0, prevNetEarnings: 0, prevDues: 0,
   roomFees: 0, foodCollection: 0, depositCollection: 0, otherCharges: 0, totalRevenue: 0,
@@ -369,20 +380,28 @@ export function usePartnerPerformance(filters: PerformanceFilters) {
       for (const [k, v] of Object.entries(rrMethodPrev)) prevCollectionsByMethod[k] = (prevCollectionsByMethod[k] || 0) + v;
       for (const [k, v] of Object.entries(hMethodPrev)) prevCollectionsByMethod[k] = (prevCollectionsByMethod[k] || 0) + v;
 
-      const roomFees = sumReceipts(rrCurrent, 'booking_payment') + sumReceipts(hCurrent, 'booking_payment');
-      const foodCollection = sumReceipts(hCurrent, 'food_payment');
-      const depositCollection = sumReceipts(rrCurrent, 'deposit') + sumReceipts(hCurrent, 'deposit') +
+      const seatFees = sumReceipts(rrCurrent, 'booking_payment');
+      const bedFees = sumReceipts(hCurrent, 'booking_payment');
+      const lockerAmount = sumReceipts(rrCurrent, 'locker_payment') + sumReceipts(hCurrent, 'locker_payment');
+      const securityDeposit = sumReceipts(rrCurrent, 'deposit') + sumReceipts(hCurrent, 'deposit') +
         sumReceipts(rrCurrent, 'security_deposit') + sumReceipts(hCurrent, 'security_deposit');
+      const roomFees = seatFees + bedFees;
+      const foodCollection = sumReceipts(hCurrent, 'food_payment');
+      const depositCollection = securityDeposit;
       const otherCharges = sumReceipts(rrCurrent, 'due_payment') + sumReceipts(hCurrent, 'due_payment');
       const totalRevenue = sumReceipts(rrCurrent) + sumReceipts(hCurrent);
       const feesCollected = roomFees;
       const depositsCollected = depositCollection;
       const totalCollections = totalRevenue;
 
-      const prevRoomFees = sumReceipts(rrPrev, 'booking_payment') + sumReceipts(hPrev, 'booking_payment');
-      const prevFoodCollection = sumReceipts(hPrev, 'food_payment');
-      const prevDepositCollection = sumReceipts(rrPrev, 'deposit') + sumReceipts(hPrev, 'deposit') +
+      const prevSeatFees = sumReceipts(rrPrev, 'booking_payment');
+      const prevBedFees = sumReceipts(hPrev, 'booking_payment');
+      const prevLockerAmount = sumReceipts(rrPrev, 'locker_payment') + sumReceipts(hPrev, 'locker_payment');
+      const prevSecurityDeposit = sumReceipts(rrPrev, 'deposit') + sumReceipts(hPrev, 'deposit') +
         sumReceipts(rrPrev, 'security_deposit') + sumReceipts(hPrev, 'security_deposit');
+      const prevRoomFees = prevSeatFees + prevBedFees;
+      const prevFoodCollection = sumReceipts(hPrev, 'food_payment');
+      const prevDepositCollection = prevSecurityDeposit;
       const prevOtherCharges = sumReceipts(rrPrev, 'due_payment') + sumReceipts(hPrev, 'due_payment');
       const prevTotalRevenue = sumReceipts(rrPrev) + sumReceipts(hPrev);
       const prevCollections = prevTotalRevenue;
@@ -471,9 +490,13 @@ export function usePartnerPerformance(filters: PerformanceFilters) {
           s + differenceInDays(new Date(b.end_date), new Date(b.start_date)), 0) / allActiveBookings.length)
         : 0;
 
+      const availableSeats = totalSeats - occupiedSeats;
+
       return {
-        totalSeats, occupiedSeats, occupancyPercent,
+        totalSeats, occupiedSeats, availableSeats, occupancyPercent,
         totalCollections, feesCollected, depositsCollected,
+        seatFees, lockerAmount, bedFees, securityDeposit,
+        prevSeatFees, prevLockerAmount, prevBedFees, prevSecurityDeposit,
         pendingDues, pendingRefunds: refundsPending, netEarnings,
         prevCollections, prevOccupancy, prevNetEarnings, prevDues,
         roomFees, foodCollection, depositCollection, otherCharges, totalRevenue,
