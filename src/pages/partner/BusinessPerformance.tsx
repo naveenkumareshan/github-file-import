@@ -153,17 +153,16 @@ export default function BusinessPerformance() {
               </SelectContent>
             </Select>
           )}
+          <DateFilterSelector
+            dateFilter={filters.dateFilter}
+            startDate={filters.startDate}
+            endDate={filters.endDate}
+            onDateFilterChange={v => setFilters(f => ({ ...f, dateFilter: v }))}
+            onStartDateChange={d => setFilters(f => ({ ...f, startDate: d }))}
+            onEndDateChange={d => setFilters(f => ({ ...f, endDate: d }))}
+          />
         </div>
       </div>
-
-      <DateFilterSelector
-        dateFilter={filters.dateFilter}
-        startDate={filters.startDate}
-        endDate={filters.endDate}
-        onDateFilterChange={v => setFilters(f => ({ ...f, dateFilter: v }))}
-        onStartDateChange={d => setFilters(f => ({ ...f, startDate: d }))}
-        onEndDateChange={d => setFilters(f => ({ ...f, endDate: d }))}
-      />
 
       {/* Two compact stat tables side by side */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
