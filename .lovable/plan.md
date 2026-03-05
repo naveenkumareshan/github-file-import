@@ -1,31 +1,52 @@
 
 
-# Fix: Reading Room Seat Price vs Deposit Split in Operations Hub
+# Fix Business Performance: Filter Alignment + Financial Category Separation
 
-## Problem
+## Issues
 
-In `getFinancials()` (line 179 of `CheckInTracker.tsx`), `price` is set to `b.total_price` which **already includes** the locker/deposit amount. Then `deposit` is added separately as `b.locker_price`, double-counting it.
+1. **Date filter misaligned**: The `DateFilterSelector` uses `w-[200px]` and default height, while the property selector uses `w-[140px] h-7 text-[11px]`. The wrapper div uses `gap-4` and `flex-col md:flex-row` which doesn't match the compact inline style.
 
-Example: D Sanjay has `total_price = 2700` (seat 2200 + locker 500) and `locker_price = 500`. Current code shows: Price=2700, Deposit=500, Paid=3200. Should be: Price=2200, Deposit=500, Paid=2700.
+2. **Financial categories mixing RR and Hostel amounts**: Currently in `usePartnerPerformance.ts`:
+   - `lockerAmount` = RR `locker_payment` + Hostel `locker_payment` — should be **only RR locker amounts**
+   - `securityDeposit` = RR `deposit` + Hostel `deposit` + both `security_deposit` — should be **only Hostel security deposits**
+   - `seatFees` and `bedFees` are already correct (RR-only and Hostel-only respectively)
+   - `foodCollection` is already correct (Hostel-only)
 
-## Fix
+## Changes
 
-### `src/components/admin/operations/CheckInTracker.tsx` — Line 179
+### 1. `src/pages/partner/BusinessPerformance.tsx` — Fix filter alignment
 
-Change the price calculation to subtract the deposit:
+Replace the `DateFilterSelector` wrapper with compact inline styling matching the property selector. Pass a `className` prop or wrap with a container that applies `h-7 text-[11px]` to the inner Select. Since `DateFilterSelector` doesn't accept className, wrap it in a div with CSS overrides or modify the component.
+
+Better approach: Add a `compact` or `className` prop to `DateFilterSelector`.
+
+### 2. `src/components/common/DateFilterSelector.tsx` — Add compact mode
+
+Add optional `compact?: boolean` prop. When true:
+- Outer div: `gap-2` instead of `gap-4`
+- SelectTrigger: `w-[140px] h-7 text-[11px]` instead of `w-[200px]`
+- Custom date buttons: `h-7 text-[11px] w-[120px]`
+
+### 3. `src/hooks/usePartnerPerformance.ts` — Separate financial categories
+
+**Lines 385-387**, split locker and security deposit by source:
 
 ```typescript
-// Before
-const price = Number(b.total_price || 0);
-const deposit = Number(b.locker_price || 0);
+// Locker = only reading room locker payments
+const lockerAmount = sumReceipts(rrCurrent, 'locker_payment');
 
-// After
-const deposit = Number(b.locker_price || 0);
-const price = Number(b.total_price || 0) - deposit;
+// Security Deposit = only hostel security deposits
+const securityDeposit = sumReceipts(hCurrent, 'deposit') + sumReceipts(hCurrent, 'security_deposit');
 ```
 
-This matches the convention used elsewhere in the app where "Seat Price" is the pre-discount base fee excluding deposit.
+Same fix for previous period (lines 399-401):
+```typescript
+const prevLockerAmount = sumReceipts(rrPrev, 'locker_payment');
+const prevSecurityDeposit = sumReceipts(hPrev, 'deposit') + sumReceipts(hPrev, 'security_deposit');
+```
 
 ### Files Changed
-- `src/components/admin/operations/CheckInTracker.tsx` — Fix price calculation in `getFinancials`
+- `src/components/common/DateFilterSelector.tsx` — Add `compact` prop
+- `src/pages/partner/BusinessPerformance.tsx` — Pass `compact` to DateFilterSelector
+- `src/hooks/usePartnerPerformance.ts` — Separate locker (RR-only) and security deposit (Hostel-only)
 
