@@ -37,6 +37,7 @@ const HostelBedManagementPage = () => {
   const navigate = useNavigate();
 
   const [hostel, setHostel] = useState<any>(null);
+  const [resolvedHostelId, setResolvedHostelId] = useState<string>('');
   const [rooms, setRooms] = useState<any[]>([]);
   const [selectedRoomId, setSelectedRoomId] = useState('');
   const [selectedFloorId, setSelectedFloorId] = useState('');
@@ -140,6 +141,7 @@ const HostelBedManagementPage = () => {
       }
       const { data: h } = await supabase.from('hostels').select('*').eq('id', resolvedId).single();
       setHostel(h);
+      setResolvedHostelId(resolvedId);
 
       const [catResult, floorResult, sharingResult] = await Promise.all([
         hostelBedCategoryService.getCategories(resolvedId),
@@ -239,7 +241,7 @@ const HostelBedManagementPage = () => {
     const { data: bookings } = await supabase
       .from('hostel_bookings')
       .select('bed_id, profiles:user_id(name)')
-      .eq('hostel_id', hostelId)
+      .eq('hostel_id', resolvedHostelId)
       .in('status', ['confirmed', 'pending']);
 
     const bookingMap = new Map<string, string>();
@@ -252,7 +254,7 @@ const HostelBedManagementPage = () => {
       sharingPrice: b.hostel_sharing_options?.price_monthly, occupantName: bookingMap.get(b.id),
       rotation: (b as any).rotation || 0,
     })));
-  }, [rooms, hostelId]);
+  }, [rooms, resolvedHostelId]);
 
   // Load designer beds when room changes
   useEffect(() => {
@@ -363,8 +365,8 @@ const HostelBedManagementPage = () => {
     const result = await hostelFloorService.deleteFloor(floorId);
     if (result.success) {
       toast({ title: 'Floor removed' });
-      if (hostelId) {
-        const floorResult = await hostelFloorService.getFloors(hostelId);
+      if (resolvedHostelId) {
+        const floorResult = await hostelFloorService.getFloors(resolvedHostelId);
         if (floorResult.success) setFloors(floorResult.data);
       }
     }
@@ -517,14 +519,14 @@ const HostelBedManagementPage = () => {
   };
 
   const handleAddCategory = async () => {
-    if (!newCatName.trim() || !hostelId) return;
+    if (!newCatName.trim() || !resolvedHostelId) return;
     setSaving(true);
     try {
-      const result = await hostelBedCategoryService.createCategory(hostelId, newCatName, 0);
+      const result = await hostelBedCategoryService.createCategory(resolvedHostelId, newCatName, 0);
       if (!result.success) throw new Error('Failed');
       toast({ title: 'Category added' });
       setNewCatName('');
-      const catResult = await hostelBedCategoryService.getCategories(hostelId);
+      const catResult = await hostelBedCategoryService.getCategories(resolvedHostelId);
       if (catResult.success) setCategories(catResult.data);
     } catch (e: any) {
       toast({ title: 'Error', description: e.message, variant: 'destructive' });
@@ -547,22 +549,22 @@ const HostelBedManagementPage = () => {
     const result = await hostelBedCategoryService.deleteCategory(id);
     if (result.success) {
       toast({ title: 'Category deleted' });
-      if (hostelId) {
-        const catResult = await hostelBedCategoryService.getCategories(hostelId);
+      if (resolvedHostelId) {
+        const catResult = await hostelBedCategoryService.getCategories(resolvedHostelId);
         if (catResult.success) setCategories(catResult.data);
       }
     }
   };
 
   const handleAddFloor = async () => {
-    if (!newFloorName.trim() || !hostelId) return;
+    if (!newFloorName.trim() || !resolvedHostelId) return;
     setSaving(true);
     try {
-      const result = await hostelFloorService.createFloor(hostelId, newFloorName, Number(newFloorOrder) || 1);
+      const result = await hostelFloorService.createFloor(resolvedHostelId, newFloorName, Number(newFloorOrder) || 1);
       if (!result.success) throw new Error('Failed');
       toast({ title: 'Floor added' });
       setNewFloorName(''); setNewFloorOrder(String((floors.length || 0) + 1));
-      const floorResult = await hostelFloorService.getFloors(hostelId);
+      const floorResult = await hostelFloorService.getFloors(resolvedHostelId);
       if (floorResult.success) setFloors(floorResult.data);
     } catch (e: any) {
       toast({ title: 'Error', description: e.message, variant: 'destructive' });
@@ -570,14 +572,14 @@ const HostelBedManagementPage = () => {
   };
 
   const handleAddSharingType = async () => {
-    if (!newSharingName.trim() || !hostelId) return;
+    if (!newSharingName.trim() || !resolvedHostelId) return;
     setSaving(true);
     try {
-      const result = await hostelSharingTypeService.createSharingType(hostelId, newSharingName, Number(newSharingCapacity) || 1);
+      const result = await hostelSharingTypeService.createSharingType(resolvedHostelId, newSharingName, Number(newSharingCapacity) || 1);
       if (!result.success) throw new Error('Failed');
       toast({ title: 'Sharing type added' });
       setNewSharingName(''); setNewSharingCapacity('1');
-      const stResult = await hostelSharingTypeService.getSharingTypes(hostelId);
+      const stResult = await hostelSharingTypeService.getSharingTypes(resolvedHostelId);
       if (stResult.success) setSharingTypes(stResult.data);
     } catch (e: any) {
       toast({ title: 'Error', description: e.message, variant: 'destructive' });
@@ -600,20 +602,20 @@ const HostelBedManagementPage = () => {
     const result = await hostelSharingTypeService.deleteSharingType(id);
     if (result.success) {
       toast({ title: 'Sharing type removed' });
-      if (hostelId) {
-        const stResult = await hostelSharingTypeService.getSharingTypes(hostelId);
+      if (resolvedHostelId) {
+        const stResult = await hostelSharingTypeService.getSharingTypes(resolvedHostelId);
         if (stResult.success) setSharingTypes(stResult.data);
       }
     }
   };
 
   const handleAddRoom = async () => {
-    if (!newRoomNumber.trim() || !newRoomFloorId || !hostelId) return;
+    if (!newRoomNumber.trim() || !newRoomFloorId || !resolvedHostelId) return;
     setSaving(true);
     try {
       const selectedFloor = floors.find(f => f.id === newRoomFloorId);
       const { error } = await supabase.from('hostel_rooms').insert({
-        hostel_id: hostelId,
+        hostel_id: resolvedHostelId,
         room_number: newRoomNumber,
         floor: selectedFloor?.floor_order || 1,
         floor_id: newRoomFloorId,
