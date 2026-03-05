@@ -985,7 +985,7 @@ const HostelBedMap: React.FC = () => {
                 statusColors(bed.dateStatus)
               )}
             >
-              <span className="text-xs font-bold leading-none">R{bed.roomNumber}-B{bed.bed_number}</span>
+              <span className="text-xs font-bold leading-none">{bed.roomNumber}-B{bed.bed_number}</span>
               <span className="text-[9px] text-muted-foreground leading-tight truncate w-full">{bed.category || bed.roomCategory}</span>
               <div className="flex items-center gap-0.5">
                 <span className="text-[9px] font-medium leading-tight">₹{bed.price}</span>
@@ -1112,7 +1112,7 @@ const HostelBedMap: React.FC = () => {
         <DialogContent className="max-w-xs">
           <DialogHeader>
             <DialogTitle className="text-sm">
-              {blockBed?.is_blocked ? 'Unblock' : 'Block'} R{blockBed?.roomNumber}-B{blockBed?.bed_number}
+              {blockBed?.is_blocked ? 'Unblock' : 'Block'} {blockBed?.roomNumber}-B{blockBed?.bed_number}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
