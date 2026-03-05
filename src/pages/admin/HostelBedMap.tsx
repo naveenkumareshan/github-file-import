@@ -1378,6 +1378,20 @@ const HostelBedMap: React.FC = () => {
                         <Input className="h-7 text-xs" type="number" placeholder={`₹ ${advanceComputed.advanceAmount}`} value={manualAdvanceAmount} max={advanceComputed.grandTotal}
                           onChange={e => { const val = parseFloat(e.target.value); if (e.target.value === '' || isNaN(val)) setManualAdvanceAmount(e.target.value); else if (val > advanceComputed.grandTotal) setManualAdvanceAmount(String(advanceComputed.grandTotal)); else setManualAdvanceAmount(e.target.value); }} />
                       </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] uppercase text-muted-foreground">Due Date (Reminder)</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" className={cn("w-full h-7 text-xs justify-start", !manualDueDate && "text-muted-foreground")}>
+                              <CalendarIcon className="mr-1.5 h-3 w-3" />
+                              {manualDueDate ? format(manualDueDate, 'dd MMM yyyy') : 'Pick due date'}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar mode="single" selected={manualDueDate} onSelect={setManualDueDate} initialFocus className={cn("p-3 pointer-events-auto")} />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
                       <Separator />
                       <div className="flex justify-between text-amber-700 dark:text-amber-400 font-medium"><span>Collecting Now</span><span>₹{advanceComputed.advanceAmount}</span></div>
                       <div className="flex justify-between text-destructive"><span>Due Balance</span><span>₹{advanceComputed.remainingDue}</span></div>
