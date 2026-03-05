@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatCurrency } from '@/utils/currency';
-import { Loader2, TrendingUp, TrendingDown, Users, BedDouble, IndianRupee, AlertTriangle, Star, Flame, BarChart2, Wallet, UserPlus, UserMinus, Clock, Building, Banknote, Smartphone, Building2, CreditCard } from 'lucide-react';
+import { Loader2, TrendingUp, TrendingDown, Users, BedDouble, IndianRupee, AlertTriangle, Star, Flame, BarChart2, Wallet, UserPlus, UserMinus, Clock, Building, Banknote, Smartphone, Building2, CreditCard, Armchair, Lock, ShieldCheck } from 'lucide-react';
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Area, AreaChart
 } from 'recharts';
@@ -158,23 +158,29 @@ export default function BusinessPerformance() {
       />
 
       {/* Section A: Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <SummaryCard title="Total Seats/Beds" value={d.totalSeats} icon={BedDouble} />
-        <SummaryCard title="Occupied" value={d.occupiedSeats} icon={Users} prev={undefined} />
+        <SummaryCard title="Occupied" value={d.occupiedSeats} icon={Users} />
+        <SummaryCard title="Available" value={d.availableSeats ?? (d.totalSeats - d.occupiedSeats)} icon={Armchair} />
         <SummaryCard title="Occupancy %" value={d.occupancyPercent} icon={BarChart2} prev={d.prevOccupancy} />
         <SummaryCard title="Net Earnings" value={d.netEarnings} icon={IndianRupee} isCurrency prev={d.prevNetEarnings} />
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <SummaryCard title="Total Collections" value={d.totalCollections} icon={Wallet} isCurrency prev={d.prevCollections} />
-        <SummaryCard title="Fees Collected" value={d.feesCollected} icon={IndianRupee} isCurrency />
-        <SummaryCard title="Deposits Collected" value={d.depositsCollected} icon={IndianRupee} isCurrency />
-        <SummaryCard title="Pending Dues" value={d.pendingDues} icon={AlertTriangle} isCurrency />
+        <SummaryCard title="Seat Fees" value={d.seatFees ?? 0} icon={Armchair} isCurrency prev={d.prevSeatFees} />
+        <SummaryCard title="Locker Amount" value={d.lockerAmount ?? 0} icon={Lock} isCurrency prev={d.prevLockerAmount} />
+        <SummaryCard title="Bed Fees" value={d.bedFees ?? 0} icon={BedDouble} isCurrency prev={d.prevBedFees} />
+        <SummaryCard title="Security Deposit" value={d.securityDeposit ?? 0} icon={ShieldCheck} isCurrency prev={d.prevSecurityDeposit} />
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <SummaryCard title="Pending Refunds" value={d.pendingRefunds} icon={Wallet} isCurrency />
+        <SummaryCard title="Total Collections" value={d.totalCollections} icon={Wallet} isCurrency prev={d.prevCollections} />
+        <SummaryCard title="Pending Dues" value={d.pendingDues} icon={AlertTriangle} isCurrency />
         <SummaryCard title="New Admissions" value={d.newAdmissions} icon={UserPlus} />
+        <SummaryCard title="Pending Refunds" value={d.pendingRefunds} icon={Wallet} isCurrency />
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <SummaryCard title="Renewals" value={d.renewals} icon={Users} />
         <SummaryCard title="Dropouts" value={d.dropouts} icon={UserMinus} />
+        <SummaryCard title="Food Collection" value={d.foodCollection} icon={IndianRupee} isCurrency prev={d.prevFoodCollection} />
       </div>
 
       {/* Section B: Revenue Breakdown */}
@@ -194,10 +200,12 @@ export default function BusinessPerformance() {
             </TableHeader>
             <TableBody>
               {[
-                { label: 'Room Fees', cur: d.roomFees, prev: d.prevRoomFees },
+                { label: 'Seat Fees', cur: d.seatFees ?? 0, prev: d.prevSeatFees ?? 0 },
+                { label: 'Bed Fees', cur: d.bedFees ?? 0, prev: d.prevBedFees ?? 0 },
+                { label: 'Locker Amount', cur: d.lockerAmount ?? 0, prev: d.prevLockerAmount ?? 0 },
+                { label: 'Security Deposit', cur: d.securityDeposit ?? 0, prev: d.prevSecurityDeposit ?? 0 },
                 { label: 'Food Collection', cur: d.foodCollection, prev: d.prevFoodCollection },
-                { label: 'Deposit Collection', cur: d.depositCollection, prev: d.prevDepositCollection },
-                { label: 'Other Charges', cur: d.otherCharges, prev: d.prevOtherCharges },
+                { label: 'Due Payments', cur: d.otherCharges, prev: d.prevOtherCharges },
                 { label: 'Total Revenue', cur: d.totalRevenue, prev: d.prevTotalRevenue },
               ].map(row => (
                 <TableRow key={row.label}>

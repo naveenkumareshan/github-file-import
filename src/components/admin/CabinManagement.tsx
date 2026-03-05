@@ -7,6 +7,9 @@ import { Edit, Trash2, Building, Building2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { SeatManagementLink } from './SeatManagementLink';
 import ErrorBoundary from '../ErrorBoundary';
+import { ShareButton } from '@/components/ShareButton';
+import { generateCabinShareText } from '@/utils/shareUtils';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface CabinData {
   id: string | number;
@@ -46,6 +49,7 @@ export function CabinManagement({
 }: CabinManagementProps) {
   const [selectedCabin, setSelectedCabin] = useState<number | null>(null);
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   // Ensure cabins is always an array
   const cabinsList = Array.isArray(cabins) ? cabins : [];
@@ -116,7 +120,23 @@ export function CabinManagement({
                 </div>
               )}
               
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-4 flex flex-wrap gap-2 items-center">
+                {(() => {
+                  const shareData = generateCabinShareText({
+                    id: String(cabin.id),
+                    name: cabin.name,
+                    price: cabin.price,
+                    serialNumber: cabin.serialNumber,
+                  }, user?.id);
+                  return (
+                    <ShareButton
+                      title={shareData.title}
+                      text={shareData.text}
+                      url={shareData.url}
+                      className="h-8 w-8 rounded-full bg-muted text-muted-foreground hover:bg-accent"
+                    />
+                  );
+                })()}
                 <SeatManagementLink 
                   cabinId={cabin.id}
                   serialNumber={cabin.serialNumber}

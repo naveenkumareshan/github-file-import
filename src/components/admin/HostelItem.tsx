@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Edit, FileMinus, FilePlus, Trash2, Bed, Package } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { ShareButton } from '@/components/ShareButton';
+import { generateHostelShareText } from '@/utils/shareUtils';
 
 interface HostelItemProps {
   hostel: any;
@@ -87,7 +89,27 @@ export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePac
           </div>
 
           {/* Actions */}
-          <div className="border-t pt-3 mt-0.5 flex flex-wrap gap-1.5">
+          <div className="border-t pt-3 mt-0.5 flex flex-wrap gap-1.5 items-center">
+            {(() => {
+              const shareData = generateHostelShareText({
+                id: hostel.id,
+                name: hostel.name,
+                gender: hostel.gender,
+                stay_type: hostel.stay_type,
+                food_enabled: hostel.food_enabled,
+                food_policy_type: hostel.food_policy_type,
+                location: hostel.locality || hostel.location,
+                serial_number: hostel.serial_number,
+              }, undefined, user?.id);
+              return (
+                <ShareButton
+                  title={shareData.title}
+                  text={shareData.text}
+                  url={shareData.url}
+                  className="h-7 w-7 rounded-full bg-muted text-muted-foreground hover:bg-accent"
+                />
+              );
+            })()}
             {isAdmin && (
               <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => onEdit(hostel)}>
                 <Edit className="h-3 w-3 mr-1" />Edit
