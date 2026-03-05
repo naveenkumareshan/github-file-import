@@ -1,21 +1,34 @@
 
 
-# Fix: Blank Screen on Page Refresh (SPA Fallback)
+# Fix: Vendor Employee Sidebar Empty — Permissions Not Loaded
 
 ## Problem
-When refreshing or directly accessing a nested route (e.g., `/admin/dashboard`, `/partner/bookings`), the server returns a 404 instead of serving `index.html`, causing a blank screen. This is a classic SPA routing issue.
+When a `vendor_employee` logs in, the sidebar is completely empty. The `useVendorEmployeePermissions` hook reads permissions from `user?.permissions`, but `AuthContext.buildUser()` never queries the `vendor_employees` table to populate this field — so it's always `undefined`, all permission checks return `false`, and every sidebar item is hidden.
 
 ## Root Cause
-Two issues:
-1. **`base: './'`** in `vite.config.ts` — relative base paths break asset resolution on nested routes (e.g., refreshing `/admin/dashboard` makes the browser look for assets at `/admin/assets/...` instead of `/assets/...`). This must be `'/'`.
-2. **No SPA fallback rewrite** — Lovable's hosting needs a `_redirects` file (Netlify-style) to serve `index.html` for all non-file routes.
+In `src/contexts/AuthContext.tsx`, the `buildUser` function only fetches the user's role from `user_roles`. It never fetches the employee's `permissions` array from `vendor_employees`, nor the `vendorId` (partner_user_id) needed for data scoping.
 
-## Changes
+## Fix
+Update `buildUser` in `AuthContext.tsx` to fetch permissions and vendorId from `vendor_employees` when the role is `vendor_employee`:
+
+```typescript
+// After determining role is 'vendor_employee':
+const { data: empData } = await supabase
+  .from('vendor_employees')
+  .select('permissions, partner_user_id')
+  .eq('employee_user_id', supabaseUser.id)
+  .maybeSingle();
+
+// Then include in the returned User object:
+permissions: empData?.permissions || [],
+vendorId: empData?.partner_user_id,
+```
+
+## File to Modify
 
 | File | Change |
 |------|--------|
-| `vite.config.ts` | Change `base: './'` to `base: '/'` |
-| `public/_redirects` | Create with `/* /index.html 200` rewrite rule |
+| `src/contexts/AuthContext.tsx` | In `buildUser`, when role is `vendor_employee`, query `vendor_employees` table to get `permissions` and `partner_user_id`, and set them on the User object |
 
-These are config-only changes. No UI modifications.
+This is a single-file change. No UI modifications.
 
