@@ -1,73 +1,61 @@
 
 
-# Fix: Employee Can't See Seat Maps, Bookings, Receipts, Dues, Key Deposits
+# Fix: Employee Still Cannot See Seats, Bookings, Receipts, Dues, Key Deposits
 
-## Root Cause
+## Root Cause Summary
 
-The RLS policies are correct — employees CAN access partner data at the database level. The problem is in the **application code**: multiple service files explicitly filter queries with `.eq('created_by', authUser.id)` where `authUser.id` is the **employee's own ID**, not the partner's. Since properties are created by the partner, these queries return zero results regardless of RLS.
+There are **two layers** of problems, both preventing employees from seeing data:
 
-## What Needs to Change
+### Layer 1: Missing RLS Policies (Database)
+The `receipts` and `seat_block_history` tables have vendor policies checking `c.created_by = auth.uid()` but **no employee policies** using `is_partner_or_employee_of`. This means employees are blocked at the database level from reading receipts and seat block history.
 
-### 1. Create a utility function to resolve the effective owner ID
+### Layer 2: Application-Level Filtering (Code)
+Many page components and hooks still filter with `.eq('created_by', user.id)` where `user.id` is the employee's own ID. Even though the `vendorSeatsService.getVendorCabins()` was fixed, **multiple other pages** bypass that service and query directly. These pages return zero results for employees.
 
-Create `src/utils/getEffectiveOwnerId.ts` — a shared helper that:
-- Calls `supabase.auth.getUser()` to get the authenticated user
-- Checks `user_roles` to see if they're a `vendor_employee`
-- If yes, looks up `vendor_employees.partner_user_id` and returns that
-- Otherwise returns the user's own ID
+## Affected Files and Fixes
 
-This avoids duplicating the same logic in every service file.
+### Database Migration — Add Employee RLS Policies
 
-### 2. Fix service files that filter by `created_by = authUser.id`
+| Table | Missing Policy | Fix |
+|-------|---------------|-----|
+| `receipts` | No employee SELECT/INSERT | Add `is_partner_or_employee_of(c.created_by)` policy for ALL |
+| `seat_block_history` | No employee policy | Add `is_partner_or_employee_of(c.created_by)` via seats→cabins join |
 
-| File | Lines | Current Bug | Fix |
-|------|-------|-------------|-----|
-| `src/api/vendorSeatsService.ts` | ~218 | `.eq('created_by', authUser.id)` | Use `getEffectiveOwnerId()` |
-| `src/api/hostelManagerService.ts` | 14, 35, 70, 98 | `.eq('created_by', user.id)` (4 places) | Use `getEffectiveOwnerId()` |
-| `src/api/adminUsersService.ts` | 80-81 | `.eq('created_by', authUser.id)` for cabins/hostels | Use effective owner ID |
-| `src/api/adminUsersService.ts` | 123 | `.eq('partner_user_id', authUser.id)` | Use effective owner ID |
-| `src/api/hostelService.ts` | 132 | `.eq('created_by', user?.id)` | Use effective owner ID |
+### Code Fixes — Replace `user.id` with Effective Owner ID
 
-### 3. No database changes needed
+These files all have direct `.eq('created_by', user.id)` that returns nothing for employees:
 
-The RLS policies (`is_partner_or_employee_of`) are already in place and working correctly. The issue is purely application-level query filtering.
+| File | Location | Current Bug |
+|------|----------|-------------|
+| `src/pages/admin/HostelBedMap.tsx` | line 177 | `.eq('created_by', user.id)` |
+| `src/pages/admin/HostelReceipts.tsx` | line 65 | `.eq('created_by', user.id)` |
+| `src/pages/admin/HostelDueManagement.tsx` | line 68 | `.eq('created_by', user.id)` |
+| `src/components/admin/StudentExcelImport.tsx` | lines 78, 89 | `.eq('created_by', user.id)` |
+| `src/hooks/usePartnerPerformance.ts` | lines 169-171 | `.eq('created_by', user.id)` x3 |
+| `src/components/vendor/VendorProfile.tsx` | lines 107-108 | `.eq('created_by', user.id)` x2 |
 
-## Technical Detail
+**Fix pattern**: Import and call `getEffectiveOwnerId()` to get the partner's ID, then use that in the query filter. For files using `useAuth()` context, we can use `user.vendorId || user.id` since the AuthContext already resolves `vendorId` for employees.
 
-The utility function pattern:
+### Receipts Page — No Cabin Filtering for Employees
 
-```typescript
-// src/utils/getEffectiveOwnerId.ts
-export async function getEffectiveOwnerId(): Promise<{ userId: string; ownerId: string }> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-  
-  const { data: roles } = await supabase.from('user_roles').select('role').eq('user_id', user.id);
-  const isEmployee = roles?.some(r => r.role === 'vendor_employee');
-  
-  if (isEmployee) {
-    const { data: emp } = await supabase.from('vendor_employees')
-      .select('partner_user_id')
-      .eq('employee_user_id', user.id)
-      .maybeSingle();
-    if (emp?.partner_user_id) {
-      return { userId: user.id, ownerId: emp.partner_user_id };
-    }
-  }
-  
-  return { userId: user.id, ownerId: user.id };
-}
-```
+`src/pages/admin/Receipts.tsx` fetches all receipts without any cabin filter. RLS will now handle scoping (once the policy is added), but the cabin dropdown also fetches unfiltered — it should use `getEffectiveOwnerId()` so employees see only their partner's cabins.
 
-Each service file replaces `authUser.id` in `created_by` filters with `ownerId` from this function, so employees see the partner's properties.
+### Deposit/Refund Service
 
-## Files to Change
+`src/api/depositRefundService.ts` queries bookings directly — RLS already handles scoping via the existing employee booking policies, so no code change needed there.
 
-| File | Change |
+## Changes Summary
+
+| Item | Change |
 |------|--------|
-| `src/utils/getEffectiveOwnerId.ts` | **Create** — shared utility |
-| `src/api/vendorSeatsService.ts` | Replace `authUser.id` with effective owner ID in cabin query |
-| `src/api/hostelManagerService.ts` | Replace `user.id` with effective owner ID in 4 cabin queries |
-| `src/api/adminUsersService.ts` | Replace `authUser.id` with effective owner ID in cabin/hostel/employee queries |
-| `src/api/hostelService.ts` | Replace `user?.id` with effective owner ID in `getUserHostels` |
+| **DB Migration** | Add employee RLS policies on `receipts` and `seat_block_history` |
+| `src/pages/admin/HostelBedMap.tsx` | Use `getEffectiveOwnerId()` instead of `user.id` |
+| `src/pages/admin/HostelReceipts.tsx` | Use `getEffectiveOwnerId()` instead of `user.id` |
+| `src/pages/admin/HostelDueManagement.tsx` | Use `getEffectiveOwnerId()` instead of `user.id` |
+| `src/pages/admin/Receipts.tsx` | Use `getEffectiveOwnerId()` for cabin filter query |
+| `src/components/admin/StudentExcelImport.tsx` | Use `getEffectiveOwnerId()` instead of `user.id` |
+| `src/hooks/usePartnerPerformance.ts` | Use `getEffectiveOwnerId()` instead of `user.id` |
+| `src/components/vendor/VendorProfile.tsx` | Use `getEffectiveOwnerId()` instead of `user.id` |
+
+This covers all the remaining places where employee queries are broken.
 
