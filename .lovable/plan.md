@@ -1,70 +1,73 @@
 
 
-# Fix: Vendor Employees Blocked by RLS on All Data Tables
+# Fix: Employee Can't See Seat Maps, Bookings, Receipts, Dues, Key Deposits
 
 ## Root Cause
 
-Every table's vendor RLS policy uses `created_by = auth.uid()` (or equivalent). For a vendor employee, `auth.uid()` returns **their own user ID**, not the partner's. So every query returns empty — the sidebar property detection (`usePartnerPropertyTypes`) finds no cabins, and even if we force the sidebar open, the actual pages would show no data.
+The RLS policies are correct — employees CAN access partner data at the database level. The problem is in the **application code**: multiple service files explicitly filter queries with `.eq('created_by', authUser.id)` where `authUser.id` is the **employee's own ID**, not the partner's. Since properties are created by the partner, these queries return zero results regardless of RLS.
 
-The only reason "Complaints" works is because that table has a broad SELECT policy.
+## What Needs to Change
 
-## Verified Data
+### 1. Create a utility function to resolve the effective owner ID
 
-- Employee `9e02376e...` has 12 permissions including `seats_available_map`, `view_bookings`, etc.
-- Partner `edb417fa...` owns cabin "Toppers reading room" (`is_active: false`, `is_approved: true`)
-- Employee cannot SELECT this cabin due to RLS — no policy grants access via `partner_user_id`
+Create `src/utils/getEffectiveOwnerId.ts` — a shared helper that:
+- Calls `supabase.auth.getUser()` to get the authenticated user
+- Checks `user_roles` to see if they're a `vendor_employee`
+- If yes, looks up `vendor_employees.partner_user_id` and returns that
+- Otherwise returns the user's own ID
 
-## Solution
+This avoids duplicating the same logic in every service file.
 
-### 1. Create a reusable helper function (database migration)
+### 2. Fix service files that filter by `created_by = authUser.id`
 
-```sql
-CREATE OR REPLACE FUNCTION public.is_partner_or_employee_of(owner_id uuid)
-RETURNS boolean
-LANGUAGE sql STABLE SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT
-    auth.uid() = owner_id
-    OR EXISTS (
-      SELECT 1 FROM public.vendor_employees
-      WHERE employee_user_id = auth.uid()
-        AND partner_user_id = owner_id
-        AND status = 'active'
-    )
-$$;
-```
+| File | Lines | Current Bug | Fix |
+|------|-------|-------------|-----|
+| `src/api/vendorSeatsService.ts` | ~218 | `.eq('created_by', authUser.id)` | Use `getEffectiveOwnerId()` |
+| `src/api/hostelManagerService.ts` | 14, 35, 70, 98 | `.eq('created_by', user.id)` (4 places) | Use `getEffectiveOwnerId()` |
+| `src/api/adminUsersService.ts` | 80-81 | `.eq('created_by', authUser.id)` for cabins/hostels | Use effective owner ID |
+| `src/api/adminUsersService.ts` | 123 | `.eq('partner_user_id', authUser.id)` | Use effective owner ID |
+| `src/api/hostelService.ts` | 132 | `.eq('created_by', user?.id)` | Use effective owner ID |
 
-### 2. Add vendor employee SELECT policies on critical tables
+### 3. No database changes needed
 
-Using the helper function, add new policies on the tables the employee needs:
+The RLS policies (`is_partner_or_employee_of`) are already in place and working correctly. The issue is purely application-level query filtering.
 
-| Table | Policy | Condition |
-|-------|--------|-----------|
-| `cabins` | Vendor employees can view employer cabins | `is_partner_or_employee_of(created_by)` |
-| `seats` | Vendor employees can view employer seats | Join to cabins, check `is_partner_or_employee_of(c.created_by)` |
-| `bookings` | Vendor employees can view/manage employer bookings | Join to cabins, check `is_partner_or_employee_of(c.created_by)` |
-| `dues` | Fix broken employee policy | Replace `c.created_by = auth.uid()` with `is_partner_or_employee_of(c.created_by)` |
-| `due_payments` | Vendor employees can manage employer due payments | Join to dues → cabins, check helper |
-| `complaints` | Vendor employees can view/update employer complaints | Join to cabins/hostels, check helper |
+## Technical Detail
 
-### 3. Fix `usePartnerPropertyTypes` dependency
-
-Also update `useEffect` dependency to include `user.vendorId` so it re-fetches when vendorId becomes available:
+The utility function pattern:
 
 ```typescript
-}, [user?.id, user?.vendorId, isPartner]);
+// src/utils/getEffectiveOwnerId.ts
+export async function getEffectiveOwnerId(): Promise<{ userId: string; ownerId: string }> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+  
+  const { data: roles } = await supabase.from('user_roles').select('role').eq('user_id', user.id);
+  const isEmployee = roles?.some(r => r.role === 'vendor_employee');
+  
+  if (isEmployee) {
+    const { data: emp } = await supabase.from('vendor_employees')
+      .select('partner_user_id')
+      .eq('employee_user_id', user.id)
+      .maybeSingle();
+    if (emp?.partner_user_id) {
+      return { userId: user.id, ownerId: emp.partner_user_id };
+    }
+  }
+  
+  return { userId: user.id, ownerId: user.id };
+}
 ```
 
-### 4. Fix sidebar `propertyTypes.loading` check
-
-Add `propertyTypes.loading` to the sidebar's loading check so it doesn't render with stale false values.
+Each service file replaces `authUser.id` in `created_by` filters with `ownerId` from this function, so employees see the partner's properties.
 
 ## Files to Change
 
 | File | Change |
 |------|--------|
-| **Database migration** | Create `is_partner_or_employee_of()` function + add/fix RLS policies on 6 tables |
-| `src/hooks/usePartnerPropertyTypes.ts` | Add `user?.vendorId` to useEffect deps |
-| `src/components/admin/AdminSidebar.tsx` | Include `propertyTypes.loading` in loading check |
+| `src/utils/getEffectiveOwnerId.ts` | **Create** — shared utility |
+| `src/api/vendorSeatsService.ts` | Replace `authUser.id` with effective owner ID in cabin query |
+| `src/api/hostelManagerService.ts` | Replace `user.id` with effective owner ID in 4 cabin queries |
+| `src/api/adminUsersService.ts` | Replace `authUser.id` with effective owner ID in cabin/hostel/employee queries |
+| `src/api/hostelService.ts` | Replace `user?.id` with effective owner ID in `getUserHostels` |
 
