@@ -1,29 +1,41 @@
 
 
-# Fix: Seat/Bed Validity Should Always Equal Booking End Date
+# Plan: Remove Validity Date Picker + Add Due Date Picker for Offline Bookings
 
-## Problem
+## Summary
 
-Per your existing rule: seats/beds remain valid for the **entire booked period** regardless of payment status. But the code currently recalculates `proportional_end_date` proportionally based on how much has been paid — showing wrong, shorter validity dates.
+Two changes:
+1. **Remove** the seat/bed validity date editing (pencil icon) from both Due Management pages — validity always equals booking end date, no manual override needed.
+2. **Add** a due date picker in the hostel advance booking flow (it already exists in reading room flow) and ensure the due date column in both due management pages shows the editable pencil (already present — just keep it).
 
-Three places calculate this incorrectly:
+## Changes
 
-1. **Reading Room due creation** (`VendorSeats.tsx` line 529): Sets `proportionalEndDate = dueDate` (the advance validity date, not booking end date)
-2. **Reading Room due collection** (`vendorSeatsService.ts` lines 806-815): Recalculates validity as `(totalPaid / totalFee) * totalDays` — shrinking validity based on payment ratio
-3. **Hostel due collection** (`HostelDueManagement.tsx` lines 199-213): Same proportional recalculation bug
+### 1. Remove Seat Validity Date Picker from Due Management
 
-## Fix
+**`src/pages/admin/DueManagement.tsx`**:
+- Remove the `seat_valid` option from `editingField` state type (change to just `'due_date' | null`)
+- Remove the `openDateEdit(due, 'seat_valid')` pencil button (lines 335-337)
+- Remove validity-related branches in the date edit dialog (lines 468, 474, 480-486 — the `seat_valid` label, max constraint, help text)
+- Remove max date validation in `handleSaveDate` (line 165-167)
+- Keep the validity column as **display-only** (no pencil icon)
 
-Set `proportional_end_date` to the booking's `end_date` in all three locations. The field still exists for manual override by partners, but automatic calculation should always default to the full booking period.
+**`src/pages/admin/HostelDueManagement.tsx`**:
+- Remove the `bed_valid` option from `editingField` state type
+- Remove the pencil button next to bed validity (lines 384-395)
+- Remove validity-related branches in the date edit dialog (lines 529, 533-536, 542, 550-552, 563)
+- Keep the validity column as display-only
 
-### Changes
+### 2. Add Due Date Picker in Hostel Advance Booking Flow
 
-| File | What Changes |
-|------|-------------|
-| `src/pages/vendor/VendorSeats.tsx` ~line 529 | Set `proportionalEndDate = computedEndDate` (booking end date) instead of `dueDate` |
-| `src/api/vendorSeatsService.ts` ~lines 804-815 | In `collectDuePayment`, always set `proportionalEndDate = booking.end_date` instead of proportional calculation |
-| `src/pages/admin/HostelDueManagement.tsx` ~lines 199-213 | In `handleCollect`, always set `proportionalEndDate = booking.end_date` instead of proportional calculation |
-| `src/pages/admin/HostelBedMap.tsx` ~line 714 | Set `proportional_end_date` to booking `end_date` instead of `advanceComputed.proportionalEndDate` |
+**`src/pages/admin/HostelBedMap.tsx`**:
+- Add a due date picker (Calendar popover) inside the advance booking section (after the amount input, around line 1381), matching the pattern already used in `VendorSeats.tsx` lines 1542-1561
+- Label it "Due Date (Reminder)" with a calendar popover using `manualDueDate` state (already exists)
+- The `manualDueDate` state and `advanceComputed.dueDate` logic already exist — just need the UI picker
 
-The manual edit capability (pencil icon) for validity dates remains unchanged — partners can still override if needed.
+### Files Modified
+| File | Change |
+|------|--------|
+| `src/pages/admin/DueManagement.tsx` | Remove seat validity pencil + edit dialog branch |
+| `src/pages/admin/HostelDueManagement.tsx` | Remove bed validity pencil + edit dialog branch |
+| `src/pages/admin/HostelBedMap.tsx` | Add due date picker UI in advance booking section |
 
