@@ -512,7 +512,7 @@ const RoomManagement: React.FC<RoomManagementProps> = ({ autoCreateNew, onTrigge
           onSave={handleSaveCabin}
           onCancel={backToRooms}
           existingCabin={selectedCabin}
-          isAdmin={true}
+          isAdmin={isAdmin}
         />
       )}
     </div>
