@@ -1,84 +1,28 @@
 
 
-# Add Floor and Room Filters to Hostel Bed Map
+# Fix: Hostel Bed Map — Booked bed colors not visible
 
-The hostel bed map (`src/pages/admin/HostelBedMap.tsx`) currently only has hostel, date, status, and search filters. The reading room equivalent (`VendorSeats.tsx`) has floor filtering. The user wants both floor and room filters for the hostel bed map, matching the reading room pattern.
+## Investigation Summary
 
-## Changes in `src/pages/admin/HostelBedMap.tsx`
+After thorough code review, the booking detection logic is correct — the query fetches active bookings, maps them by `bed_id`, and sets `dateStatus` to `'booked'` or `'expiring_soon'` when a matching booking exists.
 
-### 1. Add state variables (~line 87)
-```typescript
-const [selectedFloor, setSelectedFloor] = useState<string>('all');
-const [selectedRoom, setSelectedRoom] = useState<string>('all');
-```
+The actual problem is that the color values used are extremely subtle pastel tints (`bg-red-50`, `bg-emerald-50`, `bg-amber-50`) which are nearly indistinguishable from each other and from the white background, especially on typical screens. The reading room seat map uses much more vivid colors (`bg-[#d4f7c4]`, `bg-[#D3E4FD]`) which are clearly distinguishable.
 
-### 2. Compute available floors and rooms from beds data
-```typescript
-const availableFloors = useMemo(() => {
-  if (selectedHostelId === 'all') return [];
-  const floors = [...new Set(beds.map(b => b.floor))].sort((a, b) => a - b);
-  return floors.map(f => ({ value: String(f), label: `Floor ${f}` }));
-}, [beds, selectedHostelId]);
+## Fix in `src/pages/admin/HostelBedMap.tsx`
 
-const availableRooms = useMemo(() => {
-  let filtered = beds;
-  if (selectedFloor !== 'all') {
-    filtered = filtered.filter(b => String(b.floor) === selectedFloor);
-  }
-  const rooms = [...new Map(filtered.map(b => [b.room_id, b.roomNumber])).entries()]
-    .sort((a, b) => a[1].localeCompare(b[1], undefined, { numeric: true }));
-  return rooms.map(([id, name]) => ({ value: id, label: name }));
-}, [beds, selectedFloor]);
-```
+Update the `statusColors` function (~line 868) to use stronger, more distinguishable colors:
 
-### 3. Reset filters on hostel/floor change
-```typescript
-useEffect(() => { setSelectedFloor('all'); setSelectedRoom('all'); }, [selectedHostelId]);
-useEffect(() => { setSelectedRoom('all'); }, [selectedFloor]);
-```
+| Status | Current (too subtle) | Proposed (vivid) |
+|--------|---------------------|-------------------|
+| available | `bg-emerald-50 border-emerald-400` | `bg-emerald-100 border-emerald-500` |
+| booked | `bg-red-50 border-red-400` | `bg-red-100 border-red-500` |
+| expiring_soon | `bg-amber-50 border-amber-400` | `bg-amber-100 border-amber-500` |
+| blocked | `bg-muted border-muted-foreground/30` | (keep as-is) |
 
-### 4. Apply floor and room filters in `filteredBeds` (~line 351)
-Add before the existing status filter:
-```typescript
-if (selectedFloor !== 'all') {
-  result = result.filter(b => String(b.floor) === selectedFloor);
-}
-if (selectedRoom !== 'all') {
-  result = result.filter(b => b.room_id === selectedRoom);
-}
-```
+Also update the legend color indicators (~line 1029) to match the new stronger colors:
+- Available: `bg-emerald-400` → `bg-emerald-500`
+- Booked: `bg-red-400` → `bg-red-500`
+- Expiring: `bg-amber-400` → `bg-amber-500`
 
-### 5. Add filter dropdowns to the sticky filter row (~after line 921)
-Insert floor and room `<Select>` components after the hostel selector, shown only when a specific hostel is selected:
-```tsx
-{selectedHostelId !== 'all' && availableFloors.length > 0 && (
-  <Select value={selectedFloor} onValueChange={setSelectedFloor}>
-    <SelectTrigger className="h-8 w-[120px] text-xs">
-      <SelectValue placeholder="Floor" />
-    </SelectTrigger>
-    <SelectContent>
-      <SelectItem value="all" className="text-xs font-medium">All Floors</SelectItem>
-      {availableFloors.map(f => (
-        <SelectItem key={f.value} value={f.value} className="text-xs">{f.label}</SelectItem>
-      ))}
-    </SelectContent>
-  </Select>
-)}
-
-{selectedHostelId !== 'all' && availableRooms.length > 0 && (
-  <Select value={selectedRoom} onValueChange={setSelectedRoom}>
-    <SelectTrigger className="h-8 w-[130px] text-xs">
-      <SelectValue placeholder="Room" />
-    </SelectTrigger>
-    <SelectContent>
-      <SelectItem value="all" className="text-xs font-medium">All Rooms</SelectItem>
-      {availableRooms.map(r => (
-        <SelectItem key={r.value} value={r.value} className="text-xs">{r.label}</SelectItem>
-      ))}
-    </SelectContent>
-  </Select>
-)}
-```
-
-**Single file change**: `src/pages/admin/HostelBedMap.tsx`
+Single file change: `src/pages/admin/HostelBedMap.tsx`
 
