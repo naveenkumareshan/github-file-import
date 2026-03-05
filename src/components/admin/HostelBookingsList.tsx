@@ -70,10 +70,13 @@ export const HostelBookingsList = ({ hostelId }: BookingListProps) => {
   
   const getFilteredBookings = () => {
     return bookings.filter(booking => {
-      const matchesSearch = 
-        (booking.student?.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-         booking.student?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-         booking._id.toLowerCase().includes(searchTerm.toLowerCase()));
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch = !searchTerm ||
+        (booking.profiles?.name?.toLowerCase().includes(searchLower) || 
+         booking.profiles?.email?.toLowerCase().includes(searchLower) ||
+         booking.profiles?.phone?.toLowerCase().includes(searchLower) ||
+         booking.serial_number?.toLowerCase().includes(searchLower) ||
+         booking.id?.toLowerCase().includes(searchLower));
          
       const matchesStatus = statusFilter === 'all' || booking.status === statusFilter;
       

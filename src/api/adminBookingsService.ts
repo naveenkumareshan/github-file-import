@@ -31,7 +31,17 @@ export const adminBookingsService = {
         query = query.eq('payment_status', filters.status);
       }
       if (filters?.search) {
-        query = query.or(`serial_number.ilike.%${filters.search}%`);
+        // Search profiles for matching name/email/phone, then include matched user_ids
+        const { data: matchedProfiles } = await supabase
+          .from('profiles')
+          .select('id')
+          .or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,phone.ilike.%${filters.search}%`);
+        const matchedIds = (matchedProfiles || []).map(p => p.id);
+        if (matchedIds.length > 0) {
+          query = query.or(`serial_number.ilike.%${filters.search}%,user_id.in.(${matchedIds.join(',')})`);
+        } else {
+          query = query.or(`serial_number.ilike.%${filters.search}%`);
+        }
       }
       if (filters?.startDate) {
         query = query.gte('start_date', filters.startDate);
