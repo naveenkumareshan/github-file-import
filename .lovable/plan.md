@@ -1,48 +1,58 @@
 
 
-# Add "Future Booked" Status Color for Beds with Upcoming Bookings
+# Add "Future Booked" Purple Status to Reading Room Seat Maps
 
 ## Problem
-Beds with future bookings (booking starts after the selected date) show as green "Available" because the current logic only checks if a booking overlaps the selected date. A bed like Flat 103, Bed 1 (booked from March 13) shows green today (March 5).
+Reading room seats with future bookings (starting after the selected date range) appear green ("Available"). Partners and employees cannot see that a seat is already booked for the future, making it hard to make informed decisions.
 
 ## Solution
-Add a new `'future_booked'` status with a **purple/violet** color to distinguish beds that are currently unoccupied but have a confirmed future booking.
+Add the same purple/violet "Future Booked" status used in hostel bed maps to the reading room seat maps.
 
-## Changes in `src/pages/admin/HostelBedMap.tsx`
+## Changes
 
-### 1. Update types (lines 35, 54)
-Add `'future_booked'` to `StatusFilter` and `HostelBed.dateStatus`:
+### 1. `src/api/seatsService.ts` — Fetch future bookings alongside current conflicts
+
+In `getAvailableSeatsForDateRange`, after fetching conflicting bookings for the selected range, also query for bookings where `start_date > endDate` (future bookings) for the same cabin. Return a `isFutureBooked` flag on each seat that is currently available but has a future booking.
+
+```typescript
+// Additional query for future bookings
+const { data: futureBookings } = await supabase.rpc('get_conflicting_seat_bookings', {
+  p_cabin_id: cabinId,
+  p_start_date: endDate.split('T')[0],
+  p_end_date: '2099-12-31',
+});
+const futureSeatIds = new Set((futureBookings || []).map(b => b.seat_id));
+
+// Mark seats
+data: seats.map(s => ({
+  ...mapRow(s),
+  isAvailable: s.is_available && !bookedSeatIds.has(s.id),
+  isFutureBooked: !bookedSeatIds.has(s.id) && futureSeatIds.has(s.id),
+}))
 ```
-type StatusFilter = 'all' | 'available' | 'booked' | 'expiring_soon' | 'blocked' | 'future_booked';
-dateStatus: 'available' | 'booked' | 'expiring_soon' | 'blocked' | 'future_booked';
-```
 
-### 2. Update status determination logic (lines 283-291)
-After checking `currentBooking`, add: if no current booking but `allBeds` has future bookings or `is_available === false`, set `dateStatus = 'future_booked'`.
+### 2. `src/components/seats/FloorPlanViewer.tsx` — Purple color for future-booked seats
 
-### 3. Add purple/violet colors to status helpers (lines 872-900)
-- `statusColors`: `'future_booked'` → `'bg-violet-100 border-violet-500 dark:bg-violet-900 dark:border-violet-600'`
-- `statusLabel`: `'future_booked'` → `'Future Booked'`
-- `statusIcon`: `'future_booked'` → `<Clock className="h-3 w-3 text-violet-600" />` (Clock icon)
+- Add `isFutureBooked?: boolean` to `ViewerSeat` interface
+- In `MemoizedSeatButton`, add a third color branch: if `isFutureBooked && !isBooked`, use `bg-violet-50 border-violet-400 text-violet-800 cursor-pointer`
+- Update tooltip to show "Future Booked" status
+- Update legend to add purple "Future Booked" entry
+- Update minimap dot color to violet for future-booked seats
 
-### 4. Update stats (lines 413-426)
-Add `futureBooked` count to stats object.
+### 3. `src/components/seats/SeatGridMap.tsx` — Purple color for future-booked seats
 
-### 5. Update legend (lines 1031-1038)
-Add purple legend entry for "Future Booked".
+- Add `isFutureBooked?: boolean` to `Seat` interface
+- In `getSeatStatusColor`, add branch for `isFutureBooked`: `bg-violet-100 text-violet-800 border-violet-400`
+- Update tooltip status text
+- Add purple legend entry for "Future Booked"
 
-### 6. Update status filter dropdown
-Add `'future_booked'` option to the Select component.
+### 4. `src/components/seats/DateBasedSeatMap.tsx` — Pass through future-booked flag
 
-### 7. Update sheet/detail panel logic
-Treat `'future_booked'` similarly to `'available'` for booking form visibility (can still book future dates), but show info about the upcoming booking.
-
-## Also update the student-facing bed map
-
-### `src/components/hostels/HostelBedMap.tsx`
-The student bed map legend and status logic also need the same purple color for future-booked beds. Update the `is_available` check to consider `occupantName` presence for future bookings and add legend entry.
+In `transformedSeats`, preserve the `isFutureBooked` flag from the API response. Add a "Future Booked" count badge alongside Available/Unavailable counts.
 
 ### Files Changed
-- `src/pages/admin/HostelBedMap.tsx` — New `future_booked` status throughout
-- `src/components/hostels/HostelBedMap.tsx` — Student-facing legend and color update
+- `src/api/seatsService.ts` — Query future bookings, add `isFutureBooked` flag
+- `src/components/seats/FloorPlanViewer.tsx` — Purple seat color, legend, minimap
+- `src/components/seats/SeatGridMap.tsx` — Purple seat color, legend
+- `src/components/seats/DateBasedSeatMap.tsx` — Pass flag through, add badge count
 
