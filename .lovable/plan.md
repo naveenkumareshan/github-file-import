@@ -1,58 +1,31 @@
 
 
-# Add "Future Booked" Purple Status to Reading Room Seat Maps
+# Fix: Reading Room Seat Price vs Deposit Split in Operations Hub
 
 ## Problem
-Reading room seats with future bookings (starting after the selected date range) appear green ("Available"). Partners and employees cannot see that a seat is already booked for the future, making it hard to make informed decisions.
 
-## Solution
-Add the same purple/violet "Future Booked" status used in hostel bed maps to the reading room seat maps.
+In `getFinancials()` (line 179 of `CheckInTracker.tsx`), `price` is set to `b.total_price` which **already includes** the locker/deposit amount. Then `deposit` is added separately as `b.locker_price`, double-counting it.
 
-## Changes
+Example: D Sanjay has `total_price = 2700` (seat 2200 + locker 500) and `locker_price = 500`. Current code shows: Price=2700, Deposit=500, Paid=3200. Should be: Price=2200, Deposit=500, Paid=2700.
 
-### 1. `src/api/seatsService.ts` — Fetch future bookings alongside current conflicts
+## Fix
 
-In `getAvailableSeatsForDateRange`, after fetching conflicting bookings for the selected range, also query for bookings where `start_date > endDate` (future bookings) for the same cabin. Return a `isFutureBooked` flag on each seat that is currently available but has a future booking.
+### `src/components/admin/operations/CheckInTracker.tsx` — Line 179
+
+Change the price calculation to subtract the deposit:
 
 ```typescript
-// Additional query for future bookings
-const { data: futureBookings } = await supabase.rpc('get_conflicting_seat_bookings', {
-  p_cabin_id: cabinId,
-  p_start_date: endDate.split('T')[0],
-  p_end_date: '2099-12-31',
-});
-const futureSeatIds = new Set((futureBookings || []).map(b => b.seat_id));
+// Before
+const price = Number(b.total_price || 0);
+const deposit = Number(b.locker_price || 0);
 
-// Mark seats
-data: seats.map(s => ({
-  ...mapRow(s),
-  isAvailable: s.is_available && !bookedSeatIds.has(s.id),
-  isFutureBooked: !bookedSeatIds.has(s.id) && futureSeatIds.has(s.id),
-}))
+// After
+const deposit = Number(b.locker_price || 0);
+const price = Number(b.total_price || 0) - deposit;
 ```
 
-### 2. `src/components/seats/FloorPlanViewer.tsx` — Purple color for future-booked seats
-
-- Add `isFutureBooked?: boolean` to `ViewerSeat` interface
-- In `MemoizedSeatButton`, add a third color branch: if `isFutureBooked && !isBooked`, use `bg-violet-50 border-violet-400 text-violet-800 cursor-pointer`
-- Update tooltip to show "Future Booked" status
-- Update legend to add purple "Future Booked" entry
-- Update minimap dot color to violet for future-booked seats
-
-### 3. `src/components/seats/SeatGridMap.tsx` — Purple color for future-booked seats
-
-- Add `isFutureBooked?: boolean` to `Seat` interface
-- In `getSeatStatusColor`, add branch for `isFutureBooked`: `bg-violet-100 text-violet-800 border-violet-400`
-- Update tooltip status text
-- Add purple legend entry for "Future Booked"
-
-### 4. `src/components/seats/DateBasedSeatMap.tsx` — Pass through future-booked flag
-
-In `transformedSeats`, preserve the `isFutureBooked` flag from the API response. Add a "Future Booked" count badge alongside Available/Unavailable counts.
+This matches the convention used elsewhere in the app where "Seat Price" is the pre-discount base fee excluding deposit.
 
 ### Files Changed
-- `src/api/seatsService.ts` — Query future bookings, add `isFutureBooked` flag
-- `src/components/seats/FloorPlanViewer.tsx` — Purple seat color, legend, minimap
-- `src/components/seats/SeatGridMap.tsx` — Purple seat color, legend
-- `src/components/seats/DateBasedSeatMap.tsx` — Pass flag through, add badge count
+- `src/components/admin/operations/CheckInTracker.tsx` — Fix price calculation in `getFinancials`
 
