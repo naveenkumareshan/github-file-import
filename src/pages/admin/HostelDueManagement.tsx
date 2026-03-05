@@ -47,7 +47,7 @@ const HostelDueManagement: React.FC = () => {
   const [collectProofUrl, setCollectProofUrl] = useState('');
 
   // Date editing state
-  const [editingField, setEditingField] = useState<'due_date' | 'bed_valid' | null>(null);
+  const [editingField, setEditingField] = useState<'due_date' | null>(null);
   const [editDueId, setEditDueId] = useState<string | null>(null);
   const [editDateValue, setEditDateValue] = useState<string>('');
   const [editMaxDate, setEditMaxDate] = useState<string>('');
@@ -377,23 +377,9 @@ const HostelDueManagement: React.FC = () => {
                           </div>
                         </TableCell>
                         <TableCell className="py-2">
-                          <div className="flex items-center gap-1">
-                            <span className="text-[11px]">
-                              {due.proportional_end_date ? format(new Date(due.proportional_end_date), 'dd MMM yy') : '-'}
-                            </span>
-                            <button
-                              className="p-0.5 rounded hover:bg-muted"
-                              onClick={() => {
-                                setEditingField('bed_valid');
-                                setEditDueId(due.id);
-                                setEditDateValue(due.proportional_end_date || '');
-                                const bookingEnd = (due.hostel_bookings as any)?.end_date;
-                                setEditMaxDate(bookingEnd || '');
-                              }}
-                            >
-                              <Pencil className="h-3 w-3 text-muted-foreground" />
-                            </button>
-                          </div>
+                          <span className="text-[11px]">
+                            {due.proportional_end_date ? format(new Date(due.proportional_end_date), 'dd MMM yy') : '-'}
+                          </span>
                         </TableCell>
                         <TableCell className="py-2">{getStatusBadge(due)}</TableCell>
                         <TableCell className="py-2">
@@ -525,21 +511,13 @@ const HostelDueManagement: React.FC = () => {
       <Dialog open={!!editingField} onOpenChange={(open) => { if (!open) { setEditingField(null); setEditDueId(null); } }}>
         <DialogContent className="max-w-xs">
           <DialogHeader>
-            <DialogTitle className="text-sm">
-              {editingField === 'due_date' ? 'Edit Due Date' : 'Edit Bed Validity Date'}
-            </DialogTitle>
+            <DialogTitle className="text-sm">Edit Due Date</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            {editingField === 'bed_valid' && editMaxDate && (
-              <p className="text-[11px] text-muted-foreground">
-                Cannot exceed booking end date: {format(new Date(editMaxDate), 'dd MMM yyyy')}
-              </p>
-            )}
             <Input
               type="date"
               className="h-9 text-sm"
               value={editDateValue}
-              max={editingField === 'bed_valid' && editMaxDate ? editMaxDate : undefined}
               onChange={(e) => setEditDateValue(e.target.value)}
             />
             <Button
@@ -547,20 +525,15 @@ const HostelDueManagement: React.FC = () => {
               disabled={!editDateValue || savingDate}
               onClick={async () => {
                 if (!editDueId || !editDateValue) return;
-                if (editingField === 'bed_valid' && editMaxDate && editDateValue > editMaxDate) {
-                  toast({ title: 'Bed validity cannot exceed booking end date', variant: 'destructive' });
-                  return;
-                }
                 setSavingDate(true);
-                const fieldName = editingField === 'due_date' ? 'due_date' : 'proportional_end_date';
                 const { error } = await supabase
                   .from('hostel_dues')
-                  .update({ [fieldName]: editDateValue })
+                  .update({ due_date: editDateValue })
                   .eq('id', editDueId);
                 if (error) {
                   toast({ title: 'Error', description: error.message, variant: 'destructive' });
                 } else {
-                  toast({ title: `${editingField === 'due_date' ? 'Due date' : 'Bed validity date'} updated` });
+                  toast({ title: 'Due date updated' });
                   setEditingField(null);
                   setEditDueId(null);
                   fetchData();
