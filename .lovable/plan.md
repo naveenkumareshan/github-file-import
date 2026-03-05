@@ -1,61 +1,58 @@
 
 
-# Plan: Share Button for Partner Properties + Business Performance Breakdown
+# Compact Business Performance Page
 
-## 1. Add Share Button to Partner Property Management
+## Problem
+The page is too spread out with oversized cards, excessive spacing, and redundant sections. Needs to match the admin panel's high-density `text-[11px]` compact standard.
 
-**Problem**: Partners/employees cannot share their property details. Students already have share functionality via `ShareButton` + `shareUtils`.
+## Approach
 
-**Solution**: Add share buttons to property cards in both management views.
+Redesign **`src/pages/partner/BusinessPerformance.tsx`** into a compact, table-driven layout:
 
-### Files to Change
+### 1. Replace all SummaryCard grids with a single compact stats table
+Instead of 16+ large cards spread across 4 rows, consolidate into **two side-by-side compact tables**:
 
-**`src/components/admin/CabinManagement.tsx`** (Reading Room cards):
-- Import `ShareButton` and `generateCabinShareText`
-- Add a Share button to each cabin card's action row (next to Edit, Activate, etc.)
-- Uses the same link format as student view (`/book-seat/{serialNumber}`)
+**Left table — Occupancy & Students:**
+| Metric | Value | Growth |
+|--------|-------|--------|
+| Total Seats/Beds | 29 | |
+| Occupied | 4 | |
+| Available | 25 | |
+| Occupancy % | 14 | +367% |
+| New Admissions | 4 | |
+| Renewals | 0 | |
+| Dropouts | 0 | |
 
-**`src/components/admin/HostelItem.tsx`** (Hostel cards):
-- Import `ShareButton` and `generateHostelShareText`
-- Add a Share button to the actions row
-- Uses the same link format as student view (`/hostels/{serial_number}`)
+**Right table — Financials:**
+| Metric | Value | Growth |
+|--------|-------|--------|
+| Seat Fees | ₹0 | |
+| Bed Fees | ₹0 | |
+| Locker Amount | ₹0 | |
+| Security Deposit | ₹0 | |
+| Food Collection | ₹0 | |
+| Total Collections | ₹2,760 | -45% |
+| Pending Dues | ₹5,000 | |
+| Net Earnings | ₹0 | |
 
-Both will use `useAuth` to pass `user?.id` for referral tracking, matching student behavior exactly.
+### 2. Remove duplicate sections
+- **Remove** Section C (Dues & Refund mini-cards) — data already in the financials table
+- **Remove** Section G (Settlement & Earnings) — merge into financials table  
+- **Remove** Section H (Student Insights) — merge into occupancy table
+- **Keep** Revenue Breakdown table and Payment Mode table as-is (already compact)
+- **Keep** Charts but reduce height to 180px
+- **Keep** Floor Performance table as-is
+- **Keep** Insight cards but make them smaller
 
----
+### 3. Compact styling
+- Reduce `space-y-6` to `space-y-3`
+- Header: `text-lg` instead of `text-2xl`
+- Table cells: `text-[11px]`, `py-1.5` padding
+- Chart heights: 180px instead of 250px
+- Remove icons from the stat tables (pure data density)
 
-## 2. Business Performance: Add Available Seats + Split Fee Boxes
-
-**Problem**: 
-- "Available Seats" card is missing from summary
-- "Fees Collected" lumps everything together instead of showing Seat Fees, Locker Amount, Bed Fees, Security Deposit separately
-
-**Solution**:
-
-### `src/hooks/usePartnerPerformance.ts`:
-- Add new fields to `PerformanceData`: `seatFees`, `lockerAmount`, `bedFees`, `securityDeposit`, `availableSeats` (and `prev*` variants for growth)
-- Split the current `roomFees` calculation:
-  - `seatFees` = RR `booking_payment` receipts only
-  - `bedFees` = Hostel `booking_payment` receipts only
-  - `lockerAmount` = RR `locker_payment` receipts (+ hostel if applicable)
-  - `securityDeposit` = receipts with type `deposit` or `security_deposit`
-- Compute `availableSeats = totalSeats - occupiedSeats`
-
-### `src/pages/partner/BusinessPerformance.tsx`:
-- Replace the single "Fees Collected" + "Deposits Collected" cards with 4 separate cards:
-  1. Seat Fees (reading room booking payments)
-  2. Locker Amount
-  3. Bed Fees (hostel booking payments)  
-  4. Security Deposit
-- Add "Available Seats/Beds" summary card to the first row
-- Update Revenue Breakdown table to show: Seat Fees, Bed Fees, Locker Amount, Security Deposit, Food Collection, Due Payments, Total Revenue
-
-### Files to Change
-
+### File to Change
 | File | Change |
 |------|--------|
-| `src/components/admin/CabinManagement.tsx` | Add ShareButton per cabin card |
-| `src/components/admin/HostelItem.tsx` | Add ShareButton per hostel card |
-| `src/hooks/usePartnerPerformance.ts` | Split fees into seat/bed/locker/deposit; add availableSeats |
-| `src/pages/partner/BusinessPerformance.tsx` | Show 4 fee boxes + available seats card + updated revenue breakdown |
+| `src/pages/partner/BusinessPerformance.tsx` | Full redesign: replace card grids with 2 compact stat tables, remove duplicate sections, tighten spacing |
 
