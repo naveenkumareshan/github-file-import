@@ -1,34 +1,57 @@
 
 
-# Analysis: Can Current Implementation Handle 2000+ Seats?
+# Check: Booking Date Edit — Issues Found
 
-## Answer: No — There Are Two Critical Limits Still Present
+After reviewing the `BookingUpdateDatesDialog` component and how it's used in both `VendorSeats.tsx` (Reading Room) and `HostelBedMap.tsx` (Hostel), here are the issues:
 
-### Issue 1: Supabase 1000-Row Default Limit (CRITICAL)
-The seats query on line 276 does `supabase.from('seats').select(...)` with **no explicit row limit override**. Supabase/PostgREST returns a maximum of **1000 rows by default**. With 2000 seats, you'd silently lose half your seats — they simply won't appear.
+## Issues Found
 
-The same applies to the bookings query (line 307) — if a partner has many active bookings across cabins, results get truncated at 1000.
+### 1. No Overlap Validation (Critical)
+The dialog updates `start_date` and `end_date` directly without checking if the new dates conflict with other bookings on the same seat or bed. A partner could accidentally create overlapping bookings.
 
-### Issue 2: 40 Parallel Requests for seat_block_history
-With 2000 seats batched at 50 per request, that's **40 simultaneous HTTP requests** in `Promise.all`. This can trigger rate limiting or connection pool exhaustion on Supabase, causing random failures.
+**Fix:** Before updating, query existing bookings on the same `seat_id` (cabin) or `bed_id` (hostel) that overlap with the new date range, excluding the current booking.
 
-### Issue 3: Dues query also uses `.in()` with potentially many IDs
-The `advancePaidIds` array (line 347) could also grow large and hit URL limits.
+### 2. No Start Date < End Date Validation
+Nothing prevents selecting an end date before the start date, which would create an invalid booking record.
 
-## Fix Plan
+**Fix:** Disable calendar dates before `startDate` in the end date picker, and add a guard in the submit handler.
 
-### 1. Add `.limit(10000)` to the seats query (`vendorSeatsService.ts`)
-Override the default 1000-row limit so all seats are returned. Apply the same to the bookings query.
+### 3. Remarks Field Not Saved
+The `remarks` textarea is rendered and state is tracked, but `remarks` is never included in the `updateData` object sent to the database.
 
-### 2. Increase batch size from 50 to 200 for seat_block_history
-Each UUID is ~36 chars. 200 UUIDs ≈ 7.2KB in the URL — safely under the 8KB limit. This reduces 2000 seats from 40 requests down to 10.
+**Fix:** This is cosmetic — the `bookings` table doesn't have a `remarks` column. Either remove the field or keep it as a no-op. Removing is cleaner.
 
-### 3. Batch the dues query too
-The `.in('booking_id', advancePaidIds)` can also exceed URL limits with many advance-paid bookings. Apply the same batching pattern.
+### 4. Dues `proportional_end_date` Not Synced
+When dates are edited on a booking with `advance_paid` status and a linked `dues` record, the `proportional_end_date` on the due should be updated to match the new `end_date`.
 
-### 4. Add `.limit(10000)` to bookings query
-Ensure all active bookings are returned, not just the first 1000.
+**Fix:** After updating the booking dates, also update any linked `dues` (or `hostel_dues`) record's `proportional_end_date` to the new end date.
+
+### 5. Hostel `is_available` Flag Not Synced
+The `hostel_beds` table has an `is_available` flag managed by triggers on `hostel_bookings`. Changing dates may affect whether the bed should be available for the original or new date range, but the trigger only fires on INSERT/UPDATE of status — not date changes. This should be fine since the trigger likely fires on any UPDATE to `hostel_bookings`.
+
+---
+
+## Plan
+
+### File: `src/components/admin/BookingUpdateDatesDialog.tsx`
+
+1. **Add overlap validation** before saving:
+   - For `cabin` type: query `bookings` where `seat_id` matches AND dates overlap AND `id != bookingId` AND `payment_status` in `['completed', 'advance_paid']`
+   - For `hostel` type: query `hostel_bookings` where `bed_id` matches AND dates overlap AND `id != bookingId` AND `status` in `['confirmed', 'pending']`
+   - Need to pass `seatId` / `bedId` into the dialog props
+
+2. **Add end date validation**: disable dates before `startDate` in the end date calendar; block submit if `endDate < startDate`
+
+3. **Remove the unused remarks field** (no DB column to store it)
+
+4. **Sync dues on date change**: after successful booking update, update `dues.proportional_end_date` (cabin) or `hostel_dues.proportional_end_date` (hostel) to new end date
+
+### Files: `src/pages/vendor/VendorSeats.tsx` and `src/pages/admin/HostelBedMap.tsx`
+
+5. **Pass `seatId` / `bedId`** to the dialog so overlap validation can work. Currently `setDateEditBooking({ ...b, id: b.bookingId })` — the booking detail object `b` already contains `seatId` (VendorSeats) or `bedId` (HostelBedMap), so we just need to forward it.
 
 ## Files Changed
-- **`src/api/vendorSeatsService.ts`** — Add row limits, increase batch size, batch dues query
+- `src/components/admin/BookingUpdateDatesDialog.tsx` — overlap check, date validation, dues sync, remove remarks
+- `src/pages/vendor/VendorSeats.tsx` — pass seatId in dateEditBooking
+- `src/pages/admin/HostelBedMap.tsx` — pass bedId in dateEditBooking
 
