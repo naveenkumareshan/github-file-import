@@ -1,78 +1,43 @@
 
 
-# Plan: Fix Dashboard, Reports & Remove Reports from Employees
+# Plan: SaaS-Style Dashboard Density Refinement
 
-## Problems Identified
-
-1. **Reports visible to employees**: The sidebar shows "Reports" to employees with `view_reports` permission, and the dashboard header shows a "Reports" button to all users including employees. Reports should only be visible to partners (vendors) and admins.
-
-2. **BookingReportsPage export button logic bug**: Line `{activeTab === 'transactions' || activeTab === 'revenue' && ...}` has an operator precedence bug — `&&` binds tighter than `||`, so the export button shows incorrectly for transactions tab.
-
-3. **Transaction Reports use external axios API**: `BookingTransactions.tsx` calls `transactionReportsService` which uses axios to hit `localhost:5000` — a non-existent backend. This will always fail. Need to rewrite it to use Supabase data (reuse `adminBookingsService.getAllBookings`).
-
-4. **OccupancyReports returns empty**: `getOccupancyReports` returns `{ success: true, data: [] }` — stub. Need real Supabase implementation.
-
-5. **Revenue Reports ignores date filters**: `getRevenueReport` just calls `getRevenueByTransaction()` which calls `getDashboardStats()` ignoring the date range entirely.
-
-6. **Top Filling Rooms / Monthly Revenue / Monthly Occupancy are stubs**: All return empty arrays.
-
-7. **Dashboard charts show nothing**: `RevenueChart` and `OccupancyChart` depend on stub methods.
-
-8. **ExportReportButton uses axios**: `reportsExportService` hits external API — will always fail.
-
----
+## Problem
+The admin dashboard text sizes are too large — headings, card titles, table text, and chart labels need to be tighter and more compact to feel like a modern SaaS analytics dashboard.
 
 ## Changes
 
-### 1. Remove Reports from Employees
+### 1. `src/pages/AdminDashboard.tsx`
+- Reduce header padding from `p-4` to `p-3`
+- Title `text-lg` → `text-sm font-semibold`
+- Greeting text already `text-xs` — keep as-is
+- Tab triggers: `text-sm` → `text-xs`
+- Tab content padding: `p-4` → `p-3`
 
-**`src/pages/AdminDashboard.tsx`**
-- Hide the "Reports" button in header for `vendor_employee` role — only show for `admin` and `vendor`.
+### 2. `src/components/admin/DynamicStatisticsCards.tsx`
+- Stat value `text-xl` → `text-lg`
+- Label `text-xs` → `text-[11px]`
+- Icon container `h-8 w-8` → `h-7 w-7`, icon `h-4 w-4` → `h-3.5 w-3.5`
+- Card inner padding `p-3` → `p-2.5`
 
-**`src/components/admin/AdminSidebar.tsx`**
-- Remove the Reports section from the vendor employee menu. Only show if `user?.role === 'vendor'` (not employees).
+### 3. `src/components/admin/DashboardStatistics.tsx`
+- "Top Filling Reading Rooms" title `text-lg` → `text-sm`
+- Table header text: add `text-xs`
+- Table cell text: add `text-xs` where missing
+- Mobile card text already compact — keep
 
-### 2. Fix BookingReportsPage Export Button
+### 4. `src/components/admin/RevenueChart.tsx`
+- Card title already `text-sm` — keep
+- Chart height `h-[220px]` → `h-[200px]`
 
-**`src/components/admin/reports/BookingReportsPage.tsx`**
-- Fix operator precedence: `{(activeTab === 'transactions' || activeTab === 'revenue') && <ExportReportButton .../>}`
+### 5. `src/components/admin/OccupancyChart.tsx`
+- Same as RevenueChart — reduce height to `h-[200px]`
 
-### 3. Rewrite Transaction Reports to Use Supabase
+### 6. `src/components/admin/DashboardExpiringBookings.tsx`
+- Title `text-lg` → `text-sm`
+- Student name `font-medium` → `text-xs font-medium`
+- Cabin info `text-sm` → `text-xs`
+- Badge text: add `text-[10px]`
 
-**`src/components/admin/reports/BookingTransactions.tsx`**
-- Replace `transactionReportsService.getTransactionReports` with `adminBookingsService.getAllBookings` (which already queries Supabase with filters, pagination, search).
-- Map the returned data fields to match the table columns (user name, cabin name, seat number, amount, status, date).
-- Remove export buttons for now (the external export endpoints don't exist) or implement client-side Excel export using the `exceljs` package already installed.
-
-### 4. Implement Real Occupancy Reports
-
-**`src/api/adminBookingsService.ts`**
-- Implement `getOccupancyReports`: Query `cabins` with their `seats` count, then count active `bookings` (where `end_date >= today` and `payment_status = 'completed'`) per cabin to calculate real occupancy rates.
-- Implement `getTopFillingRooms`: Same logic, sorted by occupancy rate descending, limited to top 10.
-
-### 5. Implement Real Revenue Data for Reports & Charts
-
-**`src/api/adminBookingsService.ts`**
-- Implement `getRevenueReport(filters)`: Query `bookings` with date range filters, sum `total_price` where `payment_status = 'completed'`, count bookings.
-- Implement `getMonthlyRevenue`: Query completed bookings grouped by month (using JS aggregation since Supabase doesn't support GROUP BY in client SDK).
-- Implement `getMonthlyOccupancy`: Calculate monthly occupancy trends from bookings data.
-
-### 6. Fix Export to Use Client-Side Generation
-
-**`src/components/admin/reports/ExportReportButton.tsx`**
-- Replace external API export with client-side Excel generation using `exceljs` (already installed). Generate a workbook from the currently displayed data and trigger download.
-
----
-
-## Files to Modify
-
-| File | Change |
-|------|--------|
-| `src/pages/AdminDashboard.tsx` | Hide Reports button from employees |
-| `src/components/admin/AdminSidebar.tsx` | Remove Reports menu from employees |
-| `src/api/adminBookingsService.ts` | Implement real occupancy, revenue, top rooms, monthly data |
-| `src/components/admin/reports/BookingReportsPage.tsx` | Fix export button operator precedence |
-| `src/components/admin/reports/BookingTransactions.tsx` | Rewrite to use Supabase via adminBookingsService |
-| `src/components/admin/reports/ExportReportButton.tsx` | Client-side Excel export using exceljs |
-| `src/components/admin/reports/OccupancyReports.tsx` | Remove mock data fallback, use real data |
+All changes maintain readability while achieving a tighter, high-density SaaS dashboard feel consistent with the admin panel standardization pattern.
 
