@@ -131,14 +131,15 @@ const BookingReportsPage: React.FC = () => {
           </Tabs>
           
           <div className="flex lg:flex-col gap-2 items-start">
-            {activeTab === 'transactions' || activeTab === 'revenue'  && <ExportReportButton 
-              reportType={activeTab}
-              startDate={dateRange?.from}
-              endDate={dateRange?.to}
-              period={activeTab === 'revenue' ? 'monthly' : undefined}
-              className="w-full lg:w-auto"
-            />
-            }
+            {(activeTab === 'transactions' || activeTab === 'revenue') && (
+              <ExportReportButton 
+                reportType={activeTab === 'revenue' ? 'revenue' : 'bookings'}
+                startDate={dateRange?.from}
+                endDate={dateRange?.to}
+                period={activeTab === 'revenue' ? 'monthly' : undefined}
+                className="w-full lg:w-auto"
+              />
+            )}
           </div>
         </div>
       </div>

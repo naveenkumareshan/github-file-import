@@ -6,142 +6,90 @@ import { Badge } from '@/components/ui/badge';
 import { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FileText, Filter, Search, Download, FileSpreadsheet, FileImage } from 'lucide-react';
+import { FileText, Filter, Search, Download, FileSpreadsheet } from 'lucide-react';
 import { ReportSkeleton } from './ReportSkeleton';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
-import { transactionReportsService, TransactionReport, TransactionFilters } from '@/api/transactionReportsService';
+import { adminBookingsService } from '@/api/adminBookingsService';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
+import { AdminTablePagination } from '@/components/admin/AdminTablePagination';
+import ExcelJS from 'exceljs';
 
 interface BookingTransactionsProps {
   dateRange?: DateRange;
 }
 
 export const BookingTransactions: React.FC<BookingTransactionsProps> = ({ dateRange }) => {
-  const [transactions, setTransactions] = useState<TransactionReport[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
-  const [filters, setFilters] = useState<TransactionFilters>({
-    page: 1,
-    limit: 10,
-  });
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Columns for the data table
   const columns = [
     {
-      accessorKey: 'transactionId',
-      header: 'Transaction ID',
-      cell: ({ row }) => (
-        <div className="font-medium">{row.original.transactionId}</div>
+      accessorKey: 'bookingId',
+      header: 'Booking ID',
+      cell: ({ row }: any) => (
+        <div className="font-medium text-xs">{row.original.bookingId}</div>
       ),
     },
     {
-      accessorKey: 'user.name',
+      accessorKey: 'customer',
       header: 'Customer',
-      cell: ({ row }) => (
+      cell: ({ row }: any) => (
         <div>
-          <div className="font-medium">{row.original.user?.name || 'N/A'}</div>
-          {row.original.user?.phone && <div className="text-xs text-muted-foreground">{row.original.user?.phone}</div>}
-          <div className="text-xs text-muted-foreground">{row.original.user?.email}</div>
+          <div className="font-medium text-sm">{row.original.userId?.name || 'N/A'}</div>
+          <div className="text-xs text-muted-foreground">{row.original.userId?.email}</div>
         </div>
       ),
     },
     {
-      accessorKey: 'bookingDetails',
-      header: 'Booking Details',
-      cell: ({ row }) => {
-        const booking = row.original.bookingDetails;
-        const cabin = booking?.cabin;
-        const seat = booking?.seat;
-        const hostel = booking?.hostelId;
-        
-        return (
-          <div className="text-sm">
-            <div className="font-medium">
-              {cabin?.name || hostel?.name || 'N/A'}
-            </div>
-            {cabin && (
-              <div className="text-muted-foreground">
-                Code: {cabin.cabinCode} | Seat: {seat?.number}
-              </div>
-            )}
-          </div>
-        );
-      },
-    },
-    {
-      accessorKey: 'bookingType',
-      header: 'Type',
-      cell: ({ row }) => (
-        <Badge variant="outline" className="capitalize">
-          {row.original.bookingType}
-        </Badge>
+      accessorKey: 'cabin',
+      header: 'Property',
+      cell: ({ row }: any) => (
+        <div className="text-sm">
+          <div className="font-medium">{row.original.cabinId?.name || 'N/A'}</div>
+          {row.original.seatId && (
+            <div className="text-xs text-muted-foreground">Seat: {row.original.seatId.number}</div>
+          )}
+        </div>
       ),
     },
-       {
+    {
       accessorKey: 'paymentMethod',
       header: 'Payment Method',
-      cell: ({ row }) => (
-        <Badge variant="outline" className="capitalize">
-          {row.original.paymentMethod}
+      cell: ({ row }: any) => (
+        <Badge variant="outline" className="capitalize text-xs">
+          {row.original.paymentMethod || 'N/A'}
         </Badge>
       ),
     },
     {
-      accessorKey: 'paymentResponse',
-      header: 'Payment Remarks',
-      cell: ({ row }) => (
-        <Badge variant="outline" className="capitalize">
-          {row.original.paymentResponse}
-        </Badge>
-      ),
-    },
-    
-    {
-      accessorKey: 'transactionType',
-      header: 'Transaction',
-      cell: ({ row }) => {
-        const type = row.original.transactionType;
-        return (
-          <Badge 
-            variant="outline" 
-            className={
-              type === 'booking' ? 'border-blue-500 text-blue-500' :
-              type === 'renewal' ? 'border-purple-500 text-purple-500' :
-              type === 'cancellation' ? 'border-red-500 text-red-500' :
-              'border-orange-500 text-orange-500'
-            }
-          >
-            {type}
-          </Badge>
-        );
-      },
-    },
-    {
-      accessorKey: 'amount',
+      accessorKey: 'totalPrice',
       header: 'Amount',
-      cell: ({ row }) => (
-        <div className="font-medium">₹{row.original.amount.toLocaleString('en-IN')}</div>
+      cell: ({ row }: any) => (
+        <div className="font-medium">₹{(row.original.totalPrice || 0).toLocaleString('en-IN')}</div>
       ),
     },
     {
-      accessorKey: 'status',
+      accessorKey: 'paymentStatus',
       header: 'Status',
-      cell: ({ row }) => {
-        const status = row.original.status;
+      cell: ({ row }: any) => {
+        const status = row.original.paymentStatus;
         return (
           <Badge variant={
             status === 'completed' ? 'default' : 
@@ -154,22 +102,29 @@ export const BookingTransactions: React.FC<BookingTransactionsProps> = ({ dateRa
       },
     },
     {
+      accessorKey: 'transactionId',
+      header: 'Transaction ID',
+      cell: ({ row }: any) => (
+        <div className="text-xs text-muted-foreground">{row.original.transactionId || '-'}</div>
+      ),
+    },
+    {
       accessorKey: 'createdAt',
       header: 'Date',
-      cell: ({ row }) => (
+      cell: ({ row }: any) => (
         <div className="text-sm">
-          {format(new Date(row.original.createdAt), 'dd MMM yyyy')}
+          {row.original.createdAt ? format(new Date(row.original.createdAt), 'dd MMM yyyy') : '-'}
         </div>
       ),
     },
     {
       accessorKey: 'actions',
       header: 'Actions',
-      cell: ({ row }) => (
+      cell: ({ row }: any) => (
         <Button
           variant="outline"
           size="sm"
-          onClick={() => handleViewTransaction(row.original)}
+          onClick={() => navigate(`/admin/bookings/${row.original._id}/cabin`)}
         >
           View
         </Button>
@@ -179,32 +134,35 @@ export const BookingTransactions: React.FC<BookingTransactionsProps> = ({ dateRa
 
   useEffect(() => {
     fetchTransactions();
-  }, [filters, dateRange]);
+  }, [page, pageSize, statusFilter, dateRange]);
 
   const fetchTransactions = async () => {
     setLoading(true);
     try {
-      const requestFilters: TransactionFilters = { ...filters };
+      const filters: any = {
+        page,
+        limit: pageSize,
+      };
       
-      // Apply date range filter from props
+      if (statusFilter && statusFilter !== 'all') {
+        filters.status = statusFilter;
+      }
       if (dateRange?.from) {
-        requestFilters.startDate = format(dateRange.from, 'yyyy-MM-dd');
+        filters.startDate = format(dateRange.from, 'yyyy-MM-dd');
       }
       if (dateRange?.to) {
-        requestFilters.endDate = format(dateRange.to, 'yyyy-MM-dd');
+        filters.endDate = format(dateRange.to, 'yyyy-MM-dd');
       }
-
-      // Apply search query
       if (searchQuery.trim()) {
-        requestFilters.search = searchQuery.trim();
+        filters.search = searchQuery.trim();
       }
       
-      const response = await transactionReportsService.getTransactionReports(requestFilters);
+      const response = await adminBookingsService.getAllBookings(filters);
       
       if (response.success && response.data) {
-        setTransactions(response.data.data || []);
-        setTotalCount(response.data.totalDocs || 0);
-        setTotalPages(response.data.totalPages || 1);
+        setTransactions(response.data);
+        setTotalCount(response.totalDocs || 0);
+        setTotalPages(response.totalPages || 1);
       }
     } catch (error) {
       console.error('Error fetching transactions:', error);
@@ -218,81 +176,82 @@ export const BookingTransactions: React.FC<BookingTransactionsProps> = ({ dateRa
     }
   };
 
-  const handleViewTransaction = (transaction: TransactionReport) => {
-    // Navigate to booking details or transaction details page
-    navigate(`/admin/bookings/${transaction.bookingId}/${transaction.bookingType}`);
+  const handleSearch = () => {
+    setPage(1);
+    fetchTransactions();
   };
 
-  const handleExport = async (formatExport: 'excel' | 'pdf') => {
+  const handleExportExcel = async () => {
     setExporting(true);
     try {
-      const exportFilters: TransactionFilters = { ...filters };
-      delete exportFilters.page;
-      delete exportFilters.limit;
+      // Fetch all data without pagination
+      const filters: any = {};
+      if (statusFilter && statusFilter !== 'all') filters.status = statusFilter;
+      if (dateRange?.from) filters.startDate = format(dateRange.from, 'yyyy-MM-dd');
+      if (dateRange?.to) filters.endDate = format(dateRange.to, 'yyyy-MM-dd');
+      if (searchQuery.trim()) filters.search = searchQuery.trim();
+      filters.page = 1;
+      filters.limit = 1000;
 
-      if (dateRange?.from) {
-        exportFilters.startDate = format(dateRange.from, 'yyyy-MM-dd');
-      }
-      if (dateRange?.to) {
-        exportFilters.endDate = format(dateRange.to, 'yyyy-MM-dd');
-      }
+      const response = await adminBookingsService.getAllBookings(filters);
+      if (!response.success || !response.data) throw new Error('Failed to fetch data');
 
-      if (searchQuery.trim()) {
-        exportFilters.search = searchQuery.trim();
-      }
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('Transactions');
 
-      let response;
-      if (formatExport === 'excel') {
-        response = await transactionReportsService.exportTransactionsExcel(exportFilters);
-      } else {
-        response = await transactionReportsService.exportTransactionsPDF(exportFilters);
-      }
+      sheet.columns = [
+        { header: 'Booking ID', key: 'bookingId', width: 20 },
+        { header: 'Customer Name', key: 'customerName', width: 25 },
+        { header: 'Email', key: 'email', width: 30 },
+        { header: 'Property', key: 'property', width: 25 },
+        { header: 'Seat', key: 'seat', width: 10 },
+        { header: 'Amount', key: 'amount', width: 15 },
+        { header: 'Payment Method', key: 'paymentMethod', width: 18 },
+        { header: 'Transaction ID', key: 'transactionId', width: 25 },
+        { header: 'Status', key: 'status', width: 15 },
+        { header: 'Date', key: 'date', width: 15 },
+      ];
 
-      if (response.success) {
-        toast({
-          title: "Success",
-          description: `Transactions exported as ${formatExport.toUpperCase()} successfully`,
+      response.data.forEach((t: any) => {
+        sheet.addRow({
+          bookingId: t.bookingId,
+          customerName: t.userId?.name || 'N/A',
+          email: t.userId?.email || '',
+          property: t.cabinId?.name || 'N/A',
+          seat: t.seatId?.number || '',
+          amount: t.totalPrice || 0,
+          paymentMethod: t.paymentMethod || '',
+          transactionId: t.transactionId || '',
+          status: t.paymentStatus || '',
+          date: t.createdAt ? format(new Date(t.createdAt), 'dd MMM yyyy') : '',
         });
-      } else {
-        throw new Error(response.error || 'Export failed');
-      }
+      });
+
+      // Style header
+      sheet.getRow(1).eachCell(cell => {
+        cell.font = { bold: true };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `transactions-report-${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast({ title: "Success", description: "Transactions exported as Excel successfully" });
     } catch (error) {
       console.error('Export error:', error);
-      toast({
-        title: "Export Failed",
-        description: error.message || "Failed to export transactions",
-        variant: "destructive"
-      });
+      toast({ title: "Export Failed", description: "Failed to export transactions", variant: "destructive" });
     } finally {
       setExporting(false);
     }
   };
-
-  const handleFilterChange = (key: keyof TransactionFilters, value: any) => {
-    setFilters(prev => ({
-      ...prev,
-      [key]: value === 'all' ? undefined : value,
-      page: 1 // Reset to first page when filters change
-    }));
-  };
-
-  const handlePageChange = (page: number) => {
-    setFilters(prev => ({ ...prev, page }));
-  };
-
-  // Filter transactions based on search query (client-side for immediate feedback)
-  const filteredTransactions = transactions.filter(transaction => {
-    if (!searchQuery) return true;
-    
-    const query = searchQuery.toLowerCase();
-    return (
-      transaction.transactionId.toLowerCase().includes(query) ||
-      transaction.userId?.name?.toLowerCase().includes(query) ||
-      transaction.userId?.email?.toLowerCase().includes(query) ||
-      transaction.bookingDetails?.cabinId?.name?.toLowerCase().includes(query) ||
-      transaction.bookingDetails?.hostelId?.name?.toLowerCase().includes(query)
-    );
-  });
 
   if (loading) {
     return <ReportSkeleton type="table" />;
@@ -300,7 +259,7 @@ export const BookingTransactions: React.FC<BookingTransactionsProps> = ({ dateRa
 
   return (
     <Card className="overflow-hidden border-border/50 shadow-md">
-      <CardHeader className="flex flex-row items-center justify-between pb-2 bg-muted/30">
+      <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-2 bg-muted/30">
         <div>
           <CardTitle className="text-lg font-medium text-foreground/90 flex items-center gap-2">
             <FileText className="h-4 w-4 text-primary" />
@@ -310,25 +269,25 @@ export const BookingTransactions: React.FC<BookingTransactionsProps> = ({ dateRa
             Detailed transaction history with booking information
           </CardDescription>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search transactions..."
-              className="w-[200px] pl-8"
+              placeholder="Search..."
+              className="w-[180px] pl-8 h-9"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             />
           </div>
           
-          {/* Filters */}
-          <div className="flex items-center gap-2 bg-muted/30 px-2 py-1 rounded-md">
-            <Filter className="h-4 w-4 text-muted-foreground" />
+          <div className="flex items-center gap-1 bg-muted/30 px-2 py-1 rounded-md">
+            <Filter className="h-3.5 w-3.5 text-muted-foreground" />
             <Select 
-              value={filters.status || 'all'}
-              onValueChange={(value) => handleFilterChange('status', value)}
+              value={statusFilter}
+              onValueChange={(value) => { setStatusFilter(value); setPage(1); }}
             >
-              <SelectTrigger className="w-[120px] border-none bg-transparent focus:ring-0 h-8">
+              <SelectTrigger className="w-[110px] border-none bg-transparent focus:ring-0 h-8 text-xs">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -339,70 +298,34 @@ export const BookingTransactions: React.FC<BookingTransactionsProps> = ({ dateRa
                 <SelectItem value="cancelled">Cancelled</SelectItem>
               </SelectContent>
             </Select>
-            
-            <Select 
-              value={filters.bookingType || 'all'}
-              onValueChange={(value) => handleFilterChange('bookingType', value)}
-            >
-              <SelectTrigger className="w-[120px] border-none bg-transparent focus:ring-0 h-8">
-                <SelectValue placeholder="Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="cabin">Reading Room</SelectItem>
-                <SelectItem value="hostel">Hostel</SelectItem>
-                <SelectItem value="laundry">Laundry</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select 
-              value={filters.transactionType || 'all'}
-              onValueChange={(value) => handleFilterChange('transactionType', value)}
-            >
-              <SelectTrigger className="w-[130px] border-none bg-transparent focus:ring-0 h-8">
-                <SelectValue placeholder="Transaction" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Transactions</SelectItem>
-                <SelectItem value="booking">Booking</SelectItem>
-                <SelectItem value="renewal">Renewal</SelectItem>
-                <SelectItem value="cancellation">Cancellation</SelectItem>
-                <SelectItem value="refund">Refund</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
           
-          {/* Export Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" disabled={exporting}>
-                <Download className="h-4 w-4 mr-2" />
+              <Button variant="outline" size="sm" disabled={exporting}>
+                <Download className="h-4 w-4 mr-1" />
                 {exporting ? 'Exporting...' : 'Export'}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => handleExport('excel')}>
+              <DropdownMenuItem onClick={handleExportExcel}>
                 <FileSpreadsheet className="h-4 w-4 mr-2" />
                 Export as Excel
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExport('pdf')}>
-                <FileImage className="h-4 w-4 mr-2" />
-                Export as PDF
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </CardHeader>
-      <CardContent className="pt-6">
+      <CardContent className="pt-4">
         <div className="border border-border/50 rounded-md overflow-hidden">
           <DataTable 
             columns={columns} 
-            data={filteredTransactions} 
+            data={transactions} 
             pagination={false}
           />
         </div>
         
-        {filteredTransactions.length === 0 && (
+        {transactions.length === 0 && !loading && (
           <div className="flex flex-col items-center justify-center py-10 text-center">
             <FileText className="h-10 w-10 text-muted-foreground mb-3" />
             <h3 className="text-lg font-medium mb-1">No transactions found</h3>
@@ -410,14 +333,14 @@ export const BookingTransactions: React.FC<BookingTransactionsProps> = ({ dateRa
           </div>
         )}
         
-        {filteredTransactions.length > 0 && (
+        {transactions.length > 0 && (
           <div className="mt-4">
             <AdminTablePagination
-              currentPage={filters.page || 1}
+              currentPage={page}
               totalItems={totalCount}
-              pageSize={filters.limit || 10}
-              onPageChange={handlePageChange}
-              onPageSizeChange={(s) => handleFilterChange('limit', s)}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={(s) => { setPageSize(s); setPage(1); }}
             />
           </div>
         )}
