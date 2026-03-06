@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, UtensilsCrossed, CalendarDays, CheckCircle, XCircle } from 'lucide-react';
+import { Loader2, UtensilsCrossed, CalendarDays, CheckCircle, XCircle, QrCode } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getMyMessSubscriptions, getMyAttendance, updateMessSubscription } from '@/api/messService';
 import { formatCurrency } from '@/utils/currency';
@@ -55,7 +55,6 @@ export default function MessDashboard() {
     if (!pauseStart || !pauseEnd) return;
     setPausing(true);
     try {
-      // Calculate pause days to extend subscription
       const ps = new Date(pauseStart);
       const pe = new Date(pauseEnd);
       const pauseDays = Math.ceil((pe.getTime() - ps.getTime()) / (1000 * 60 * 60 * 24)) + 1;
@@ -91,6 +90,10 @@ export default function MessDashboard() {
 
   const activeSub = subscriptions.find(s => s.id === selectedSub);
 
+  // QR code data
+  const qrData = activeSub ? JSON.stringify({ subscription_id: activeSub.id, user_id: user?.id }) : '';
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrData)}`;
+
   return (
     <div className="container max-w-2xl mx-auto py-6 px-4 space-y-4">
       <div className="flex items-center gap-2">
@@ -124,11 +127,34 @@ export default function MessDashboard() {
       </div>
 
       {activeSub && (
-        <Tabs defaultValue="history">
-          <TabsList className="grid grid-cols-2">
+        <Tabs defaultValue="qr">
+          <TabsList className="grid grid-cols-3">
+            <TabsTrigger value="qr">My QR</TabsTrigger>
             <TabsTrigger value="history">Meal History</TabsTrigger>
             <TabsTrigger value="pause">Pause / Leave</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="qr" className="mt-3">
+            <Card>
+              <CardContent className="p-6 flex flex-col items-center space-y-4">
+                <QrCode className="h-6 w-6 text-primary" />
+                <p className="text-sm text-muted-foreground text-center">Show this QR code to the mess partner to mark your attendance.</p>
+                {activeSub.status === 'active' ? (
+                  <img
+                    src={qrUrl}
+                    alt="Subscription QR Code"
+                    className="w-[250px] h-[250px] border rounded-lg"
+                  />
+                ) : (
+                  <p className="text-sm text-destructive">QR is only available for active subscriptions.</p>
+                )}
+                <div className="text-center text-xs text-muted-foreground">
+                  <p className="font-medium">{activeSub.mess_partners?.name}</p>
+                  <p>{activeSub.mess_packages?.name}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="history" className="mt-3">
             {attendance.length === 0 ? (
