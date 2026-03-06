@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, BookOpen, Hotel, User } from 'lucide-react';
+import { Home, BookOpen, Hotel, UtensilsCrossed, User } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
@@ -23,6 +23,12 @@ const tabs = [
     icon: Hotel,
     to: '/hostels',
     isActive: (pathname: string) => pathname.startsWith('/hostels') || pathname.startsWith('/hostel'),
+  },
+  {
+    label: 'Mess',
+    icon: UtensilsCrossed,
+    to: '/mess',
+    isActive: (pathname: string) => pathname.startsWith('/mess') || pathname.startsWith('/student/mess'),
   },
   {
     label: 'Profile',

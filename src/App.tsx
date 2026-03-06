@@ -75,6 +75,7 @@ const MySubscriptions = lazy(() => import("./pages/partner/MySubscriptions"));
 const AdminLaundry = lazy(() => import("./pages/admin/AdminLaundry"));
 const AdminEmployees = lazy(() => import("./pages/admin/AdminEmployees"));
 const BookingActivityLog = lazy(() => import("./pages/admin/BookingActivityLog"));
+const MessManagement = lazy(() => import("./pages/admin/MessManagement"));
 const StudentLaundryOrders = lazy(() => import("./pages/StudentLaundryOrders"));
 const LaundryPartnerDashboard = lazy(() => import("./pages/LaundryPartnerDashboard"));
 // Student / public pages
@@ -99,6 +100,8 @@ const BookingTransactions = lazy(() => import("./pages/students/BookingTransacti
 const Profile = lazy(() => import("./pages/Profile"));
 const Laundry = lazy(() => import("./pages/Laundry"));
 const LaundryRequest = lazy(() => import("./pages/LaundryRequest"));
+const MessMarketplace = lazy(() => import("./pages/MessMarketplace"));
+const MessDashboard = lazy(() => import("./pages/students/MessDashboard"));
 const ComplaintsPage = lazy(() => import("./components/profile/ComplaintsPage"));
 const SupportPage = lazy(() => import("./components/profile/SupportPage"));
 
@@ -209,6 +212,7 @@ function App() {
               <Route path="laundry" element={<AdminLaundry />} />
               <Route path="admin-employees" element={<AdminEmployees />} />
               <Route path="booking-activity-log" element={<BookingActivityLog />} />
+              <Route path="mess" element={<MessManagement />} />
             </Route>
 
             {/* ── Partner routes (alias for vendor/host admin panel) ── */}
@@ -258,6 +262,7 @@ function App() {
               <Route path="my-subscriptions" element={<MySubscriptions />} />
               <Route path="laundry" element={<AdminLaundry />} />
               <Route path="booking-activity-log" element={<BookingActivityLog />} />
+              <Route path="mess" element={<MessManagement />} />
             </Route>
 
             {/* ── Partner routes (formerly vendor/host) ── */}
@@ -301,6 +306,7 @@ function App() {
               <Route path="/booking-confirmation/:bookingId" element={<StudentSuspense><HostelBookConfirmation /></StudentSuspense>} />
               <Route path="/laundry" element={<StudentSuspense><Laundry /></StudentSuspense>} />
               <Route path="/laundry-request" element={<StudentSuspense><Laundry /></StudentSuspense>} />
+              <Route path="/mess" element={<StudentSuspense><MessMarketplace /></StudentSuspense>} />
               <Route path="/privacy-policy" element={<StudentSuspense><PrivacyPolicy /></StudentSuspense>} />
               <Route path="/terms" element={<StudentSuspense><TermsAndConditions /></StudentSuspense>} />
               
@@ -351,6 +357,10 @@ function App() {
               <Route
                 path="/student/support"
                 element={<ProtectedRoute><StudentSuspense><SupportPage /></StudentSuspense></ProtectedRoute>}
+              />
+              <Route
+                path="/student/mess"
+                element={<ProtectedRoute><StudentSuspense><MessDashboard /></StudentSuspense></ProtectedRoute>}
               />
             </Route>
 

@@ -2271,6 +2271,374 @@ export type Database = {
           },
         ]
       }
+      mess_attendance: {
+        Row: {
+          date: string
+          id: string
+          marked_at: string
+          marked_by: string
+          meal_type: string
+          mess_id: string
+          status: string
+          subscription_id: string
+          user_id: string
+        }
+        Insert: {
+          date?: string
+          id?: string
+          marked_at?: string
+          marked_by?: string
+          meal_type: string
+          mess_id: string
+          status?: string
+          subscription_id: string
+          user_id: string
+        }
+        Update: {
+          date?: string
+          id?: string
+          marked_at?: string
+          marked_by?: string
+          meal_type?: string
+          mess_id?: string
+          status?: string
+          subscription_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mess_attendance_mess_id_fkey"
+            columns: ["mess_id"]
+            isOneToOne: false
+            referencedRelation: "mess_partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mess_attendance_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "mess_subscriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mess_attendance_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mess_meal_timings: {
+        Row: {
+          created_at: string
+          end_time: string
+          id: string
+          meal_type: string
+          mess_id: string
+          start_time: string
+        }
+        Insert: {
+          created_at?: string
+          end_time: string
+          id?: string
+          meal_type?: string
+          mess_id: string
+          start_time: string
+        }
+        Update: {
+          created_at?: string
+          end_time?: string
+          id?: string
+          meal_type?: string
+          mess_id?: string
+          start_time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mess_meal_timings_mess_id_fkey"
+            columns: ["mess_id"]
+            isOneToOne: false
+            referencedRelation: "mess_partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mess_packages: {
+        Row: {
+          created_at: string
+          duration_count: number
+          duration_type: string
+          id: string
+          is_active: boolean
+          meal_types: Json
+          mess_id: string
+          name: string
+          price: number
+        }
+        Insert: {
+          created_at?: string
+          duration_count?: number
+          duration_type?: string
+          id?: string
+          is_active?: boolean
+          meal_types?: Json
+          mess_id: string
+          name: string
+          price?: number
+        }
+        Update: {
+          created_at?: string
+          duration_count?: number
+          duration_type?: string
+          id?: string
+          is_active?: boolean
+          meal_types?: Json
+          mess_id?: string
+          name?: string
+          price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mess_packages_mess_id_fkey"
+            columns: ["mess_id"]
+            isOneToOne: false
+            referencedRelation: "mess_partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mess_partners: {
+        Row: {
+          capacity: number | null
+          contact_number: string
+          created_at: string
+          description: string
+          food_type: string
+          id: string
+          is_active: boolean
+          is_approved: boolean
+          location: string
+          name: string
+          opening_days: Json
+          serial_number: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          capacity?: number | null
+          contact_number?: string
+          created_at?: string
+          description?: string
+          food_type?: string
+          id?: string
+          is_active?: boolean
+          is_approved?: boolean
+          location?: string
+          name: string
+          opening_days?: Json
+          serial_number?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          capacity?: number | null
+          contact_number?: string
+          created_at?: string
+          description?: string
+          food_type?: string
+          id?: string
+          is_active?: boolean
+          is_approved?: boolean
+          location?: string
+          name?: string
+          opening_days?: Json
+          serial_number?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mess_partners_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mess_receipts: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          mess_id: string
+          payment_method: string
+          serial_number: string | null
+          subscription_id: string
+          transaction_id: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          mess_id: string
+          payment_method?: string
+          serial_number?: string | null
+          subscription_id: string
+          transaction_id?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          mess_id?: string
+          payment_method?: string
+          serial_number?: string | null
+          subscription_id?: string
+          transaction_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mess_receipts_mess_id_fkey"
+            columns: ["mess_id"]
+            isOneToOne: false
+            referencedRelation: "mess_partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mess_receipts_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "mess_subscriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mess_receipts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mess_subscriptions: {
+        Row: {
+          created_at: string
+          end_date: string
+          id: string
+          mess_id: string
+          package_id: string
+          pause_end: string | null
+          pause_start: string | null
+          payment_method: string
+          payment_status: string
+          price_paid: number
+          serial_number: string | null
+          start_date: string
+          status: string
+          transaction_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          end_date: string
+          id?: string
+          mess_id: string
+          package_id: string
+          pause_end?: string | null
+          pause_start?: string | null
+          payment_method?: string
+          payment_status?: string
+          price_paid?: number
+          serial_number?: string | null
+          start_date: string
+          status?: string
+          transaction_id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string
+          id?: string
+          mess_id?: string
+          package_id?: string
+          pause_end?: string | null
+          pause_start?: string | null
+          payment_method?: string
+          payment_status?: string
+          price_paid?: number
+          serial_number?: string | null
+          start_date?: string
+          status?: string
+          transaction_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mess_subscriptions_mess_id_fkey"
+            columns: ["mess_id"]
+            isOneToOne: false
+            referencedRelation: "mess_partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mess_subscriptions_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "mess_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mess_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mess_weekly_menu: {
+        Row: {
+          created_at: string
+          day_of_week: string
+          id: string
+          meal_type: string
+          menu_items: string
+          mess_id: string
+        }
+        Insert: {
+          created_at?: string
+          day_of_week?: string
+          id?: string
+          meal_type?: string
+          menu_items?: string
+          mess_id: string
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: string
+          id?: string
+          meal_type?: string
+          menu_items?: string
+          mess_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mess_weekly_menu_mess_id_fkey"
+            columns: ["mess_id"]
+            isOneToOne: false
+            referencedRelation: "mess_partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partner_ledger: {
         Row: {
           amount: number
