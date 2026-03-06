@@ -53,14 +53,14 @@ const AdminDashboard: React.FC = () => {
   return (
     <div className="flex flex-col gap-3">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-br from-primary via-primary/90 to-accent/80 rounded-lg p-4 text-primary-foreground">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-br from-primary via-primary/90 to-accent/80 rounded-lg p-3 text-primary-foreground">
         <div>
           <div className="flex items-center gap-1.5 text-xs text-primary-foreground/70 mb-1">
             <span>{getRoleLabel()} Panel</span>
             <span>/</span>
             <span className="text-primary-foreground font-medium">Dashboard</span>
           </div>
-          <h1 className="text-lg font-semibold tracking-tight">Dashboard</h1>
+          <h1 className="text-sm font-semibold tracking-tight">Dashboard</h1>
           <p className="text-primary-foreground/80 text-xs mt-0.5">
             {getGreeting()}, {user?.name?.split(' ')[0] || 'there'} — here's your operational overview.
           </p>
@@ -91,19 +91,19 @@ const AdminDashboard: React.FC = () => {
             <Tabs value={activeTab} onValueChange={handleTabChange}>
               <div className="flex items-center justify-between border-b px-6 pt-4 pb-0">
                 <TabsList className="h-9">
-                  <TabsTrigger value="dashboard" className="flex items-center gap-1.5 text-sm">
+                  <TabsTrigger value="dashboard" className="flex items-center gap-1.5 text-xs">
                     <LayoutDashboard className="h-3.5 w-3.5" />
                     Overview
                   </TabsTrigger>
                   {user?.role === 'admin' && (
-                    <TabsTrigger value="sessions" className="flex items-center gap-1.5 text-sm">
+                    <TabsTrigger value="sessions" className="flex items-center gap-1.5 text-xs">
                       <Users className="h-3.5 w-3.5" />
                       User Sessions
                     </TabsTrigger>
                   )}
                 </TabsList>
               </div>
-              <div className="p-4">
+              <div className="p-3">
                 <TabsContent value="dashboard" className="mt-0">
                   <DashboardStatistics />
                 </TabsContent>

@@ -53,7 +53,7 @@ export function DashboardExpiringBookings() {
     <Card className="border-l-4 border-l-primary">
       <CardHeader className="pb-1 pt-3 px-4 bg-primary/5">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="text-sm flex items-center gap-2">
             <Calendar className="h-4 w-4 text-primary" />
             Expiring Bookings
           </CardTitle>
@@ -94,18 +94,18 @@ export function DashboardExpiringBookings() {
                   onClick={() => navigate(`/admin/bookings/${booking.id}/cabin`)}
                 >
                   <div>
-                    <p className="font-medium">{studentName}</p>
+                    <p className="text-xs font-medium">{studentName}</p>
                     {(studentPhone || studentEmail) && (
                       <p className="text-xs text-muted-foreground">
                         {studentPhone}{studentPhone && studentEmail ? ' · ' : ''}{studentEmail}
                       </p>
                     )}
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       {cabinName} - Seat {seatNumber}
                     </p>
                   </div>
                   <div className="text-right">
-                    <Badge variant="outline" className="border-amber-500 text-amber-500">
+                    <Badge variant="outline" className="border-amber-500 text-amber-500 text-[10px]">
                       Expires {formatDate(booking.end_date)}
                     </Badge>
                   </div>

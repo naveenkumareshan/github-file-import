@@ -52,7 +52,7 @@ export function OccupancyChart() {
         <CardTitle className="text-sm font-semibold text-secondary">Occupancy Rate</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-[220px] w-full">
+        <div className="h-[200px] w-full">
           {loading ? (
             <div className="space-y-2">
               <Skeleton className="h-4 w-full" />
