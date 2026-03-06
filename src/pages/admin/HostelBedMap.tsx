@@ -498,12 +498,32 @@ const HostelBedMap: React.FC = () => {
     const targetBed = availableBedsForTransfer.find(b => b.id === transferTargetBedId);
     if (!targetBed || !selectedBed) return;
     setTransferring(true);
+
+    // Get the booking being transferred to check date overlap
+    const transferBooking = selectedBed.allBookings.find((b: any) => b.bookingId === transferBookingId);
+    if (transferBooking) {
+      // Check for overlapping bookings on the target bed
+      const { data: overlapping } = await supabase
+        .from('hostel_bookings')
+        .select('id')
+        .eq('bed_id', transferTargetBedId)
+        .in('status', ['confirmed', 'pending'])
+        .lt('start_date', transferBooking.endDate)
+        .gt('end_date', transferBooking.startDate)
+        .limit(1);
+
+      if (overlapping && overlapping.length > 0) {
+        toast({ title: 'Transfer failed', description: 'Target bed has an overlapping booking for these dates.', variant: 'destructive' });
+        setTransferring(false);
+        return;
+      }
+    }
+
     const { error } = await supabase
       .from('hostel_bookings')
       .update({ bed_id: transferTargetBedId, room_id: targetBed.room_id })
       .eq('id', transferBookingId);
     if (!error) {
-      // Bed availability is now handled by database trigger
       toast({ title: 'Bed transferred successfully' });
       setTransferDialogOpen(false);
       setSheetOpen(false);
@@ -525,7 +545,7 @@ const HostelBedMap: React.FC = () => {
     const { error: receiptError } = await supabase.from('hostel_receipts').insert({
       hostel_id: selectedBed.hostelId,
       booking_id: bookingId,
-      user_id: selectedBed.currentBooking?.userId || '',
+      user_id: selectedBed.allBookings.find((b: any) => b.bookingId === bookingId)?.userId || selectedBed.currentBooking?.userId,
       amount: amt,
       payment_method: dueCollectMethod,
       transaction_id: dueCollectTxnId,
