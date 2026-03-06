@@ -68,6 +68,7 @@ export function Navigation() {
     { href: "/", label: "Home", show: true },
     { href: "/cabins", label: "Reading Rooms", show: settings.enabledMenus.bookings, matchPaths: ["/cabins", "/book-seat"] },
     { href: "/hostels", label: "Hostels", show: settings.enabledMenus.hostel, matchPaths: ["/hostels"] },
+    { href: "/mess", label: "Food / Mess", show: true, matchPaths: ["/mess"] },
     { href: "/about", label: "About", show: settings.enabledMenus.about },
   ];
 

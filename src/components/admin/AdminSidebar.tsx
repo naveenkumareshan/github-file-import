@@ -48,7 +48,8 @@ import {
   Megaphone,
   Crown,
   Shirt,
-  Activity
+  Activity,
+  UtensilsCrossed
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronRight } from 'lucide-react';
@@ -274,6 +275,16 @@ export function AdminSidebar() {
       title: 'Laundry',
       url: `${routePrefix}/laundry`,
       icon: Shirt,
+      roles: ['admin', 'vendor', 'vendor_employee'],
+    });
+  }
+
+  // ===== MESS / FOOD SECTION =====
+  if (user?.role === 'admin' || (isPartner && propertyTypes.hasMess)) {
+    menuItems.push({
+      title: 'Mess / Food',
+      url: `${routePrefix}/mess`,
+      icon: UtensilsCrossed,
       roles: ['admin', 'vendor', 'vendor_employee'],
     });
   }
