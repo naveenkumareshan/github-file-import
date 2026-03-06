@@ -1,47 +1,28 @@
 
 
-# Fix: Booking-Wise Actions Actually Working
+# Fix: Employee Seat Map Shows 0 Seats After Login
 
-## Issues Found
+## Root Cause
 
-### 1. BookingUpdateDatesDialog uses dead Express API (CRITICAL)
-`BookingUpdateDatesDialog` calls `adminManualBookingService.updateBookingData()` which uses `axios` hitting `localhost:5000/api`. The Express backend was removed — this is a purely Supabase project. **Every "Edit Dates" click will fail silently or throw a network error.**
+The `VendorSeats` component fetches cabins in a `useEffect([], [])` that runs once on mount. Inside `getVendorCabins()`, it calls `getEffectiveOwnerId()` which calls `supabase.auth.getUser()`. On fresh login, there's a race condition where the Supabase session token may not be fully propagated when this first request fires, causing the query to silently return 0 results. Since `cabins` stays empty, `fetchSeats` early-returns (`cabins.length === 0`), showing "0 seats."
 
-**Fix**: Rewrite the dialog to update dates directly via Supabase:
-- For `bookingType === 'cabin'`: update `bookings` table (`start_date`, `end_date`)
-- For `bookingType === 'hostel'`: update `hostel_bookings` table (`start_date`, `end_date`)
-- Remove the axios-based `adminManualBookingService` dependency entirely from this dialog
+Additionally, two module-level caches (`roleCache` in AuthContext and `cachedResult` in `getEffectiveOwnerId`) are **never cleared on logout**, which can cause stale data across sessions.
 
-### 2. Calendar `selected` prop is wrong in BookingUpdateDatesDialog
-Lines 166 and 194: `selected={booking.startDate}` and `selected={booking.endDate}` pass raw strings from the booking object instead of the state variables `startDate` and `endDate`. The calendar won't highlight the currently selected date.
+## Fix
 
-**Fix**: Change to `selected={startDate}` and `selected={endDate}`.
+### 1. Clear caches on logout (`src/contexts/AuthContext.tsx`)
+- Import `clearEffectiveOwnerCache` and call it in the `logout` function
+- Clear `roleCache` on logout as well
 
-### 3. `format(newEndDate, 'PPP')` crashes when newEndDate is undefined
-Line 95: `newEndDate` can be undefined, causing `format()` to throw.
+### 2. Re-fetch cabins when user changes (`src/pages/vendor/VendorSeats.tsx`)
+- Add `user?.id` to the cabin-fetching `useEffect` dependency array so it re-runs when auth state settles
+- This ensures that if the first fetch fires before auth is ready (returning 0 cabins), it automatically retries once the user object is set
 
-**Fix**: Use `endDate` (the state variable that's always a Date) instead of the unused `newEndDate`.
-
-### 4. Hostel bed transfer doesn't check for overlapping bookings
-The reading room transfer (`vendorSeatsService.transferBooking`) checks for date overlaps on the target seat. The hostel transfer (line 501-504 in HostelBedMap) just blindly updates `bed_id` without checking if the target bed already has a booking for those dates.
-
-**Fix**: Add overlap check query before updating hostel booking's bed_id.
-
-### 5. Due collection userId bug in HostelBedMap
-Line 528: `user_id: selectedBed.currentBooking?.userId || ''` — when collecting dues for a future booking, this references the current booking's userId, not the future booking's. Also, an empty string for a UUID column will cause a database error.
-
-**Fix**: Pass the specific booking's userId from the `allBookings` array being iterated.
-
-### 6. Unused/dead code cleanup in BookingUpdateDatesDialog
-- `newEndDate`, `additionalAmount`, `selectedDuration`, `calculateNewEndDate`, `calculateAdditionalAmount` are unused state/functions
-- `transactionService` import is unused
-- Duplicate display of current start/end dates (static text + calendar pickers)
-
-**Fix**: Remove unused state, imports, and the duplicate static date display.
+### 3. Add error handling for getEffectiveOwnerId failure (`src/api/vendorSeatsService.ts`)
+- If `getEffectiveOwnerId()` throws (user not authenticated yet), catch and retry or skip the `created_by` filter, letting RLS handle access control alone
 
 ## Files Changed
-
-- **`src/components/admin/BookingUpdateDatesDialog.tsx`** — Rewrite to use Supabase directly instead of dead axios API; fix calendar selected props; remove unused code; fix format crash
-- **`src/pages/admin/HostelBedMap.tsx`** — Add booking overlap check in transfer; fix due collection userId
-- **`src/pages/vendor/VendorSeats.tsx`** — No changes needed (release/cancel/transfer already work via Supabase)
+- `src/contexts/AuthContext.tsx` — Clear `roleCache` and `effectiveOwnerCache` on logout
+- `src/pages/vendor/VendorSeats.tsx` — Add `user?.id` dependency to cabin fetch useEffect
+- `src/api/vendorSeatsService.ts` — Graceful fallback when `getEffectiveOwnerId` fails
 
