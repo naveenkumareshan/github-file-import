@@ -623,6 +623,7 @@ export type Database = {
           description: string
           hostel_id: string | null
           id: string
+          mess_id: string | null
           module: string | null
           priority: string
           responded_at: string | null
@@ -642,6 +643,7 @@ export type Database = {
           description: string
           hostel_id?: string | null
           id?: string
+          mess_id?: string | null
           module?: string | null
           priority?: string
           responded_at?: string | null
@@ -661,6 +663,7 @@ export type Database = {
           description?: string
           hostel_id?: string | null
           id?: string
+          mess_id?: string | null
           module?: string | null
           priority?: string
           responded_at?: string | null
@@ -685,6 +688,13 @@ export type Database = {
             columns: ["cabin_id"]
             isOneToOne: false
             referencedRelation: "cabins"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "complaints_mess_id_fkey"
+            columns: ["mess_id"]
+            isOneToOne: false
+            referencedRelation: "mess_partners"
             referencedColumns: ["id"]
           },
         ]
@@ -3320,10 +3330,11 @@ export type Database = {
       reviews: {
         Row: {
           booking_id: string
-          cabin_id: string
+          cabin_id: string | null
           comment: string
           created_at: string
           id: string
+          mess_id: string | null
           rating: number
           status: string
           title: string | null
@@ -3332,10 +3343,11 @@ export type Database = {
         }
         Insert: {
           booking_id: string
-          cabin_id: string
+          cabin_id?: string | null
           comment: string
           created_at?: string
           id?: string
+          mess_id?: string | null
           rating: number
           status?: string
           title?: string | null
@@ -3344,10 +3356,11 @@ export type Database = {
         }
         Update: {
           booking_id?: string
-          cabin_id?: string
+          cabin_id?: string | null
           comment?: string
           created_at?: string
           id?: string
+          mess_id?: string | null
           rating?: number
           status?: string
           title?: string | null
@@ -3367,6 +3380,13 @@ export type Database = {
             columns: ["cabin_id"]
             isOneToOne: false
             referencedRelation: "cabins"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_mess_id_fkey"
+            columns: ["mess_id"]
+            isOneToOne: false
+            referencedRelation: "mess_partners"
             referencedColumns: ["id"]
           },
         ]

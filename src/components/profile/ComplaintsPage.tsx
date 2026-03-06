@@ -10,13 +10,14 @@ import { ArrowLeft, Plus, MessageSquareWarning, ChevronRight } from 'lucide-reac
 import { supabase } from '@/integrations/supabase/client';
 import { bookingsService } from '@/api/bookingsService';
 import { hostelBookingService } from '@/api/hostelBookingService';
+import { getMyMessSubscriptions } from '@/api/messService';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import TicketChat from '@/components/shared/TicketChat';
 
-const CATEGORIES = ['cleanliness', 'noise', 'facilities', 'staff', 'other'];
+const CATEGORIES = ['cleanliness', 'noise', 'facilities', 'staff', 'food_quality', 'other'];
 
 const statusBadge: Record<string, string> = {
   open: 'bg-yellow-100 text-yellow-700',
@@ -50,26 +51,30 @@ const ComplaintsPage = () => {
     if (!user) return;
     setCurrentUserId(user.id);
 
-    const [complaintsRes, cabinBookingsRes, hostelBookingsRes] = await Promise.all([
+    const [complaintsRes, cabinBookingsRes, hostelBookingsRes, messSubsRes] = await Promise.all([
       supabase.from('complaints').select('*').eq('user_id', user.id).order('created_at', { ascending: false }),
       bookingsService.getCurrentBookings(),
       hostelBookingService.getUserBookings(),
+      getMyMessSubscriptions(user.id).catch(() => []),
     ]);
 
     const cabinBookings = (cabinBookingsRes.success ? cabinBookingsRes.data : []).map((b: any) => ({
-      ...b,
-      _type: 'cabin',
+      ...b, _type: 'cabin',
       _label: `${(b.cabins as any)?.name || 'Room'} — Seat #${b.seat_number || '—'}`,
     }));
 
     const hostelBookings = (hostelBookingsRes || []).map((hb: any) => ({
-      ...hb,
-      _type: 'hostel',
+      ...hb, _type: 'hostel',
       _label: `${(hb.hostels as any)?.name || 'Hostel'} — Bed #${(hb.hostel_beds as any)?.bed_number || '—'}`,
     }));
 
+    const messBookings = (messSubsRes || []).filter((s: any) => s.status === 'active').map((s: any) => ({
+      ...s, _type: 'mess',
+      _label: `🍽️ ${s.mess_partners?.name || 'Mess'} — ${s.mess_packages?.name || 'Subscription'}`,
+    }));
+
     setComplaints((complaintsRes.data as any[]) || []);
-    setBookings([...cabinBookings, ...hostelBookings]);
+    setBookings([...cabinBookings, ...hostelBookings, ...messBookings]);
     setLoading(false);
   };
 
@@ -93,7 +98,10 @@ const ComplaintsPage = () => {
     };
     if (formData.booking_id && selectedBooking) {
       insertData.booking_id = formData.booking_id;
-      if (selectedBooking._type === 'hostel') {
+      if (selectedBooking._type === 'mess') {
+        insertData.mess_id = selectedBooking.mess_id || selectedBooking.mess_partners?.id;
+        insertData.module = 'mess';
+      } else if (selectedBooking._type === 'hostel') {
         insertData.hostel_id = selectedBooking.hostel_id;
         insertData.module = 'hostel';
       } else {
@@ -179,7 +187,7 @@ const ComplaintsPage = () => {
                 <Select value={formData.category} onValueChange={(v) => setFormData(p => ({ ...p, category: v }))}>
                   <SelectTrigger className="h-9 text-[13px]"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {CATEGORIES.map(c => <SelectItem key={c} value={c} className="text-[13px] capitalize">{c}</SelectItem>)}
+                    {CATEGORIES.map(c => <SelectItem key={c} value={c} className="text-[13px] capitalize">{c.replace('_', ' ')}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>

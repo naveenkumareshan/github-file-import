@@ -3,14 +3,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, UtensilsCrossed, MapPin, Clock, CalendarDays } from 'lucide-react';
+import { Loader2, UtensilsCrossed, MapPin, Clock, Star } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { getMessPartners, getMealTimings, getMessPackages, getWeeklyMenu, createMessSubscription, createMessReceipt } from '@/api/messService';
+import { getMessPartners, getMealTimings, getMessPackages, getWeeklyMenu, createMessSubscription, createMessReceipt, getMyMessSubscriptions } from '@/api/messService';
+import { reviewsService } from '@/api/reviewsService';
 import { calculateBookingEndDate } from '@/utils/dateCalculations';
 import { formatCurrency } from '@/utils/currency';
 import { format, addDays } from 'date-fns';
@@ -26,6 +27,7 @@ export default function MessMarketplace() {
   const [messTimings, setMessTimings] = useState<any[]>([]);
   const [messPackages, setMessPackages] = useState<any[]>([]);
   const [messMenu, setMessMenu] = useState<any[]>([]);
+  const [messReviews, setMessReviews] = useState<any[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
 
   // Subscribe form
@@ -34,9 +36,24 @@ export default function MessMarketplace() {
   const [subscribing, setSubscribing] = useState(false);
   const [showSubscribe, setShowSubscribe] = useState(false);
 
+  // Review form
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewTitle, setReviewTitle] = useState('');
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewSubId, setReviewSubId] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [userSubs, setUserSubs] = useState<any[]>([]);
+
+  useEffect(() => { loadMesses(); }, []);
+
   useEffect(() => {
-    loadMesses();
-  }, []);
+    if (user?.id && selectedMess) {
+      getMyMessSubscriptions(user.id).then(subs => {
+        setUserSubs(subs.filter((s: any) => s.mess_id === selectedMess.id && s.payment_status === 'completed'));
+      }).catch(() => {});
+    }
+  }, [user?.id, selectedMess?.id]);
 
   const loadMesses = async () => {
     try {
@@ -50,8 +67,11 @@ export default function MessMarketplace() {
     setSelectedMess(mess);
     setDetailLoading(true);
     try {
-      const [t, p, m] = await Promise.all([getMealTimings(mess.id), getMessPackages(mess.id), getWeeklyMenu(mess.id)]);
-      setMessTimings(t); setMessPackages(p); setMessMenu(m);
+      const [t, p, m, r] = await Promise.all([
+        getMealTimings(mess.id), getMessPackages(mess.id), getWeeklyMenu(mess.id),
+        reviewsService.getApprovedMessReviews(mess.id).catch(() => ({ data: [] })),
+      ]);
+      setMessTimings(t); setMessPackages(p); setMessMenu(m); setMessReviews(r.data || []);
     } catch {}
     setDetailLoading(false);
   };
@@ -63,29 +83,37 @@ export default function MessMarketplace() {
       const start = new Date(startDate);
       const end = calculateBookingEndDate(start, selectedPackage.duration_type, selectedPackage.duration_count);
       const sub = await createMessSubscription({
-        user_id: user.id,
-        mess_id: selectedMess.id,
-        package_id: selectedPackage.id,
-        start_date: format(start, 'yyyy-MM-dd'),
-        end_date: format(end, 'yyyy-MM-dd'),
-        price_paid: selectedPackage.price,
-        payment_status: 'completed',
-        payment_method: 'cash',
-        status: 'active',
+        user_id: user.id, mess_id: selectedMess.id, package_id: selectedPackage.id,
+        start_date: format(start, 'yyyy-MM-dd'), end_date: format(end, 'yyyy-MM-dd'),
+        price_paid: selectedPackage.price, payment_status: 'completed', payment_method: 'cash', status: 'active',
       });
       await createMessReceipt({
-        subscription_id: (sub as any).id,
-        user_id: user.id,
-        mess_id: selectedMess.id,
-        amount: selectedPackage.price,
-        payment_method: 'cash',
-        transaction_id: `MESS-${Date.now()}`,
+        subscription_id: (sub as any).id, user_id: user.id, mess_id: selectedMess.id,
+        amount: selectedPackage.price, payment_method: 'cash', transaction_id: `MESS-${Date.now()}`,
       });
       toast({ title: 'Subscribed successfully!', description: `${selectedPackage.name} from ${startDate}` });
       setShowSubscribe(false);
       setSelectedPackage(null);
     } catch (e: any) { toast({ title: 'Error', description: e.message, variant: 'destructive' }); }
     setSubscribing(false);
+  };
+
+  const handleSubmitReview = async () => {
+    if (!reviewComment.trim() || !reviewSubId) return;
+    setSubmittingReview(true);
+    try {
+      await reviewsService.createReview({
+        booking_id: reviewSubId,
+        mess_id: selectedMess.id,
+        rating: reviewRating,
+        title: reviewTitle || undefined,
+        comment: reviewComment,
+      });
+      toast({ title: 'Review submitted!', description: 'It will be visible after approval.' });
+      setShowReviewForm(false);
+      setReviewComment(''); setReviewTitle(''); setReviewRating(5);
+    } catch (e: any) { toast({ title: 'Error', description: e.message, variant: 'destructive' }); }
+    setSubmittingReview(false);
   };
 
   const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
@@ -122,7 +150,7 @@ export default function MessMarketplace() {
       )}
 
       {/* Detail Dialog */}
-      <Dialog open={!!selectedMess} onOpenChange={o => { if (!o) setSelectedMess(null); }}>
+      <Dialog open={!!selectedMess} onOpenChange={o => { if (!o) { setSelectedMess(null); setShowReviewForm(false); } }}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           {selectedMess && (
             <>
@@ -136,10 +164,11 @@ export default function MessMarketplace() {
                 <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin" /></div>
               ) : (
                 <Tabs defaultValue="menu" className="mt-2">
-                  <TabsList className="grid grid-cols-3">
+                  <TabsList className="grid grid-cols-4">
                     <TabsTrigger value="menu">Menu</TabsTrigger>
                     <TabsTrigger value="packages">Packages</TabsTrigger>
                     <TabsTrigger value="timings">Timings</TabsTrigger>
+                    <TabsTrigger value="reviews">Reviews</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="menu" className="mt-3">
@@ -173,16 +202,12 @@ export default function MessMarketplace() {
                           <CardContent className="p-4 flex items-center justify-between">
                             <div>
                               <p className="font-medium">{p.name}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {(p.meal_types as string[])?.map(m => MEAL_LABELS[m]).join(', ')} · {p.duration_count} {p.duration_type}
-                              </p>
+                              <p className="text-xs text-muted-foreground">{(p.meal_types as string[])?.map(m => MEAL_LABELS[m]).join(', ')} · {p.duration_count} {p.duration_type}</p>
                             </div>
                             <div className="flex items-center gap-2">
                               <span className="font-bold text-lg">{formatCurrency(p.price)}</span>
                               {isAuthenticated && (
-                                <Button size="sm" onClick={e => { e.stopPropagation(); setSelectedPackage(p); setShowSubscribe(true); }}>
-                                  Subscribe
-                                </Button>
+                                <Button size="sm" onClick={e => { e.stopPropagation(); setSelectedPackage(p); setShowSubscribe(true); }}>Subscribe</Button>
                               )}
                             </div>
                           </CardContent>
@@ -200,6 +225,62 @@ export default function MessMarketplace() {
                           <Clock className="h-4 w-4 text-muted-foreground" />
                           <Badge variant="outline">{MEAL_LABELS[t.meal_type]}</Badge>
                           <span className="text-sm">{t.start_time} – {t.end_time}</span>
+                        </div>
+                      ))
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="reviews" className="mt-3 space-y-3">
+                    {/* Write Review Button */}
+                    {isAuthenticated && userSubs.length > 0 && !showReviewForm && (
+                      <Button variant="outline" size="sm" onClick={() => { setShowReviewForm(true); setReviewSubId(userSubs[0].id); }}>
+                        <Star className="h-4 w-4 mr-1" /> Write a Review
+                      </Button>
+                    )}
+
+                    {/* Review Form */}
+                    {showReviewForm && (
+                      <Card>
+                        <CardContent className="p-4 space-y-3">
+                          <p className="text-sm font-semibold">Write a Review</p>
+                          <div>
+                            <Label className="text-xs">Rating</Label>
+                            <div className="flex gap-1 mt-1">
+                              {[1, 2, 3, 4, 5].map(n => (
+                                <button key={n} onClick={() => setReviewRating(n)} className="p-0.5">
+                                  <Star className={`h-5 w-5 ${n <= reviewRating ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground'}`} />
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <div><Label className="text-xs">Title (optional)</Label><Input value={reviewTitle} onChange={e => setReviewTitle(e.target.value)} placeholder="Brief title" /></div>
+                          <div><Label className="text-xs">Comment</Label><Textarea value={reviewComment} onChange={e => setReviewComment(e.target.value)} rows={3} placeholder="Share your experience..." /></div>
+                          <div className="flex gap-2">
+                            <Button onClick={handleSubmitReview} disabled={submittingReview || !reviewComment.trim()} size="sm">
+                              {submittingReview ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null} Submit
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => setShowReviewForm(false)}>Cancel</Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Reviews List */}
+                    {messReviews.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No reviews yet.</p>
+                    ) : (
+                      messReviews.map((r: any) => (
+                        <div key={r.id} className="p-3 border rounded space-y-1">
+                          <div className="flex items-center gap-2">
+                            <div className="flex">
+                              {[1, 2, 3, 4, 5].map(n => (
+                                <Star key={n} className={`h-3.5 w-3.5 ${n <= r.rating ? 'text-yellow-500 fill-yellow-500' : 'text-muted-foreground'}`} />
+                              ))}
+                            </div>
+                            <span className="text-xs text-muted-foreground">{r.profiles?.name || 'Student'}</span>
+                          </div>
+                          {r.title && <p className="text-sm font-medium">{r.title}</p>}
+                          <p className="text-sm text-muted-foreground">{r.comment}</p>
                         </div>
                       ))
                     )}

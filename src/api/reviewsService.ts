@@ -2,7 +2,8 @@ import { supabase } from '@/integrations/supabase/client';
 
 export interface ReviewData {
   booking_id: string;
-  cabin_id: string;
+  cabin_id?: string;
+  mess_id?: string;
   rating: number;
   title?: string;
   comment: string;
@@ -12,7 +13,8 @@ export interface Review {
   id: string;
   user_id: string;
   booking_id: string;
-  cabin_id: string;
+  cabin_id: string | null;
+  mess_id?: string | null;
   rating: number;
   title: string | null;
   comment: string;
@@ -34,17 +36,24 @@ export const reviewsService = {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) throw new Error('Not authenticated');
 
+    const insertPayload: any = {
+      user_id: userData.user.id,
+      booking_id: data.booking_id,
+      rating: data.rating,
+      title: data.title || null,
+      comment: data.comment,
+      status: 'pending',
+    };
+
+    if (data.mess_id) {
+      insertPayload.mess_id = data.mess_id;
+    } else if (data.cabin_id) {
+      insertPayload.cabin_id = data.cabin_id;
+    }
+
     const { data: review, error } = await supabase
       .from('reviews')
-      .insert({
-        user_id: userData.user.id,
-        booking_id: data.booking_id,
-        cabin_id: data.cabin_id,
-        rating: data.rating,
-        title: data.title || null,
-        comment: data.comment,
-        status: 'pending',
-      })
+      .insert(insertPayload)
       .select()
       .single();
 
@@ -57,6 +66,18 @@ export const reviewsService = {
       .from('reviews')
       .select('*, profiles:user_id(name, profile_picture)')
       .eq('cabin_id', cabinId)
+      .eq('status', 'approved')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return { success: true, data: data || [] };
+  },
+
+  getApprovedMessReviews: async (messId: string) => {
+    const { data, error } = await (supabase
+      .from('reviews')
+      .select('*, profiles:user_id(name, profile_picture)') as any)
+      .eq('mess_id', messId)
       .eq('status', 'approved')
       .order('created_at', { ascending: false });
 
