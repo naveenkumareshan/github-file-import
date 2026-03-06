@@ -1,21 +1,19 @@
 
 
-# Fix: Study Rooms Button Display in Bottom Nav
+# Fix: Bottom Nav Tabs Overlapping
 
 ## Issue
-The "Study Rooms" label in the bottom navigation wraps to two lines ("Study" / "Rooms") because the tab uses `flex-1` equal widths and the label is longer than the other single-word labels. This makes it look misaligned compared to Home, Hostels, Mess, and Profile.
+The 5 tabs with `flex-1` equal widths and `px-3` padding cause the active tab's `bg-primary/10` background pill to overlap adjacent tabs, especially "Study Rooms" which has a longer label. The `whitespace-nowrap` prevents wrapping but the content overflows into neighboring tabs.
 
 ## Fix
 
 ### `src/components/student/MobileBottomNav.tsx`
-- Add `text-center whitespace-nowrap` to the label `<span>` to prevent wrapping
-- Reduce label font size slightly for the longer label, or use `text-[10px]` globally to ensure all labels fit
-- Add `overflow-hidden` on the inner container to prevent layout breakage
+- Reduce inner padding from `px-3` to `px-1.5` so the active background pill stays within bounds
+- Reduce icon size from `w-6 h-6` to `w-5 h-5` to give more breathing room
+- Reduce `min-h` from `64px` to `56px` for a more compact nav
+- Use `text-[9px]` for labels to ensure "Study Rooms" fits without overlapping
 
-Alternatively, a simpler approach: add `whitespace-nowrap` to the label and slightly reduce the inner padding so the two-word label fits on one line.
-
-### Files Modified
 | File | Change |
 |------|--------|
-| `src/components/student/MobileBottomNav.tsx` | Add `whitespace-nowrap` to label span, adjust padding for fit |
+| `src/components/student/MobileBottomNav.tsx` | Reduce padding, icon size, and font size to prevent overlap |
 
