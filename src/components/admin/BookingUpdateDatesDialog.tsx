@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
@@ -17,6 +17,7 @@ import { format } from 'date-fns';
 import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
+import { calculateBookingEndDate } from '@/utils/dateCalculations';
 
 interface BookingExtensionDialogProps {
   open: boolean;
@@ -45,15 +46,21 @@ export const BookingUpdateDatesDialog = ({
   const { toast } = useToast();
 
   const [startDate, setStartDate] = useState<Date>(new Date(booking.startDate));
-  const [endDate, setEndDate] = useState<Date>(new Date(booking.endDate));
+
+  // Extract duration info from booking (handles both camelCase and snake_case)
+  const durationType = booking.bookingDuration || booking.booking_duration || 'monthly';
+  const durationCount = Number(booking.durationCount || booking.duration_count || 1);
+
+  // Auto-calculate end date based on start date + duration
+  const endDate = useMemo(
+    () => calculateBookingEndDate(startDate, durationType, durationCount),
+    [startDate, durationType, durationCount]
+  );
+
+  // Duration label for display
+  const durationLabel = `${durationCount} ${durationType === 'daily' ? (durationCount > 1 ? 'days' : 'day') : durationType === 'weekly' ? (durationCount > 1 ? 'weeks' : 'week') : (durationCount > 1 ? 'months' : 'month')}`;
 
   const handleUpdateBooking = async () => {
-    // Validate end >= start
-    if (endDate < startDate) {
-      toast({ title: "Invalid dates", description: "End date must be on or after start date.", variant: "destructive" });
-      return;
-    }
-
     try {
       setIsLoading(true);
 
@@ -147,7 +154,7 @@ export const BookingUpdateDatesDialog = ({
         <DialogHeader>
           <DialogTitle>Update Booking</DialogTitle>
           <DialogDescription>
-            Update booking start date and end date
+            Select new start date — end date is auto-calculated based on duration ({durationLabel})
           </DialogDescription>
         </DialogHeader>
 
@@ -181,29 +188,13 @@ export const BookingUpdateDatesDialog = ({
 
             <div>
               <Label className="mb-2 block">End Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !endDate && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {endDate ? format(endDate, "PPP") : "Select end date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={endDate}
-                    onSelect={(date) => date && setEndDate(date)}
-                    disabled={(date) => date < startDate}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+              <div className="flex items-center h-10 px-3 rounded-md border bg-muted text-muted-foreground text-sm">
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {format(endDate, "PPP")}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Auto-calculated: {durationLabel}
+              </p>
             </div>
           </div>
         </div>
