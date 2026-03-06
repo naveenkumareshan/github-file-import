@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getMessPartners } from '@/api/messService';
 import { getImageUrl } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
-import { UtensilsCrossed, MapPin, Star } from 'lucide-react';
+import { UtensilsCrossed, MapPin, Star, Search } from 'lucide-react';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
 const FOOD_LABELS: Record<string, string> = { veg: '🟢 Veg', non_veg: '🔴 Non-Veg', both: '🟡 Both' };
@@ -21,6 +21,7 @@ export default function MessMarketplace() {
   const [filter, setFilter] = useState<string>('all');
   const [messes, setMesses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     loadMesses();
@@ -36,7 +37,12 @@ export default function MessMarketplace() {
     setLoading(false);
   };
 
-  const filtered = filter === 'all' ? messes : messes.filter(m => m.food_type === filter);
+  const filtered = messes.filter(m => {
+    const matchesType = filter === 'all' || m.food_type === filter;
+    const q = searchQuery.toLowerCase().trim();
+    const matchesSearch = !q || m.name?.toLowerCase().includes(q) || m.location?.toLowerCase().includes(q);
+    return matchesType && matchesSearch;
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -44,6 +50,17 @@ export default function MessMarketplace() {
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
         <div className="px-3 pt-3 pb-2 max-w-lg lg:max-w-5xl mx-auto">
           <h1 className="text-[16px] font-semibold mb-2 lg:text-xl">Food / Mess</h1>
+
+          <div className="relative mb-2">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search mess..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-8 pl-8 pr-3 rounded-xl border border-border bg-card text-[12px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+          </div>
 
           {/* Filter pills */}
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
