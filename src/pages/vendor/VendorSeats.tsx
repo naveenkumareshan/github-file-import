@@ -162,8 +162,9 @@ const VendorSeats: React.FC = () => {
     return cabins.find(c => c._id === selectedSeat.cabinId) || null;
   }, [selectedSeat, cabins]);
 
-  // Fetch cabins on mount
+  // Fetch cabins on mount and when user changes (handles auth race condition)
   useEffect(() => {
+    if (!user?.id) return;
     (async () => {
       setLoading(true);
       const res = await vendorSeatsService.getVendorCabins();
@@ -172,7 +173,7 @@ const VendorSeats: React.FC = () => {
       }
       setLoading(false);
     })();
-  }, []);
+  }, [user?.id]);
 
   // Fetch seats when cabin or date changes
   const fetchSeats = useCallback(async () => {
