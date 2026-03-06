@@ -1,102 +1,47 @@
 
 
-# Booking-Wise Actions for Seats & Beds: Release, Cancel, Transfer, Date Edit
+# Fix: Booking-Wise Actions Actually Working
 
-## Problem Summary
+## Issues Found
 
-Currently in both `VendorSeats.tsx` (Reading Room) and `HostelBedMap.tsx` (Hostel):
+### 1. BookingUpdateDatesDialog uses dead Express API (CRITICAL)
+`BookingUpdateDatesDialog` calls `adminManualBookingService.updateBookingData()` which uses `axios` hitting `localhost:5000/api`. The Express backend was removed — this is a purely Supabase project. **Every "Edit Dates" click will fail silently or throw a network error.**
 
-1. **Release/Cancel** buttons only act on `currentBookings[0]` — if there are multiple bookings, there's no way to release or cancel a specific one. Future bookings have no release/cancel option at all.
-2. **Transfer** also only acts on `currentBookings[0]` — future bookings cannot be transferred.
-3. **Hostel Bed Map** has no Release/Cancel buttons at all (only Reading Room has them).
-4. **Date edit** for bookings is not available to partners in the map view (`BookingUpdateDatesDialog` exists but is only used in admin booking lists).
+**Fix**: Rewrite the dialog to update dates directly via Supabase:
+- For `bookingType === 'cabin'`: update `bookings` table (`start_date`, `end_date`)
+- For `bookingType === 'hostel'`: update `hostel_bookings` table (`start_date`, `end_date`)
+- Remove the axios-based `adminManualBookingService` dependency entirely from this dialog
 
-## Plan
+### 2. Calendar `selected` prop is wrong in BookingUpdateDatesDialog
+Lines 166 and 194: `selected={booking.startDate}` and `selected={booking.endDate}` pass raw strings from the booking object instead of the state variables `startDate` and `endDate`. The calendar won't highlight the currently selected date.
 
-### 1. Add per-booking Release, Cancel, Transfer buttons to each booking card
+**Fix**: Change to `selected={startDate}` and `selected={endDate}`.
 
-**`src/pages/vendor/VendorSeats.tsx`** — In both the `currentBookings.map()` (lines ~1763-1902) and `futureBookings.map()` (lines ~1915-1970) loops, add action buttons per booking card:
-- **Release Seat** — `setActionBookingId(b.bookingId); setReleaseDialogOpen(true)`
-- **Cancel Booking** — `setActionBookingId(b.bookingId); setCancelDialogOpen(true)`
-- **Transfer Seat** — `openTransferDialog(b.bookingId)`
-- **Edit Dates** — open `BookingUpdateDatesDialog` for that specific booking
+### 3. `format(newEndDate, 'PPP')` crashes when newEndDate is undefined
+Line 95: `newEndDate` can be undefined, causing `format()` to throw.
 
-Remove the current top-level Release/Cancel/Transfer buttons (lines ~1187-1227) that only operate on `currentBookings[0]`.
+**Fix**: Use `endDate` (the state variable that's always a Date) instead of the unused `newEndDate`.
 
-**`src/pages/admin/HostelBedMap.tsx`** — Same pattern:
-- In both `currentBookings.map()` (lines ~1681-1752) and `futureBookings.map()` (lines ~1763-1793), add per-booking action buttons for Release Bed, Cancel Booking, Transfer Bed, and Edit Dates.
-- Add release/cancel state variables (`releaseDialogOpen`, `cancelDialogOpen`, `actionBookingId`, `actionLoading`) — currently missing from HostelBedMap.
-- Add `handleReleaseBed` and `handleCancelBooking` functions using `supabase` to update `hostel_bookings` status (similar to how `vendorSeatsService.releaseSeat`/`cancelBooking` work for reading rooms).
-- Add AlertDialog confirmations for release and cancel (currently missing).
-- Move the top-level Transfer Bed button (line ~1299) into per-booking cards.
+### 4. Hostel bed transfer doesn't check for overlapping bookings
+The reading room transfer (`vendorSeatsService.transferBooking`) checks for date overlaps on the target seat. The hostel transfer (line 501-504 in HostelBedMap) just blindly updates `bed_id` without checking if the target bed already has a booking for those dates.
 
-### 2. Add Release/Cancel logic to Hostel Bed Map
+**Fix**: Add overlap check query before updating hostel booking's bed_id.
 
-New functions in `HostelBedMap.tsx`:
+### 5. Due collection userId bug in HostelBedMap
+Line 528: `user_id: selectedBed.currentBooking?.userId || ''` — when collecting dues for a future booking, this references the current booking's userId, not the future booking's. Also, an empty string for a UUID column will cause a database error.
 
-```typescript
-const handleReleaseBed = async () => {
-  // Update hostel_bookings status to 'terminated', set end_date to today
-  await supabase.from('hostel_bookings')
-    .update({ status: 'terminated', end_date: format(new Date(), 'yyyy-MM-dd') })
-    .eq('id', actionBookingId);
-  // Cancel pending hostel_dues
-  await supabase.from('hostel_dues')
-    .update({ status: 'cancelled' })
-    .eq('booking_id', actionBookingId)
-    .eq('status', 'pending');
-};
+**Fix**: Pass the specific booking's userId from the `allBookings` array being iterated.
 
-const handleCancelBooking = async () => {
-  // Update hostel_bookings status to 'cancelled'
-  await supabase.from('hostel_bookings')
-    .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
-    .eq('id', actionBookingId);
-  // Cancel all pending dues
-  await supabase.from('hostel_dues')
-    .update({ status: 'cancelled' })
-    .eq('booking_id', actionBookingId)
-    .eq('status', 'pending');
-};
-```
+### 6. Unused/dead code cleanup in BookingUpdateDatesDialog
+- `newEndDate`, `additionalAmount`, `selectedDuration`, `calculateNewEndDate`, `calculateAdditionalAmount` are unused state/functions
+- `transactionService` import is unused
+- Duplicate display of current start/end dates (static text + calendar pickers)
 
-### 3. Add Date Edit capability per booking
-
-Import and use the existing `BookingUpdateDatesDialog` component in both:
-- `VendorSeats.tsx` — with `bookingType='cabin'`
-- `HostelBedMap.tsx` — with `bookingType='hostel'`
-
-Add state: `dateEditBooking` (the selected booking object) and `dateEditOpen` (boolean).
-
-Add an "Edit Dates" button (Calendar/Pencil icon) to each booking card. On click, set `dateEditBooking` and open the dialog.
-
-### 4. Per-booking action buttons UI (same for both files)
-
-Each booking card (current and future) will get a small action row at the bottom:
-
-```tsx
-<div className="flex gap-1.5 mt-1 flex-wrap">
-  <Button size="sm" variant="outline" className="h-6 text-[9px] px-2 gap-1"
-    onClick={() => openTransferDialog(b.bookingId)}>
-    <ArrowRightLeft className="h-2.5 w-2.5" /> Transfer
-  </Button>
-  <Button size="sm" variant="outline" className="h-6 text-[9px] px-2 gap-1"
-    onClick={() => { setDateEditBooking(b); setDateEditOpen(true); }}>
-    <CalendarIcon className="h-2.5 w-2.5" /> Edit Dates
-  </Button>
-  <Button size="sm" variant="outline" className="h-6 text-[9px] px-2 gap-1 text-amber-600"
-    onClick={() => { setActionBookingId(b.bookingId); setReleaseDialogOpen(true); }}>
-    <LogOut className="h-2.5 w-2.5" /> Release
-  </Button>
-  <Button size="sm" variant="outline" className="h-6 text-[9px] px-2 gap-1 text-destructive"
-    onClick={() => { setActionBookingId(b.bookingId); setCancelDialogOpen(true); }}>
-    <XCircle className="h-2.5 w-2.5" /> Cancel
-  </Button>
-</div>
-```
+**Fix**: Remove unused state, imports, and the duplicate static date display.
 
 ## Files Changed
 
-- **`src/pages/vendor/VendorSeats.tsx`** — Move Release/Cancel/Transfer from top-level to per-booking cards; add Edit Dates button + BookingUpdateDatesDialog
-- **`src/pages/admin/HostelBedMap.tsx`** — Add Release/Cancel state + handlers + AlertDialogs; move Transfer from top-level to per-booking cards; add Edit Dates button + BookingUpdateDatesDialog
+- **`src/components/admin/BookingUpdateDatesDialog.tsx`** — Rewrite to use Supabase directly instead of dead axios API; fix calendar selected props; remove unused code; fix format crash
+- **`src/pages/admin/HostelBedMap.tsx`** — Add booking overlap check in transfer; fix due collection userId
+- **`src/pages/vendor/VendorSeats.tsx`** — No changes needed (release/cancel/transfer already work via Supabase)
 
