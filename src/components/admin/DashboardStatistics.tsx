@@ -70,7 +70,7 @@ export function DashboardStatistics() {
         <CardHeader className="pb-2 border-b">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-lg flex items-center gap-2">
+              <CardTitle className="text-sm flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-primary" />
                 Top Filling Reading Rooms
               </CardTitle>
@@ -119,18 +119,18 @@ export function DashboardStatistics() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/30">
-                      <TableHead className="font-semibold">#</TableHead>
-                      <TableHead className="font-semibold">Room Name</TableHead>
-                      <TableHead className="font-semibold">Category</TableHead>
-                      <TableHead className="font-semibold">Occupancy</TableHead>
-                      <TableHead className="font-semibold">Booked / Total</TableHead>
+                      <TableHead className="font-semibold text-xs">#</TableHead>
+                      <TableHead className="font-semibold text-xs">Room Name</TableHead>
+                      <TableHead className="font-semibold text-xs">Category</TableHead>
+                      <TableHead className="font-semibold text-xs">Occupancy</TableHead>
+                      <TableHead className="font-semibold text-xs">Booked / Total</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {topFillingRooms.map((room, idx) => (
                       <TableRow key={room.id} className={idx % 2 === 0 ? "bg-background" : "bg-muted/20"}>
-                        <TableCell className="text-muted-foreground text-sm w-8">{idx + 1}</TableCell>
-                        <TableCell className="font-medium">{room.name}</TableCell>
+                        <TableCell className="text-muted-foreground text-xs w-8">{idx + 1}</TableCell>
+                        <TableCell className="font-medium text-xs">{room.name}</TableCell>
                         <TableCell>
                           <Badge className={`capitalize ${getCategoryBadgeColor(room.category)}`}>
                             {room.category}
@@ -141,10 +141,10 @@ export function DashboardStatistics() {
                             <div className="w-20 h-1.5 rounded-full bg-muted overflow-hidden">
                               <div className="h-full bg-primary rounded-full" style={{ width: `${room.occupancyRate}%` }} />
                             </div>
-                            <span className="text-sm font-medium">{room.occupancyRate}%</span>
+                            <span className="text-xs font-medium">{room.occupancyRate}%</span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-sm">
+                        <TableCell className="text-xs">
                           <span className="font-medium">{room.bookedSeats}</span>
                           <span className="text-muted-foreground"> / {room.totalSeats}</span>
                         </TableCell>

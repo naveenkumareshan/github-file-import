@@ -43,63 +43,63 @@ useEffect(() => {
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
       <Card className="shadow-none border rounded-lg border-l-4 border-l-primary">
-        <div className="p-3 flex items-center justify-between">
+          <div className="p-2.5 flex items-center justify-between">
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Revenue</p>
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Total Revenue</p>
             {loading ? <Skeleton className="h-6 w-20 mt-1" /> : (
               <>
-                <p className="text-xl font-bold mt-0.5 text-primary">₹{statistics.totalRevenue.toLocaleString()}</p>
+                <p className="text-lg font-bold mt-0.5 text-primary">₹{statistics.totalRevenue.toLocaleString()}</p>
                 <p className="text-[10px] text-secondary">₹{statistics.revenueToday.toLocaleString()} today</p>
               </>
             )}
           </div>
-          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-            <BarChart className="h-4 w-4 text-primary" />
+          <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center">
+            <BarChart className="h-3.5 w-3.5 text-primary" />
           </div>
         </div>
       </Card>
 
       <Card className="shadow-none border rounded-lg border-l-4 border-l-secondary">
-        <div className="p-3 flex items-center justify-between">
+          <div className="p-2.5 flex items-center justify-between">
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Active Residents</p>
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Active Residents</p>
             {residentsLoading ? <Skeleton className="h-6 w-14 mt-1" /> : (
               <>
-                <p className="text-xl font-bold mt-0.5 text-secondary">{activeResidents.activeResidents}</p>
+                <p className="text-lg font-bold mt-0.5 text-secondary">{activeResidents.activeResidents}</p>
                 <p className="text-[10px] text-muted-foreground">{activeResidents.occupancyPercentage}% occupancy</p>
               </>
             )}
           </div>
-          <div className="h-8 w-8 rounded-full bg-secondary/10 flex items-center justify-center">
-            <UserCheck className="h-4 w-4 text-secondary" />
+          <div className="h-7 w-7 rounded-full bg-secondary/10 flex items-center justify-center">
+            <UserCheck className="h-3.5 w-3.5 text-secondary" />
           </div>
         </div>
       </Card>
 
       <Card className="shadow-none border rounded-lg border-l-4 border-l-accent">
-        <div className="p-3 flex items-center justify-between">
+          <div className="p-2.5 flex items-center justify-between">
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Seat Availability</p>
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Seat Availability</p>
             {loading ? <Skeleton className="h-6 w-14 mt-1" /> : (
-              <p className="text-xl font-bold mt-0.5 text-accent-foreground">{statistics.availableSeats}</p>
+              <p className="text-lg font-bold mt-0.5 text-accent-foreground">{statistics.availableSeats}</p>
             )}
           </div>
-          <div className="h-8 w-8 rounded-full bg-accent/20 flex items-center justify-center">
-            <TrendingUp className="h-4 w-4 text-accent-foreground" />
+          <div className="h-7 w-7 rounded-full bg-accent/20 flex items-center justify-center">
+            <TrendingUp className="h-3.5 w-3.5 text-accent-foreground" />
           </div>
         </div>
       </Card>
 
       <Card className="shadow-none border rounded-lg border-l-4 border-l-destructive">
-        <div className="p-3 flex items-center justify-between">
+          <div className="p-2.5 flex items-center justify-between">
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Pending Payments</p>
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Pending Payments</p>
             {loading ? <Skeleton className="h-6 w-20 mt-1" /> : (
-              <p className="text-xl font-bold mt-0.5 text-destructive">₹{statistics.pendingPayments.toLocaleString()}</p>
+              <p className="text-lg font-bold mt-0.5 text-destructive">₹{statistics.pendingPayments.toLocaleString()}</p>
             )}
           </div>
-          <div className="h-8 w-8 rounded-full bg-destructive/10 flex items-center justify-center">
-            <AlertCircle className="h-4 w-4 text-destructive" />
+          <div className="h-7 w-7 rounded-full bg-destructive/10 flex items-center justify-center">
+            <AlertCircle className="h-3.5 w-3.5 text-destructive" />
           </div>
         </div>
       </Card>
