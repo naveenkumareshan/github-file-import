@@ -6,7 +6,7 @@ import { reviewsService } from '../api/reviewsService';
 import { toast } from '@/hooks/use-toast';
 import { Cabin as FrontendCabin } from '../data/cabinsData';
 import ErrorBoundary from '../components/ErrorBoundary';
-import { Loader2, BookOpen } from 'lucide-react';
+import { Loader2, BookOpen, Search } from 'lucide-react';
 
 // Define backend Cabin type (Supabase schema)
 interface BackendCabin {
@@ -41,6 +41,7 @@ const Cabins = () => {
   const [cabins, setCabins] = useState<FrontendCabin[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   
   useEffect(() => {
     const fetchCabins = async () => {
@@ -113,6 +114,17 @@ const Cabins = () => {
         <div className="px-3 pt-3 pb-2 max-w-lg lg:max-w-5xl mx-auto">
           <h1 className="text-[16px] font-semibold mb-2 lg:text-xl">Study Rooms</h1>
 
+          <div className="relative mb-2">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search rooms..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-8 pl-8 pr-3 rounded-xl border border-border bg-card text-[12px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+          </div>
+
           {/* Category filter pills */}
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
             {categories.map((cat) => (
@@ -155,7 +167,13 @@ const Cabins = () => {
               <p className="text-[12px] text-muted-foreground">Check back later for new listings.</p>
             </div>
           ) : (
-            <CabinsGrid cabins={cabins} />
+            <CabinsGrid cabins={cabins.filter(c => {
+              const q = searchQuery.toLowerCase().trim();
+              if (!q) return true;
+              return (c as any).name?.toLowerCase().includes(q) ||
+                (c as any).area?.toLowerCase().includes(q) ||
+                (c as any).city?.toLowerCase().includes(q);
+            })} />
           )}
         </ErrorBoundary>
       </div>
