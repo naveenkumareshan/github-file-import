@@ -207,18 +207,24 @@ export const vendorSeatsService = {
     try {
       // Filter cabins by ownership for non-admin users
       const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) {
+        console.warn('getVendorCabins: No authenticated user yet');
+        return { success: false, data: { data: [] } };
+      }
       let cabinsQuery = supabase.from('cabins').select('*').order('name');
       
-      if (authUser) {
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', authUser.id);
-        const isAdmin = roleData?.some(r => r.role === 'admin' || r.role === 'super_admin');
-        if (!isAdmin) {
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', authUser.id);
+      const isAdmin = roleData?.some(r => r.role === 'admin' || r.role === 'super_admin');
+      if (!isAdmin) {
+        try {
           const { getEffectiveOwnerId } = await import('@/utils/getEffectiveOwnerId');
           const { ownerId } = await getEffectiveOwnerId();
           cabinsQuery = cabinsQuery.eq('created_by', ownerId);
+        } catch (e) {
+          console.warn('getVendorCabins: getEffectiveOwnerId failed, skipping filter', e);
         }
       }
 

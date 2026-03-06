@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { clearEffectiveOwnerCache } from '@/utils/getEffectiveOwnerId';
 import type { Session, User as SupabaseUser } from '@supabase/supabase-js';
 
 // Define user type
@@ -204,6 +205,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
+    roleCache.clear();
+    clearEffectiveOwnerCache();
     await supabase.auth.signOut();
     setUser(null);
   };
