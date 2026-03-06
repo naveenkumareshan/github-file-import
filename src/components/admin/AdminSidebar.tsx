@@ -409,26 +409,23 @@ export function AdminSidebar() {
       permissions: ['view_complaints']
     });
 
-    if (hasPermission('view_reports')) {
+    if (user?.role === 'vendor') {
       vendorMenuItems.push({
         title: 'Reports',
         icon: BarChart2,
-        roles: ['vendor', 'vendor_employee'],
-        permissions: ['view_reports'],
+        roles: ['vendor'],
         subItems: [
           {
             title: 'Booking Reports',
             url: `${routePrefix}/reports`,
             icon: BarChart2,
-            roles: ['vendor', 'vendor_employee'],
-            permissions: ['view_reports']
+            roles: ['vendor'],
           },
           {
             title: 'Hostel Reports',
             url: `${routePrefix}/reports?tab=transactions`,
             icon: BarChart2,
-            roles: ['vendor', 'vendor_employee'],
-            permissions: ['view_reports']
+            roles: ['vendor'],
           }
         ],
       });

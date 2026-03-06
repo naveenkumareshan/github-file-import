@@ -74,12 +74,14 @@ const AdminDashboard: React.FC = () => {
               </Button>
             </a>
           )}
-          <Link to="/admin/reports">
-            <Button variant="outline" size="sm" className="flex items-center gap-1.5 bg-primary-foreground/10 border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/20">
-              <FileText className="h-4 w-4" />
-              Reports
-            </Button>
-          </Link>
+          {(user?.role === 'admin' || user?.role === 'vendor') && (
+            <Link to="/admin/reports">
+              <Button variant="outline" size="sm" className="flex items-center gap-1.5 bg-primary-foreground/10 border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/20">
+                <FileText className="h-4 w-4" />
+                Reports
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
 

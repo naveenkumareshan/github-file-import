@@ -105,42 +105,35 @@ export function OccupancyReports({ dateRange }: { dateRange: DateRange }) {
             setTotalPendingBookings(pendingBookingsCount);
           }
         } else {
-          // Handle case when cabins data is not an array
-          toast({
-            title: "Invalid data format",
-            description: "Cabin occupancy data is missing or in an incorrect format.",
-            variant: "destructive"
-          });
-          setMockData();
+          // No data from API
+          setOccupancyData([]);
+          setOccupancyTrend([]);
+          setTotalSeats(0);
+          setOccupiedSeats(0);
+          setAvailableSeats(0);
+          setOverallOccupancy(0);
+          setTotalPendingBookings(0);
         }
         
         // Handle trend data
         if (rData.trend && Array.isArray(rData.trend)) {
           setOccupancyTrend(rData.trend);
         } else {
-          // Generate mock trend data if not provided
-          setOccupancyTrend(generateMockOccupancyTrend(timeframe));
+          setOccupancyTrend([]);
         }
       } else {
-        toast({
-          title: "Could not load data",
-          description: (response as any).message || "Failed to retrieve occupancy data.",
-          variant: "destructive"
-        });
-        
-        // Use fallback mock data
-        setMockData();
+        setOccupancyData([]);
+        setOccupancyTrend([]);
       }
     } catch (error) {
       console.error('Error fetching occupancy data:', error);
       toast({
         title: "Error",
-        description: "Failed to fetch occupancy data. Using mock data instead.",
+        description: "Failed to fetch occupancy data.",
         variant: "destructive"
       });
-      
-      // Use fallback mock data
-      setMockData();
+      setOccupancyData([]);
+      setOccupancyTrend([]);
     } finally {
       setIsLoading(false);
     }

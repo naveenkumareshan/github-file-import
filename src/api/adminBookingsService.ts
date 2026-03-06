@@ -31,7 +31,6 @@ export const adminBookingsService = {
         query = query.eq('payment_status', filters.status);
       }
       if (filters?.search) {
-        // Search profiles for matching name/email/phone, then include matched user_ids
         const { data: matchedProfiles } = await supabase
           .from('profiles')
           .select('id')
@@ -56,20 +55,16 @@ export const adminBookingsService = {
         query = query.eq('user_id', filters.userId);
       }
 
-      // Sorting
       const sortCol = filters?.sortBy === 'startDate' ? 'start_date' 
         : filters?.sortBy === 'endDate' ? 'end_date'
         : filters?.sortBy === 'totalPrice' ? 'total_price'
         : 'created_at';
       query = query.order(sortCol, { ascending: filters?.order === 'asc' });
-
-      // Pagination
       query = query.range(offset, offset + limit - 1);
 
       const { data, error, count } = await query;
       if (error) throw error;
 
-      // Fetch receipts totals as fallback for paid calculation
       const bookingIds = (data || []).map(b => b.id);
       let receiptsMap: Record<string, number> = {};
       if (bookingIds.length > 0) {
@@ -86,7 +81,6 @@ export const adminBookingsService = {
         }
       }
 
-      // Map to legacy format for AdminBookingsList compatibility
       const mapped = (data || []).map(b => {
         const profile = b.profiles as any;
         const cabin = b.cabins as any;
@@ -97,7 +91,6 @@ export const adminBookingsService = {
         const receiptTotal = receiptsMap[b.id] || 0;
         const totalPrice = Number(b.total_price) || 0;
 
-        // Calculate totalPaid & duePending
         let totalPaid = 0;
         let duePending = 0;
         if (due) {
@@ -134,6 +127,8 @@ export const adminBookingsService = {
           lockerPrice: Number(b.locker_price) || 0,
           paymentStatus: b.payment_status || 'pending',
           status: b.payment_status || 'pending',
+          paymentMethod: b.payment_method || '',
+          transactionId: b.transaction_id || '',
           durationCount: b.duration_count ? parseInt(b.duration_count) : undefined,
           createdAt: b.created_at,
           payoutStatus: 'pending',
@@ -168,7 +163,6 @@ export const adminBookingsService = {
   },
 
   getAllTransactions: async (filters?: BookingFilters) => {
-    // Reuse getAllBookings for transactions view
     return adminBookingsService.getAllBookings(filters);
   },
 
@@ -176,7 +170,6 @@ export const adminBookingsService = {
     try {
       const selectQuery = '*, profiles!bookings_user_id_fkey(name, email, phone, profile_picture, serial_number), cabins:cabin_id(name, serial_number), seats:seat_id(number, price)';
 
-      // Dual-lookup: try serial_number first, then fall back to UUID
       let { data } = await supabase
         .from('bookings')
         .select(selectQuery)
@@ -336,7 +329,38 @@ export const adminBookingsService = {
   },
 
   getRevenueReport: async (filters?: BookingFilters) => {
-    return adminBookingsService.getRevenueByTransaction();
+    try {
+      let query = supabase
+        .from('bookings')
+        .select('total_price, created_at')
+        .eq('payment_status', 'completed');
+
+      if (filters?.startDate) {
+        query = query.gte('created_at', filters.startDate);
+      }
+      if (filters?.endDate) {
+        query = query.lte('created_at', filters.endDate + 'T23:59:59');
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      const totalRevenue = (data || []).reduce((sum, b) => sum + (Number(b.total_price) || 0), 0);
+      const bookingCount = (data || []).length;
+
+      return {
+        success: true,
+        data: {
+          totalRevenue,
+          bookingCount,
+          count: bookingCount,
+          todayRevenue: 0,
+          currentYear: new Date().getFullYear(),
+        }
+      };
+    } catch (error) {
+      return { success: false, data: { totalRevenue: 0, todayRevenue: 0, currentYear: 0, count: 0 } };
+    }
   },
 
   getFiltersData: async () => {
@@ -354,7 +378,105 @@ export const adminBookingsService = {
     timeframe?: 'daily' | 'weekly' | 'monthly' | 'yearly';
     cabinId?: string;
   }) => {
-    return { success: true, data: [] };
+    try {
+      // Get all active cabins with their seats
+      const { data: cabins, error: cabinsError } = await supabase
+        .from('cabins')
+        .select('id, name, category')
+        .eq('is_active', true);
+      if (cabinsError) throw cabinsError;
+
+      if (!cabins || cabins.length === 0) {
+        return { success: true, data: { cabins: [], overall: { totalSeats: 0, occupiedSeats: 0, availableSeats: 0, occupancyRate: 0 } } };
+      }
+
+      const cabinIds = cabins.map(c => c.id);
+
+      // Get seat counts per cabin
+      const { data: seats, error: seatsError } = await supabase
+        .from('seats')
+        .select('id, cabin_id, is_available')
+        .in('cabin_id', cabinIds);
+      if (seatsError) throw seatsError;
+
+      const today = new Date().toISOString().split('T')[0];
+
+      // Get active bookings (completed, overlapping today)
+      const { data: activeBookings, error: bookingsError } = await supabase
+        .from('bookings')
+        .select('seat_id, cabin_id, payment_status')
+        .in('cabin_id', cabinIds)
+        .in('payment_status', ['completed'])
+        .lte('start_date', today)
+        .gte('end_date', today);
+      if (bookingsError) throw bookingsError;
+
+      // Get pending bookings
+      const { data: pendingBookings } = await supabase
+        .from('bookings')
+        .select('cabin_id')
+        .in('cabin_id', cabinIds)
+        .eq('payment_status', 'pending')
+        .lte('start_date', today)
+        .gte('end_date', today);
+
+      // Build per-cabin stats
+      const seatsByCabin: Record<string, number> = {};
+      (seats || []).forEach(s => {
+        seatsByCabin[s.cabin_id] = (seatsByCabin[s.cabin_id] || 0) + 1;
+      });
+
+      const occupiedByCabin: Record<string, Set<string>> = {};
+      (activeBookings || []).forEach(b => {
+        if (b.cabin_id && b.seat_id) {
+          if (!occupiedByCabin[b.cabin_id]) occupiedByCabin[b.cabin_id] = new Set();
+          occupiedByCabin[b.cabin_id].add(b.seat_id);
+        }
+      });
+
+      const pendingByCabin: Record<string, number> = {};
+      (pendingBookings || []).forEach(b => {
+        if (b.cabin_id) {
+          pendingByCabin[b.cabin_id] = (pendingByCabin[b.cabin_id] || 0) + 1;
+        }
+      });
+
+      const cabinData = cabins.map(c => {
+        const totalSeats = seatsByCabin[c.id] || 0;
+        const occupiedSeats = occupiedByCabin[c.id]?.size || 0;
+        const availableSeats = totalSeats - occupiedSeats;
+        const occupancyRate = totalSeats > 0 ? (occupiedSeats / totalSeats) * 100 : 0;
+        return {
+          cabinId: c.id,
+          cabinName: c.name,
+          totalSeats,
+          occupiedSeats,
+          availableSeats,
+          occupancyRate: Math.round(occupancyRate * 10) / 10,
+          pendingBookings: pendingByCabin[c.id] || 0,
+          category: c.category || '',
+        };
+      });
+
+      const totalSeats = cabinData.reduce((s, c) => s + c.totalSeats, 0);
+      const occupiedSeats = cabinData.reduce((s, c) => s + c.occupiedSeats, 0);
+
+      return {
+        success: true,
+        data: {
+          cabins: cabinData,
+          overall: {
+            totalSeats,
+            occupiedSeats,
+            availableSeats: totalSeats - occupiedSeats,
+            occupancyRate: totalSeats > 0 ? Math.round((occupiedSeats / totalSeats) * 1000) / 10 : 0,
+          }
+        }
+      };
+    } catch (error) {
+      console.error('Error fetching occupancy reports:', error);
+      return { success: false, data: [] };
+    }
   },
 
   getExpiringBookings: async (daysThreshold: number = 7) => {
@@ -379,15 +501,148 @@ export const adminBookingsService = {
   },
 
   getTopFillingRooms: async (limit: number = 10) => {
-    return { success: true, data: [] };
+    try {
+      const { data: cabins } = await supabase
+        .from('cabins')
+        .select('id, name, category')
+        .eq('is_active', true);
+      if (!cabins || cabins.length === 0) return { success: true, data: [] };
+
+      const cabinIds = cabins.map(c => c.id);
+      const { data: seats } = await supabase
+        .from('seats')
+        .select('id, cabin_id')
+        .in('cabin_id', cabinIds);
+
+      const today = new Date().toISOString().split('T')[0];
+      const { data: activeBookings } = await supabase
+        .from('bookings')
+        .select('seat_id, cabin_id')
+        .in('cabin_id', cabinIds)
+        .eq('payment_status', 'completed')
+        .lte('start_date', today)
+        .gte('end_date', today);
+
+      const seatsByCabin: Record<string, number> = {};
+      (seats || []).forEach(s => { seatsByCabin[s.cabin_id] = (seatsByCabin[s.cabin_id] || 0) + 1; });
+
+      const occupiedByCabin: Record<string, Set<string>> = {};
+      (activeBookings || []).forEach(b => {
+        if (b.cabin_id && b.seat_id) {
+          if (!occupiedByCabin[b.cabin_id]) occupiedByCabin[b.cabin_id] = new Set();
+          occupiedByCabin[b.cabin_id].add(b.seat_id);
+        }
+      });
+
+      const result = cabins.map(c => {
+        const total = seatsByCabin[c.id] || 0;
+        const occupied = occupiedByCabin[c.id]?.size || 0;
+        return {
+          id: c.id,
+          name: c.name,
+          cabinName: c.name,
+          category: c.category || '',
+          totalSeats: total,
+          occupiedSeats: occupied,
+          bookedSeats: occupied,
+          occupancyRate: total > 0 ? Math.round((occupied / total) * 1000) / 10 : 0,
+        };
+      }).sort((a, b) => b.occupancyRate - a.occupancyRate).slice(0, limit);
+
+      return { success: true, data: result };
+    } catch (error) {
+      return { success: true, data: [] };
+    }
   },
 
   getMonthlyRevenue: async (year: number = new Date().getFullYear()) => {
-    return { success: true, data: [] };
+    try {
+      const startOfYear = `${year}-01-01`;
+      const endOfYear = `${year}-12-31T23:59:59`;
+
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('total_price, created_at')
+        .eq('payment_status', 'completed')
+        .gte('created_at', startOfYear)
+        .lte('created_at', endOfYear);
+
+      if (error) throw error;
+
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      const monthlyData: Record<number, number> = {};
+      for (let i = 0; i < 12; i++) monthlyData[i] = 0;
+
+      (data || []).forEach(b => {
+        const month = new Date(b.created_at!).getMonth();
+        monthlyData[month] += Number(b.total_price) || 0;
+      });
+
+      const result = Object.entries(monthlyData).map(([m, revenue]) => ({
+        month: parseInt(m) + 1,
+        monthName: monthNames[parseInt(m)],
+        revenue: Math.round(revenue),
+      }));
+
+      return { success: true, data: result };
+    } catch (error) {
+      console.error('Error fetching monthly revenue:', error);
+      return { success: true, data: [] };
+    }
   },
 
   getMonthlyOccupancy: async (year: number = new Date().getFullYear()) => {
-    return { success: true, data: [] };
+    try {
+      // Get total seat capacity
+      const { data: seats } = await supabase
+        .from('seats')
+        .select('id, cabin_id')
+        .in('cabin_id', (await supabase.from('cabins').select('id').eq('is_active', true)).data?.map(c => c.id) || []);
+
+      const totalSeats = (seats || []).length;
+      if (totalSeats === 0) return { success: true, data: [] };
+
+      // Get all completed bookings for the year
+      const { data: bookings, error } = await supabase
+        .from('bookings')
+        .select('start_date, end_date, seat_id')
+        .eq('payment_status', 'completed')
+        .gte('end_date', `${year}-01-01`)
+        .lte('start_date', `${year}-12-31`);
+
+      if (error) throw error;
+
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      
+      const result = monthNames.map((name, idx) => {
+        // For each month, check mid-month occupancy as a sample
+        const midMonth = new Date(year, idx, 15);
+        const midStr = midMonth.toISOString().split('T')[0];
+        
+        const occupiedSeats = new Set<string>();
+        (bookings || []).forEach(b => {
+          if (b.start_date && b.end_date && b.seat_id) {
+            if (b.start_date <= midStr && b.end_date >= midStr) {
+              occupiedSeats.add(b.seat_id);
+            }
+          }
+        });
+
+        const rate = totalSeats > 0 ? Math.round((occupiedSeats.size / totalSeats) * 1000) / 10 : 0;
+        return {
+          month: idx + 1,
+          monthName: name,
+          occupancyRate: rate,
+          occupiedSeats: occupiedSeats.size,
+          totalSeats,
+        };
+      });
+
+      return { success: true, data: result };
+    } catch (error) {
+      console.error('Error fetching monthly occupancy:', error);
+      return { success: true, data: [] };
+    }
   },
 
   getActiveResidents: async (partnerUserId?: string) => {
