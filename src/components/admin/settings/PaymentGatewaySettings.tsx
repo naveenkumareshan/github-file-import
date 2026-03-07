@@ -4,11 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { settingsService } from '@/api/settingsService';
+import { Save, Loader2 } from 'lucide-react';
 
 interface PaymentSettings {
   razorpay: {
@@ -18,53 +18,19 @@ interface PaymentSettings {
     webhookSecret: string;
     testMode: boolean;
   };
-  // stripe: {
-  //   enabled: boolean;
-  //   publishableKey: string;
-  //   secretKey: string;
-  //   webhookSecret: string;
-  //   testMode: boolean;
-  // };
-  // paypal: {
-  //   enabled: boolean;
-  //   clientId: string;
-  //   clientSecret: string;
-  //   testMode: boolean;
-  // };
   defaultGateway: string;
 }
 
 export function PaymentGatewaySettings() {
   const [settings, setSettings] = useState<PaymentSettings>({
-    razorpay: {
-      enabled: true,
-      keyId: '',
-      keySecret: '',
-      webhookSecret: '',
-      testMode: true
-    },
-    // stripe: {
-    //   enabled: false,
-    //   publishableKey: '',
-    //   secretKey: '',
-    //   webhookSecret: '',
-    //   testMode: true
-    // },
-    // paypal: {
-    //   enabled: false,
-    //   clientId: '',
-    //   clientSecret: '',
-    //   testMode: true
-    // },
+    razorpay: { enabled: true, keyId: '', keySecret: '', webhookSecret: '', testMode: true },
     defaultGateway: 'razorpay'
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingSettings, setIsLoadingSettings] = useState(true);
   const { toast } = useToast();
 
-  useEffect(() => {
-    loadSettings();
-  }, []);
+  useEffect(() => { loadSettings(); }, []);
 
   const loadSettings = async () => {
     try {
@@ -79,19 +45,11 @@ export function PaymentGatewaySettings() {
           }
           return acc;
         }, {});
-        
-        setSettings(prev => ({
-          ...prev,
-          ...paymentSettings
-        }));
+        setSettings(prev => ({ ...prev, ...paymentSettings }));
       }
     } catch (error) {
       console.error('Error loading payment settings:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load payment settings.",
-        variant: "destructive"
-      });
+      toast({ title: 'Error', description: 'Failed to load payment settings.', variant: 'destructive' });
     } finally {
       setIsLoadingSettings(false);
     }
@@ -100,264 +58,125 @@ export function PaymentGatewaySettings() {
   const handleSave = async () => {
     setIsLoading(true);
     try {
-      // Save each gateway settings
       for (const [provider, config] of Object.entries(settings)) {
         if (provider !== 'defaultGateway') {
-          await settingsService.saveSettings({
-            category: 'payment',
-            provider,
-            settings: config,
-            isActive: true
-          });
+          await settingsService.saveSettings({ category: 'payment', provider, settings: config, isActive: true });
         }
       }
-      
-      // Save default gateway
-      await settingsService.saveSettings({
-        category: 'payment',
-        provider: 'default',
-        settings: { gateway: settings.defaultGateway },
-        isActive: true
-      });
-
-      toast({
-        title: "Settings saved",
-        description: "Payment gateway settings have been updated successfully."
-      });
+      await settingsService.saveSettings({ category: 'payment', provider: 'default', settings: { gateway: settings.defaultGateway }, isActive: true });
+      toast({ title: 'Saved', description: 'Payment gateway settings updated.' });
     } catch (error) {
-      console.error('Error saving payment settings:', error);
-      toast({
-        title: "Error",
-        description: "Failed to save payment gateway settings.",
-        variant: "destructive"
-      });
+      toast({ title: 'Error', description: 'Failed to save payment settings.', variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const updateGatewaySettings = (gateway: keyof Omit<PaymentSettings, 'defaultGateway'>, field: string, value: any) => {
-    setSettings(prev => ({
-      ...prev,
-      [gateway]: {
-        ...prev[gateway],
-        [field]: value
-      }
-    }));
+  const updateGatewaySettings = (gateway: 'razorpay', field: string, value: any) => {
+    setSettings(prev => ({ ...prev, [gateway]: { ...prev[gateway], [field]: value } }));
   };
 
   if (isLoadingSettings) {
     return (
-      <Card>
-        <CardContent className="flex justify-center py-12">
-          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full"></div>
-        </CardContent>
-      </Card>
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Payment Gateway Configuration</CardTitle>
-        <CardDescription>
-          Configure payment gateways for processing transactions
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Tabs defaultValue="razorpay" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="razorpay">Razorpay</TabsTrigger>
-            {/* <TabsTrigger value="stripe">Stripe</TabsTrigger> */}
-            {/* <TabsTrigger value="paypal">PayPal</TabsTrigger> */}
-          </TabsList>
-          
-          <TabsContent value="razorpay" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-medium">Razorpay Integration</h3>
-                <p className="text-sm text-muted-foreground">Configure Razorpay payment gateway</p>
-              </div>
-              <Switch
-                checked={settings.razorpay.enabled}
-                onCheckedChange={(enabled) => updateGatewaySettings('razorpay', 'enabled', enabled)}
-              />
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold">Razorpay Integration</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between py-1">
+            <div>
+              <p className="text-xs font-medium">Enable Razorpay</p>
+              <p className="text-[11px] text-muted-foreground">Accept payments via Razorpay gateway</p>
             </div>
-            
-            {settings.razorpay.enabled && (
-              <div className="space-y-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="razorpay-key-id">Key ID</Label>
+            <Switch
+              checked={settings.razorpay.enabled}
+              onCheckedChange={(enabled) => updateGatewaySettings('razorpay', 'enabled', enabled)}
+              className="scale-90"
+            />
+          </div>
+
+          {settings.razorpay.enabled && (
+            <div className="space-y-3 pt-2 border-t border-border">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Key ID</Label>
                   <Input
-                    id="razorpay-key-id"
                     value={settings.razorpay.keyId}
                     onChange={(e) => updateGatewaySettings('razorpay', 'keyId', e.target.value)}
                     placeholder="rzp_test_xxxxxxxxxxxxxx"
+                    className="h-8 text-xs"
                   />
                 </div>
-                
-                <div className="grid gap-2">
-                  <Label htmlFor="razorpay-key-secret">Key Secret</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Key Secret</Label>
                   <Input
-                    id="razorpay-key-secret"
                     type="password"
                     value={settings.razorpay.keySecret}
                     onChange={(e) => updateGatewaySettings('razorpay', 'keySecret', e.target.value)}
-                    placeholder="Enter your Razorpay key secret"
+                    placeholder="Enter key secret"
+                    className="h-8 text-xs"
                   />
-                </div>
-                
-                <div className="grid gap-2">
-                  <Label htmlFor="razorpay-webhook">Webhook Secret</Label>
-                  <Input
-                    id="razorpay-webhook"
-                    type="password"
-                    value={settings.razorpay.webhookSecret}
-                    onChange={(e) => updateGatewaySettings('razorpay', 'webhookSecret', e.target.value)}
-                    placeholder="Enter webhook secret"
-                  />
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="razorpay-test-mode"
-                    checked={settings.razorpay.testMode}
-                    onCheckedChange={(testMode) => updateGatewaySettings('razorpay', 'testMode', testMode)}
-                  />
-                  <Label htmlFor="razorpay-test-mode">Test Mode</Label>
                 </div>
               </div>
-            )}
-          </TabsContent>
-          
-          {/* <TabsContent value="stripe" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-medium">Stripe Integration</h3>
-                <p className="text-sm text-muted-foreground">Configure Stripe payment gateway</p>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Webhook Secret</Label>
+                <Input
+                  type="password"
+                  value={settings.razorpay.webhookSecret}
+                  onChange={(e) => updateGatewaySettings('razorpay', 'webhookSecret', e.target.value)}
+                  placeholder="Enter webhook secret"
+                  className="h-8 text-xs max-w-sm"
+                />
               </div>
-              <Switch
-                checked={settings.stripe.enabled}
-                onCheckedChange={(enabled) => updateGatewaySettings('stripe', 'enabled', enabled)}
-              />
+              <div className="flex items-center justify-between py-1">
+                <div>
+                  <p className="text-xs font-medium">Test Mode</p>
+                  <p className="text-[11px] text-muted-foreground">Use test credentials for development</p>
+                </div>
+                <Switch
+                  checked={settings.razorpay.testMode}
+                  onCheckedChange={(testMode) => updateGatewaySettings('razorpay', 'testMode', testMode)}
+                  className="scale-90"
+                />
+              </div>
             </div>
-            
-            {settings.stripe.enabled && (
-              <div className="space-y-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="stripe-publishable-key">Publishable Key</Label>
-                  <Input
-                    id="stripe-publishable-key"
-                    value={settings.stripe.publishableKey}
-                    onChange={(e) => updateGatewaySettings('stripe', 'publishableKey', e.target.value)}
-                    placeholder="pk_test_xxxxxxxxxxxxxx"
-                  />
-                </div>
-                
-                <div className="grid gap-2">
-                  <Label htmlFor="stripe-secret-key">Secret Key</Label>
-                  <Input
-                    id="stripe-secret-key"
-                    type="password"
-                    value={settings.stripe.secretKey}
-                    onChange={(e) => updateGatewaySettings('stripe', 'secretKey', e.target.value)}
-                    placeholder="sk_test_xxxxxxxxxxxxxx"
-                  />
-                </div>
-                
-                <div className="grid gap-2">
-                  <Label htmlFor="stripe-webhook">Webhook Secret</Label>
-                  <Input
-                    id="stripe-webhook"
-                    type="password"
-                    value={settings.stripe.webhookSecret}
-                    onChange={(e) => updateGatewaySettings('stripe', 'webhookSecret', e.target.value)}
-                    placeholder="whsec_xxxxxxxxxxxxxx"
-                  />
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="stripe-test-mode"
-                    checked={settings.stripe.testMode}
-                    onCheckedChange={(testMode) => updateGatewaySettings('stripe', 'testMode', testMode)}
-                  />
-                  <Label htmlFor="stripe-test-mode">Test Mode</Label>
-                </div>
-              </div>
-            )}
-          </TabsContent>
-          
-          <TabsContent value="paypal" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-medium">PayPal Integration</h3>
-                <p className="text-sm text-muted-foreground">Configure PayPal payment gateway</p>
-              </div>
-              <Switch
-                checked={settings.paypal.enabled}
-                onCheckedChange={(enabled) => updateGatewaySettings('paypal', 'enabled', enabled)}
-              />
-            </div>
-            
-            {settings.paypal.enabled && (
-              <div className="space-y-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="paypal-client-id">Client ID</Label>
-                  <Input
-                    id="paypal-client-id"
-                    value={settings.paypal.clientId}
-                    onChange={(e) => updateGatewaySettings('paypal', 'clientId', e.target.value)}
-                    placeholder="Enter PayPal Client ID"
-                  />
-                </div>
-                
-                <div className="grid gap-2">
-                  <Label htmlFor="paypal-client-secret">Client Secret</Label>
-                  <Input
-                    id="paypal-client-secret"
-                    type="password"
-                    value={settings.paypal.clientSecret}
-                    onChange={(e) => updateGatewaySettings('paypal', 'clientSecret', e.target.value)}
-                    placeholder="Enter PayPal Client Secret"
-                  />
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="paypal-test-mode"
-                    checked={settings.paypal.testMode}
-                    onCheckedChange={(testMode) => updateGatewaySettings('paypal', 'testMode', testMode)}
-                  />
-                  <Label htmlFor="paypal-test-mode">Sandbox Mode</Label>
-                </div>
-              </div>
-            )}
-          </TabsContent> */}
-        </Tabs>
-        
-        <div className="mt-6 pt-6 border-t">
-          <div className="space-y-2">
-            <Label htmlFor="default-gateway">Default Payment Gateway</Label>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold">Default Gateway</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Active Payment Gateway</Label>
             <Select value={settings.defaultGateway} onValueChange={(value) => setSettings(prev => ({ ...prev, defaultGateway: value }))}>
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="h-8 text-xs max-w-xs">
                 <SelectValue placeholder="Select default gateway" />
               </SelectTrigger>
               <SelectContent>
                 {settings.razorpay.enabled && <SelectItem value="razorpay">Razorpay</SelectItem>}
-                {/* {settings.stripe.enabled && <SelectItem value="stripe">Stripe</SelectItem>} */}
-                {/* {settings.paypal.enabled && <SelectItem value="paypal">PayPal</SelectItem>} */}
               </SelectContent>
             </Select>
           </div>
-        </div>
-        
-        <div className="mt-6">
-          <Button onClick={handleSave} disabled={isLoading}>
-            {isLoading ? "Saving..." : "Save Payment Settings"}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+
+      <div className="flex justify-end pt-1">
+        <Button size="sm" onClick={handleSave} disabled={isLoading} className="gap-1.5 text-xs h-8">
+          {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+          Save Settings
+        </Button>
+      </div>
+    </div>
   );
 }

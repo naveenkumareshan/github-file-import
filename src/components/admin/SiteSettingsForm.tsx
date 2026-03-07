@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Save, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Save, Loader2, Upload, X, Image as ImageIcon } from 'lucide-react';
 
 interface EnabledMenus {
   bookings: boolean;
@@ -18,11 +18,12 @@ interface EnabledMenus {
   about: boolean;
 }
 
-const SETTINGS_KEYS = ['site_name', 'site_description', 'site_logo', 'enabled_menus', 'admin_whatsapp'];
+const SETTINGS_KEYS = ['site_name', 'site_description', 'site_logo', 'site_tagline', 'enabled_menus', 'admin_whatsapp'];
 
 export function SiteSettingsForm() {
   const [siteName, setSiteName] = useState('Inhalestays');
   const [siteDescription, setSiteDescription] = useState('Reading Cabin Booking');
+  const [siteTagline, setSiteTagline] = useState('Reading Room Booking');
   const [logoUrl, setLogoUrl] = useState('/uploads/d168fbcf-ee4f-4b70-9427-f6a8a480590b.png');
   const [adminWhatsapp, setAdminWhatsapp] = useState('');
   const [enabledMenus, setEnabledMenus] = useState<EnabledMenus>({
@@ -30,6 +31,8 @@ export function SiteSettingsForm() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -44,6 +47,7 @@ export function SiteSettingsForm() {
           switch (row.key) {
             case 'site_name': if (v?.value) setSiteName(v.value); break;
             case 'site_description': if (v?.value) setSiteDescription(v.value); break;
+            case 'site_tagline': if (v?.value) setSiteTagline(v.value); break;
             case 'site_logo': if (v?.url) setLogoUrl(v.url); break;
             case 'admin_whatsapp': if (v?.number) setAdminWhatsapp(v.number); break;
             case 'enabled_menus':
@@ -58,11 +62,47 @@ export function SiteSettingsForm() {
     })();
   }, []);
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Invalid file', description: 'Please select an image file.', variant: 'destructive' });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `site-logo-${Date.now()}.${fileExt}`;
+      const filePath = `logos/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('cabin-images')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from('cabin-images')
+        .getPublicUrl(filePath);
+
+      setLogoUrl(urlData.publicUrl);
+      toast({ title: 'Uploaded', description: 'Logo uploaded successfully.' });
+    } catch (err: any) {
+      toast({ title: 'Upload failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     const upserts = [
       { key: 'site_name', value: { value: siteName } },
       { key: 'site_description', value: { value: siteDescription } },
+      { key: 'site_tagline', value: { value: siteTagline } },
       { key: 'site_logo', value: { url: logoUrl } },
       { key: 'enabled_menus', value: enabledMenus },
       { key: 'admin_whatsapp', value: { number: adminWhatsapp.trim() } },
@@ -75,7 +115,6 @@ export function SiteSettingsForm() {
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } else {
-      // Clear sessionStorage cache so Navigation picks up new values
       sessionStorage.removeItem('site_settings_cache');
       toast({ title: 'Saved', description: 'Site settings updated successfully.' });
     }
@@ -120,27 +159,72 @@ export function SiteSettingsForm() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Logo URL</Label>
+              <Label className="text-xs">Tagline</Label>
               <Input
-                value={logoUrl}
-                onChange={e => setLogoUrl(e.target.value)}
-                placeholder="https://example.com/logo.png"
+                value={siteTagline}
+                onChange={e => setSiteTagline(e.target.value)}
+                placeholder="e.g. Reading Room Booking"
                 className="h-8 text-xs"
               />
+              <p className="text-[11px] text-muted-foreground">Shown on splash screen and app header</p>
             </div>
           </div>
-          {logoUrl && (
+
+          {/* Logo Upload */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">Logo</Label>
             <div className="flex items-center gap-3 rounded-md border border-border bg-muted/30 p-3">
-              <ImageIcon className="h-4 w-4 text-muted-foreground shrink-0" />
-              <img
-                src={logoUrl}
-                alt="Logo preview"
-                className="h-10 w-auto max-w-[160px] object-contain"
-                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-              />
-              <span className="text-[11px] text-muted-foreground truncate">{logoUrl}</span>
+              {logoUrl ? (
+                <img
+                  src={logoUrl}
+                  alt="Logo preview"
+                  className="h-14 w-14 object-contain rounded-lg border border-border bg-background"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
+              ) : (
+                <div className="h-14 w-14 rounded-lg border border-dashed border-border flex items-center justify-center bg-background">
+                  <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] text-muted-foreground truncate mb-1.5">
+                  {logoUrl ? logoUrl.split('/').pop() : 'No logo uploaded'}
+                </p>
+                <div className="flex gap-1.5">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoUpload}
+                    className="hidden"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-[11px] px-2.5 gap-1"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                  >
+                    {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+                    {uploading ? 'Uploading...' : 'Upload Logo'}
+                  </Button>
+                  {logoUrl && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-[11px] px-2 text-destructive hover:text-destructive"
+                      onClick={() => setLogoUrl('')}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+              </div>
             </div>
-          )}
+          </div>
+
           <div className="space-y-1.5">
             <Label className="text-xs">Site Description</Label>
             <Textarea
