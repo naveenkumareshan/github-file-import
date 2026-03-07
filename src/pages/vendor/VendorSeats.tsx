@@ -1158,7 +1158,7 @@ const VendorSeats: React.FC = () => {
                     </div>
                   </div>
                   {/* Action buttons: Renew, Book Future, Transfer, Block */}
-                  {canEdit && (
+                  {canEdit && (selectedCabinInfo?.isActive !== false || user?.role === 'admin' || user?.role === 'super_admin') && (
                     <div className="grid grid-cols-3 gap-2">
                       <Button
                         size="sm"
