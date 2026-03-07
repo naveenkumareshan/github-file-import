@@ -82,8 +82,8 @@ const VendorApproval: React.FC = () => {
     setPropertiesLoading(true);
     try {
       const [cabinsRes, hostelsRes, bookingsRes, hostelBookingsRes, seatsRes, bedsRes] = await Promise.all([
-        supabase.from('cabins').select('id, name, city, state, capacity, is_active, is_approved, created_by'),
-        supabase.from('hostels').select('id, name, location, is_active, is_approved, created_by'),
+        supabase.from('cabins').select('id, name, city, state, capacity, is_active, is_approved, created_by, whatsapp_chat_enabled'),
+        supabase.from('hostels').select('id, name, location, is_active, is_approved, created_by, whatsapp_chat_enabled'),
         supabase.from('bookings').select('cabin_id, id').in('payment_status', ['confirmed', 'paid']),
         supabase.from('hostel_bookings').select('hostel_id, id').in('status', ['confirmed', 'active']),
         supabase.from('seats').select('cabin_id, id, is_available'),
