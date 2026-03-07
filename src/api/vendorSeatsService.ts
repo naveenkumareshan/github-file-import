@@ -882,6 +882,14 @@ export const vendorSeatsService = {
 
   collectDuePayment: async (dueId: string, amount: number, paymentMethod: string, txnId: string, notes: string) => {
     try {
+      // Duplicate transaction ID check for non-cash methods
+      if (paymentMethod !== 'cash' && txnId && txnId.trim()) {
+        const { data: isDuplicate } = await supabase.rpc('check_duplicate_transaction_id', { p_txn_id: txnId.trim() });
+        if (isDuplicate) {
+          return { success: false, error: 'This Transaction ID has already been used. Please enter a unique Transaction ID.' };
+        }
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
       const { data: profile } = await supabase.from('profiles').select('name').eq('id', user?.id || '').single();
 
