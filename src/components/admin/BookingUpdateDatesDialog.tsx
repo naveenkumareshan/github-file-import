@@ -43,6 +43,7 @@ export const BookingUpdateDatesDialog = ({
   bedId,
 }: BookingExtensionDialogProps) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [startDateOpen, setStartDateOpen] = useState(false);
   const { toast } = useToast();
 
   const [startDate, setStartDate] = useState<Date>(new Date(booking.startDate));
