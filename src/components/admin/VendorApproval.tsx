@@ -170,7 +170,7 @@ const VendorApproval: React.FC = () => {
           id: h.id,
           name: h.name,
           type: 'Hostel',
-          city: h.location || '',
+          city: (h as any).location || '',
           state: '',
           capacity: 0,
           is_active: h.is_active ?? false,
@@ -178,6 +178,7 @@ const VendorApproval: React.FC = () => {
           activeBookings: hostelBookingCounts.get(h.id) || 0,
           totalSeatsOrBeds: bedInfo.total,
           occupiedSeatsOrBeds: bedInfo.occupied,
+          whatsapp_chat_enabled: (h as any).whatsapp_chat_enabled ?? false,
         };
         const existing = map.get(h.created_by) || [];
         existing.push(prop);
