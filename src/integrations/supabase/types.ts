@@ -1439,6 +1439,7 @@ export type Database = {
           collected_by: string | null
           collected_by_name: string | null
           created_at: string
+          credit_date: string | null
           hostel_id: string
           id: string
           notes: string | null
@@ -1446,6 +1447,7 @@ export type Database = {
           payment_proof_url: string | null
           receipt_type: string
           reconciled_at: string | null
+          reconciled_bank_name: string | null
           reconciled_by: string | null
           reconciliation_status: string
           rejection_reason: string | null
@@ -1461,6 +1463,7 @@ export type Database = {
           collected_by?: string | null
           collected_by_name?: string | null
           created_at?: string
+          credit_date?: string | null
           hostel_id: string
           id?: string
           notes?: string | null
@@ -1468,6 +1471,7 @@ export type Database = {
           payment_proof_url?: string | null
           receipt_type?: string
           reconciled_at?: string | null
+          reconciled_bank_name?: string | null
           reconciled_by?: string | null
           reconciliation_status?: string
           rejection_reason?: string | null
@@ -1483,6 +1487,7 @@ export type Database = {
           collected_by?: string | null
           collected_by_name?: string | null
           created_at?: string
+          credit_date?: string | null
           hostel_id?: string
           id?: string
           notes?: string | null
@@ -1490,6 +1495,7 @@ export type Database = {
           payment_proof_url?: string | null
           receipt_type?: string
           reconciled_at?: string | null
+          reconciled_bank_name?: string | null
           reconciled_by?: string | null
           reconciliation_status?: string
           rejection_reason?: string | null
@@ -2243,12 +2249,14 @@ export type Database = {
         Row: {
           amount: number
           created_at: string
+          credit_date: string | null
           id: string
           order_id: string | null
           partner_id: string | null
           payment_method: string
           receipt_type: string
           reconciled_at: string | null
+          reconciled_bank_name: string | null
           reconciled_by: string | null
           reconciliation_status: string
           rejection_reason: string | null
@@ -2261,12 +2269,14 @@ export type Database = {
         Insert: {
           amount?: number
           created_at?: string
+          credit_date?: string | null
           id?: string
           order_id?: string | null
           partner_id?: string | null
           payment_method?: string
           receipt_type?: string
           reconciled_at?: string | null
+          reconciled_bank_name?: string | null
           reconciled_by?: string | null
           reconciliation_status?: string
           rejection_reason?: string | null
@@ -2279,12 +2289,14 @@ export type Database = {
         Update: {
           amount?: number
           created_at?: string
+          credit_date?: string | null
           id?: string
           order_id?: string | null
           partner_id?: string | null
           payment_method?: string
           receipt_type?: string
           reconciled_at?: string | null
+          reconciled_bank_name?: string | null
           reconciled_by?: string | null
           reconciliation_status?: string
           rejection_reason?: string | null
@@ -2532,10 +2544,12 @@ export type Database = {
         Row: {
           amount: number
           created_at: string
+          credit_date: string | null
           id: string
           mess_id: string
           payment_method: string
           reconciled_at: string | null
+          reconciled_bank_name: string | null
           reconciled_by: string | null
           reconciliation_status: string
           rejection_reason: string | null
@@ -2547,10 +2561,12 @@ export type Database = {
         Insert: {
           amount?: number
           created_at?: string
+          credit_date?: string | null
           id?: string
           mess_id: string
           payment_method?: string
           reconciled_at?: string | null
+          reconciled_bank_name?: string | null
           reconciled_by?: string | null
           reconciliation_status?: string
           rejection_reason?: string | null
@@ -2562,10 +2578,12 @@ export type Database = {
         Update: {
           amount?: number
           created_at?: string
+          credit_date?: string | null
           id?: string
           mess_id?: string
           payment_method?: string
           reconciled_at?: string | null
+          reconciled_bank_name?: string | null
           reconciled_by?: string | null
           reconciliation_status?: string
           rejection_reason?: string | null
@@ -3286,6 +3304,7 @@ export type Database = {
           collected_by: string | null
           collected_by_name: string
           created_at: string
+          credit_date: string | null
           due_id: string | null
           id: string
           notes: string
@@ -3293,6 +3312,7 @@ export type Database = {
           payment_proof_url: string | null
           receipt_type: string
           reconciled_at: string | null
+          reconciled_bank_name: string | null
           reconciled_by: string | null
           reconciliation_status: string
           rejection_reason: string | null
@@ -3310,6 +3330,7 @@ export type Database = {
           collected_by?: string | null
           collected_by_name?: string
           created_at?: string
+          credit_date?: string | null
           due_id?: string | null
           id?: string
           notes?: string
@@ -3317,6 +3338,7 @@ export type Database = {
           payment_proof_url?: string | null
           receipt_type?: string
           reconciled_at?: string | null
+          reconciled_bank_name?: string | null
           reconciled_by?: string | null
           reconciliation_status?: string
           rejection_reason?: string | null
@@ -3334,6 +3356,7 @@ export type Database = {
           collected_by?: string | null
           collected_by_name?: string
           created_at?: string
+          credit_date?: string | null
           due_id?: string | null
           id?: string
           notes?: string
@@ -3341,6 +3364,7 @@ export type Database = {
           payment_proof_url?: string | null
           receipt_type?: string
           reconciled_at?: string | null
+          reconciled_bank_name?: string | null
           reconciled_by?: string | null
           reconciliation_status?: string
           rejection_reason?: string | null
