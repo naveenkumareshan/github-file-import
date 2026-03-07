@@ -421,17 +421,34 @@ const Reconciliation: React.FC = () => {
         </div>
       </div>
 
-      {/* Summary */}
-      <div className="border rounded-md p-3 bg-card flex flex-wrap items-center gap-4 sm:gap-6">
-        <div>
-          <div className="text-[10px] uppercase text-muted-foreground">Filtered Total</div>
-          <div className="text-lg font-bold">{formatCurrency(totalAmount)}</div>
-        </div>
-        <div>
-          <div className="text-[10px] uppercase text-muted-foreground">Receipts</div>
-          <div className="text-sm font-semibold">{filtered.length}</div>
-        </div>
+      {/* Summary Cards */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        {([
+          { key: 'pending', label: 'Pending Total', color: 'border-amber-400 bg-amber-50 dark:bg-amber-950/20', textColor: 'text-amber-700 dark:text-amber-300' },
+          { key: 'approved', label: 'Approved Total', color: 'border-green-400 bg-green-50 dark:bg-green-950/20', textColor: 'text-green-700 dark:text-green-300' },
+          { key: 'rejected', label: 'Rejected Total', color: 'border-red-400 bg-red-50 dark:bg-red-950/20', textColor: 'text-red-700 dark:text-red-300' },
+        ] as const).map(({ key, label, color, textColor }) => (
+          <div
+            key={key}
+            className={cn(
+              'border-2 rounded-lg p-2.5 sm:p-3 transition-all',
+              tab === key ? color : 'border-border bg-card opacity-70'
+            )}
+          >
+            <div className="text-[10px] uppercase text-muted-foreground font-medium">{label}</div>
+            <div className={cn('text-base sm:text-lg font-bold', tab === key ? textColor : '')}>
+              {formatCurrency(statusTotals[key])}
+            </div>
+            <div className="text-[11px] text-muted-foreground">{counts[key]} receipts</div>
+          </div>
+        ))}
       </div>
+      {/* Filtered total when filters are active */}
+      {(sourceFilter !== 'all' || dateFilter !== 'all' || searchTerm) && (
+        <div className="border rounded-md p-2 bg-card flex items-center gap-4 text-xs text-muted-foreground">
+          <span>Filtered: <strong className="text-foreground">{formatCurrency(totalAmount)}</strong> ({filtered.length} receipts)</span>
+        </div>
+      )}
 
       {/* Tabs */}
       <Tabs value={tab} onValueChange={v => { setTab(v); setPage(1); }}>
