@@ -266,6 +266,15 @@ const VendorSeats: React.FC = () => {
         return String(s.number).includes(q) || s.category.toLowerCase().includes(q) || label.includes(q);
       });
     }
+    result.sort((a, b) => {
+      const nameA = (a.cabinName || '').toLowerCase();
+      const nameB = (b.cabinName || '').toLowerCase();
+      if (nameA !== nameB) return nameA.localeCompare(nameB);
+      const floorA = (a as any).floor || 0;
+      const floorB = (b as any).floor || 0;
+      if (floorA !== floorB) return floorA - floorB;
+      return a.number - b.number;
+    });
     return result;
   }, [seats, statusFilter, searchTerm, selectedFloor]);
 
