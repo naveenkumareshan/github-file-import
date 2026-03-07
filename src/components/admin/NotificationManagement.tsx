@@ -49,6 +49,7 @@ const NotificationManagement: React.FC = () => {
   });
   const [loading, setLoading] = useState(false);
   const [scheduledDate, setScheduledDate] = useState<Date>();
+  const [scheduledDateOpen, setScheduledDateOpen] = useState(false);
 
   useEffect(() => {
     fetchData();

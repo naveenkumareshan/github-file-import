@@ -81,6 +81,7 @@ export default function MyPromotions() {
   const [bookCityId, setBookCityId] = useState('');
   const [bookAreaIds, setBookAreaIds] = useState<string[]>([]);
   const [bookStartDate, setBookStartDate] = useState<Date>();
+  const [bookStartDateOpen, setBookStartDateOpen] = useState(false);
   const [myProperties, setMyProperties] = useState<any[]>([]);
   const [cities, setCities] = useState<any[]>([]);
   const [areas, setAreas] = useState<any[]>([]);

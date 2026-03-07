@@ -64,6 +64,9 @@ const DateBasedSeatMapComponent: React.FC<DateBasedSeatMapProps> = ({
   const [endDate, setEndDate] = useState<Date>(
     propEndDate || addDays(new Date(), 30)
   );
+  const [startDateOpen, setStartDateOpen] = useState(false);
+  const [endDateOpen, setEndDateOpen] = useState(false);
+  );
   const [availableSeats, setAvailableSeats] = useState<any[]>([]);
   const [seatAvailability, setSeatAvailability] = useState<
     SeatAvailabilityResponse[]

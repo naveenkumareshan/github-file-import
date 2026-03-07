@@ -37,6 +37,7 @@ export default function BookSharedRoom() {
   
   // Booking form state
   const [startDate, setStartDate] = useState<Date | undefined>(new Date());
+  const [startDateOpen, setStartDateOpen] = useState(false);
   const [months, setMonths] = useState<number>(1);
   
   // Calculate end date based on start date and number of months

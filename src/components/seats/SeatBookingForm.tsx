@@ -143,6 +143,7 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
   const { user, isAuthenticated } = useAuth();
 
   const [startDate, setStartDate] = useState<Date>(new Date());
+  const [startDateOpen, setStartDateOpen] = useState(false);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [selectedSeat, setSelectedSeat] = useState<Seat | null>(
     initialSelectedSeat || null

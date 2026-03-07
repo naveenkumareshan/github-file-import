@@ -100,6 +100,8 @@ export default function SponsoredListingsPage() {
   const [areaIds, setAreaIds] = useState<string[]>([]);
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
+  const [startDateOpen, setStartDateOpen] = useState(false);
+  const [endDateOpen, setEndDateOpen] = useState(false);
   const [priorityRank, setPriorityRank] = useState(0);
   const [formStatus, setFormStatus] = useState('active');
 
