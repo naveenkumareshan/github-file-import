@@ -4,8 +4,9 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { Send, Lock } from 'lucide-react';
+import { Send, Lock, MessageCircle } from 'lucide-react';
 import { format } from 'date-fns';
+import { FaWhatsapp } from 'react-icons/fa';
 
 interface TicketChatProps {
   ticketId: string;
