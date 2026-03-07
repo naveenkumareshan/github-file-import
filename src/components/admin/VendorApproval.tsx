@@ -152,10 +152,11 @@ const VendorApproval: React.FC = () => {
           state: c.state || '',
           capacity: c.capacity || 0,
           is_active: c.is_active ?? false,
-          is_approved: c.is_approved ?? false,
+          is_approved: (c as any).is_approved ?? false,
           activeBookings: cabinBookingCounts.get(c.id) || 0,
           totalSeatsOrBeds: seatInfo.total,
           occupiedSeatsOrBeds: seatInfo.occupied,
+          whatsapp_chat_enabled: (c as any).whatsapp_chat_enabled ?? false,
         };
         const existing = map.get(c.created_by) || [];
         existing.push(prop);
