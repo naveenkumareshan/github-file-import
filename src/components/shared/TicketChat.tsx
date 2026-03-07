@@ -36,6 +36,10 @@ const TicketChat: React.FC<TicketChatProps> = ({
   senderRole,
   currentUserId,
   creatorName = 'Student',
+  whatsappNumber,
+  whatsappLabel = 'Chat on WhatsApp',
+  ticketSubject,
+  ticketSerialNumber,
 }) => {
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
