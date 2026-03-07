@@ -524,6 +524,7 @@ const Reconciliation: React.FC = () => {
                     <TableHead className="text-xs">Booking ID</TableHead>
                     <TableHead className="text-xs">Proof</TableHead>
                     <TableHead className="text-xs">Payment Date</TableHead>
+                    <TableHead className="text-xs">Receipt #</TableHead>
                     {tab === 'approved' && <TableHead className="text-xs">Credit Date</TableHead>}
                     {tab === 'approved' && <TableHead className="text-xs">Bank</TableHead>}
                     {tab === 'rejected' && <TableHead className="text-xs">Reason</TableHead>}
