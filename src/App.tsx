@@ -221,6 +221,7 @@ function App() {
               <Route path="mess-bookings" element={<MessBookings />} />
               <Route path="mess-receipts" element={<MessReceipts />} />
               <Route path="mess-attendance" element={<MessAttendance />} />
+              <Route path="reconciliation" element={<Reconciliation />} />
             </Route>
 
             {/* ── Partner routes (alias for vendor/host admin panel) ── */}
