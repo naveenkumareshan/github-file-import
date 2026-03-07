@@ -69,6 +69,7 @@ export interface VendorCabin {
   availableSeats: number;
   occupiedSeats: number;
   floors?: any[];
+  isActive: boolean;
   lockerAvailable: boolean;
   lockerPrice: number;
   lockerMandatory: boolean;
