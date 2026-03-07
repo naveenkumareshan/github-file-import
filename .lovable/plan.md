@@ -1,71 +1,52 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+# Plan: Redesign Admin Settings — Persist All Settings to Database
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+## Problem
+Currently, site settings (name, logo, description, menu toggles) are stored in **localStorage**, meaning changes only apply to the current browser. They don't reflect for other users or devices. The UI also needs to match the high-density SaaS-style admin panel pattern.
 
-## Changes
+## Approach
+1. **Move all site settings to the `site_settings` database table** using existing key-value structure. Keys: `site_name`, `site_description`, `site_logo`, `enabled_menus`, `admin_whatsapp`.
+2. **Redesign `SiteSettingsForm.tsx`** with compact, high-density SaaS-style layout (text-xs/text-[11px], reduced padding) matching admin panel standards. Organize into logical sections: Branding, Navigation, Support.
+3. **Update `Navigation.tsx`** to fetch settings from the database instead of localStorage, with a fallback cache.
+4. **Redesign `AdminSettingsNew.tsx`** page with the compact admin UI pattern.
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+## Database Changes
+**No schema changes needed.** The `site_settings` table already supports key-value storage. We'll insert/upsert these keys:
+- `site_name` → `{ value: "Inhalestays" }`
+- `site_description` → `{ value: "Reading Cabin Booking" }`
+- `site_logo` → `{ url: "/uploads/..." }`
+- `enabled_menus` → `{ bookings: true, hostel: true, laundry: true, roomSharing: true, about: true }`
+- `admin_whatsapp` (already exists)
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+## Frontend Changes
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+### 1. `src/components/admin/SiteSettingsForm.tsx` — Full rewrite
+- Load all settings from `site_settings` table on mount (batch fetch all keys).
+- Save each setting to `site_settings` via upsert on submit.
+- Remove all localStorage usage.
+- Compact SaaS-style UI: smaller fonts, tighter spacing, grouped sections (Branding card, Navigation Toggles card, Support card).
+- Logo preview with the current logo URL.
+- Fix typo "Cabing Booking" → "Cabin Booking".
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+### 2. `src/components/Navigation.tsx` — Read from DB
+- Replace `localStorage.getItem('siteSettings')` with a database fetch from `site_settings`.
+- Fetch `site_name`, `site_logo`, `enabled_menus` keys.
+- Cache in sessionStorage for performance, refresh on page load.
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
+### 3. `src/pages/admin/AdminSettingsNew.tsx` — Compact redesign
+- Apply compact admin panel styling to the page header and tabs.
+- Use `text-xs` / reduced padding pattern on the tab triggers.
+- Keep the 5-tab structure (Site, Payment, Email, SMS, Platform).
 
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
+### 4. Remove `src/pages/AdminSettings.tsx`
+- This old page is unused (route points to `AdminSettingsNew`). Can be cleaned up.
 
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
-
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
-
-**Reviews section**: Shown below the booking flow (not in a tab)
-
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
-
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
+## Summary
 
 | File | Change |
 |------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+| `src/components/admin/SiteSettingsForm.tsx` | Full rewrite: DB-backed, compact UI, grouped sections |
+| `src/components/Navigation.tsx` | Fetch settings from DB instead of localStorage |
+| `src/pages/admin/AdminSettingsNew.tsx` | Compact admin UI styling |
 
