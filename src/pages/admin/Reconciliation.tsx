@@ -213,11 +213,27 @@ const Reconciliation: React.FC = () => {
     if (row.property_owner_id) {
       const { data } = await supabase
         .from('partner_payment_modes')
-        .select('id, label')
+        .select('id, label, mode_type, linked_bank_id')
         .eq('partner_user_id', row.property_owner_id)
         .eq('is_active', true)
         .order('display_order');
-      setBankOptions(data || []);
+      
+      // Only show bank_transfer entries as bank options for reconciliation
+      const bankEntries = (data || []).filter((m: any) => m.mode_type === 'bank_transfer');
+      setBankOptions(bankEntries.map((b: any) => ({ id: b.id, label: b.label })));
+
+      // Auto-suggest linked bank if payment method is a UPI entry with linked_bank_id
+      const rawMethod = (row as any).raw_payment_method || '';
+      if (rawMethod.startsWith('custom_')) {
+        const customId = rawMethod.replace('custom_', '');
+        const matchedMode = (data || []).find((m: any) => m.id === customId);
+        if (matchedMode?.linked_bank_id) {
+          const linkedBank = bankEntries.find((b: any) => b.id === matchedMode.linked_bank_id);
+          if (linkedBank) {
+            setBankName(linkedBank.label);
+          }
+        }
+      }
     } else {
       setBankOptions([]);
     }
