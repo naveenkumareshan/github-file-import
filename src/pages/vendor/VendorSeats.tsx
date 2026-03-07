@@ -155,6 +155,15 @@ const VendorSeats: React.FC = () => {
   const { user } = useAuth();
 
   const canEdit = user?.role === 'admin' || user?.role === 'vendor' || hasPermission('seats_available_edit');
+  const canEditPrice = user?.role === 'admin' || user?.role === 'vendor' || hasPermission('can_edit_price');
+  const canBlockSeat = user?.role === 'admin' || user?.role === 'vendor' || hasPermission('can_block_seat');
+  const canCreateBooking = user?.role === 'admin' || user?.role === 'vendor' || hasPermission('can_create_booking');
+  const canRenewBooking = user?.role === 'admin' || user?.role === 'vendor' || hasPermission('can_renew_booking');
+  const canBookFuture = user?.role === 'admin' || user?.role === 'vendor' || hasPermission('can_book_future');
+  const canCancelBooking = user?.role === 'admin' || user?.role === 'vendor' || hasPermission('can_cancel_booking');
+  const canReleaseBooking = user?.role === 'admin' || user?.role === 'vendor' || hasPermission('can_release_booking');
+  const canTransferBooking = user?.role === 'admin' || user?.role === 'vendor' || hasPermission('can_transfer_booking');
+  const canEditBookingDates = user?.role === 'admin' || user?.role === 'vendor' || hasPermission('can_edit_booking_dates');
 
   // Get cabin locker info for the selected seat
   const selectedCabinInfo = useMemo(() => {
@@ -893,7 +902,7 @@ const VendorSeats: React.FC = () => {
               {/* Price with inline edit button */}
               <div className="flex items-center gap-0.5">
                 <span className="text-[9px] font-medium leading-tight">₹{seat.price}</span>
-                {canEdit && (
+                {canEditPrice && (
                   <button
                     className="h-3 w-3 inline-flex items-center justify-center text-muted-foreground hover:text-foreground"
                     onClick={(e) => { e.stopPropagation(); setEditingSeatId(seat._id); setEditPrice(String(seat.price)); }}
@@ -920,14 +929,18 @@ const VendorSeats: React.FC = () => {
                 )}
               </div>
               {/* Hover actions: block + details */}
-              {canEdit && (
+              {(canBlockSeat || canEditPrice) && (
                 <div className="absolute inset-0 bg-background/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1 rounded">
-                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => openBlockDialog(seat, e)} title={seat.isAvailable ? 'Block' : 'Unblock'}>
-                    {seat.isAvailable ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
-                  </Button>
-                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => { e.stopPropagation(); setEditingSeatId(seat._id); setEditPrice(String(seat.price)); }} title="Edit Price">
-                    <Edit className="h-3 w-3" />
-                  </Button>
+                  {canBlockSeat && (
+                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => openBlockDialog(seat, e)} title={seat.isAvailable ? 'Block' : 'Unblock'}>
+                      {seat.isAvailable ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                    </Button>
+                  )}
+                  {canEditPrice && (
+                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => { e.stopPropagation(); setEditingSeatId(seat._id); setEditPrice(String(seat.price)); }} title="Edit Price">
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                  )}
                   <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => { e.stopPropagation(); handleSeatClick(seat); }} title="Details">
                     <Info className="h-3 w-3" />
                   </Button>
@@ -969,7 +982,7 @@ const VendorSeats: React.FC = () => {
                   <TableCell className="px-2 py-1">
                     <div className="flex items-center gap-1">
                       <span>₹{seat.price}</span>
-                      {canEdit && (
+                      {canEditPrice && (
                         <button
                           className="h-4 w-4 inline-flex items-center justify-center text-muted-foreground hover:text-foreground"
                           onClick={(e) => { e.stopPropagation(); setEditingSeatId(seat._id); setEditPrice(String(seat.price)); }}
@@ -979,12 +992,14 @@ const VendorSeats: React.FC = () => {
                       )}
                     </div>
                   </TableCell>
-                  {canEdit && (
+                  {(canBlockSeat || canEditPrice) && (
                     <TableCell className="px-2 py-1">
                       <div className="flex gap-1">
-                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => openBlockDialog(seat, e)}>
-                          {seat.isAvailable ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
-                        </Button>
+                        {canBlockSeat && (
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => openBlockDialog(seat, e)}>
+                            {seat.isAvailable ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                          </Button>
+                        )}
                         <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => { e.stopPropagation(); handleSeatClick(seat); }}>
                           <Info className="h-3 w-3" />
                         </Button>
@@ -1157,77 +1172,80 @@ const VendorSeats: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                  {/* Action buttons: Renew, Book Future, Transfer, Block */}
-                  {canEdit && (selectedCabinInfo?.isActive !== false || user?.role === 'admin' || user?.role === 'super_admin') && (
+                  {/* Action buttons: Renew, Book Future, Block */}
+                  {(canRenewBooking || canBookFuture || canBlockSeat) && (selectedCabinInfo?.isActive !== false || user?.role === 'admin' || user?.role === 'super_admin') && (
                     <div className="grid grid-cols-3 gap-2">
-                      <Button
-                        size="sm"
-                        className="h-8 text-xs gap-1"
-                        onClick={() => {
-                          const endDate = new Date(selectedSeat.currentBooking!.endDate);
-                          const today = new Date();
-                          today.setHours(0,0,0,0);
-                          endDate.setHours(0,0,0,0);
-                          
-                          // Find latest end date across all bookings for this seat (allow pre-booking renewals)
-                          const allBookings = [...currentBookings, ...futureBookings];
-                          let latestEnd = endDate;
-                          allBookings.forEach(b => {
-                            const bEnd = new Date(b.endDate);
-                            bEnd.setHours(0,0,0,0);
-                            if (bEnd > latestEnd) latestEnd = bEnd;
-                          });
-                          const nextDay = addDays(latestEnd, 1);
-
-                          setBookingStartDate(nextDay);
-                          setBookingPrice(String(selectedSeat.price));
-                          // Pre-select same student
-                          if (selectedSeat.currentBooking) {
-                            setSelectedStudent({
-                              id: selectedSeat.currentBooking.userId,
-                              name: selectedSeat.currentBooking.studentName,
-                              email: selectedSeat.currentBooking.studentEmail,
-                              phone: selectedSeat.currentBooking.studentPhone,
-                              serialNumber: '',
-                              profilePicture: selectedSeat.currentBooking.profilePicture,
+                      {canRenewBooking && (
+                        <Button
+                          size="sm"
+                          className="h-8 text-xs gap-1"
+                          onClick={() => {
+                            const endDate = new Date(selectedSeat.currentBooking!.endDate);
+                            const today = new Date();
+                            today.setHours(0,0,0,0);
+                            endDate.setHours(0,0,0,0);
+                            
+                            const allBookings = [...currentBookings, ...futureBookings];
+                            let latestEnd = endDate;
+                            allBookings.forEach(b => {
+                              const bEnd = new Date(b.endDate);
+                              bEnd.setHours(0,0,0,0);
+                              if (bEnd > latestEnd) latestEnd = bEnd;
                             });
-                          setStudentQuery(selectedSeat.currentBooking.studentName);
-                          }
-                          setIsRenewMode(true);
-                          setLockerIncluded(false);
-                          setShowFutureBooking(true);
-                        }}
-                      >
-                        <RotateCcw className="h-3 w-3" /> Renew
-                      </Button>
-                      <Button
-                        size="sm"
-                        className="h-8 text-xs gap-1"
-                        onClick={() => {
-                          // Find latest end date across all current + future bookings
-                          const allBookings = [...currentBookings, ...futureBookings];
-                          let latestEnd = new Date(selectedSeat.currentBooking!.endDate);
-                          allBookings.forEach(b => {
-                            const bEnd = new Date(b.endDate);
-                            if (bEnd > latestEnd) latestEnd = bEnd;
-                          });
-                          const nextDay = addDays(latestEnd, 1);
-                          setBookingStartDate(nextDay);
-                          setBookingPrice(String(selectedSeat.price));
-                          setIsRenewMode(false);
-                          setShowFutureBooking(true);
-                        }}
-                      >
-                        <CalendarIcon className="h-3 w-3" /> Book Future
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 text-xs gap-1"
-                        onClick={() => openBlockDialog(selectedSeat)}
-                      >
-                        <Lock className="h-3 w-3" /> Block
-                      </Button>
+                            const nextDay = addDays(latestEnd, 1);
+
+                            setBookingStartDate(nextDay);
+                            setBookingPrice(String(selectedSeat.price));
+                            if (selectedSeat.currentBooking) {
+                              setSelectedStudent({
+                                id: selectedSeat.currentBooking.userId,
+                                name: selectedSeat.currentBooking.studentName,
+                                email: selectedSeat.currentBooking.studentEmail,
+                                phone: selectedSeat.currentBooking.studentPhone,
+                                serialNumber: '',
+                                profilePicture: selectedSeat.currentBooking.profilePicture,
+                              });
+                            setStudentQuery(selectedSeat.currentBooking.studentName);
+                            }
+                            setIsRenewMode(true);
+                            setLockerIncluded(false);
+                            setShowFutureBooking(true);
+                          }}
+                        >
+                          <RotateCcw className="h-3 w-3" /> Renew
+                        </Button>
+                      )}
+                      {canBookFuture && (
+                        <Button
+                          size="sm"
+                          className="h-8 text-xs gap-1"
+                          onClick={() => {
+                            const allBookings = [...currentBookings, ...futureBookings];
+                            let latestEnd = new Date(selectedSeat.currentBooking!.endDate);
+                            allBookings.forEach(b => {
+                              const bEnd = new Date(b.endDate);
+                              if (bEnd > latestEnd) latestEnd = bEnd;
+                            });
+                            const nextDay = addDays(latestEnd, 1);
+                            setBookingStartDate(nextDay);
+                            setBookingPrice(String(selectedSeat.price));
+                            setIsRenewMode(false);
+                            setShowFutureBooking(true);
+                          }}
+                        >
+                          <CalendarIcon className="h-3 w-3" /> Book Future
+                        </Button>
+                      )}
+                      {canBlockSeat && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 text-xs gap-1"
+                          onClick={() => openBlockDialog(selectedSeat)}
+                        >
+                          <Lock className="h-3 w-3" /> Block
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1313,7 +1331,7 @@ const VendorSeats: React.FC = () => {
               )}
 
               {/* ── AVAILABLE / FUTURE BOOKING: Booking form ── */}
-              {(selectedSeat.dateStatus === 'available' || showFutureBooking) && canEdit && !bookingSuccess && (selectedCabinInfo?.isActive !== false || user?.role === 'admin' || user?.role === 'super_admin') && (
+              {(selectedSeat.dateStatus === 'available' || showFutureBooking) && ((selectedSeat.dateStatus === 'available' ? canCreateBooking : (isRenewMode ? canRenewBooking : canBookFuture))) && !bookingSuccess && (selectedCabinInfo?.isActive !== false || user?.role === 'admin' || user?.role === 'super_admin') && (
                 <div className="space-y-3">
                   {showFutureBooking && (
                     <Button variant="ghost" size="sm" className="h-6 text-xs gap-1 px-1" onClick={() => { setShowFutureBooking(false); setIsRenewMode(false); }}>
@@ -1908,26 +1926,32 @@ const VendorSeats: React.FC = () => {
                             >
                               <IndianRupee className="h-2.5 w-2.5" /> Receipts
                             </Button>
-                            {canEdit && (
-                              <>
+                            <>
+                              {canTransferBooking && (
                                 <Button size="sm" variant="outline" className="h-6 text-[9px] px-2 gap-1"
                                   onClick={() => openTransferDialog(b.bookingId)}>
                                   <ArrowRightLeft className="h-2.5 w-2.5" /> Transfer
                                 </Button>
+                              )}
+                              {canEditBookingDates && (
                                 <Button size="sm" variant="outline" className="h-6 text-[9px] px-2 gap-1"
                                   onClick={() => { setDateEditBooking({ ...b, id: b.bookingId }); setDateEditOpen(true); }}>
                                   <Pencil className="h-2.5 w-2.5" /> Edit Dates
                                 </Button>
+                              )}
+                              {canReleaseBooking && (
                                 <Button size="sm" variant="outline" className="h-6 text-[9px] px-2 gap-1 text-amber-600"
                                   onClick={() => { setActionBookingId(b.bookingId); setReleaseDialogOpen(true); }}>
                                   <LogOut className="h-2.5 w-2.5" /> Release
                                 </Button>
+                              )}
+                              {canCancelBooking && (
                                 <Button size="sm" variant="outline" className="h-6 text-[9px] px-2 gap-1 text-destructive"
                                   onClick={() => { setActionBookingId(b.bookingId); setCancelDialogOpen(true); }}>
                                   <XCircle className="h-2.5 w-2.5" /> Cancel
                                 </Button>
-                              </>
-                            )}
+                              )}
+                            </>
                           </div>
                         </div>
                       );
@@ -1998,26 +2022,32 @@ const VendorSeats: React.FC = () => {
                           >
                             <IndianRupee className="h-2.5 w-2.5" /> Receipts
                           </Button>
-                          {canEdit && (
-                            <>
+                          <>
+                            {canTransferBooking && (
                               <Button size="sm" variant="outline" className="h-6 text-[9px] px-2 gap-1"
                                 onClick={() => openTransferDialog(b.bookingId)}>
                                 <ArrowRightLeft className="h-2.5 w-2.5" /> Transfer
                               </Button>
+                            )}
+                            {canEditBookingDates && (
                               <Button size="sm" variant="outline" className="h-6 text-[9px] px-2 gap-1"
                                 onClick={() => { setDateEditBooking({ ...b, id: b.bookingId }); setDateEditOpen(true); }}>
                                 <Pencil className="h-2.5 w-2.5" /> Edit Dates
                               </Button>
+                            )}
+                            {canReleaseBooking && (
                               <Button size="sm" variant="outline" className="h-6 text-[9px] px-2 gap-1 text-amber-600"
                                 onClick={() => { setActionBookingId(b.bookingId); setReleaseDialogOpen(true); }}>
                                 <LogOut className="h-2.5 w-2.5" /> Release
                               </Button>
+                            )}
+                            {canCancelBooking && (
                               <Button size="sm" variant="outline" className="h-6 text-[9px] px-2 gap-1 text-destructive"
                                 onClick={() => { setActionBookingId(b.bookingId); setCancelDialogOpen(true); }}>
                                 <XCircle className="h-2.5 w-2.5" /> Cancel
                               </Button>
-                            </>
-                          )}
+                            )}
+                          </>
                         </div>
                       </div>
                       );

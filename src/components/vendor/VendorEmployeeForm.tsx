@@ -21,9 +21,15 @@ interface PermissionModule {
   editKey: string;
 }
 
+interface ActionPermission {
+  label: string;
+  key: string;
+}
+
 interface PermissionGroup {
   group: string;
-  modules: PermissionModule[];
+  modules?: PermissionModule[];
+  actions?: ActionPermission[];
 }
 
 const PERMISSION_GROUPS: PermissionGroup[] = [
@@ -46,6 +52,20 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
     ]
   },
   {
+    group: 'Reading Room Actions',
+    actions: [
+      { label: 'Create Booking', key: 'can_create_booking' },
+      { label: 'Renew Booking', key: 'can_renew_booking' },
+      { label: 'Book Future', key: 'can_book_future' },
+      { label: 'Cancel Booking', key: 'can_cancel_booking' },
+      { label: 'Release Booking', key: 'can_release_booking' },
+      { label: 'Transfer Booking', key: 'can_transfer_booking' },
+      { label: 'Edit Booking Dates', key: 'can_edit_booking_dates' },
+      { label: 'Block/Unblock Seat', key: 'can_block_seat' },
+      { label: 'Edit Seat Price', key: 'can_edit_price' },
+    ]
+  },
+  {
     group: 'Hostels',
     modules: [
       { label: 'Bed Map', viewKey: 'view_bed_map', editKey: 'manage_bed_map' },
@@ -53,6 +73,15 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
       { label: 'Hostel Bookings', viewKey: 'view_hostel_bookings', editKey: 'manage_hostel_bookings' },
       { label: 'Hostel Receipts', viewKey: 'view_hostel_receipts', editKey: 'manage_hostel_receipts' },
       { label: 'Hostel Deposits', viewKey: 'view_hostel_deposits', editKey: 'manage_hostel_deposits' },
+    ]
+  },
+  {
+    group: 'Hostel Actions',
+    actions: [
+      { label: 'Create Hostel Booking', key: 'can_hostel_create_booking' },
+      { label: 'Cancel Hostel Booking', key: 'can_hostel_cancel_booking' },
+      { label: 'Release Hostel Booking', key: 'can_hostel_release_booking' },
+      { label: 'Transfer Hostel Booking', key: 'can_hostel_transfer_booking' },
     ]
   },
   {
@@ -254,7 +283,8 @@ export const VendorEmployeeForm: React.FC<VendorEmployeeFormProps> = ({
                           {group.group}
                         </td>
                       </tr>
-                      {group.modules.map((mod) => {
+                      {/* Module-level view/edit permissions */}
+                      {group.modules?.map((mod) => {
                         const idx = rowIndex++;
                         return (
                           <tr key={mod.label} className={idx % 2 === 0 ? 'bg-background' : 'bg-muted/10'}>
@@ -271,6 +301,22 @@ export const VendorEmployeeForm: React.FC<VendorEmployeeFormProps> = ({
                                 id={mod.editKey}
                                 checked={formData.permissions.includes(mod.editKey)}
                                 onCheckedChange={() => handlePermissionChange(mod.editKey)}
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {/* Action-level single toggle permissions */}
+                      {group.actions?.map((action) => {
+                        const idx = rowIndex++;
+                        return (
+                          <tr key={action.key} className={idx % 2 === 0 ? 'bg-background' : 'bg-muted/10'}>
+                            <td className="py-1.5 px-3 text-[11px] font-medium" colSpan={2}>{action.label}</td>
+                            <td className="py-1.5 px-3 text-center">
+                              <Checkbox
+                                id={action.key}
+                                checked={formData.permissions.includes(action.key)}
+                                onCheckedChange={() => handlePermissionChange(action.key)}
                               />
                             </td>
                           </tr>
