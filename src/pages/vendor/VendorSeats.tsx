@@ -902,7 +902,7 @@ const VendorSeats: React.FC = () => {
               {/* Price with inline edit button */}
               <div className="flex items-center gap-0.5">
                 <span className="text-[9px] font-medium leading-tight">₹{seat.price}</span>
-                {canEdit && (
+                {canEditPrice && (
                   <button
                     className="h-3 w-3 inline-flex items-center justify-center text-muted-foreground hover:text-foreground"
                     onClick={(e) => { e.stopPropagation(); setEditingSeatId(seat._id); setEditPrice(String(seat.price)); }}
