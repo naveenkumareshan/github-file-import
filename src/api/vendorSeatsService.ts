@@ -526,6 +526,14 @@ export const vendorSeatsService = {
         }
       }
 
+      // Duplicate transaction ID check for non-cash methods
+      if (data.paymentMethod && data.paymentMethod !== 'cash' && data.transactionId && data.transactionId.trim()) {
+        const { data: isDuplicate } = await supabase.rpc('check_duplicate_transaction_id', { p_txn_id: data.transactionId.trim() });
+        if (isDuplicate) {
+          return { success: false, error: 'This Transaction ID has already been used. Please enter a unique Transaction ID.' };
+        }
+      }
+
       const { data: serialData } = await supabase.rpc('generate_serial_number', { p_entity_type: 'BOOK' });
 
       let paymentStatus = 'completed';
