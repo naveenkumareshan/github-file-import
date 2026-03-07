@@ -374,6 +374,12 @@ export function AdminSidebar() {
         icon: ClipboardCheck,
         roles: ['admin', 'vendor', 'vendor_employee'],
       },
+      {
+        title: 'Banks',
+        url: `${routePrefix}/banks`,
+        icon: Building2,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+      },
     ],
   });
 
