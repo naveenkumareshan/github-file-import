@@ -4,8 +4,9 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { Send, Lock } from 'lucide-react';
+import { Send, Lock, MessageCircle } from 'lucide-react';
 import { format } from 'date-fns';
+import { FaWhatsapp } from 'react-icons/fa';
 
 interface TicketChatProps {
   ticketId: string;
@@ -17,6 +18,14 @@ interface TicketChatProps {
   currentUserId: string;
   /** Name to show for the ticket creator's initial description */
   creatorName?: string;
+  /** Optional WhatsApp number for direct contact */
+  whatsappNumber?: string;
+  /** Label for the WhatsApp button */
+  whatsappLabel?: string;
+  /** Ticket subject for pre-filled WhatsApp message */
+  ticketSubject?: string;
+  /** Ticket serial number for pre-filled WhatsApp message */
+  ticketSerialNumber?: string;
 }
 
 const TicketChat: React.FC<TicketChatProps> = ({
@@ -28,6 +37,10 @@ const TicketChat: React.FC<TicketChatProps> = ({
   senderRole,
   currentUserId,
   creatorName = 'Student',
+  whatsappNumber,
+  whatsappLabel = 'Chat on WhatsApp',
+  ticketSubject,
+  ticketSerialNumber,
 }) => {
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -91,8 +104,25 @@ const TicketChat: React.FC<TicketChatProps> = ({
     return 'bg-blue-100 text-blue-700';
   };
 
+  const whatsappUrl = whatsappNumber
+    ? `https://wa.me/${whatsappNumber.replace(/\D/g, '')}?text=${encodeURIComponent(
+        `Hi, I have a ${ticketType} regarding: ${ticketSubject || ticketDescription.slice(0, 60)}${ticketSerialNumber ? `. Ticket ID: ${ticketSerialNumber}` : ''}`
+      )}`
+    : '';
+
   return (
     <div className="flex flex-col h-full">
+      {whatsappNumber && (
+        <a
+          href={whatsappUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 px-3 py-2 bg-green-50 border-b text-green-700 hover:bg-green-100 transition-colors"
+        >
+          <FaWhatsapp className="h-4 w-4" />
+          <span className="text-[12px] font-medium">{whatsappLabel}</span>
+        </a>
+      )}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3 max-h-[350px] min-h-[200px]">
         {/* Initial description as first message */}
         <div className="flex justify-start">

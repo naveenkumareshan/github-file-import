@@ -31,6 +31,7 @@ const SupportPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
   const [currentUserId, setCurrentUserId] = useState('');
+  const [adminWhatsapp, setAdminWhatsapp] = useState('');
 
   const [formData, setFormData] = useState({
     category: 'general',
@@ -38,7 +39,14 @@ const SupportPage = () => {
     description: '',
   });
 
-  useEffect(() => { loadTickets(); }, []);
+  useEffect(() => { loadTickets(); loadAdminWhatsapp(); }, []);
+
+  const loadAdminWhatsapp = async () => {
+    const { data } = await supabase.from('site_settings').select('value').eq('key', 'admin_whatsapp').single();
+    if (data?.value && typeof data.value === 'object' && 'number' in (data.value as any)) {
+      setAdminWhatsapp((data.value as any).number || '');
+    }
+  };
 
   const loadTickets = async () => {
     setLoading(true);
@@ -103,6 +111,10 @@ const SupportPage = () => {
             senderRole="student"
             currentUserId={currentUserId}
             creatorName="You"
+            whatsappNumber={adminWhatsapp}
+            whatsappLabel="Chat with Support"
+            ticketSubject={selectedTicket.subject}
+            ticketSerialNumber={selectedTicket.serial_number}
           />
         </div>
       </div>

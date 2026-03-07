@@ -7,6 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface SiteSettings {
   siteName: string;
@@ -34,6 +35,7 @@ export function SiteSettingsForm() {
       about: true,
     }
   });
+  const [adminWhatsapp, setAdminWhatsapp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
@@ -42,6 +44,12 @@ export function SiteSettingsForm() {
     if (savedSettings) {
       setSettings(JSON.parse(savedSettings));
     }
+    // Load admin WhatsApp from DB
+    supabase.from('site_settings').select('value').eq('key', 'admin_whatsapp').single().then(({ data }) => {
+      if (data?.value && typeof data.value === 'object' && 'number' in (data.value as any)) {
+        setAdminWhatsapp((data.value as any).number || '');
+      }
+    });
   }, []);
 
   const handleMenuToggle = (menu: keyof SiteSettings['enabledMenus']) => {
@@ -54,15 +62,18 @@ export function SiteSettingsForm() {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
     // Save to localStorage for demo purposes
     localStorage.setItem('siteSettings', JSON.stringify(settings));
-    
-    // In a real app, you would call an API endpoint:
-    // await adminService.updateSiteSettings(settings);
+
+    // Save admin WhatsApp to DB
+    await supabase.from('site_settings').upsert(
+      { key: 'admin_whatsapp', value: { number: adminWhatsapp.trim() } } as any,
+      { onConflict: 'key' }
+    );
     
     setTimeout(() => {
       setIsLoading(false);
@@ -70,7 +81,7 @@ export function SiteSettingsForm() {
         title: "Settings saved",
         description: "Your site settings have been updated."
       });
-    }, 1000);
+    }, 500);
   };
 
   return (
@@ -176,11 +187,17 @@ export function SiteSettingsForm() {
               </div>
             </div>
 
-            {/* WhatsApp Chat Info */}
+            {/* Admin Support WhatsApp Number */}
             <div className="grid gap-3">
-              <Label className="mb-2">WhatsApp Chat for Partners</Label>
+              <Label htmlFor="adminWhatsapp">Admin Support WhatsApp Number</Label>
+              <Input
+                id="adminWhatsapp"
+                value={adminWhatsapp}
+                onChange={(e) => setAdminWhatsapp(e.target.value)}
+                placeholder="e.g. 919876543210"
+              />
               <p className="text-sm text-muted-foreground">
-                WhatsApp chat is now managed per-property from the Partner Management page.
+                Students can reach you via WhatsApp from support tickets. Enter with country code (no + symbol).
               </p>
             </div>
           </div>
