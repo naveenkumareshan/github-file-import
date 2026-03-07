@@ -11,6 +11,26 @@ import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 import { supabase } from '@/integrations/supabase/client';
 
 const VendorDashboard: React.FC = () => {
+  const [waClicks, setWaClicks] = useState<number>(0);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        let ownerId: string;
+        try {
+          const r = await getEffectiveOwnerId();
+          ownerId = r.ownerId;
+        } catch {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return;
+          ownerId = user.id;
+        }
+        const count = await whatsappLeadService.getClickCount(ownerId);
+        setWaClicks(count);
+      } catch {}
+    })();
+  }, []);
+
   // Mock data - replace with actual API calls
   const dashboardData = {
     totalRevenue: 125000,
