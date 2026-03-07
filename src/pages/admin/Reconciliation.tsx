@@ -160,7 +160,6 @@ const Reconciliation: React.FC = () => {
         const bId = (r as any).booking_id || (r as any).subscription_id || (r as any).order_id;
         const prop = r._propId ? propMap[r._propId] : undefined;
         const rawMethod = r.payment_method || '';
-        const rawMethod = r.payment_method || '';
         return {
           id: r.id,
           source: r._source,
