@@ -62,15 +62,18 @@ export function SiteSettingsForm() {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
     // Save to localStorage for demo purposes
     localStorage.setItem('siteSettings', JSON.stringify(settings));
-    
-    // In a real app, you would call an API endpoint:
-    // await adminService.updateSiteSettings(settings);
+
+    // Save admin WhatsApp to DB
+    await supabase.from('site_settings').upsert(
+      { key: 'admin_whatsapp', value: { number: adminWhatsapp.trim() } } as any,
+      { onConflict: 'key' }
+    );
     
     setTimeout(() => {
       setIsLoading(false);
@@ -78,7 +81,7 @@ export function SiteSettingsForm() {
         title: "Settings saved",
         description: "Your site settings have been updated."
       });
-    }, 1000);
+    }, 500);
   };
 
   return (
