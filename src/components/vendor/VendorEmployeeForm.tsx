@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { vendorEmployeeService, VendorEmployeeData } from '@/api/vendorEmployeeService';
 import { supabase } from '@/integrations/supabase/client';
+import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 
 interface VendorEmployeeFormProps {
   employee?: VendorEmployeeData;
@@ -123,9 +124,30 @@ export const VendorEmployeeForm: React.FC<VendorEmployeeFormProps> = ({
     permissions: employee?.permissions || [] as string[],
     salary: employee?.salary || 0,
     status: employee?.status || 'active',
+    allowed_properties: employee?.allowed_properties || [] as string[],
   });
   const [loading, setLoading] = useState(false);
+  const [allProperties, setAllProperties] = useState((employee?.allowed_properties || []).length === 0);
+  const [partnerCabins, setPartnerCabins] = useState<{ id: string; name: string }[]>([]);
+  const [partnerHostels, setPartnerHostels] = useState<{ id: string; name: string }[]>([]);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchProperties = async () => {
+      try {
+        const { ownerId } = await getEffectiveOwnerId();
+        const [cabinsRes, hostelsRes] = await Promise.all([
+          supabase.from('cabins').select('id, name').eq('created_by', ownerId).order('name'),
+          supabase.from('hostels').select('id, name').eq('created_by', ownerId).order('name'),
+        ]);
+        setPartnerCabins((cabinsRes.data || []).map(c => ({ id: c.id, name: c.name })));
+        setPartnerHostels((hostelsRes.data || []).map(h => ({ id: h.id, name: h.name })));
+      } catch (e) {
+        console.warn('Failed to fetch properties for employee form', e);
+      }
+    };
+    fetchProperties();
+  }, []);
 
   const isEditing = !!employee;
 
@@ -134,6 +156,22 @@ export const VendorEmployeeForm: React.FC<VendorEmployeeFormProps> = ({
       ? formData.permissions.filter(p => p !== permissionId)
       : [...formData.permissions, permissionId];
     setFormData(prev => ({ ...prev, permissions: updated }));
+  };
+
+  const toggleProperty = (propId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      allowed_properties: prev.allowed_properties.includes(propId)
+        ? prev.allowed_properties.filter(p => p !== propId)
+        : [...prev.allowed_properties, propId],
+    }));
+  };
+
+  const handleAllPropertiesToggle = (checked: boolean) => {
+    setAllProperties(!!checked);
+    if (checked) {
+      setFormData(prev => ({ ...prev, allowed_properties: [] }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -190,6 +228,7 @@ export const VendorEmployeeForm: React.FC<VendorEmployeeFormProps> = ({
           permissions: formData.permissions,
           salary: formData.salary,
           employee_user_id: employeeUserId,
+          allowed_properties: formData.allowed_properties,
         });
 
         if (res.success) {
@@ -327,6 +366,63 @@ export const VendorEmployeeForm: React.FC<VendorEmployeeFormProps> = ({
                 </tbody>
               </table>
             </div>
+          </div>
+
+          {/* Property Access */}
+          <div>
+            <Label className="text-xs font-medium">Property Access</Label>
+            <p className="text-[10px] text-muted-foreground mb-2">
+              Leave "All Properties" on to grant access to everything, or select specific properties
+            </p>
+            <div className="flex items-center gap-2 mb-2">
+              <Checkbox
+                id="all_properties"
+                checked={allProperties}
+                onCheckedChange={handleAllPropertiesToggle}
+              />
+              <label htmlFor="all_properties" className="text-xs cursor-pointer">All Properties (no restriction)</label>
+            </div>
+            {!allProperties && (
+              <div className="border rounded-md p-3 space-y-3">
+                {partnerCabins.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-medium mb-1 text-muted-foreground uppercase tracking-wider">Reading Rooms</p>
+                    <div className="space-y-1">
+                      {partnerCabins.map(c => (
+                        <div key={c.id} className="flex items-center gap-2">
+                          <Checkbox
+                            id={`prop-${c.id}`}
+                            checked={formData.allowed_properties.includes(c.id)}
+                            onCheckedChange={() => toggleProperty(c.id)}
+                          />
+                          <label htmlFor={`prop-${c.id}`} className="text-xs cursor-pointer">{c.name}</label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {partnerHostels.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-medium mb-1 text-muted-foreground uppercase tracking-wider">Hostels</p>
+                    <div className="space-y-1">
+                      {partnerHostels.map(h => (
+                        <div key={h.id} className="flex items-center gap-2">
+                          <Checkbox
+                            id={`prop-${h.id}`}
+                            checked={formData.allowed_properties.includes(h.id)}
+                            onCheckedChange={() => toggleProperty(h.id)}
+                          />
+                          <label htmlFor={`prop-${h.id}`} className="text-xs cursor-pointer">{h.name}</label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {partnerCabins.length === 0 && partnerHostels.length === 0 && (
+                  <p className="text-xs text-muted-foreground">No properties found</p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end gap-2 pt-2 border-t">

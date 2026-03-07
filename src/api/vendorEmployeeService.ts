@@ -11,6 +11,7 @@ export interface VendorEmployeeData {
   status: string;
   salary: number;
   employee_user_id?: string;
+  allowed_properties: string[];
   created_at: string;
   updated_at: string;
 }
@@ -23,6 +24,7 @@ export interface VendorEmployeeCreateData {
   permissions?: string[];
   salary?: number;
   employee_user_id?: string;
+  allowed_properties?: string[];
 }
 
 export interface VendorEmployeeUpdateData {
@@ -33,6 +35,7 @@ export interface VendorEmployeeUpdateData {
   permissions?: string[];
   status?: string;
   salary?: number;
+  allowed_properties?: string[];
 }
 
 export const vendorEmployeeService = {
@@ -67,6 +70,7 @@ export const vendorEmployeeService = {
         role: employeeData.role || 'staff',
         permissions: employeeData.permissions || [],
         salary: employeeData.salary || 0,
+        allowed_properties: employeeData.allowed_properties || [],
       };
       if (employeeData.employee_user_id) {
         insertData.employee_user_id = employeeData.employee_user_id;
@@ -95,6 +99,7 @@ export const vendorEmployeeService = {
       if (updateData.permissions !== undefined) payload.permissions = updateData.permissions;
       if (updateData.status !== undefined) payload.status = updateData.status;
       if (updateData.salary !== undefined) payload.salary = updateData.salary;
+      if (updateData.allowed_properties !== undefined) payload.allowed_properties = updateData.allowed_properties;
 
       const { data, error } = await supabase
         .from('vendor_employees')

@@ -220,6 +220,7 @@ export const vendorSeatsService = {
         .select('role')
         .eq('user_id', authUser.id);
       const isAdmin = roleData?.some(r => r.role === 'admin' || r.role === 'super_admin');
+      const isEmployee = roleData?.some(r => r.role === 'vendor_employee');
       if (!isAdmin) {
         try {
           const { getEffectiveOwnerId } = await import('@/utils/getEffectiveOwnerId');
@@ -230,7 +231,22 @@ export const vendorSeatsService = {
         }
       }
 
-      const { data: cabins, error } = await cabinsQuery;
+      const { data: cabinsRaw, error } = await cabinsQuery;
+      if (error) throw error;
+
+      // Filter by allowed_properties for employees
+      let cabins = cabinsRaw || [];
+      if (isEmployee) {
+        const { data: empRecord } = await supabase
+          .from('vendor_employees')
+          .select('allowed_properties')
+          .eq('employee_user_id', authUser.id)
+          .maybeSingle();
+        const allowed = (empRecord as any)?.allowed_properties as string[] | null;
+        if (allowed && allowed.length > 0) {
+          cabins = cabins.filter(c => allowed.includes(c.id));
+        }
+      }
       if (error) throw error;
 
       const { data: seats, error: seatsError } = await supabase
