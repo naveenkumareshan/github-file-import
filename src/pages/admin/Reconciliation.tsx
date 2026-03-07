@@ -515,7 +515,6 @@ const Reconciliation: React.FC = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-xs">S.No</TableHead>
-                    <TableHead className="text-xs">Receipt #</TableHead>
                     <TableHead className="text-xs">Source</TableHead>
                     <TableHead className="text-xs">Student</TableHead>
                     <TableHead className="text-xs">Property</TableHead>
