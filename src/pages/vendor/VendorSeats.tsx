@@ -244,6 +244,14 @@ const VendorSeats: React.FC = () => {
     setSelectedFloor('all');
   }, [selectedCabinId]);
 
+  // Seat label helper: shows cabin initial + floor + seat number
+  const seatLabel = useCallback((seat: VendorSeat) => {
+    const initial = seat.cabinName?.charAt(0)?.toUpperCase() || '?';
+    return selectedCabinId === 'all'
+      ? `${initial}${(seat as any).floor}-S${seat.number}`
+      : `F${(seat as any).floor}-S${seat.number}`;
+  }, [selectedCabinId]);
+
   // Filtered seats
   const filteredSeats = useMemo(() => {
     let result = seats;
