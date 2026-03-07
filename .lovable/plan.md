@@ -1,71 +1,47 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+# Plan: WhatsApp Contact in Complaint & Support Chats
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+## Overview
+Add a WhatsApp contact button inside the `TicketChat` component so students can directly reach the property owner (for complaints) or the admin (for support tickets) via WhatsApp. Admin configures their support WhatsApp number in Site Settings. For complaints, the partner's existing WhatsApp number from the `partners` table is used.
 
-## Changes
+## Database Changes
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+**Add admin support WhatsApp number to `site_settings`:**
+- Insert a new row: `key = 'admin_whatsapp'`, `value = { number: '' }` into `site_settings` (using data insert, not migration).
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+No schema changes needed -- `site_settings` already exists with `key/value` structure, and `partners` already has `whatsapp_number`.
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+## Frontend Changes
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+### 1. `src/components/shared/TicketChat.tsx` — Add WhatsApp button
+- Add two new optional props: `whatsappNumber?: string` and `whatsappLabel?: string` (e.g. "Chat with Property Owner" or "Chat with Support").
+- When `whatsappNumber` is provided and non-empty, show a green WhatsApp button strip at the top of the chat area (below the header) with the label and a pre-drafted message like: "Hi, I have a complaint regarding [ticket subject]. Ticket ID: [serial_number]".
+- Clicking opens `wa.me/{number}?text={encoded_message}`.
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
+### 2. `src/components/profile/ComplaintsPage.tsx` — Pass partner WhatsApp number
+- When a complaint is selected and has `cabin_id`, `hostel_id`, or `mess_id`, fetch the property owner's WhatsApp number:
+  - For `cabin_id`: query `cabins` -> get `created_by` -> query `partners` for `whatsapp_number` where `user_id = created_by`.
+  - For `hostel_id`: query `hostels` -> get `created_by` -> query `partners`.
+  - For `mess_id`: query `mess_partners` -> get `user_id` -> query `partners`.
+- Pass the resolved number to `TicketChat` as `whatsappNumber` with label "Chat with Property Owner".
 
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
+### 3. `src/components/profile/SupportPage.tsx` — Pass admin WhatsApp number
+- On mount or when a ticket is selected, fetch `site_settings` where `key = 'admin_whatsapp'` to get the admin's WhatsApp number.
+- Pass it to `TicketChat` as `whatsappNumber` with label "Chat with Support".
 
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
+### 4. `src/components/admin/SiteSettingsForm.tsx` — Admin WhatsApp number input
+- Replace the current "WhatsApp Chat for Partners" info text with an "Admin Support WhatsApp Number" input field.
+- On load, fetch from `site_settings` where `key = 'admin_whatsapp'`.
+- On save, upsert to `site_settings`.
 
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
-
-**Reviews section**: Shown below the booking flow (not in a tab)
-
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
-
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
+## Summary
 
 | File | Change |
 |------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+| `src/components/shared/TicketChat.tsx` | Add optional `whatsappNumber` + `whatsappLabel` props, render WhatsApp contact strip |
+| `src/components/profile/ComplaintsPage.tsx` | Fetch partner WhatsApp number from property -> partners, pass to TicketChat |
+| `src/components/profile/SupportPage.tsx` | Fetch admin WhatsApp number from site_settings, pass to TicketChat |
+| `src/components/admin/SiteSettingsForm.tsx` | Add admin WhatsApp number input field, save to site_settings |
+| Data insert | Insert `admin_whatsapp` key into `site_settings` |
 
