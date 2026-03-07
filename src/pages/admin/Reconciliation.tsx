@@ -503,6 +503,9 @@ const Reconciliation: React.FC = () => {
                       {tab === 'approved' && r.reconciled_bank_name && (
                         <div><span className="text-muted-foreground">Bank: </span>{r.reconciled_bank_name}</div>
                       )}
+                      {tab === 'approved' && r.bank_narration && (
+                        <div className="col-span-2"><span className="text-muted-foreground">Narration: </span>{r.bank_narration}</div>
+                      )}
                     </div>
                     {r.payment_proof_url && (
                       <a href={r.payment_proof_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline">
