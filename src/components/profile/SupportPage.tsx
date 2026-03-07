@@ -39,7 +39,14 @@ const SupportPage = () => {
     description: '',
   });
 
-  useEffect(() => { loadTickets(); }, []);
+  useEffect(() => { loadTickets(); loadAdminWhatsapp(); }, []);
+
+  const loadAdminWhatsapp = async () => {
+    const { data } = await supabase.from('site_settings').select('value').eq('key', 'admin_whatsapp').single();
+    if (data?.value && typeof data.value === 'object' && 'number' in (data.value as any)) {
+      setAdminWhatsapp((data.value as any).number || '');
+    }
+  };
 
   const loadTickets = async () => {
     setLoading(true);
