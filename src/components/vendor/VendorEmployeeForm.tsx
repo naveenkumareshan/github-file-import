@@ -368,6 +368,63 @@ export const VendorEmployeeForm: React.FC<VendorEmployeeFormProps> = ({
             </div>
           </div>
 
+          {/* Property Access */}
+          <div>
+            <Label className="text-xs font-medium">Property Access</Label>
+            <p className="text-[10px] text-muted-foreground mb-2">
+              Leave "All Properties" on to grant access to everything, or select specific properties
+            </p>
+            <div className="flex items-center gap-2 mb-2">
+              <Checkbox
+                id="all_properties"
+                checked={allProperties}
+                onCheckedChange={handleAllPropertiesToggle}
+              />
+              <label htmlFor="all_properties" className="text-xs cursor-pointer">All Properties (no restriction)</label>
+            </div>
+            {!allProperties && (
+              <div className="border rounded-md p-3 space-y-3">
+                {partnerCabins.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-medium mb-1 text-muted-foreground uppercase tracking-wider">Reading Rooms</p>
+                    <div className="space-y-1">
+                      {partnerCabins.map(c => (
+                        <div key={c.id} className="flex items-center gap-2">
+                          <Checkbox
+                            id={`prop-${c.id}`}
+                            checked={formData.allowed_properties.includes(c.id)}
+                            onCheckedChange={() => toggleProperty(c.id)}
+                          />
+                          <label htmlFor={`prop-${c.id}`} className="text-xs cursor-pointer">{c.name}</label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {partnerHostels.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-medium mb-1 text-muted-foreground uppercase tracking-wider">Hostels</p>
+                    <div className="space-y-1">
+                      {partnerHostels.map(h => (
+                        <div key={h.id} className="flex items-center gap-2">
+                          <Checkbox
+                            id={`prop-${h.id}`}
+                            checked={formData.allowed_properties.includes(h.id)}
+                            onCheckedChange={() => toggleProperty(h.id)}
+                          />
+                          <label htmlFor={`prop-${h.id}`} className="text-xs cursor-pointer">{h.name}</label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {partnerCabins.length === 0 && partnerHostels.length === 0 && (
+                  <p className="text-xs text-muted-foreground">No properties found</p>
+                )}
+              </div>
+            )}
+          </div>
+
           <div className="flex justify-end gap-2 pt-2 border-t">
             <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={onCancel}>Cancel</Button>
             <Button type="submit" size="sm" className="h-7 text-xs" disabled={loading}>
