@@ -83,6 +83,13 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
     ]
   },
   {
+    group: 'Finance',
+    modules: [
+      { label: 'Reconciliation', viewKey: 'view_reconciliation', editKey: 'manage_reconciliation' },
+      { label: 'Banks', viewKey: 'view_banks', editKey: 'manage_banks' },
+    ]
+  },
+  {
     group: 'Other',
     modules: [
       { label: 'Reports', viewKey: 'view_reports', editKey: 'manage_reports' },

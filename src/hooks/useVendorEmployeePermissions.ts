@@ -53,6 +53,11 @@ export interface PartnerEmployeePermissions {
   // Legacy compat
   view_customers: boolean;
   manage_customers: boolean;
+  // Finance
+  view_reconciliation: boolean;
+  manage_reconciliation: boolean;
+  view_banks: boolean;
+  manage_banks: boolean;
   // Granular Reading Room Actions
   can_create_booking: boolean;
   can_renew_booking: boolean;
@@ -93,6 +98,9 @@ const ALL_PERMISSION_KEYS: (keyof PartnerEmployeePermissions)[] = [
   'view_payouts', 'manage_payouts',
   'view_complaints', 'manage_complaints',
   'view_customers', 'manage_customers',
+  // Finance
+  'view_reconciliation', 'manage_reconciliation',
+  'view_banks', 'manage_banks',
   // Granular actions
   'can_create_booking', 'can_renew_booking', 'can_book_future',
   'can_cancel_booking', 'can_release_booking', 'can_transfer_booking',
