@@ -11,6 +11,7 @@ export interface VendorEmployeeData {
   status: string;
   salary: number;
   employee_user_id?: string;
+  allowed_properties: string[];
   created_at: string;
   updated_at: string;
 }
