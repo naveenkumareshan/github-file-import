@@ -1513,7 +1513,7 @@ const VendorSeats: React.FC = () => {
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <Label className="text-[10px] uppercase text-muted-foreground">Start</Label>
-                      <Popover>
+                      <Popover open={bookingStartOpen} onOpenChange={setBookingStartOpen}>
                         <PopoverTrigger asChild>
                           <Button variant="outline" size="sm" className="h-8 text-xs w-full justify-start gap-1">
                             <CalendarIcon className="h-3 w-3" />
@@ -1521,11 +1521,10 @@ const VendorSeats: React.FC = () => {
                           </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar mode="single" selected={bookingStartDate} onSelect={d => d && setBookingStartDate(d)} className="p-3 pointer-events-auto" disabled={(date) => {
+                          <Calendar mode="single" selected={bookingStartDate} onSelect={d => { if (d) setBookingStartDate(d); setBookingStartOpen(false); }} className="p-3 pointer-events-auto" disabled={(date) => {
                             if (isRenewMode || showFutureBooking) {
                               return date < bookingStartDate;
                             }
-                            // Allow past dates (up to 90 days back) for first-time offline bookings
                             const ninetyDaysAgo = new Date();
                             ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
                             return date < new Date(ninetyDaysAgo.toDateString());
