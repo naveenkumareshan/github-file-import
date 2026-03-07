@@ -950,7 +950,7 @@ const VendorSeats: React.FC = () => {
             <TableBody>
               {filteredSeats.map((seat, i) => (
                 <TableRow key={seat._id} className={cn("cursor-pointer text-xs", i % 2 === 1 && "bg-muted/30")} onClick={() => handleSeatClick(seat)}>
-                  <TableCell className="px-2 py-1 font-medium">S{seat.number}</TableCell>
+                  <TableCell className="px-2 py-1 font-medium">{seatLabel(seat)}</TableCell>
                   <TableCell className="px-2 py-1">{seat.cabinName}</TableCell>
                   <TableCell className="px-2 py-1">
                     <Badge variant="outline" className="text-[10px] px-1 py-0">{seat.category}</Badge>
