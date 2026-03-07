@@ -1,0 +1,1 @@
+ALTER TABLE public.partner_payment_modes ADD COLUMN assigned_employee_id uuid REFERENCES public.vendor_employees(id) ON DELETE SET NULL;

@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Plus, Trash2, Building2, Banknote, Smartphone, Link } from 'lucide-react';
+import { Plus, Trash2, Building2, Banknote, Smartphone, Link, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -20,15 +20,23 @@ interface PaymentMode {
   is_active: boolean;
   display_order: number;
   linked_bank_id: string | null;
+  assigned_employee_id: string | null;
+}
+
+interface Employee {
+  id: string;
+  name: string;
 }
 
 export const PaymentModesManager: React.FC = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [modes, setModes] = useState<PaymentMode[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [newLabel, setNewLabel] = useState('');
   const [linkedBankId, setLinkedBankId] = useState('');
+  const [assignedEmployeeId, setAssignedEmployeeId] = useState('');
   const [addTab, setAddTab] = useState('bank_transfer');
   const [adding, setAdding] = useState(false);
 
@@ -46,7 +54,21 @@ export const PaymentModesManager: React.FC = () => {
     setLoading(false);
   };
 
-  useEffect(() => { fetchModes(); }, [partnerId]);
+  const fetchEmployees = async () => {
+    if (!partnerId) return;
+    const { data } = await supabase
+      .from('vendor_employees')
+      .select('id, name')
+      .eq('partner_user_id', partnerId)
+      .eq('status', 'active')
+      .order('name');
+    setEmployees((data as Employee[]) || []);
+  };
+
+  useEffect(() => {
+    fetchModes();
+    fetchEmployees();
+  }, [partnerId]);
 
   const handleAdd = async () => {
     if (!newLabel.trim() || !partnerId) return;
@@ -60,6 +82,10 @@ export const PaymentModesManager: React.FC = () => {
     if (addTab === 'upi' && linkedBankId) {
       insertData.linked_bank_id = linkedBankId;
     }
+    if (addTab === 'cash' && assignedEmployeeId) {
+      // 'partner' means assigned to the partner (no employee record), store null
+      insertData.assigned_employee_id = assignedEmployeeId === 'partner' ? null : assignedEmployeeId;
+    }
     const { error } = await supabase.from('partner_payment_modes').insert(insertData);
     if (error) {
       toast({ title: 'Error adding payment mode', description: error.message, variant: 'destructive' });
@@ -67,6 +93,7 @@ export const PaymentModesManager: React.FC = () => {
       toast({ title: 'Payment mode added' });
       setNewLabel('');
       setLinkedBankId('');
+      setAssignedEmployeeId('');
       fetchModes();
     }
     setAdding(false);
@@ -92,6 +119,11 @@ export const PaymentModesManager: React.FC = () => {
     return bankModes.find(b => b.id === bankId)?.label || null;
   };
 
+  const getAssigneeName = (empId: string | null) => {
+    if (!empId) return 'Partner (Self)';
+    return employees.find(e => e.id === empId)?.name || 'Unknown';
+  };
+
   const placeholders: Record<string, string> = {
     cash: 'e.g. Cash - Ravi',
     bank_transfer: 'e.g. ISSM ICICI 303',
@@ -104,17 +136,22 @@ export const PaymentModesManager: React.FC = () => {
     upi: { label: 'UPI', icon: <Smartphone className="h-3 w-3" /> },
   };
 
-  const renderModeList = (list: PaymentMode[], emptyMsg: string) => {
+  const renderModeList = (list: PaymentMode[], emptyMsg: string, showAssignee = false) => {
     if (list.length === 0) return <p className="text-xs text-muted-foreground py-2">{emptyMsg}</p>;
     return (
       <div className="space-y-1.5">
         {list.map(mode => (
           <div key={mode.id} className="flex items-center justify-between border rounded p-2">
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex items-center gap-2 min-w-0 flex-wrap">
               <span className="text-xs font-medium truncate">{mode.label}</span>
               {mode.linked_bank_id && (
                 <Badge variant="outline" className="text-[9px] h-5 gap-0.5 shrink-0">
                   <Link className="h-2.5 w-2.5" /> {getBankLabel(mode.linked_bank_id)}
+                </Badge>
+              )}
+              {showAssignee && (
+                <Badge variant="secondary" className="text-[9px] h-5 gap-0.5 shrink-0">
+                  <User className="h-2.5 w-2.5" /> {getAssigneeName(mode.assigned_employee_id)}
                 </Badge>
               )}
               {!mode.is_active && <Badge variant="secondary" className="text-[9px] h-5">Inactive</Badge>}
@@ -148,7 +185,7 @@ export const PaymentModesManager: React.FC = () => {
         {/* Add new - tabbed */}
         <div className="border rounded-lg p-3 space-y-3 bg-muted/30">
           <p className="text-xs font-medium">Add New Payment Mode</p>
-          <Tabs value={addTab} onValueChange={v => { setAddTab(v); setNewLabel(''); setLinkedBankId(''); }}>
+          <Tabs value={addTab} onValueChange={v => { setAddTab(v); setNewLabel(''); setLinkedBankId(''); setAssignedEmployeeId(''); }}>
             <TabsList className="h-8">
               {Object.entries(tabLabels).map(([key, { label, icon }]) => (
                 <TabsTrigger key={key} value={key} className="text-xs gap-1 h-7">
@@ -185,6 +222,20 @@ export const PaymentModesManager: React.FC = () => {
                       </Select>
                     </div>
                   )}
+                  {key === 'cash' && (
+                    <div className="w-[160px]">
+                      <Label className="text-xs">Assign To</Label>
+                      <Select value={assignedEmployeeId} onValueChange={setAssignedEmployeeId}>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select person" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="partner" className="text-xs">Partner (Self)</SelectItem>
+                          {employees.map(emp => (
+                            <SelectItem key={emp.id} value={emp.id} className="text-xs">{emp.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   <Button size="sm" className="h-8" onClick={handleAdd} disabled={adding || !newLabel.trim()}>
                     <Plus className="h-3 w-3 mr-1" /> Add
                   </Button>
@@ -209,7 +260,7 @@ export const PaymentModesManager: React.FC = () => {
               <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">
                 <Banknote className="h-3 w-3" /> Cash Counters
               </h4>
-              {renderModeList(cashModes, 'No cash counters added yet.')}
+              {renderModeList(cashModes, 'No cash counters added yet.', true)}
             </div>
             <div>
               <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">

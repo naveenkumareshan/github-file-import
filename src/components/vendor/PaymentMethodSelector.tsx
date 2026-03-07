@@ -1,9 +1,9 @@
-
 import React, { useEffect, useState } from 'react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Banknote, Smartphone, Building2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface PaymentMode {
   value: string;
@@ -41,6 +41,7 @@ export const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
   columns = 2,
   compact = false,
 }) => {
+  const { user } = useAuth();
   const [modes, setModes] = useState<PaymentMode[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -50,13 +51,16 @@ export const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
     const fetchModes = async () => {
       const { data } = await supabase
         .from('partner_payment_modes')
-        .select('id, label, mode_type')
+        .select('id, label, mode_type, assigned_employee_id')
         .eq('partner_user_id', partnerId)
         .eq('is_active', true)
         .neq('mode_type', 'online')
         .order('display_order');
+
       if (data) {
-        setModes(data.map(m => ({
+        // Filter cash modes based on current user
+        const filtered = await filterCashModes(data);
+        setModes(filtered.map(m => ({
           value: `custom_${m.id}`,
           label: m.label,
           icon: TYPE_ICONS[m.mode_type] || <Building2 className="h-3 w-3" />,
@@ -65,8 +69,45 @@ export const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
       }
       setLoading(false);
     };
+
+    const filterCashModes = async (allModes: any[]) => {
+      if (!user) return allModes;
+
+      // For non-cash modes, keep all. For cash, filter by assignment.
+      const nonCash = allModes.filter(m => m.mode_type !== 'cash');
+      const cashModes = allModes.filter(m => m.mode_type === 'cash');
+
+      if (cashModes.length === 0) return nonCash;
+
+      if (user.role === 'vendor') {
+        // Partner sees only cash modes assigned to them (assigned_employee_id IS NULL)
+        const partnerCash = cashModes.filter(m => !m.assigned_employee_id);
+        return [...nonCash, ...partnerCash];
+      }
+
+      if (user.role === 'vendor_employee') {
+        // Find this employee's vendor_employees.id
+        const { data: empRecord } = await supabase
+          .from('vendor_employees')
+          .select('id')
+          .eq('employee_user_id', user.id)
+          .eq('partner_user_id', partnerId)
+          .maybeSingle();
+
+        if (empRecord) {
+          const empCash = cashModes.filter(m => m.assigned_employee_id === empRecord.id);
+          return [...nonCash, ...empCash];
+        }
+        // If no employee record found, show no cash modes
+        return nonCash;
+      }
+
+      // Admin or other roles: show all cash modes
+      return allModes;
+    };
+
     fetchModes();
-  }, [partnerId]);
+  }, [partnerId, user?.id, user?.role]);
 
   const fontSize = compact ? 'text-[9px]' : 'text-[10px]';
   const radioSize = compact ? 'h-2.5 w-2.5' : 'h-3 w-3';

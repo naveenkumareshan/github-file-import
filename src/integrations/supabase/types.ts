@@ -2794,6 +2794,7 @@ export type Database = {
       }
       partner_payment_modes: {
         Row: {
+          assigned_employee_id: string | null
           created_at: string
           display_order: number
           id: string
@@ -2804,6 +2805,7 @@ export type Database = {
           partner_user_id: string
         }
         Insert: {
+          assigned_employee_id?: string | null
           created_at?: string
           display_order?: number
           id?: string
@@ -2814,6 +2816,7 @@ export type Database = {
           partner_user_id: string
         }
         Update: {
+          assigned_employee_id?: string | null
           created_at?: string
           display_order?: number
           id?: string
@@ -2824,6 +2827,13 @@ export type Database = {
           partner_user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "partner_payment_modes_assigned_employee_id_fkey"
+            columns: ["assigned_employee_id"]
+            isOneToOne: false
+            referencedRelation: "vendor_employees"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "partner_payment_modes_linked_bank_id_fkey"
             columns: ["linked_bank_id"]
