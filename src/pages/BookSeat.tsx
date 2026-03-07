@@ -178,6 +178,7 @@ const BookSeat = () => {
           slotsEnabled: (d as any).slots_enabled || false,
           fullAddress: (d as any).full_address || undefined,
           serialNumber: (d as any).serial_number || undefined,
+          createdBy: (d as any).created_by || undefined,
         });
         setLayoutImage((d as any).layout_image || null);
         setRoomWidth((d as any).room_width || 800);
