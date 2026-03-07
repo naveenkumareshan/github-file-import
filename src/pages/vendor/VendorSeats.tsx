@@ -1622,7 +1622,7 @@ const VendorSeats: React.FC = () => {
                       </div>
                       <div className="space-y-1">
                         <Label className="text-[10px] uppercase text-muted-foreground">Seat Valid Until (Due Date)</Label>
-                        <Popover>
+                        <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
                           <PopoverTrigger asChild>
                             <Button variant="outline" className={cn("w-full h-7 text-xs justify-start", !manualDueDate && "text-muted-foreground")}>
                               <CalendarIcon className="mr-1 h-3 w-3" />
@@ -1633,7 +1633,7 @@ const VendorSeats: React.FC = () => {
                             <Calendar
                               mode="single"
                               selected={manualDueDate || advanceComputed.dueDate}
-                              onSelect={(d) => setManualDueDate(d || undefined)}
+                              onSelect={(d) => { setManualDueDate(d || undefined); setDueDateOpen(false); }}
                               initialFocus
                               className={cn("p-3 pointer-events-auto")}
                             />
