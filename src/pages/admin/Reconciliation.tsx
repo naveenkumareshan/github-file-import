@@ -225,7 +225,7 @@ const Reconciliation: React.FC = () => {
       setBankOptions(bankEntries.map((b: any) => ({ id: b.id, label: b.label })));
 
       // Auto-suggest linked bank if payment method is a UPI entry with linked_bank_id
-      const rawMethod = (row as any).raw_payment_method || '';
+      const rawMethod = row.raw_payment_method || '';
       if (rawMethod.startsWith('custom_')) {
         const customId = rawMethod.replace('custom_', '');
         const matchedMode = (data || []).find((m: any) => m.id === customId);
