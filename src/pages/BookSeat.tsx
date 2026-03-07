@@ -64,6 +64,7 @@ export interface Cabin {
   is24Hours?: boolean;
   slotsEnabled?: boolean;
   fullAddress?: string;
+  createdBy?: string;
 }
 
 export interface RoomElement {
