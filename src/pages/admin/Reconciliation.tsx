@@ -644,6 +644,16 @@ const Reconciliation: React.FC = () => {
                 <Input className="h-9 text-xs" placeholder="Enter bank name" value={bankName} onChange={e => setBankName(e.target.value)} />
               )}
             </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs">Bank Narration</Label>
+              <Textarea
+                className="text-xs min-h-[60px]"
+                placeholder="Paste bank statement remarks here"
+                value={bankNarration}
+                onChange={e => setBankNarration(e.target.value)}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="ghost" size="sm" className="text-xs" onClick={() => setApproveDialogOpen(false)}>Cancel</Button>
