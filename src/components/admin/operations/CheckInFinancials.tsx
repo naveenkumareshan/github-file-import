@@ -53,6 +53,16 @@ export const CollectDrawer: React.FC<CollectDrawerProps> = ({ open, onOpenChange
     if (!due || !amount) return;
     const amt = parseFloat(amount);
     if (amt <= 0) { toast({ title: 'Enter a valid amount', variant: 'destructive' }); return; }
+
+    // Duplicate transaction ID check for non-cash methods
+    if (method !== 'cash' && txnId && txnId.trim()) {
+      const { data: isDuplicate } = await supabase.rpc('check_duplicate_transaction_id', { p_txn_id: txnId.trim() });
+      if (isDuplicate) {
+        toast({ title: 'Duplicate Transaction ID', description: 'This Transaction ID has already been used. Please enter a unique Transaction ID.', variant: 'destructive' });
+        return;
+      }
+    }
+
     setCollecting(true);
 
     if (module === 'reading_room') {

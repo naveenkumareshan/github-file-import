@@ -1,61 +1,71 @@
 
 
-# Plan: Duplicate Transaction ID Prevention
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-## Problem
-Employees can enter the same transaction ID across bookings, enabling potential fraud. No validation exists to prevent reuse of transaction IDs across the system.
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
-## Solution
-Create a database function `check_duplicate_transaction_id` that checks across all relevant tables (`bookings`, `receipts`, `hostel_bookings`, `hostel_receipts`, `due_payments`, `hostel_due_payments`) for an existing non-empty transaction ID. Call this function from the frontend before creating any booking or collecting any due payment.
+## Changes
 
-## Database Changes
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-**New RPC function** (`SECURITY DEFINER`):
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-```sql
-CREATE OR REPLACE FUNCTION public.check_duplicate_transaction_id(p_txn_id text)
-RETURNS boolean
-LANGUAGE sql
-STABLE SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM bookings WHERE transaction_id = p_txn_id AND transaction_id != ''
-    UNION ALL
-    SELECT 1 FROM receipts WHERE transaction_id = p_txn_id AND transaction_id != ''
-    UNION ALL
-    SELECT 1 FROM hostel_bookings WHERE transaction_id = p_txn_id AND transaction_id != ''
-    UNION ALL
-    SELECT 1 FROM hostel_receipts WHERE transaction_id = p_txn_id AND transaction_id != ''
-    UNION ALL
-    SELECT 1 FROM due_payments WHERE transaction_id = p_txn_id AND transaction_id != ''
-    UNION ALL
-    SELECT 1 FROM hostel_due_payments WHERE transaction_id = p_txn_id AND transaction_id != ''
-  );
-$$;
-```
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
 
-## Frontend Changes
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
 
-### 1. `src/api/vendorSeatsService.ts`
-- In `createBooking` (~line 530): Before inserting, if payment method is not `cash` and `transactionId` is non-empty, call `supabase.rpc('check_duplicate_transaction_id', { p_txn_id: data.transactionId })`. If true, return error "This Transaction ID has already been used".
-- In `collectDuePayment` (~line 875): Same check before inserting due payment.
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
 
-### 2. `src/components/admin/operations/CheckInFinancials.tsx`
-- In `handleCollect`: Before processing hostel due collection, add the same duplicate check for non-cash methods.
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
 
-### 3. `src/pages/vendor/VendorSeats.tsx`
-- In the hostel booking submission flow (if transaction IDs are entered there), add the same check.
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
 
-All checks only apply when:
-- Payment method is NOT `cash`
-- Transaction ID is non-empty
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
 
-Show a toast error: "This Transaction ID has already been used. Please enter a unique Transaction ID."
+**Reviews section**: Shown below the booking flow (not in a tab)
+
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
+
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
+
+## File Summary
 
 | File | Change |
 |------|--------|
-| Migration | New `check_duplicate_transaction_id` RPC function |
-| `src/api/vendorSeatsService.ts` | Add duplicate check in `createBooking` and `collectDuePayment` |
-| `src/components/admin/operations/CheckInFinancials.tsx` | Add duplicate check in hostel due collection |
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
 
