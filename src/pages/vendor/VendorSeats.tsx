@@ -929,14 +929,18 @@ const VendorSeats: React.FC = () => {
                 )}
               </div>
               {/* Hover actions: block + details */}
-              {canEdit && (
+              {(canBlockSeat || canEditPrice) && (
                 <div className="absolute inset-0 bg-background/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1 rounded">
-                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => openBlockDialog(seat, e)} title={seat.isAvailable ? 'Block' : 'Unblock'}>
-                    {seat.isAvailable ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
-                  </Button>
-                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => { e.stopPropagation(); setEditingSeatId(seat._id); setEditPrice(String(seat.price)); }} title="Edit Price">
-                    <Edit className="h-3 w-3" />
-                  </Button>
+                  {canBlockSeat && (
+                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => openBlockDialog(seat, e)} title={seat.isAvailable ? 'Block' : 'Unblock'}>
+                      {seat.isAvailable ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                    </Button>
+                  )}
+                  {canEditPrice && (
+                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => { e.stopPropagation(); setEditingSeatId(seat._id); setEditPrice(String(seat.price)); }} title="Edit Price">
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                  )}
                   <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => { e.stopPropagation(); handleSeatClick(seat); }} title="Details">
                     <Info className="h-3 w-3" />
                   </Button>
