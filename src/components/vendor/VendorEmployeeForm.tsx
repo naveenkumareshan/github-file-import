@@ -172,6 +172,7 @@ export const VendorEmployeeForm: React.FC<VendorEmployeeFormProps> = ({
     if (checked) {
       setFormData(prev => ({ ...prev, allowed_properties: [] }));
     }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
