@@ -245,6 +245,7 @@ const Reconciliation: React.FC = () => {
         reconciled_at: new Date().toISOString(),
         credit_date: format(creditDate, 'yyyy-MM-dd'),
         reconciled_bank_name: bankName || undefined,
+        bank_narration: bankNarration || undefined,
         rejection_reason: undefined,
       } : r));
       toast({ title: 'Receipt approved' });
