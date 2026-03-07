@@ -20,6 +20,8 @@ interface DateBasedBedMapProps {
 export const DateBasedBedMap: React.FC<DateBasedBedMapProps> = ({ hostelId }) => {
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date>(addDays(new Date(), 30));
+  const [startDateOpen, setStartDateOpen] = useState(false);
+  const [endDateOpen, setEndDateOpen] = useState(false);
   const [rooms, setRooms] = useState<any[]>([]);
   const [selectedRoomId, setSelectedRoomId] = useState('');
   const [beds, setBeds] = useState<ViewerBed[]>([]);
