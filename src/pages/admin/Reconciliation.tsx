@@ -160,12 +160,14 @@ const Reconciliation: React.FC = () => {
         const bId = (r as any).booking_id || (r as any).subscription_id || (r as any).order_id;
         const prop = r._propId ? propMap[r._propId] : undefined;
         const rawMethod = r.payment_method || '';
+        const rawMethod = r.payment_method || '';
         return {
           id: r.id,
           source: r._source,
           serial_number: r.serial_number || '',
           amount: Number(r.amount),
           payment_method: methodLabels[rawMethod] || DEFAULT_METHOD_LABELS[rawMethod] || rawMethod,
+          raw_payment_method: rawMethod,
           transaction_id: r.transaction_id || '',
           payment_proof_url: (r as any).payment_proof_url || undefined,
           student_name: profileMap[r.user_id]?.name || 'N/A',
