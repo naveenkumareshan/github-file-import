@@ -244,6 +244,14 @@ const VendorSeats: React.FC = () => {
     setSelectedFloor('all');
   }, [selectedCabinId]);
 
+  // Seat label helper: shows cabin initial + floor + seat number
+  const seatLabel = useCallback((seat: VendorSeat) => {
+    const initial = seat.cabinName?.charAt(0)?.toUpperCase() || '?';
+    return selectedCabinId === 'all'
+      ? `${initial}${(seat as any).floor}-S${seat.number}`
+      : `F${(seat as any).floor}-S${seat.number}`;
+  }, [selectedCabinId]);
+
   // Filtered seats
   const filteredSeats = useMemo(() => {
     let result = seats;
@@ -255,7 +263,10 @@ const VendorSeats: React.FC = () => {
     }
     if (searchTerm) {
       const q = searchTerm.toLowerCase();
-      result = result.filter(s => String(s.number).includes(q) || s.category.toLowerCase().includes(q));
+      result = result.filter(s => {
+        const label = `${s.cabinName?.charAt(0)?.toUpperCase() || ''}${(s as any).floor}-S${s.number}`.toLowerCase();
+        return String(s.number).includes(q) || s.category.toLowerCase().includes(q) || label.includes(q);
+      });
     }
     return result;
   }, [seats, statusFilter, searchTerm, selectedFloor]);
@@ -872,7 +883,7 @@ const VendorSeats: React.FC = () => {
                 statusColors(seat.dateStatus)
               )}
             >
-              <span className="text-xs font-bold leading-none">S{seat.number}</span>
+              <span className="text-xs font-bold leading-none">{seatLabel(seat)}</span>
               <span className="text-[9px] text-muted-foreground leading-tight truncate w-full">{seat.category}</span>
               {/* Price with inline edit button */}
               <div className="flex items-center gap-0.5">
@@ -939,7 +950,7 @@ const VendorSeats: React.FC = () => {
             <TableBody>
               {filteredSeats.map((seat, i) => (
                 <TableRow key={seat._id} className={cn("cursor-pointer text-xs", i % 2 === 1 && "bg-muted/30")} onClick={() => handleSeatClick(seat)}>
-                  <TableCell className="px-2 py-1 font-medium">S{seat.number}</TableCell>
+                  <TableCell className="px-2 py-1 font-medium">{seatLabel(seat)}</TableCell>
                   <TableCell className="px-2 py-1">{seat.cabinName}</TableCell>
                   <TableCell className="px-2 py-1">
                     <Badge variant="outline" className="text-[10px] px-1 py-0">{seat.category}</Badge>
@@ -2054,7 +2065,7 @@ const VendorSeats: React.FC = () => {
                         : "hover:bg-muted"
                     )}
                   >
-                    <div className="font-bold">S{s.number}</div>
+                    <div className="font-bold">{`${s.cabinName?.charAt(0)?.toUpperCase() || '?'}${(s as any).floor}-S${s.number}`}</div>
                     <div className="text-[9px] text-muted-foreground">₹{s.price}</div>
                   </div>
                 ))}
