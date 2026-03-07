@@ -35,6 +35,7 @@ interface PropertyInfo {
   activeBookings: number;
   totalSeatsOrBeds: number;
   occupiedSeatsOrBeds: number;
+  whatsapp_chat_enabled: boolean;
 }
 
 const VendorApproval: React.FC = () => {
