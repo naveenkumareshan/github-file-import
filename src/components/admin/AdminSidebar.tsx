@@ -363,25 +363,33 @@ export function AdminSidebar() {
   }
 
   // ===== FINANCE SECTION =====
-  menuItems.push({
-    title: 'Finance',
-    icon: Wallet,
-    roles: ['admin', 'vendor', 'vendor_employee'],
-    subItems: [
-      {
-        title: 'Reconciliation',
-        url: `${routePrefix}/reconciliation`,
-        icon: ClipboardCheck,
-        roles: ['admin', 'vendor', 'vendor_employee'],
-      },
-      {
-        title: 'Banks',
-        url: `${routePrefix}/banks`,
-        icon: Building,
-        roles: ['admin', 'vendor', 'vendor_employee'],
-      },
-    ],
-  });
+  const financeSubItems: MenuItem[] = [];
+  if (user?.role === 'admin' || user?.role === 'vendor' || hasPermission('view_reconciliation')) {
+    financeSubItems.push({
+      title: 'Reconciliation',
+      url: `${routePrefix}/reconciliation`,
+      icon: ClipboardCheck,
+      roles: ['admin', 'vendor', 'vendor_employee'],
+      permissions: ['view_reconciliation'],
+    });
+  }
+  if (user?.role === 'admin' || user?.role === 'vendor' || hasPermission('view_banks')) {
+    financeSubItems.push({
+      title: 'Banks',
+      url: `${routePrefix}/banks`,
+      icon: Building,
+      roles: ['admin', 'vendor', 'vendor_employee'],
+      permissions: ['view_banks'],
+    });
+  }
+  if (financeSubItems.length > 0) {
+    menuItems.push({
+      title: 'Finance',
+      icon: Wallet,
+      roles: ['admin', 'vendor', 'vendor_employee'],
+      subItems: financeSubItems,
+    });
+  }
 
   if (user?.role === 'admin') {
     menuItems.push(
