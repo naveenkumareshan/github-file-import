@@ -16,6 +16,7 @@ interface User {
   permissions?: any;
   vendorId?: string;
   vendorIds?: string[];
+  allowedProperties?: string[];
 }
 
 interface AuthContextType {
