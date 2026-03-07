@@ -69,6 +69,7 @@ export interface VendorCabin {
   availableSeats: number;
   occupiedSeats: number;
   floors?: any[];
+  isActive: boolean;
   lockerAvailable: boolean;
   lockerPrice: number;
   lockerMandatory: boolean;
@@ -247,6 +248,7 @@ export const vendorSeatsService = {
           availableSeats: cabinSeats.filter(s => s.is_available).length,
           occupiedSeats: cabinSeats.filter(s => !s.is_available).length,
           floors: cabin.floors || [],
+          isActive: cabin.is_active !== false,
           lockerAvailable: cabin.locker_available,
           lockerPrice: Number(cabin.locker_price),
           lockerMandatory: cabin.locker_mandatory,

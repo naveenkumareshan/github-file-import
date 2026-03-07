@@ -1158,7 +1158,7 @@ const VendorSeats: React.FC = () => {
                     </div>
                   </div>
                   {/* Action buttons: Renew, Book Future, Transfer, Block */}
-                  {canEdit && (
+                  {canEdit && (selectedCabinInfo?.isActive !== false || user?.role === 'admin' || user?.role === 'super_admin') && (
                     <div className="grid grid-cols-3 gap-2">
                       <Button
                         size="sm"
@@ -1303,8 +1303,17 @@ const VendorSeats: React.FC = () => {
                 </div>
               )}
 
+              {/* ── Deactivated cabin warning for non-admin ── */}
+              {selectedCabinInfo && selectedCabinInfo.isActive === false && user?.role !== 'admin' && user?.role !== 'super_admin' && (
+                <div className="border border-amber-200 bg-amber-50 dark:bg-amber-950/20 rounded-lg p-4 text-center space-y-2">
+                  <AlertTriangle className="h-5 w-5 text-amber-600 mx-auto" />
+                  <p className="text-sm font-medium text-amber-700 dark:text-amber-400">This Reading Room has been deactivated</p>
+                  <p className="text-xs text-muted-foreground">Please contact admin to activate this Reading Room before making bookings.</p>
+                </div>
+              )}
+
               {/* ── AVAILABLE / FUTURE BOOKING: Booking form ── */}
-              {(selectedSeat.dateStatus === 'available' || showFutureBooking) && canEdit && !bookingSuccess && (
+              {(selectedSeat.dateStatus === 'available' || showFutureBooking) && canEdit && !bookingSuccess && (selectedCabinInfo?.isActive !== false || user?.role === 'admin' || user?.role === 'super_admin') && (
                 <div className="space-y-3">
                   {showFutureBooking && (
                     <Button variant="ghost" size="sm" className="h-6 text-xs gap-1 px-1" onClick={() => { setShowFutureBooking(false); setIsRenewMode(false); }}>
