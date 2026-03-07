@@ -171,11 +171,11 @@ const Reconciliation: React.FC = () => {
   const handleApprove = async (row: ReconciliationRow) => {
     setActionLoading(true);
     const table = getTableForSource(row.source);
-    const { error } = await supabase.from(table).update({
+    const { error } = await (supabase.from(table as any) as any).update({
       reconciliation_status: 'approved',
       reconciled_at: new Date().toISOString(),
       reconciled_by: user?.id,
-    } as any).eq('id', row.id);
+    }).eq('id', row.id);
     if (error) {
       toast({ title: 'Failed to approve', variant: 'destructive' });
     } else {
