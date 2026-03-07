@@ -377,7 +377,7 @@ export function AdminSidebar() {
     ],
   });
 
-
+  if (user?.role === 'admin') {
     menuItems.push(
       {
         title: 'Settings',
