@@ -515,7 +515,6 @@ const Reconciliation: React.FC = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-xs">S.No</TableHead>
-                    <TableHead className="text-xs">Receipt #</TableHead>
                     <TableHead className="text-xs">Source</TableHead>
                     <TableHead className="text-xs">Student</TableHead>
                     <TableHead className="text-xs">Property</TableHead>
@@ -525,6 +524,7 @@ const Reconciliation: React.FC = () => {
                     <TableHead className="text-xs">Booking ID</TableHead>
                     <TableHead className="text-xs">Proof</TableHead>
                     <TableHead className="text-xs">Payment Date</TableHead>
+                    <TableHead className="text-xs">Receipt #</TableHead>
                     {tab === 'approved' && <TableHead className="text-xs">Credit Date</TableHead>}
                     {tab === 'approved' && <TableHead className="text-xs">Bank</TableHead>}
                     {tab === 'rejected' && <TableHead className="text-xs">Reason</TableHead>}
@@ -537,7 +537,6 @@ const Reconciliation: React.FC = () => {
                     return (
                       <TableRow key={key}>
                         <TableCell className="text-xs text-muted-foreground">{getSerialNumber(index, page, pageSize)}</TableCell>
-                        <TableCell className="text-xs font-mono">{r.serial_number}</TableCell>
                         <TableCell>
                           <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${SOURCE_COLORS[r.source]}`}>
                             {SOURCE_LABELS[r.source]}
@@ -560,6 +559,7 @@ const Reconciliation: React.FC = () => {
                           ) : '-'}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</TableCell>
+                        <TableCell className="text-xs font-mono">{r.serial_number}</TableCell>
                         {tab === 'approved' && <TableCell className="text-xs">{r.credit_date ? format(new Date(r.credit_date), 'dd MMM yyyy') : '-'}</TableCell>}
                         {tab === 'approved' && <TableCell className="text-xs">{r.reconciled_bank_name || '-'}</TableCell>}
                         {tab === 'rejected' && (
