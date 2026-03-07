@@ -43,6 +43,7 @@ interface ReconciliationRow {
   reconciled_at?: string;
   credit_date?: string;
   reconciled_bank_name?: string;
+  bank_narration?: string;
 }
 
 const SOURCE_LABELS: Record<string, string> = {
