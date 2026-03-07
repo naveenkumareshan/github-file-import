@@ -325,7 +325,7 @@ const VendorSeats: React.FC = () => {
     // Set locker default based on cabin + duration
     const cabin = cabins.find(c => c._id === seat.cabinId);
     const durations = cabin?.lockerMandatoryDurations || ['daily','weekly','monthly'];
-    setLockerIncluded(cabin?.lockerMandatory && durations.includes(selectedDuration.type) || false);
+    setLockerIncluded(false);
 
     // Fetch slots if cabin has slots enabled
     if (cabin?.slotsEnabled) {
