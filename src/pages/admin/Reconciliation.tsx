@@ -216,12 +216,12 @@ const Reconciliation: React.FC = () => {
     if (!rejectTarget) return;
     setActionLoading(true);
     const table = getTableForSource(rejectTarget.source);
-    const { error } = await supabase.from(table).update({
+    const { error } = await (supabase.from(table as any) as any).update({
       reconciliation_status: 'rejected',
       reconciled_at: new Date().toISOString(),
       reconciled_by: user?.id,
       rejection_reason: rejectReason || null,
-    } as any).eq('id', rejectTarget.id);
+    }).eq('id', rejectTarget.id);
     if (error) {
       toast({ title: 'Failed to reject', variant: 'destructive' });
     } else {
