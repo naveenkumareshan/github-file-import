@@ -2065,7 +2065,7 @@ const VendorSeats: React.FC = () => {
                         : "hover:bg-muted"
                     )}
                   >
-                    <div className="font-bold">S{s.number}</div>
+                    <div className="font-bold">{`${s.cabinName?.charAt(0)?.toUpperCase() || '?'}${(s as any).floor}-S${s.number}`}</div>
                     <div className="text-[9px] text-muted-foreground">₹{s.price}</div>
                   </div>
                 ))}
