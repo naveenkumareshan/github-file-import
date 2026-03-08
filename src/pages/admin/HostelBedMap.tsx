@@ -228,6 +228,21 @@ const HostelBedMap: React.FC = () => {
     })();
   }, [user]);
 
+  // Fetch hostel floors when hostels load or selected hostel changes
+  useEffect(() => {
+    (async () => {
+      const hostelIds = selectedHostelId !== 'all' ? [selectedHostelId] : hostels.map(h => h.id);
+      if (hostelIds.length === 0) { setHostelFloors([]); return; }
+      const { data } = await supabase
+        .from('hostel_floors')
+        .select('id, name, floor_order, hostel_id')
+        .in('hostel_id', hostelIds)
+        .eq('is_active', true)
+        .order('floor_order');
+      setHostelFloors((data || []) as any);
+    })();
+  }, [hostels, selectedHostelId]);
+
   // Fetch beds when hostel or date changes
   const fetchBeds = useCallback(async () => {
     setRefreshing(true);
