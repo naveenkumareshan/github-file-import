@@ -281,7 +281,7 @@ const CheckInTracker = () => {
                     </td>
                     <td className="py-1.5 px-3">
                       {module === 'reading_room' ? (
-                        <span>{b.cabins?.name || '—'} / Seat #{b.seats?.number || '—'}</span>
+                        <span>{b.cabins?.name || '—'} / {b.seats?.floor ? `Floor ${b.seats.floor} · ` : ''}Seat #{b.seats?.number || '—'}</span>
                       ) : (
                         <span>{b.hostels?.name || '—'} / Bed #{b.hostel_beds?.bed_number || '—'}</span>
                       )}

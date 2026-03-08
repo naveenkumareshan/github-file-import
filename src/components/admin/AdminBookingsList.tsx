@@ -481,7 +481,7 @@ const AdminBookingsList = () => {
                           {booking.cabinId?.cabinCode &&
                             `cabinCode #${booking.cabinId?.cabinCode || "N/A"}`}
                           {booking.cabinId
-                            ? `Seat #${booking.seatId?.number || "N/A"}`
+                            ? `${booking.seatId?.floor ? `Floor ${booking.seatId.floor} · ` : ''}Seat #${booking.seatId?.number || "N/A"}`
                             : `Bed #${booking.bedId?.number || "N/A"}`}
                         </div>
                       </div>
