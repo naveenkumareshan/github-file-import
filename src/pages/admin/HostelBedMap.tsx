@@ -447,7 +447,7 @@ const HostelBedMap: React.FC = () => {
   const filteredBeds = useMemo(() => {
     let result = beds;
     if (selectedFloor !== 'all') {
-      result = result.filter(b => String(b.floor) === selectedFloor);
+      result = result.filter(b => b.floorId === selectedFloor || String(b.floor) === selectedFloor);
     }
     if (selectedRoom !== 'all') {
       result = result.filter(b => b.room_id === selectedRoom);
