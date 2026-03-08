@@ -395,7 +395,7 @@ const HostelBedMap: React.FC = () => {
 
     setBeds(mappedBeds);
     setRefreshing(false);
-  }, [selectedHostelId, selectedDate, hostels]);
+  }, [selectedHostelId, selectedDate, hostels, hostelFloors]);
 
   useEffect(() => {
     if (!loading) fetchBeds();
