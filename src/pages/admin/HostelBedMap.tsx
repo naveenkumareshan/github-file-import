@@ -432,7 +432,7 @@ const HostelBedMap: React.FC = () => {
       filtered = filtered.filter(b => b.hostelId === selectedHostelId);
     }
     if (selectedFloor !== 'all') {
-      filtered = filtered.filter(b => String(b.floor) === selectedFloor);
+      filtered = filtered.filter(b => b.floorId === selectedFloor || String(b.floor) === selectedFloor);
     }
     const rooms = [...new Map(filtered.map(b => [b.room_id, b.roomNumber])).entries()]
       .sort((a, b) => a[1].localeCompare(b[1], undefined, { numeric: true }));
