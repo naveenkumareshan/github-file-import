@@ -55,9 +55,17 @@ interface HostelBed {
   hostelId: string;
   hostelName: string;
   floor: number;
+  floorId: string;
+  floorName: string;
   dateStatus: 'available' | 'booked' | 'expiring_soon' | 'blocked' | 'future_booked';
   currentBooking: any | null;
   allBookings: any[];
+}
+
+interface HostelFloorInfo {
+  id: string;
+  name: string;
+  floor_order: number;
 }
 
 interface HostelInfo {
@@ -95,6 +103,7 @@ const HostelBedMap: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedFloor, setSelectedFloor] = useState<string>('all');
   const [selectedRoom, setSelectedRoom] = useState<string>('all');
+  const [hostelFloors, setHostelFloors] = useState<HostelFloorInfo[]>([]);
 
   // Sheet state
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -219,6 +228,21 @@ const HostelBedMap: React.FC = () => {
     })();
   }, [user]);
 
+  // Fetch hostel floors when hostels load or selected hostel changes
+  useEffect(() => {
+    (async () => {
+      const hostelIds = selectedHostelId !== 'all' ? [selectedHostelId] : hostels.map(h => h.id);
+      if (hostelIds.length === 0) { setHostelFloors([]); return; }
+      const { data } = await supabase
+        .from('hostel_floors')
+        .select('id, name, floor_order, hostel_id')
+        .in('hostel_id', hostelIds)
+        .eq('is_active', true)
+        .order('floor_order');
+      setHostelFloors((data || []) as any);
+    })();
+  }, [hostels, selectedHostelId]);
+
   // Fetch beds when hostel or date changes
   const fetchBeds = useCallback(async () => {
     setRefreshing(true);
@@ -227,7 +251,7 @@ const HostelBedMap: React.FC = () => {
     // Query beds with joins
     let bedsQuery = supabase
       .from('hostel_beds')
-      .select('*, hostel_sharing_options(type, price_monthly, room_id), hostel_rooms!inner(room_number, category, floor, hostel_id, hostels!inner(id, name))');
+      .select('*, hostel_sharing_options(type, price_monthly, room_id), hostel_rooms!inner(room_number, category, floor, floor_id, hostel_id, hostels!inner(id, name))');
 
     if (selectedHostelId !== 'all') {
       bedsQuery = bedsQuery.eq('hostel_rooms.hostel_id', selectedHostelId);
@@ -354,6 +378,15 @@ const HostelBedMap: React.FC = () => {
         hostelId: hostel?.id || '',
         hostelName: hostel?.name || '',
         floor: room?.floor || 1,
+        floorId: room?.floor_id || '',
+        floorName: (() => {
+          const fid = room?.floor_id;
+          if (fid) {
+            const found = hostelFloors.find((f: any) => f.id === fid);
+            if (found) return found.name;
+          }
+          return `Floor ${room?.floor || 1}`;
+        })(),
         dateStatus,
         currentBooking: currentBooking ? formatBooking(currentBooking) : null,
         allBookings: allBeds.map(formatBooking),
@@ -362,7 +395,7 @@ const HostelBedMap: React.FC = () => {
 
     setBeds(mappedBeds);
     setRefreshing(false);
-  }, [selectedHostelId, selectedDate, hostels]);
+  }, [selectedHostelId, selectedDate, hostels, hostelFloors]);
 
   useEffect(() => {
     if (!loading) fetchBeds();
@@ -382,9 +415,16 @@ const HostelBedMap: React.FC = () => {
   // Available floors and rooms for filters
   const availableFloors = useMemo(() => {
     if (selectedHostelId === 'all') return [];
+    // Use hostel_floors table data, falling back to legacy integer floor
+    if (hostelFloors.length > 0) {
+      const floorIdsInBeds = new Set(beds.map(b => b.floorId).filter(Boolean));
+      return hostelFloors
+        .filter((f: any) => floorIdsInBeds.has(f.id))
+        .map((f: any) => ({ value: f.id, label: f.name }));
+    }
     const floors = [...new Set(beds.map(b => b.floor))].sort((a, b) => a - b);
     return floors.map(f => ({ value: String(f), label: `Floor ${f}` }));
-  }, [beds, selectedHostelId]);
+  }, [beds, selectedHostelId, hostelFloors]);
 
   const availableRooms = useMemo(() => {
     let filtered = beds;
@@ -392,7 +432,7 @@ const HostelBedMap: React.FC = () => {
       filtered = filtered.filter(b => b.hostelId === selectedHostelId);
     }
     if (selectedFloor !== 'all') {
-      filtered = filtered.filter(b => String(b.floor) === selectedFloor);
+      filtered = filtered.filter(b => b.floorId === selectedFloor || String(b.floor) === selectedFloor);
     }
     const rooms = [...new Map(filtered.map(b => [b.room_id, b.roomNumber])).entries()]
       .sort((a, b) => a[1].localeCompare(b[1], undefined, { numeric: true }));
@@ -407,7 +447,7 @@ const HostelBedMap: React.FC = () => {
   const filteredBeds = useMemo(() => {
     let result = beds;
     if (selectedFloor !== 'all') {
-      result = result.filter(b => String(b.floor) === selectedFloor);
+      result = result.filter(b => b.floorId === selectedFloor || String(b.floor) === selectedFloor);
     }
     if (selectedRoom !== 'all') {
       result = result.filter(b => b.room_id === selectedRoom);
@@ -1336,7 +1376,7 @@ const HostelBedMap: React.FC = () => {
                     </SheetTitle>
                   </SheetHeader>
                   <div className="text-[10px] text-muted-foreground mb-1">
-                    Room {selectedBed.roomNumber} · {selectedBed.hostelName} · Floor {selectedBed.floor}
+                    Room {selectedBed.roomNumber} · {selectedBed.hostelName} · {selectedBed.floorName}
                   </div>
                   <Separator className="my-2" />
 
