@@ -237,7 +237,7 @@ const AdminBookingsList = () => {
             booking.userId?.name || "",
             booking.userId?.email || "",
             (booking.cabinId?.name || "") +
-              (booking.seatId ? ` - Seat ${booking.seatId.number}` : ""),
+              (booking.seatId ? ` - ${booking.seatId.floor ? `Floor ${booking.seatId.floor} · ` : ''}Seat ${booking.seatId.number}` : ""),
             new Date(booking.startDate).toLocaleDateString(),
             new Date(booking.endDate).toLocaleDateString(),
             booking.originalPrice || booking.totalPrice,
