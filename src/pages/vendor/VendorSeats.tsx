@@ -456,6 +456,7 @@ const VendorSeats: React.FC = () => {
       toast({ title: 'Booking cancelled successfully' });
       setCancelDialogOpen(false);
       setCancelReason('');
+      setActionSerialNumber('');
       setSheetOpen(false);
       fetchSeats();
     } else {
