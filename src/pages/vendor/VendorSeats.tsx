@@ -151,6 +151,7 @@ const VendorSeats: React.FC = () => {
   const [releaseDialogOpen, setReleaseDialogOpen] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [actionBookingId, setActionBookingId] = useState<string>('');
+  const [actionSerialNumber, setActionSerialNumber] = useState<string>('');
   const [actionLoading, setActionLoading] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [releaseReason, setReleaseReason] = useState('');
@@ -433,11 +434,12 @@ const VendorSeats: React.FC = () => {
   const handleReleaseSeat = async () => {
     if (!actionBookingId) return;
     setActionLoading(true);
-    const res = await vendorSeatsService.releaseSeat(actionBookingId, undefined, releaseReason);
+    const res = await vendorSeatsService.releaseSeat(actionBookingId, actionSerialNumber || undefined, releaseReason);
     if (res.success) {
       toast({ title: 'Seat released successfully' });
       setReleaseDialogOpen(false);
       setReleaseReason('');
+      setActionSerialNumber('');
       setSheetOpen(false);
       fetchSeats();
     } else {
@@ -449,11 +451,12 @@ const VendorSeats: React.FC = () => {
   const handleCancelBooking = async () => {
     if (!actionBookingId) return;
     setActionLoading(true);
-    const res = await vendorSeatsService.cancelBooking(actionBookingId, undefined, cancelReason);
+    const res = await vendorSeatsService.cancelBooking(actionBookingId, actionSerialNumber || undefined, cancelReason);
     if (res.success) {
       toast({ title: 'Booking cancelled successfully' });
       setCancelDialogOpen(false);
       setCancelReason('');
+      setActionSerialNumber('');
       setSheetOpen(false);
       fetchSeats();
     } else {
@@ -1951,13 +1954,13 @@ const VendorSeats: React.FC = () => {
                               )}
                               {canReleaseBooking && (
                                 <Button size="sm" variant="outline" className="h-6 text-[9px] px-2 gap-1 text-amber-600"
-                                  onClick={() => { setActionBookingId(b.bookingId); setReleaseDialogOpen(true); }}>
+                                  onClick={() => { setActionBookingId(b.bookingId); setActionSerialNumber(b.serialNumber || ''); setReleaseDialogOpen(true); }}>
                                   <LogOut className="h-2.5 w-2.5" /> Release
                                 </Button>
                               )}
                               {canCancelBooking && (
                                 <Button size="sm" variant="outline" className="h-6 text-[9px] px-2 gap-1 text-destructive"
-                                  onClick={() => { setActionBookingId(b.bookingId); setCancelDialogOpen(true); }}>
+                                  onClick={() => { setActionBookingId(b.bookingId); setActionSerialNumber(b.serialNumber || ''); setCancelDialogOpen(true); }}>
                                   <XCircle className="h-2.5 w-2.5" /> Cancel
                                 </Button>
                               )}
@@ -2047,13 +2050,13 @@ const VendorSeats: React.FC = () => {
                             )}
                             {canReleaseBooking && (
                               <Button size="sm" variant="outline" className="h-6 text-[9px] px-2 gap-1 text-amber-600"
-                                onClick={() => { setActionBookingId(b.bookingId); setReleaseDialogOpen(true); }}>
+                                onClick={() => { setActionBookingId(b.bookingId); setActionSerialNumber(b.serialNumber || ''); setReleaseDialogOpen(true); }}>
                                 <LogOut className="h-2.5 w-2.5" /> Release
                               </Button>
                             )}
                             {canCancelBooking && (
                               <Button size="sm" variant="outline" className="h-6 text-[9px] px-2 gap-1 text-destructive"
-                                onClick={() => { setActionBookingId(b.bookingId); setCancelDialogOpen(true); }}>
+                                onClick={() => { setActionBookingId(b.bookingId); setActionSerialNumber(b.serialNumber || ''); setCancelDialogOpen(true); }}>
                                 <XCircle className="h-2.5 w-2.5" /> Cancel
                               </Button>
                             )}
