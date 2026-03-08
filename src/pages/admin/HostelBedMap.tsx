@@ -415,9 +415,16 @@ const HostelBedMap: React.FC = () => {
   // Available floors and rooms for filters
   const availableFloors = useMemo(() => {
     if (selectedHostelId === 'all') return [];
+    // Use hostel_floors table data, falling back to legacy integer floor
+    if (hostelFloors.length > 0) {
+      const floorIdsInBeds = new Set(beds.map(b => b.floorId).filter(Boolean));
+      return hostelFloors
+        .filter((f: any) => floorIdsInBeds.has(f.id))
+        .map((f: any) => ({ value: f.id, label: f.name }));
+    }
     const floors = [...new Set(beds.map(b => b.floor))].sort((a, b) => a - b);
     return floors.map(f => ({ value: String(f), label: `Floor ${f}` }));
-  }, [beds, selectedHostelId]);
+  }, [beds, selectedHostelId, hostelFloors]);
 
   const availableRooms = useMemo(() => {
     let filtered = beds;
