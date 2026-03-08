@@ -103,6 +103,7 @@ const HostelBedMap: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedFloor, setSelectedFloor] = useState<string>('all');
   const [selectedRoom, setSelectedRoom] = useState<string>('all');
+  const [hostelFloors, setHostelFloors] = useState<HostelFloorInfo[]>([]);
 
   // Sheet state
   const [sheetOpen, setSheetOpen] = useState(false);
