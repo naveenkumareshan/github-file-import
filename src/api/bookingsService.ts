@@ -90,7 +90,7 @@ export const bookingsService = {
       const today = new Date().toISOString().split('T')[0];
       const { data, error } = await supabase
         .from('bookings')
-        .select('*, cabins(name, category, image_url, city, area, full_address, locker_available, locker_price)')
+        .select('*, cabins(name, category, image_url, city, area, full_address, locker_available, locker_price), seats:seat_id(number, floor)')
         .eq('user_id', user.id)
         .gte('end_date', today)
         .in('payment_status', ['completed', 'advance_paid'])
