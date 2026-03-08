@@ -57,6 +57,7 @@ interface Booking {
   };
   seatId?: {
     number: number;
+    floor?: number;
   };
   bedId?: {
     number: number;
