@@ -251,7 +251,7 @@ const HostelBedMap: React.FC = () => {
     // Query beds with joins
     let bedsQuery = supabase
       .from('hostel_beds')
-      .select('*, hostel_sharing_options(type, price_monthly, room_id), hostel_rooms!inner(room_number, category, floor, hostel_id, hostels!inner(id, name))');
+      .select('*, hostel_sharing_options(type, price_monthly, room_id), hostel_rooms!inner(room_number, category, floor, floor_id, hostel_id, hostels!inner(id, name))');
 
     if (selectedHostelId !== 'all') {
       bedsQuery = bedsQuery.eq('hostel_rooms.hostel_id', selectedHostelId);
