@@ -188,6 +188,8 @@ const HostelBedMap: React.FC = () => {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [actionBookingId, setActionBookingId] = useState<string>('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [releaseReason, setReleaseReason] = useState('');
 
   // Date edit state
   const [dateEditOpen, setDateEditOpen] = useState(false);
