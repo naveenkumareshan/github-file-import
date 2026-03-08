@@ -2173,7 +2173,7 @@ const VendorSeats: React.FC = () => {
       </Dialog>
 
       {/* ──── Release Seat Confirmation ──── */}
-      <AlertDialog open={releaseDialogOpen} onOpenChange={setReleaseDialogOpen}>
+      <AlertDialog open={releaseDialogOpen} onOpenChange={(open) => { setReleaseDialogOpen(open); if (!open) setReleaseReason(''); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Release Seat</AlertDialogTitle>
@@ -2181,9 +2181,13 @@ const VendorSeats: React.FC = () => {
               This will terminate the booking and free the seat immediately. The student will no longer have access. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="py-2">
+            <Label className="text-sm font-medium">Reason for release <span className="text-destructive">*</span></Label>
+            <Textarea placeholder="Reason for release..." value={releaseReason} onChange={e => setReleaseReason(e.target.value)} className="mt-1" />
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={actionLoading}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleReleaseSeat} disabled={actionLoading} className="bg-amber-600 hover:bg-amber-700">
+            <AlertDialogAction onClick={handleReleaseSeat} disabled={actionLoading || !releaseReason.trim()} className="bg-amber-600 hover:bg-amber-700">
               {actionLoading ? 'Releasing...' : 'Release Seat'}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -2191,7 +2195,7 @@ const VendorSeats: React.FC = () => {
       </AlertDialog>
 
       {/* ──── Cancel Booking Confirmation ──── */}
-      <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+      <AlertDialog open={cancelDialogOpen} onOpenChange={(open) => { setCancelDialogOpen(open); if (!open) setCancelReason(''); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel Booking</AlertDialogTitle>
@@ -2199,9 +2203,13 @@ const VendorSeats: React.FC = () => {
               This will cancel the booking, free the seat, and cancel any pending dues. Transaction history will be preserved. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="py-2">
+            <Label className="text-sm font-medium">Reason for cancellation <span className="text-destructive">*</span></Label>
+            <Textarea placeholder="Reason for cancellation..." value={cancelReason} onChange={e => setCancelReason(e.target.value)} className="mt-1" />
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={actionLoading}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleCancelBooking} disabled={actionLoading} className="bg-destructive hover:bg-destructive/90">
+            <AlertDialogAction onClick={handleCancelBooking} disabled={actionLoading || !cancelReason.trim()} className="bg-destructive hover:bg-destructive/90">
               {actionLoading ? 'Cancelling...' : 'Cancel Booking'}
             </AlertDialogAction>
           </AlertDialogFooter>

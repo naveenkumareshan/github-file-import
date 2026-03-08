@@ -2061,7 +2061,7 @@ const HostelBedMap: React.FC = () => {
       </Dialog>
 
       {/* ──── Release Bed Confirmation ──── */}
-      <AlertDialog open={releaseDialogOpen} onOpenChange={setReleaseDialogOpen}>
+      <AlertDialog open={releaseDialogOpen} onOpenChange={(open) => { setReleaseDialogOpen(open); if (!open) setReleaseReason(''); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Release Bed</AlertDialogTitle>
@@ -2069,9 +2069,13 @@ const HostelBedMap: React.FC = () => {
               This will terminate the booking and free the bed immediately. The student will no longer have access. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="py-2">
+            <Label className="text-sm font-medium">Reason for release <span className="text-destructive">*</span></Label>
+            <Textarea placeholder="Reason for release..." value={releaseReason} onChange={e => setReleaseReason(e.target.value)} className="mt-1" />
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={actionLoading}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleReleaseBed} disabled={actionLoading} className="bg-amber-600 hover:bg-amber-700">
+            <AlertDialogAction onClick={handleReleaseBed} disabled={actionLoading || !releaseReason.trim()} className="bg-amber-600 hover:bg-amber-700">
               {actionLoading ? 'Releasing...' : 'Release Bed'}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -2079,7 +2083,7 @@ const HostelBedMap: React.FC = () => {
       </AlertDialog>
 
       {/* ──── Cancel Booking Confirmation ──── */}
-      <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+      <AlertDialog open={cancelDialogOpen} onOpenChange={(open) => { setCancelDialogOpen(open); if (!open) setCancelReason(''); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel Booking</AlertDialogTitle>
@@ -2087,9 +2091,13 @@ const HostelBedMap: React.FC = () => {
               This will cancel the booking, free the bed, and cancel any pending dues. Transaction history will be preserved. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="py-2">
+            <Label className="text-sm font-medium">Reason for cancellation <span className="text-destructive">*</span></Label>
+            <Textarea placeholder="Reason for cancellation..." value={cancelReason} onChange={e => setCancelReason(e.target.value)} className="mt-1" />
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={actionLoading}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleCancelHostelBooking} disabled={actionLoading} className="bg-destructive hover:bg-destructive/90">
+            <AlertDialogAction onClick={handleCancelHostelBooking} disabled={actionLoading || !cancelReason.trim()} className="bg-destructive hover:bg-destructive/90">
               {actionLoading ? 'Cancelling...' : 'Cancel Booking'}
             </AlertDialogAction>
           </AlertDialogFooter>
