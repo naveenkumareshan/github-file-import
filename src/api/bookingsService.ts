@@ -66,7 +66,7 @@ export const bookingsService = {
 
       let query = supabase
         .from('bookings')
-        .select('*, cabins(name, category, image_url, city, area, full_address, locker_available, locker_price)')
+        .select('*, cabins(name, category, image_url, city, area, full_address, locker_available, locker_price), seats:seat_id(number, floor)')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
