@@ -26,6 +26,16 @@ export const adminBookingsService = {
         .from('bookings')
         .select('*, profiles!bookings_user_id_fkey(name, email, phone, profile_picture, serial_number), cabins:cabin_id(name, serial_number), seats:seat_id(number, category, floor), cabin_slots:slot_id(name), dues!dues_booking_id_fkey(advance_paid, paid_amount, due_amount)', { count: 'exact' });
 
+      // Apply partner scoping
+      if (partnerUserId) {
+        const { data: pCabins } = await supabase.from('cabins').select('id').eq('created_by', partnerUserId);
+        const cabinIds = (pCabins || []).map(c => c.id);
+        if (cabinIds.length === 0) {
+          return { success: true, data: [], count: 0, totalDocs: 0, totalPages: 0 };
+        }
+        query = query.in('cabin_id', cabinIds);
+      }
+
       // Apply filters
       if (filters?.status && filters.status !== 'all') {
         query = query.eq('payment_status', filters.status);
