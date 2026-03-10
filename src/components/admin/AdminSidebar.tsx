@@ -493,7 +493,7 @@ export function AdminSidebar() {
         },
       ];
 
-      if (hasHostels) {
+      if (propertyTypes.hasHostels) {
         reportSubItems.push({
           title: 'Hostel Reports',
           url: `${routePrefix}/reports?tab=transactions`,
