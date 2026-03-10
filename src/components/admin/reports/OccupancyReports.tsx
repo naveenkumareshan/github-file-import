@@ -58,7 +58,8 @@ export function OccupancyReports({ dateRange, partnerUserId }: { dateRange: Date
     
     try {
       const params: any = {
-        timeframe
+        timeframe,
+        partnerUserId,
       };
       
       if (dateRange?.from) {

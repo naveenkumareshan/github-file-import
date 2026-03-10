@@ -484,24 +484,29 @@ export function AdminSidebar() {
     });
 
     if (user?.role === 'vendor') {
+      const reportSubItems: any[] = [
+        {
+          title: 'Booking Reports',
+          url: `${routePrefix}/reports`,
+          icon: BarChart2,
+          roles: ['vendor'],
+        },
+      ];
+
+      if (hasHostels) {
+        reportSubItems.push({
+          title: 'Hostel Reports',
+          url: `${routePrefix}/reports?tab=transactions`,
+          icon: BarChart2,
+          roles: ['vendor'],
+        });
+      }
+
       vendorMenuItems.push({
         title: 'Reports',
         icon: BarChart2,
         roles: ['vendor'],
-        subItems: [
-          {
-            title: 'Booking Reports',
-            url: `${routePrefix}/reports`,
-            icon: BarChart2,
-            roles: ['vendor'],
-          },
-          {
-            title: 'Hostel Reports',
-            url: `${routePrefix}/reports?tab=transactions`,
-            icon: BarChart2,
-            roles: ['vendor'],
-          }
-        ],
+        subItems: reportSubItems,
       });
     }
 

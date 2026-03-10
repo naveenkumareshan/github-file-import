@@ -123,19 +123,19 @@ const BookingReportsPage: React.FC = () => {
             </TabsList>
             
             <TabsContent value="revenue" className="space-y-4 mt-6">
-              <RevenueReports dateRange={dateRange} />
+              <RevenueReports dateRange={dateRange} partnerUserId={partnerUserId} />
             </TabsContent>
             
             <TabsContent value="occupancy" className="space-y-4 mt-6">
-              <OccupancyReports dateRange={dateRange} />
+              <OccupancyReports dateRange={dateRange} partnerUserId={partnerUserId} />
             </TabsContent>
             
             <TabsContent value="transactions" className="space-y-4 mt-6">
-              <BookingTransactions dateRange={dateRange} />
+              <BookingTransactions dateRange={dateRange} partnerUserId={partnerUserId} />
             </TabsContent>
 
             <TabsContent value="expirybooking" className="space-y-4 mt-6">
-              <ExpiringBookings />
+              <ExpiringBookings partnerUserId={partnerUserId} />
             </TabsContent>
 
             <TabsContent value="calendar" className="space-y-4 mt-6">

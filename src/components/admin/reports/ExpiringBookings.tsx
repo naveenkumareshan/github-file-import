@@ -26,7 +26,7 @@ export function ExpiringBookings({ partnerUserId }: { partnerUserId?: string }) 
   const fetchExpiringBookings = async () => {
     setLoading(true);
     try {
-      const response = await adminBookingsService.getExpiringBookings(parseInt(daysThreshold));
+      const response = await adminBookingsService.getExpiringBookings(parseInt(daysThreshold), partnerUserId);
             
       if (response.success && response.data) {
         setExpiringBookings(Array.isArray(response.data) ? response.data : []);
