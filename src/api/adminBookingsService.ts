@@ -494,19 +494,32 @@ export const adminBookingsService = {
     }
   },
 
-  getExpiringBookings: async (daysThreshold: number = 7) => {
+  getExpiringBookings: async (daysThreshold: number = 7, partnerUserId?: string) => {
     try {
       const today = new Date();
       const futureDate = new Date();
       futureDate.setDate(today.getDate() + daysThreshold);
 
-      const { data, error } = await supabase
+      let partnerCabinIds: string[] | null = null;
+      if (partnerUserId) {
+        const { data: pCabins } = await supabase.from('cabins').select('id').eq('created_by', partnerUserId);
+        partnerCabinIds = (pCabins || []).map(c => c.id);
+        if (partnerCabinIds.length === 0) return { success: true, data: [] };
+      }
+
+      let query = supabase
         .from('bookings')
         .select('*, profiles!bookings_user_id_fkey(name, email, phone), cabins:cabin_id(name), seats:seat_id(number, floor)')
         .eq('payment_status', 'completed')
         .gte('end_date', today.toISOString().split('T')[0])
         .lte('end_date', futureDate.toISOString().split('T')[0])
         .order('end_date');
+
+      if (partnerCabinIds) {
+        query = query.in('cabin_id', partnerCabinIds);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return { success: true, data: data || [] };
