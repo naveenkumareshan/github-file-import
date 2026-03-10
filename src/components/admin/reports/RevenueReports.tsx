@@ -12,7 +12,7 @@ interface RevenueReportsProps {
   partnerUserId?: string;
 }
 
-const RevenueReportsComponent: React.FC<RevenueReportsProps> = ({ dateRange }) => {
+const RevenueReportsComponent: React.FC<RevenueReportsProps> = ({ dateRange, partnerUserId }) => {
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [averageBookingValue, setAverageBookingValue] = useState(0);
   const [bookingsCount, setBookingsCount] = useState(0);
