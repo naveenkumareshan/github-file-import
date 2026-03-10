@@ -328,13 +328,23 @@ export const adminBookingsService = {
     }
   },
 
-  getRevenueReport: async (filters?: BookingFilters) => {
+  getRevenueReport: async (filters?: BookingFilters, partnerUserId?: string) => {
     try {
+      let partnerCabinIds: string[] | null = null;
+      if (partnerUserId) {
+        const { data: pCabins } = await supabase.from('cabins').select('id').eq('created_by', partnerUserId);
+        partnerCabinIds = (pCabins || []).map(c => c.id);
+        if (partnerCabinIds.length === 0) return { success: true, data: { totalRevenue: 0, bookingCount: 0, count: 0, todayRevenue: 0, currentYear: new Date().getFullYear() } };
+      }
+
       let query = supabase
         .from('bookings')
         .select('total_price, created_at')
         .eq('payment_status', 'completed');
 
+      if (partnerCabinIds) {
+        query = query.in('cabin_id', partnerCabinIds);
+      }
       if (filters?.startDate) {
         query = query.gte('created_at', filters.startDate);
       }
