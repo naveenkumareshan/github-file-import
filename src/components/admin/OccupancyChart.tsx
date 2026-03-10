@@ -7,8 +7,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { adminBookingsService } from '@/api/adminBookingsService';
 import { EmptyState } from '@/components/ui/empty-state';
 import { TrendingUp } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 
 export function OccupancyChart() {
+  const { user } = useAuth();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
