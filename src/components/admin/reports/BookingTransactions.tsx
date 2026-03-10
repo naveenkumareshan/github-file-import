@@ -24,6 +24,7 @@ import ExcelJS from 'exceljs';
 
 interface BookingTransactionsProps {
   dateRange?: DateRange;
+  partnerUserId?: string;
 }
 
 export const BookingTransactions: React.FC<BookingTransactionsProps> = ({ dateRange }) => {
