@@ -9,6 +9,7 @@ import { ReportSkeleton } from './ReportSkeleton';
 
 interface RevenueReportsProps {
   dateRange?: DateRange;
+  partnerUserId?: string;
 }
 
 const RevenueReportsComponent: React.FC<RevenueReportsProps> = ({ dateRange }) => {
