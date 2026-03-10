@@ -12,6 +12,8 @@ import { FileSpreadsheet, FileBarChart, FileText, Calendar } from 'lucide-react'
 import { ExpiringBookings } from './ExpiringBookings';
 import { useSearchParams } from 'react-router-dom';
 import { BookingCalendarDashboard } from '../BookingCalendarDashboard';
+import { useAuth } from '@/contexts/AuthContext';
+import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 
 const BookingReportsPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
