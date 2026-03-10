@@ -12,15 +12,28 @@ import { FileSpreadsheet, FileBarChart, FileText, Calendar } from 'lucide-react'
 import { ExpiringBookings } from './ExpiringBookings';
 import { useSearchParams } from 'react-router-dom';
 import { BookingCalendarDashboard } from '../BookingCalendarDashboard';
+import { useAuth } from '@/contexts/AuthContext';
+import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 
 const BookingReportsPage: React.FC = () => {
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [dateFilterType, setDateFilterType] = useState('today');
   const [dateRange, setDateRange] = useState<DateRange>({
     from: new Date(new Date().setDate(new Date().getDate())),
     to: new Date()
   });
+  const [partnerUserId, setPartnerUserId] = useState<string | undefined>(undefined);
   
+  const isPartner = user?.role === 'vendor' || user?.role === 'vendor_employee';
+
+  // Resolve partner user ID
+  useEffect(() => {
+    if (isPartner) {
+      getEffectiveOwnerId().then(({ ownerId }) => setPartnerUserId(ownerId));
+    }
+  }, [isPartner]);
+
   // Get active tab from URL params or default to 'revenue'
   const tabFromUrl = searchParams.get('tab') as 'revenue' | 'occupancy' | 'transactions' | 'expirybooking' | 'calendar' | null;
   const [activeTab, setActiveTab] = useState<'revenue' | 'occupancy' | 'transactions' | 'expirybooking' | 'calendar'>(
@@ -110,19 +123,19 @@ const BookingReportsPage: React.FC = () => {
             </TabsList>
             
             <TabsContent value="revenue" className="space-y-4 mt-6">
-              <RevenueReports dateRange={dateRange} />
+              <RevenueReports dateRange={dateRange} partnerUserId={partnerUserId} />
             </TabsContent>
             
             <TabsContent value="occupancy" className="space-y-4 mt-6">
-              <OccupancyReports dateRange={dateRange} />
+              <OccupancyReports dateRange={dateRange} partnerUserId={partnerUserId} />
             </TabsContent>
             
             <TabsContent value="transactions" className="space-y-4 mt-6">
-              <BookingTransactions dateRange={dateRange} />
+              <BookingTransactions dateRange={dateRange} partnerUserId={partnerUserId} />
             </TabsContent>
 
             <TabsContent value="expirybooking" className="space-y-4 mt-6">
-              <ExpiringBookings />
+              <ExpiringBookings partnerUserId={partnerUserId} />
             </TabsContent>
 
             <TabsContent value="calendar" className="space-y-4 mt-6">

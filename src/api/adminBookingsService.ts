@@ -16,7 +16,7 @@ interface BookingFilters {
 }
 
 export const adminBookingsService = {
-  getAllBookings: async (filters?: BookingFilters) => {
+  getAllBookings: async (filters?: BookingFilters, partnerUserId?: string) => {
     try {
       const page = filters?.page || 1;
       const limit = filters?.limit || 10;
@@ -25,6 +25,16 @@ export const adminBookingsService = {
       let query = supabase
         .from('bookings')
         .select('*, profiles!bookings_user_id_fkey(name, email, phone, profile_picture, serial_number), cabins:cabin_id(name, serial_number), seats:seat_id(number, category, floor), cabin_slots:slot_id(name), dues!dues_booking_id_fkey(advance_paid, paid_amount, due_amount)', { count: 'exact' });
+
+      // Apply partner scoping
+      if (partnerUserId) {
+        const { data: pCabins } = await supabase.from('cabins').select('id').eq('created_by', partnerUserId);
+        const cabinIds = (pCabins || []).map(c => c.id);
+        if (cabinIds.length === 0) {
+          return { success: true, data: [], count: 0, totalDocs: 0, totalPages: 0 };
+        }
+        query = query.in('cabin_id', cabinIds);
+      }
 
       // Apply filters
       if (filters?.status && filters.status !== 'all') {
@@ -328,13 +338,23 @@ export const adminBookingsService = {
     }
   },
 
-  getRevenueReport: async (filters?: BookingFilters) => {
+  getRevenueReport: async (filters?: BookingFilters, partnerUserId?: string) => {
     try {
+      let partnerCabinIds: string[] | null = null;
+      if (partnerUserId) {
+        const { data: pCabins } = await supabase.from('cabins').select('id').eq('created_by', partnerUserId);
+        partnerCabinIds = (pCabins || []).map(c => c.id);
+        if (partnerCabinIds.length === 0) return { success: true, data: { totalRevenue: 0, bookingCount: 0, count: 0, todayRevenue: 0, currentYear: new Date().getFullYear() } };
+      }
+
       let query = supabase
         .from('bookings')
         .select('total_price, created_at')
         .eq('payment_status', 'completed');
 
+      if (partnerCabinIds) {
+        query = query.in('cabin_id', partnerCabinIds);
+      }
       if (filters?.startDate) {
         query = query.gte('created_at', filters.startDate);
       }
@@ -377,13 +397,18 @@ export const adminBookingsService = {
     endDate?: string;
     timeframe?: 'daily' | 'weekly' | 'monthly' | 'yearly';
     cabinId?: string;
+    partnerUserId?: string;
   }) => {
     try {
       // Get all active cabins with their seats
-      const { data: cabins, error: cabinsError } = await supabase
+      let cabinQuery = supabase
         .from('cabins')
         .select('id, name, category')
         .eq('is_active', true);
+      if (params.partnerUserId) {
+        cabinQuery = cabinQuery.eq('created_by', params.partnerUserId);
+      }
+      const { data: cabins, error: cabinsError } = await cabinQuery;
       if (cabinsError) throw cabinsError;
 
       if (!cabins || cabins.length === 0) {
@@ -479,19 +504,32 @@ export const adminBookingsService = {
     }
   },
 
-  getExpiringBookings: async (daysThreshold: number = 7) => {
+  getExpiringBookings: async (daysThreshold: number = 7, partnerUserId?: string) => {
     try {
       const today = new Date();
       const futureDate = new Date();
       futureDate.setDate(today.getDate() + daysThreshold);
 
-      const { data, error } = await supabase
+      let partnerCabinIds: string[] | null = null;
+      if (partnerUserId) {
+        const { data: pCabins } = await supabase.from('cabins').select('id').eq('created_by', partnerUserId);
+        partnerCabinIds = (pCabins || []).map(c => c.id);
+        if (partnerCabinIds.length === 0) return { success: true, data: [] };
+      }
+
+      let query = supabase
         .from('bookings')
         .select('*, profiles!bookings_user_id_fkey(name, email, phone), cabins:cabin_id(name), seats:seat_id(number, floor)')
         .eq('payment_status', 'completed')
         .gte('end_date', today.toISOString().split('T')[0])
         .lte('end_date', futureDate.toISOString().split('T')[0])
         .order('end_date');
+
+      if (partnerCabinIds) {
+        query = query.in('cabin_id', partnerCabinIds);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return { success: true, data: data || [] };

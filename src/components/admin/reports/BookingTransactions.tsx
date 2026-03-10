@@ -24,9 +24,10 @@ import ExcelJS from 'exceljs';
 
 interface BookingTransactionsProps {
   dateRange?: DateRange;
+  partnerUserId?: string;
 }
 
-export const BookingTransactions: React.FC<BookingTransactionsProps> = ({ dateRange }) => {
+export const BookingTransactions: React.FC<BookingTransactionsProps> = ({ dateRange, partnerUserId }) => {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
@@ -157,7 +158,7 @@ export const BookingTransactions: React.FC<BookingTransactionsProps> = ({ dateRa
         filters.search = searchQuery.trim();
       }
       
-      const response = await adminBookingsService.getAllBookings(filters);
+      const response = await adminBookingsService.getAllBookings(filters, partnerUserId);
       
       if (response.success && response.data) {
         setTransactions(response.data);
@@ -193,7 +194,7 @@ export const BookingTransactions: React.FC<BookingTransactionsProps> = ({ dateRa
       filters.page = 1;
       filters.limit = 1000;
 
-      const response = await adminBookingsService.getAllBookings(filters);
+      const response = await adminBookingsService.getAllBookings(filters, partnerUserId);
       if (!response.success || !response.data) throw new Error('Failed to fetch data');
 
       const workbook = new ExcelJS.Workbook();

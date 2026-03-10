@@ -9,9 +9,10 @@ import { ReportSkeleton } from './ReportSkeleton';
 
 interface RevenueReportsProps {
   dateRange?: DateRange;
+  partnerUserId?: string;
 }
 
-const RevenueReportsComponent: React.FC<RevenueReportsProps> = ({ dateRange }) => {
+const RevenueReportsComponent: React.FC<RevenueReportsProps> = ({ dateRange, partnerUserId }) => {
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [averageBookingValue, setAverageBookingValue] = useState(0);
   const [bookingsCount, setBookingsCount] = useState(0);
@@ -35,7 +36,7 @@ const RevenueReportsComponent: React.FC<RevenueReportsProps> = ({ dateRange }) =
           filters.endDate = format(dateRange.to, 'yyyy-MM-dd');
         }
         
-        const response = await adminBookingsService.getRevenueReport(filters);
+        const response = await adminBookingsService.getRevenueReport(filters, partnerUserId);
         
         if (response.success && response.data) {
           // Process data for charts based on the selected period
