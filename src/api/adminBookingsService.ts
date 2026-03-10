@@ -557,17 +557,26 @@ export const adminBookingsService = {
     }
   },
 
-  getMonthlyRevenue: async (year: number = new Date().getFullYear()) => {
+  getMonthlyRevenue: async (year: number = new Date().getFullYear(), partnerUserId?: string) => {
     try {
       const startOfYear = `${year}-01-01`;
       const endOfYear = `${year}-12-31T23:59:59`;
 
-      const { data, error } = await supabase
+      let partnerCabinIds: string[] | null = null;
+      if (partnerUserId) {
+        const { data: pCabins } = await supabase.from('cabins').select('id').eq('created_by', partnerUserId);
+        partnerCabinIds = (pCabins || []).map(c => c.id);
+        if (partnerCabinIds.length === 0) return { success: true, data: [] };
+      }
+
+      let query = supabase
         .from('bookings')
-        .select('total_price, created_at')
+        .select('total_price, created_at, cabin_id')
         .eq('payment_status', 'completed')
         .gte('created_at', startOfYear)
         .lte('created_at', endOfYear);
+      if (partnerCabinIds) query = query.in('cabin_id', partnerCabinIds);
+      const { data, error } = await query;
 
       if (error) throw error;
 
