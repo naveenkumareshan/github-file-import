@@ -301,7 +301,6 @@ export const VendorProfile: React.FC = () => {
         <TabsList className="h-8">
           <TabsTrigger value="basic" className="text-xs">Basic Info</TabsTrigger>
           <TabsTrigger value="business" className="text-xs">Business Details</TabsTrigger>
-          <TabsTrigger value="bank" className="text-xs">Bank Details</TabsTrigger>
           <TabsTrigger value="documents" className="text-xs">Documents</TabsTrigger>
           <TabsTrigger value="properties" className="text-xs">Properties</TabsTrigger>
         </TabsList>
