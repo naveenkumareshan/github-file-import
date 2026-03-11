@@ -1,54 +1,71 @@
 
 
-# Add Camera Capture Option to All Photo Upload Components
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-## Problem
-Currently, only `PaymentProofUpload.tsx` has `capture="environment"` for camera access. Other file upload components (ImageUpload, RefundManagement, CheckInUploadDialog, BannerManagement, VendorDocumentUpload, ProfileManagement, SiteSettingsForm) only support file picker — no direct camera option.
-
-## Approach
-For image-accepting upload inputs, provide **two buttons**: "Upload from Gallery" and "Capture Photo" — each triggering a separate hidden `<input>` (one without `capture`, one with `capture="environment"`). This gives users explicit choice on both mobile and desktop.
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
 ## Changes
 
-### 1. `src/components/ImageUpload.tsx`
-- Add a second hidden input with `capture="environment"`
-- Add a second button "📷 Capture Photo" alongside the existing "Upload Image" button
-- Both inputs share the same `handleUpload` handler
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-### 2. `src/components/admin/RefundManagement.tsx`
-- Replace the single `<Input type="file">` with two buttons: "Upload" and "Capture"
-- Add a hidden camera input with `capture="environment"` alongside the existing file input
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-### 3. `src/components/admin/operations/CheckInUploadDialog.tsx`
-- Add a "Capture Photo" button alongside the existing file input
-- Add a second hidden input with `capture="environment"` and `accept="image/*"`
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
 
-### 4. `src/components/admin/BannerManagement.tsx`
-- Add camera capture option alongside existing upload
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
 
-### 5. `src/components/vendor/VendorDocumentUpload.tsx`
-- Add camera capture button for image document types
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
 
-### 6. `src/components/profile/ProfileManagement.tsx`
-- Add camera capture option for profile photo upload
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
 
-### 7. `src/components/admin/SiteSettingsForm.tsx`
-- Add camera capture option for logo upload
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
 
-### Technical Detail
-Each component gets a pattern like:
-```tsx
-<div className="flex gap-2">
-  <Button onClick={() => fileRef.current?.click()}>
-    <Upload /> Upload
-  </Button>
-  <Button onClick={() => cameraRef.current?.click()}>
-    <Camera /> Capture
-  </Button>
-</div>
-<input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handler} />
-<input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handler} />
-```
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
 
-Both inputs reuse the same upload handler. The `capture="environment"` attribute opens the device camera directly on mobile devices.
+**Reviews section**: Shown below the booking flow (not in a tab)
+
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
+
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
+
+## File Summary
+
+| File | Change |
+|------|--------|
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
 

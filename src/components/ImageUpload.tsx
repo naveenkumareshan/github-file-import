@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Button } from './ui/button';
-import { Upload, X, Loader2 } from 'lucide-react';
+import { Upload, X, Loader2, Camera } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { uploadService } from '@/api/uploadService';
 import { getImageUrl } from '@/lib/utils';
@@ -29,6 +29,7 @@ export function ImageUpload({
   const { toast } = useToast();
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const cameraInputRef = React.useRef<HTMLInputElement>(null);
   
   // Use both existing and locally uploaded images (filter out falsy values)
   const allImages = [...existingImages.filter(Boolean), ...uploadedImages.filter(img => img && !existingImages.includes(img))];
@@ -130,7 +131,7 @@ export function ImageUpload({
   
   return (
     <div className={`space-y-4 ${className}`}>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 flex-wrap">
         <Button
           variant="outline"
           className="relative overflow-hidden"
@@ -142,7 +143,7 @@ export function ImageUpload({
           ) : (
             <Upload className="w-4 h-4 mr-2" />
           )}
-          {isUploading ? "Uploading..." : "Upload Image"}
+          {isUploading ? "Uploading..." : "Gallery"}
           <input
             type="file"
             className="absolute inset-0 opacity-0 cursor-pointer"
@@ -151,6 +152,24 @@ export function ImageUpload({
             accept={allowedTypes.join(',')}
           />
         </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={isUploading || (maxCount !== undefined && allImages.length >= maxCount)}
+          onClick={() => cameraInputRef.current?.click()}
+        >
+          <Camera className="w-4 h-4 mr-2" />
+          Capture
+        </Button>
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={handleUpload}
+          disabled={isUploading || (maxCount !== undefined && allImages.length >= maxCount)}
+        />
         <span className="text-xs text-muted-foreground">
           {maxCount !== undefined ? `${allImages.length} / ${maxCount} images` : `${allImages.length} images uploaded`}
         </span>

@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Save, Loader2, Upload, X, Image as ImageIcon } from 'lucide-react';
+import { Save, Loader2, Upload, X, Image as ImageIcon, Camera } from 'lucide-react';
 
 interface EnabledMenus {
   bookings: boolean;
@@ -33,6 +33,7 @@ export function SiteSettingsForm() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -198,6 +199,14 @@ export function SiteSettingsForm() {
                     onChange={handleLogoUpload}
                     className="hidden"
                   />
+                  <input
+                    ref={cameraInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleLogoUpload}
+                    className="hidden"
+                  />
                   <Button
                     type="button"
                     variant="outline"
@@ -207,7 +216,18 @@ export function SiteSettingsForm() {
                     disabled={uploading}
                   >
                     {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
-                    {uploading ? 'Uploading...' : 'Upload Logo'}
+                    {uploading ? 'Uploading...' : 'Gallery'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-[11px] px-2.5 gap-1"
+                    onClick={() => cameraInputRef.current?.click()}
+                    disabled={uploading}
+                  >
+                    <Camera className="h-3 w-3" />
+                    Capture
                   </Button>
                   {logoUrl && (
                     <Button
