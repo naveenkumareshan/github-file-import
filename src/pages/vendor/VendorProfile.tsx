@@ -1,6 +1,6 @@
 import React from 'react';
 import { VendorProfile } from '@/components/vendor/VendorProfile';
-import { PaymentModesManager } from '@/components/vendor/PaymentModesManager';
+
 import { WhatsAppSettings } from '@/components/vendor/WhatsAppSettings';
 
 const VendorProfilePage: React.FC = () => {
