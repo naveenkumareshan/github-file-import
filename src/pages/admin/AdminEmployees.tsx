@@ -234,6 +234,7 @@ const AdminEmployees: React.FC = () => {
                   <p className="font-medium text-xs mb-1">Work Info</p>
                   <p><span className="text-muted-foreground">Role:</span> <Badge variant="secondary" className="text-[9px] capitalize">{viewingEmployee.role}</Badge></p>
                   <p><span className="text-muted-foreground">Status:</span> <Badge variant={viewingEmployee.status === 'active' ? 'default' : 'destructive'} className="text-[9px]">{viewingEmployee.status}</Badge></p>
+                  <p><span className="text-muted-foreground">Login:</span> <Badge variant={viewingEmployee.employee_user_id ? 'default' : 'secondary'} className="text-[9px]">{viewingEmployee.employee_user_id ? 'Active' : 'Not Created'}</Badge></p>
                 </div>
               </div>
               <div className="p-3 border rounded-lg">
@@ -247,9 +248,15 @@ const AdminEmployees: React.FC = () => {
                   )}
                 </div>
               </div>
-              <p className="text-[10px] text-muted-foreground">
-                Added on {new Date(viewingEmployee.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] text-muted-foreground">
+                  Added on {new Date(viewingEmployee.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                </p>
+                <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => { setViewingEmployee(null); setPasswordDialog(viewingEmployee); setNewPassword(''); }}>
+                  <KeyRound className="h-3 w-3" />
+                  {viewingEmployee.employee_user_id ? 'Reset Password' : 'Create Login'}
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>
