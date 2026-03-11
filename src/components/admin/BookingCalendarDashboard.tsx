@@ -56,7 +56,7 @@ export const BookingCalendarDashboard = ({ partnerUserId }: { partnerUserId?: st
   useEffect(() => {
     fetchBookings();
     fetchCabins();
-  }, [currentDate, selectedCabin]);
+  }, [currentDate, selectedCabin, partnerUserId]);
 
   const fetchBookings = async () => {
     setLoading(true);
