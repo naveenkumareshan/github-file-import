@@ -120,13 +120,19 @@ export const BannerManagement: React.FC = () => {
                 <Label className="text-xs mb-1 block">Image</Label>
                 <div className="flex gap-2">
                   <Input value={form.image_url} onChange={e => setForm(p => ({ ...p, image_url: e.target.value }))} placeholder="URL or upload" className="h-9 text-sm flex-1" />
-                  <label className="cursor-pointer">
+                   <label className="cursor-pointer">
                     <Button variant="outline" size="sm" className="h-9 px-2.5" asChild>
                       <span>
                         {uploading ? <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" /> : <Upload className="h-4 w-4" />}
                       </span>
                     </Button>
                     <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleUpload(e.target.files[0])} />
+                  </label>
+                  <label className="cursor-pointer">
+                    <Button variant="outline" size="sm" className="h-9 px-2.5" asChild>
+                      <span><Camera className="h-4 w-4" /></span>
+                    </Button>
+                    <input type="file" accept="image/*" capture="environment" className="hidden" onChange={e => e.target.files?.[0] && handleUpload(e.target.files[0])} />
                   </label>
                 </div>
               </div>

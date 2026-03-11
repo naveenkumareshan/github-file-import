@@ -398,13 +398,37 @@ export const VendorDocumentUpload: React.FC = () => {
                         id={`file-${docType.key}`}
                       />
                       
-                      <Label
-                        htmlFor={`file-${docType.key}`}
-                        className="cursor-pointer inline-flex items-center px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 disabled:opacity-50"
-                      >
-                        <Upload className="h-4 w-4 mr-2" />
-                        {isUploading ? 'Uploading...' : 'Choose File'}
-                      </Label>
+                      <div className="flex gap-2 justify-center">
+                        <Label
+                          htmlFor={`file-${docType.key}`}
+                          className="cursor-pointer inline-flex items-center px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50"
+                        >
+                          <Upload className="h-4 w-4 mr-2" />
+                          {isUploading ? 'Uploading...' : 'Gallery'}
+                        </Label>
+                        <Label
+                          htmlFor={`camera-${docType.key}`}
+                          className="cursor-pointer inline-flex items-center px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50"
+                        >
+                          <Camera className="h-4 w-4 mr-2" />
+                          Capture
+                        </Label>
+                      </div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        onChange={(e) => {
+                          if (docType.key === 'site_photos') {
+                            handleMultipleFileUpload(docType.key, e.target.files);
+                          } else {
+                            handleFileUpload(docType.key, e.target.files);
+                          }
+                        }}
+                        disabled={isUploading}
+                        className="hidden"
+                        id={`camera-${docType.key}`}
+                      />
                     </div>
                     
                     {isUploading && (

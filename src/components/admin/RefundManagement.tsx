@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { Wallet, Download, Search, RefreshCw, DollarSign, Image } from 'lucide-react';
+import { Wallet, Download, Search, RefreshCw, DollarSign, Image, Upload, Camera } from 'lucide-react';
 import { depositRefundService, DepositRefund, DepositRefundFilters } from '@/api/depositRefundService';
 import { uploadService } from '@/api/uploadService';
 import { useToast } from '@/hooks/use-toast';

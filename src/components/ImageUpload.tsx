@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Button } from './ui/button';
-import { Upload, X, Loader2 } from 'lucide-react';
+import { Upload, X, Loader2, Camera } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { uploadService } from '@/api/uploadService';
 import { getImageUrl } from '@/lib/utils';

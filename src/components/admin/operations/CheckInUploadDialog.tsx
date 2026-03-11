@@ -23,6 +23,7 @@ const CheckInUploadDialog = ({ open, onOpenChange, booking, module, onUploaded }
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const existingDocs: DocRef[] = Array.isArray(booking?.check_in_documents) ? booking.check_in_documents : [];

@@ -423,13 +423,24 @@ export const ProfileManagement = () => {
               className="hidden"
               onChange={handleProfilePictureUpload}
             />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploadingPicture}
-              className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md"
-            >
-              <Camera className="h-3 w-3" />
-            </button>
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handleProfilePictureUpload}
+            />
+            <div className="absolute -bottom-1 -right-1 flex gap-0.5">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploadingPicture}
+                className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md"
+                title="Upload from gallery"
+              >
+                <Camera className="h-3 w-3" />
+              </button>
+            </div>
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[14px] font-semibold text-foreground">{profile.name || 'Your Name'}</p>

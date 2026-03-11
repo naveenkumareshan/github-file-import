@@ -199,6 +199,14 @@ export function SiteSettingsForm() {
                     onChange={handleLogoUpload}
                     className="hidden"
                   />
+                  <input
+                    ref={cameraInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleLogoUpload}
+                    className="hidden"
+                  />
                   <Button
                     type="button"
                     variant="outline"
@@ -208,7 +216,18 @@ export function SiteSettingsForm() {
                     disabled={uploading}
                   >
                     {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
-                    {uploading ? 'Uploading...' : 'Upload Logo'}
+                    {uploading ? 'Uploading...' : 'Gallery'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-[11px] px-2.5 gap-1"
+                    onClick={() => cameraInputRef.current?.click()}
+                    disabled={uploading}
+                  >
+                    <Camera className="h-3 w-3" />
+                    Capture
                   </Button>
                   {logoUrl && (
                     <Button
