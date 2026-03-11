@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Sidebar,
@@ -19,6 +19,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useVendorEmployeePermissions } from '@/hooks/useVendorEmployeePermissions';
 import { usePartnerPropertyTypes } from '@/hooks/usePartnerPropertyTypes';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { supabase } from '@/integrations/supabase/client';
 import {
   LayoutDashboard, 
   Calendar, 
