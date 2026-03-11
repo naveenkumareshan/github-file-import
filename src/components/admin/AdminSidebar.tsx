@@ -72,6 +72,21 @@ export function AdminSidebar() {
   const { user, logout } = useAuth();
   const { hasPermission, hasAnyPermission, loading } = useVendorEmployeePermissions();
   const propertyTypes = usePartnerPropertyTypes();
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchAvatar = async () => {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) return;
+      const { data } = await supabase
+        .from('profiles')
+        .select('profile_picture')
+        .eq('id', authUser.id)
+        .single();
+      if (data?.profile_picture) setAvatarUrl(data.profile_picture);
+    };
+    fetchAvatar();
+  }, []);
 
   if (loading || propertyTypes.loading) {
     return (
