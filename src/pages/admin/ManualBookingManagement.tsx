@@ -158,6 +158,7 @@ const ManualBookingManagement: React.FC = () => {
   const handleStudentSelect = (student: any) => {
     setSelectedUser(student.id);
     setSelectedStudentName(`${student.name} (${student.email})`);
+    setSelectedStudentEmail(student.email);
     setStudentQuery(student.name);
     setShowStudentResults(false);
     setStep('select-cabin');
