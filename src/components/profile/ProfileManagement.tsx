@@ -81,6 +81,7 @@ export const ProfileManagement = () => {
   const [emailVerified, setEmailVerified] = useState<boolean | null>(null);
   const [isSendingVerification, setIsSendingVerification] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const cameraInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleProfilePictureUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
