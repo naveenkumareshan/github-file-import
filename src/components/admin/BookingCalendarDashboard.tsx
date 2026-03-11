@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Calendar, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
 import { adminBookingsService } from '@/api/adminBookingsService';
-import { cabinsService } from '@/api/cabinsService';
+import { supabase } from '@/integrations/supabase/client';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, isWithinInterval } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
