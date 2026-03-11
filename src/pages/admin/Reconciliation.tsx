@@ -91,6 +91,7 @@ const Reconciliation: React.FC = () => {
   const [bankName, setBankName] = useState('');
   const [bankOptions, setBankOptions] = useState<{ id: string; label: string }[]>([]);
   const [bankLoading, setBankLoading] = useState(false);
+  const [manualBankEntry, setManualBankEntry] = useState(false);
   const [bankNarration, setBankNarration] = useState('');
   const [calendarOpen, setCalendarOpen] = useState(false);
 
