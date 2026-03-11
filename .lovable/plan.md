@@ -1,71 +1,46 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+# Move WhatsApp Chat Settings from Partner Profile to Per-Property Level
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+## What Changes
 
-## Changes
+Currently WhatsApp number is stored once on the `partners` table and toggled per-property via `whatsapp_chat_enabled`. The user wants each property to have its **own WhatsApp number**, configured via a button beside "Pause" in the property cards.
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+## Database
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+Add `whatsapp_number text` column to `cabins` and `hostels` tables. The existing `whatsapp_chat_enabled` boolean on each table already controls visibility — now we pair it with a per-property number.
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+Migration:
+- `ALTER TABLE cabins ADD COLUMN whatsapp_number text;`
+- `ALTER TABLE hostels ADD COLUMN whatsapp_number text;`
+- Backfill from partners table: `UPDATE cabins SET whatsapp_number = p.whatsapp_number FROM partners p WHERE cabins.created_by = p.user_id AND p.whatsapp_number IS NOT NULL;` (same for hostels)
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+## UI Changes
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
+### 1. CabinItem & HostelItem — Add WhatsApp button beside Pause
+- Add a small WhatsApp icon button (green `MessageCircle`) next to the Pause/Enable button
+- Clicking opens a small dialog to set the WhatsApp number and toggle `whatsapp_chat_enabled` for that specific property
+- Saves directly to the property's `whatsapp_number` and `whatsapp_chat_enabled` columns
 
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
+### 2. Remove WhatsAppSettings from VendorProfile
+- Remove the `<WhatsAppSettings />` component from `VendorProfile.tsx`
+- Remove the import
 
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
+### 3. Update WhatsAppChatButton
+- Instead of fetching the partner's WhatsApp number from the `partners` table, accept `whatsappNumber` as a prop directly (passed from the property data already fetched on BookSeat/HostelRoomDetails/MessDetail pages)
+- Simplifies the component — no extra API call needed
 
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
+### 4. Update consumer pages (BookSeat, HostelRoomDetails, MessDetail)
+- Pass the property's `whatsapp_number` directly to `WhatsAppChatButton`
+- Already fetching property data which will now include `whatsapp_number`
 
-**Reviews section**: Shown below the booking flow (not in a tab)
-
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
-
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
-
-| File | Change |
-|------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+## Files Modified
+- `supabase/migrations/` — new migration
+- `src/components/admin/CabinItem.tsx` — add WhatsApp config button + dialog
+- `src/components/admin/HostelItem.tsx` — add WhatsApp config button + dialog
+- `src/pages/vendor/VendorProfile.tsx` — remove WhatsAppSettings
+- `src/components/WhatsAppChatButton.tsx` — accept number as prop, remove partner lookup
+- `src/pages/BookSeat.tsx` — pass whatsapp_number from cabin data
+- `src/pages/HostelRoomDetails.tsx` — pass whatsapp_number from hostel data
+- `src/pages/MessDetail.tsx` — pass whatsapp_number from mess data (if applicable)
 
