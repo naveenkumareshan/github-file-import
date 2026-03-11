@@ -262,22 +262,27 @@ const AdminEmployees: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Password Reset Dialog */}
+      {/* Password Reset / Create Login Dialog */}
       <Dialog open={!!passwordDialog} onOpenChange={(open) => { if (!open) { setPasswordDialog(null); setNewPassword(''); } }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-sm">Change Password</DialogTitle>
+            <DialogTitle className="text-sm">{passwordDialog?.employee_user_id ? 'Reset Password' : 'Create Login'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <p className="text-xs text-muted-foreground">Set a new password for <strong>{passwordDialog?.name}</strong></p>
+            <p className="text-xs text-muted-foreground">
+              {passwordDialog?.employee_user_id
+                ? <>Set a new password for <strong>{passwordDialog?.name}</strong> ({passwordDialog?.email})</>
+                : <>Create a login account for <strong>{passwordDialog?.name}</strong> ({passwordDialog?.email})</>
+              }
+            </p>
             <div>
               <Label className="text-xs">New Password</Label>
-              <Input type="password" className="h-8 text-xs" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Enter new password" />
+              <Input type="password" className="h-8 text-xs" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Min 6 characters" />
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setPasswordDialog(null)}>Cancel</Button>
-              <Button size="sm" className="h-7 text-xs" onClick={handlePasswordReset} disabled={resetLoading || !newPassword}>
-                {resetLoading ? 'Updating...' : 'Update Password'}
+              <Button size="sm" className="h-7 text-xs" onClick={handlePasswordReset} disabled={resetLoading || newPassword.length < 6}>
+                {resetLoading ? 'Processing...' : (passwordDialog?.employee_user_id ? 'Reset Password' : 'Create Login')}
               </Button>
             </div>
           </div>
