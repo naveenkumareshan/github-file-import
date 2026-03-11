@@ -39,13 +39,6 @@ const VendorRegister: React.FC = () => {
       pincode: '',
       country: 'India'
     },
-    bankDetails: {
-      accountHolderName: '',
-      accountNumber: '',
-      bankName: '',
-      ifscCode: '',
-      upiId: ''
-    }
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
