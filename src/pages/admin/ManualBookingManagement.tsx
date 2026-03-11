@@ -21,6 +21,7 @@ import { formatTime } from '@/utils/timingUtils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { supabase } from '@/integrations/supabase/client';
 import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
+import { bookingEmailService } from '@/api/bookingEmailService';
 
 // Define bookingType type to fix TypeScript errors
 type BookingType = 'cabin' | 'hostel';
