@@ -30,3 +30,6 @@ verify_jwt = false
 
 [functions.partner-create-employee]
 verify_jwt = false
+
+[functions.create-student]
+verify_jwt = false
