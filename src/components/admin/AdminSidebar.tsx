@@ -160,6 +160,13 @@ export function AdminSidebar() {
         permissions: ['view_bookings']
       });
       readingRoomSubItems.push({
+        title: 'Expiring Bookings',
+        url: `${routePrefix}/expiring-bookings`,
+        icon: Clock,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+        permissions: ['view_bookings']
+      });
+      readingRoomSubItems.push({
         title: 'Receipts',
         url: `${routePrefix}/receipts`,
         icon: CreditCard,
@@ -243,6 +250,13 @@ export function AdminSidebar() {
         title: 'Hostel Bookings',
         url: `${routePrefix}/hostel-bookings`,
         icon: Calendar,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+        permissions: ['view_hostel_bookings']
+      },
+      {
+        title: 'Expiring Bookings',
+        url: `${routePrefix}/hostel-expiring-bookings`,
+        icon: Clock,
         roles: ['admin', 'vendor', 'vendor_employee'],
         permissions: ['view_hostel_bookings']
       },

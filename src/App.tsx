@@ -83,6 +83,8 @@ const StudentLaundryOrders = lazy(() => import("./pages/StudentLaundryOrders"));
 const Reconciliation = lazy(() => import("./pages/admin/Reconciliation"));
 const BankManagement = lazy(() => import("./pages/admin/BankManagement"));
 const LaundryPartnerDashboard = lazy(() => import("./pages/LaundryPartnerDashboard"));
+const ExpiringBookingsPage = lazy(() => import("./pages/admin/ExpiringBookingsPage"));
+const HostelExpiringBookingsPage = lazy(() => import("./pages/admin/HostelExpiringBookingsPage"));
 // Student / public pages
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const TermsAndConditions = lazy(() => import("./pages/TermsAndConditions"));
@@ -223,6 +225,8 @@ function App() {
               <Route path="mess-receipts" element={<MessReceipts />} />
               <Route path="mess-attendance" element={<MessAttendance />} />
               <Route path="reconciliation" element={<Reconciliation />} />
+              <Route path="expiring-bookings" element={<ExpiringBookingsPage />} />
+              <Route path="hostel-expiring-bookings" element={<HostelExpiringBookingsPage />} />
               <Route path="banks" element={<BankManagement />} />
             </Route>
 
@@ -278,6 +282,8 @@ function App() {
               <Route path="mess-receipts" element={<MessReceipts />} />
               <Route path="mess-attendance" element={<MessAttendance />} />
               <Route path="reconciliation" element={<Reconciliation />} />
+              <Route path="expiring-bookings" element={<ExpiringBookingsPage />} />
+              <Route path="hostel-expiring-bookings" element={<HostelExpiringBookingsPage />} />
               <Route path="banks" element={<BankManagement />} />
             </Route>
 
