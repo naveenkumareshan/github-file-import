@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, FileText, Trash2, Download, Loader2 } from 'lucide-react';
+import { Upload, FileText, Trash2, Download, Loader2, Camera } from 'lucide-react';
 
 interface DocRef {
   name: string;
