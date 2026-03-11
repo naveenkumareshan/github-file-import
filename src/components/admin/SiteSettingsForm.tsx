@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Save, Loader2, Upload, X, Image as ImageIcon } from 'lucide-react';
+import { Save, Loader2, Upload, X, Image as ImageIcon, Camera } from 'lucide-react';
 
 interface EnabledMenus {
   bookings: boolean;
