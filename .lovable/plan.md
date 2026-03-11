@@ -1,32 +1,71 @@
 
 
-# Profile Photo & Password Reset for All Roles
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-## What We're Building
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
-1. **Profile photo upload** for partners, employees, and admins — stored in the `profiles` table (`profile_picture` column, already exists) and uploaded to the `profiles` storage bucket (already exists)
-2. **User avatar in sidebar header** — show the logged-in user's profile picture next to the InhaleStays logo in the top-left of the admin sidebar
-3. **Admin Profile menu item** — admins currently have no "Profile" link in the sidebar; add one pointing to `/admin/profile` (which already routes to VendorProfilePage)
-4. **Password reset on admin profile** — already works via VendorProfilePage's "Change Password" card (same component used for both admin and partner routes)
+## Changes
 
-## Technical Changes
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-### 1. `src/components/admin/AdminSidebar.tsx` — Add avatar + admin Profile link
-- In the sidebar header, replace the static logo-only display with a small user avatar (fetched from `profiles.profile_picture`) beside the InhaleStays logo
-- Add a "Profile" menu item for admin role (currently only shows for vendors)
-- Fetch the profile picture from the `profiles` table on mount
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-### 2. `src/pages/vendor/VendorProfile.tsx` — Add profile photo upload section
-- Add a photo upload card at the top of the profile page
-- Upload to `profiles` storage bucket under `{user_id}/avatar.{ext}`
-- Update `profiles.profile_picture` with the public URL
-- Show current photo with option to change/remove
-- Works for all roles (admin, partner, employee) since the same page component is used
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
 
-### 3. `src/components/admin/AdminSidebar.tsx` — Profile link for admins
-- Add `{ title: 'Profile', icon: User, roles: ['admin'], url: '/admin/profile' }` to admin menu items
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
 
-### Files Modified
-- `src/components/admin/AdminSidebar.tsx` — avatar in header + admin profile link
-- `src/pages/vendor/VendorProfile.tsx` — profile photo upload card
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
+
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
+
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
+
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
+
+**Reviews section**: Shown below the booking flow (not in a tab)
+
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
+
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
+
+## File Summary
+
+| File | Change |
+|------|--------|
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
 

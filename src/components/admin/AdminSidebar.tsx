@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Sidebar,
@@ -19,6 +19,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useVendorEmployeePermissions } from '@/hooks/useVendorEmployeePermissions';
 import { usePartnerPropertyTypes } from '@/hooks/usePartnerPropertyTypes';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { supabase } from '@/integrations/supabase/client';
 import {
   LayoutDashboard, 
   Calendar, 
@@ -70,6 +72,21 @@ export function AdminSidebar() {
   const { user, logout } = useAuth();
   const { hasPermission, hasAnyPermission, loading } = useVendorEmployeePermissions();
   const propertyTypes = usePartnerPropertyTypes();
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchAvatar = async () => {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) return;
+      const { data } = await supabase
+        .from('profiles')
+        .select('profile_picture')
+        .eq('id', authUser.id)
+        .single();
+      if (data?.profile_picture) setAvatarUrl(data.profile_picture);
+    };
+    fetchAvatar();
+  }, []);
 
   if (loading || propertyTypes.loading) {
     return (
@@ -470,6 +487,12 @@ export function AdminSidebar() {
         icon: Users2,
         roles: ['admin'],
         url: '/admin/admin-employees'
+      },
+      {
+        title: 'Profile',
+        icon: User,
+        roles: ['admin'],
+        url: '/admin/profile'
       }
     );
   } else {
@@ -668,16 +691,16 @@ export function AdminSidebar() {
     }
   };
 
+  const userInitials = user?.name ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?';
+
   return (
     <Sidebar>
       <SidebarHeader className="border-b" style={{ background: 'linear-gradient(180deg, hsl(var(--primary) / 0.06) 0%, hsl(var(--background)) 100%)' }}>
         <div className="flex items-center gap-3 px-4 py-3.5">
-          <img
-            src="/src/assets/inhalestays-logo.png"
-            alt="InhaleStays"
-            className="h-8 w-8 rounded-lg object-contain drop-shadow-sm"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-          />
+          <Avatar className="h-9 w-9 border border-muted">
+            <AvatarImage src={avatarUrl || undefined} alt={user?.name} />
+            <AvatarFallback className="text-xs font-semibold bg-primary/10 text-primary">{userInitials}</AvatarFallback>
+          </Avatar>
           <div className="flex flex-col flex-1 min-w-0">
             <span className="font-semibold text-sm truncate tracking-tight">InhaleStays</span>
             <div className="flex items-center gap-1.5 mt-1">
