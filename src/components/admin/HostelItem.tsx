@@ -23,6 +23,7 @@ export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePac
   const { user } = useAuth();
   const navigate = useNavigate();
   const isAdmin = user?.role === 'admin';
+  const [waDialogOpen, setWaDialogOpen] = useState(false);
 
   const getGenderBadgeStyle = (gender: string) => {
     switch (gender) {
