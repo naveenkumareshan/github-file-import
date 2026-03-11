@@ -11,8 +11,7 @@ import { vendorRegistrationService } from '@/api/vendorRegistrationService';
 const STEPS = [
   { id: 1, title: 'Personal Information', description: 'Your contact details' },
   { id: 2, title: 'Business Details', description: 'Business information and documents' },
-  { id: 3, title: 'Address Information', description: 'Business address details' },
-  { id: 4, title: 'Bank Details', description: 'Payment and banking information' }
+  { id: 3, title: 'Address Information', description: 'Business address details' }
 ];
 
 const VendorRegister: React.FC = () => {
