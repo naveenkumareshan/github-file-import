@@ -194,7 +194,12 @@ const AdminEmployees: React.FC = () => {
                         <Edit className="h-3 w-3" />
                       </Button>
                       {emp.employee_user_id && (
-                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setPasswordDialog(emp); setNewPassword(''); }} title="Change Password">
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => { setPasswordDialog(emp); setNewPassword(''); }} title="Reset Password">
+                          <KeyRound className="h-3 w-3" />
+                        </Button>
+                      )}
+                      {!emp.employee_user_id && (
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-primary" onClick={() => { setPasswordDialog(emp); setNewPassword(''); }} title="Create Login">
                           <KeyRound className="h-3 w-3" />
                         </Button>
                       )}
