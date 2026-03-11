@@ -71,8 +71,7 @@ export const VendorProfile: React.FC = () => {
           contactPerson: profileData.contactPerson,
           phone: profileData.phone,
           address: profileData.address,
-          businessDetails: profileData.businessDetails,
-          bankDetails: profileData.bankDetails
+          businessDetails: profileData.businessDetails
         });
       } else {
         toast({ title: "Error", description: response.error || "Failed to load profile", variant: "destructive" });
