@@ -83,6 +83,8 @@ const StudentLaundryOrders = lazy(() => import("./pages/StudentLaundryOrders"));
 const Reconciliation = lazy(() => import("./pages/admin/Reconciliation"));
 const BankManagement = lazy(() => import("./pages/admin/BankManagement"));
 const LaundryPartnerDashboard = lazy(() => import("./pages/LaundryPartnerDashboard"));
+const ExpiringBookingsPage = lazy(() => import("./pages/admin/ExpiringBookingsPage"));
+const HostelExpiringBookingsPage = lazy(() => import("./pages/admin/HostelExpiringBookingsPage"));
 // Student / public pages
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const TermsAndConditions = lazy(() => import("./pages/TermsAndConditions"));
