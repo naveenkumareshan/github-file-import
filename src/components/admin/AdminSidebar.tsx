@@ -685,16 +685,16 @@ export function AdminSidebar() {
     }
   };
 
+  const userInitials = user?.name ? user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '?';
+
   return (
     <Sidebar>
       <SidebarHeader className="border-b" style={{ background: 'linear-gradient(180deg, hsl(var(--primary) / 0.06) 0%, hsl(var(--background)) 100%)' }}>
         <div className="flex items-center gap-3 px-4 py-3.5">
-          <img
-            src="/src/assets/inhalestays-logo.png"
-            alt="InhaleStays"
-            className="h-8 w-8 rounded-lg object-contain drop-shadow-sm"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-          />
+          <Avatar className="h-9 w-9 border border-muted">
+            <AvatarImage src={avatarUrl || undefined} alt={user?.name} />
+            <AvatarFallback className="text-xs font-semibold bg-primary/10 text-primary">{userInitials}</AvatarFallback>
+          </Avatar>
           <div className="flex flex-col flex-1 min-w-0">
             <span className="font-semibold text-sm truncate tracking-tight">InhaleStays</span>
             <div className="flex items-center gap-1.5 mt-1">
