@@ -690,7 +690,12 @@ const Reconciliation: React.FC = () => {
                   </Select>
                 </div>
               ) : (
-                <Input className="h-9 text-xs" placeholder="Enter bank name" value={bankName} onChange={e => setBankName(e.target.value)} />
+                <div className="flex gap-2">
+                  <Input className="h-9 text-xs flex-1" placeholder="Enter bank name" value={bankName} onChange={e => setBankName(e.target.value)} autoFocus />
+                  {bankOptions.length > 0 && (
+                    <Button variant="ghost" size="sm" className="h-9 text-xs shrink-0" onClick={() => { setManualBankEntry(false); setBankName(''); }}>← List</Button>
+                  )}
+                </div>
               )}
             </div>
 
