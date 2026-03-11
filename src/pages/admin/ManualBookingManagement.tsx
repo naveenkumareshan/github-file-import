@@ -174,6 +174,7 @@ const ManualBookingManagement: React.FC = () => {
     if (res.success && res.userId) {
       setSelectedUser(res.userId);
       setSelectedStudentName(`${newStudentName} (${newStudentEmail})`);
+      setSelectedStudentEmail(newStudentEmail);
       setStudentQuery(newStudentName);
       setShowNewStudent(false);
       setNewStudentName('');
