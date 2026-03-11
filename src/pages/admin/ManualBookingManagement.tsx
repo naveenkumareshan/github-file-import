@@ -497,6 +497,21 @@ useEffect(() => {
       const response = await adminManualBookingService.createManualCabinBooking(bookingData);
 
       if (response?.success) {
+        // Fire-and-forget email notification
+        const studentName = selectedStudentName.split(' (')[0];
+        bookingEmailService.triggerBookingConfirmation({
+          userEmail: selectedStudentEmail,
+          userName: studentName,
+          bookingId: response.booking_id || response.bookingId || '',
+          bookingType: 'cabin',
+          totalPrice: finalPrice,
+          startDate,
+          endDate,
+          location: selectedCabin?.name || '',
+          cabinName: selectedCabin?.name || '',
+          seatNumber: selectedSeat?.number?.toString() || '',
+        }).catch(err => console.error('Booking confirmation email failed:', err));
+
         toast({
           title: 'Booking Created',
           description: 'Booking created successfully.',
