@@ -131,7 +131,7 @@ export function ImageUpload({
   
   return (
     <div className={`space-y-4 ${className}`}>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 flex-wrap">
         <Button
           variant="outline"
           className="relative overflow-hidden"
@@ -143,7 +143,7 @@ export function ImageUpload({
           ) : (
             <Upload className="w-4 h-4 mr-2" />
           )}
-          {isUploading ? "Uploading..." : "Upload Image"}
+          {isUploading ? "Uploading..." : "Gallery"}
           <input
             type="file"
             className="absolute inset-0 opacity-0 cursor-pointer"
@@ -152,6 +152,24 @@ export function ImageUpload({
             accept={allowedTypes.join(',')}
           />
         </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={isUploading || (maxCount !== undefined && allImages.length >= maxCount)}
+          onClick={() => cameraInputRef.current?.click()}
+        >
+          <Camera className="w-4 h-4 mr-2" />
+          Capture
+        </Button>
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={handleUpload}
+          disabled={isUploading || (maxCount !== undefined && allImages.length >= maxCount)}
+        />
         <span className="text-xs text-muted-foreground">
           {maxCount !== undefined ? `${allImages.length} / ${maxCount} images` : `${allImages.length} images uploaded`}
         </span>
