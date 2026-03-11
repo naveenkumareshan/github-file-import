@@ -160,6 +160,13 @@ export function AdminSidebar() {
         permissions: ['view_bookings']
       });
       readingRoomSubItems.push({
+        title: 'Expiring Bookings',
+        url: `${routePrefix}/expiring-bookings`,
+        icon: Clock,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+        permissions: ['view_bookings']
+      });
+      readingRoomSubItems.push({
         title: 'Receipts',
         url: `${routePrefix}/receipts`,
         icon: CreditCard,
