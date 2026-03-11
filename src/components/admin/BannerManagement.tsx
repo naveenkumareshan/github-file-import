@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/use-toast';
-import { Plus, Trash2, Upload, Image, GripVertical } from 'lucide-react';
+import { Plus, Trash2, Upload, Image, GripVertical, Camera } from 'lucide-react';
 
 interface Banner {
   id: string;
