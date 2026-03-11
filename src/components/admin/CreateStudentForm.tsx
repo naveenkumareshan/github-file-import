@@ -138,6 +138,7 @@ const CreateStudentForm: React.FC<CreateStudentFormProps> = ({ onStudentCreated 
       setFormData({ name: '', email: '', phone: '', password: '', gender: '', role: formData.role, businessName: '', businessType: 'individual', city: '', state: '' });
       onStudentCreated?.();
     } catch (error: any) {
+      console.error("User creation error:", error);
       toast({
         title: "Creation Failed",
         description: error?.message || "Failed to create user.",
