@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { AdminTablePagination } from '@/components/admin/AdminTablePagination';
 import { Badge } from '@/components/ui/badge';
 
-const ITEMS_PER_PAGE = 9;
+const DEFAULT_PAGE_SIZE = 9;
 
 interface HostelManagementProps {
   autoCreateNew?: boolean;
