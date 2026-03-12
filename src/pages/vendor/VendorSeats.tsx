@@ -44,7 +44,7 @@ import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMetho
 import { BookingUpdateDatesDialog } from '@/components/admin/BookingUpdateDatesDialog';
 import { bookingEmailService } from '@/api/bookingEmailService';
 
-type ViewMode = 'grid' | 'table';
+type ViewMode = 'grid' | 'table' | 'room';
 type StatusFilter = 'all' | 'available' | 'booked' | 'expiring_soon' | 'blocked';
 
 const VendorSeats: React.FC = () => {
