@@ -63,7 +63,7 @@ const RoomManagement: React.FC<RoomManagementProps> = ({ autoCreateNew, onTrigge
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(9); // 3x3 grid
+  const [itemsPerPage, setItemsPerPage] = useState(9);
   const [totalItems, setTotalItems] = useState(0);
   
   const isAdmin = user?.role === 'admin';
