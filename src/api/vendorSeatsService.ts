@@ -583,6 +583,7 @@ export const vendorSeatsService = {
           collected_by_name: data.collectedByName || '',
           transaction_id: data.transactionId || '',
           slot_id: data.slotId || null,
+          payment_proof_url: data.paymentProofUrl || null,
         })
         .select('id, serial_number')
         .single();
