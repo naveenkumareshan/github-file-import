@@ -171,7 +171,10 @@ export default function MessManagement({ autoCreateNew, onTriggerConsumed }: Mes
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-semibold tracking-tight">Manage Mess Places</h1>
+            <h1 className="text-lg font-semibold tracking-tight">
+              Manage Mess Places
+              {filtered.length > 0 && <Badge variant="secondary" className="ml-2 text-xs font-normal">{filtered.length}</Badge>}
+            </h1>
             <p className="text-xs text-muted-foreground mt-0.5">View and manage all mess / food partners.</p>
           </div>
           <Button onClick={handleAddMess} size="sm" className="flex items-center gap-1.5">
