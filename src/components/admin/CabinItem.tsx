@@ -130,7 +130,7 @@ export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBoo
                 {!cabin.isBookingActive ? "● Online Off" : "● Online On"}
               </span>
               <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${cabin.isPartnerVisible === false ? "bg-muted text-muted-foreground border border-border" : "bg-blue-50 text-blue-700 border border-blue-200"}`}>
-                {cabin.isPartnerVisible === false ? "● Hidden" : "● Visible"}
+                {cabin.isPartnerVisible === false ? "● Emp Hidden" : "● Emp Visible"}
               </span>
             </div>
 
