@@ -89,6 +89,23 @@ const ManageProperties: React.FC = () => {
         </Button>
       </div>
 
+      {!universalSub && (
+        <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-accent/10">
+          <CardContent className="p-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Crown className="h-4 w-4 text-primary" />
+              <div>
+                <p className="text-xs font-semibold">Universal Package</p>
+                <p className="text-[10px] text-muted-foreground">One plan for all properties</p>
+              </div>
+            </div>
+            <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1" onClick={() => navigate('/partner/my-subscriptions')}>
+              <Crown className="h-3 w-3" /> Subscribe
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {loading ? (
         <LoadingFallback />
       ) : (
