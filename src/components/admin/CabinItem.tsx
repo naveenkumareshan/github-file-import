@@ -203,7 +203,7 @@ export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBoo
                         {cabin.isPartnerVisible === false ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>{cabin.isPartnerVisible === false ? 'Show to Partner' : 'Hide from Partner'}</TooltipContent>
+                    <TooltipContent>{cabin.isPartnerVisible === false ? 'Show to Employees' : 'Hide from Employees'}</TooltipContent>
                   </Tooltip>
                 )}
                 <Tooltip>

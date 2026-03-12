@@ -148,7 +148,7 @@ export function MessItem({ mess, onEdit, onDelete, onManagePackages, onToggleAct
                       {mess.is_partner_visible === false ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>{mess.is_partner_visible === false ? 'Show to Partner' : 'Hide from Partner'}</TooltipContent>
+                  <TooltipContent>{mess.is_partner_visible === false ? 'Show to Employees' : 'Hide from Employees'}</TooltipContent>
                 </Tooltip>
               )}
             </div>

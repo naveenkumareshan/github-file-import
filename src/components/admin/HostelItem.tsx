@@ -227,7 +227,7 @@ export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePac
                         {hostel.is_partner_visible === false ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>{hostel.is_partner_visible === false ? 'Show to Partner' : 'Hide from Partner'}</TooltipContent>
+                    <TooltipContent>{hostel.is_partner_visible === false ? 'Show to Employees' : 'Hide from Employees'}</TooltipContent>
                   </Tooltip>
                 )}
                 <Tooltip>
