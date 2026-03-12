@@ -24,8 +24,8 @@ export default function HostelExpiringBookingsPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
-  const [renewBooking, setRenewBooking] = useState<any>(null);
-  const [renewDialogOpen, setRenewDialogOpen] = useState(false);
+
+
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
