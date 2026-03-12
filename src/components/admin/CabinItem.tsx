@@ -5,6 +5,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Edit, FileMinus, FilePlus, Trash2, Users, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { WhatsAppPropertyDialog } from './WhatsAppPropertyDialog';
+import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
+import { Badge } from '@/components/ui/badge';
+import { ShieldCheck, Clock, AlertTriangle } from 'lucide-react';
 
 interface CabinData {
   _id: string;
