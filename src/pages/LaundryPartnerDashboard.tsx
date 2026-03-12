@@ -17,7 +17,12 @@ const statusColors: Record<string, string> = {
 
 const PARTNER_STATUSES = ['pickup_scheduled', 'picked_up', 'washing', 'ready', 'out_for_delivery', 'delivered'];
 
-const LaundryPartnerDashboard = () => {
+interface LaundryPartnerDashboardProps {
+  autoCreateNew?: boolean;
+  onTriggerConsumed?: () => void;
+}
+
+const LaundryPartnerDashboard: React.FC<LaundryPartnerDashboardProps> = ({ autoCreateNew, onTriggerConsumed } = {}) => {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [otpInputs, setOtpInputs] = useState<Record<string, string>>({});
