@@ -901,7 +901,7 @@ export const vendorSeatsService = {
     }
   },
 
-  collectDuePayment: async (dueId: string, amount: number, paymentMethod: string, txnId: string, notes: string) => {
+  collectDuePayment: async (dueId: string, amount: number, paymentMethod: string, txnId: string, notes: string, paymentProofUrl?: string) => {
     try {
       // Duplicate transaction ID check for non-cash methods
       if (paymentMethod !== 'cash' && txnId && txnId.trim()) {
