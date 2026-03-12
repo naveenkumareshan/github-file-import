@@ -142,8 +142,8 @@ export const RenewalSheet: React.FC<RenewalSheetProps> = ({
 
   const handleCreateBooking = async () => {
     if (!booking) return;
-    if ((paymentMethod === 'upi' || paymentMethod === 'bank_transfer') && !transactionId.trim()) {
-      toast({ title: 'Transaction ID is required for UPI/Bank Transfer', variant: 'destructive' });
+    if (paymentMethod !== 'cash' && !transactionId.trim()) {
+      toast({ title: 'Transaction ID is required for non-cash payments', variant: 'destructive' });
       return;
     }
     setCreating(true);
