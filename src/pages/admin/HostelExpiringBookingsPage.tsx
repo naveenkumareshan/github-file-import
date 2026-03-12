@@ -14,7 +14,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 import { useAuth } from '@/contexts/AuthContext';
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
-import { BookingExtensionDialog } from '@/components/admin/BookingExtensionDialog';
+
 
 export default function HostelExpiringBookingsPage() {
   const [bookings, setBookings] = useState<any[]>([]);
@@ -24,8 +24,8 @@ export default function HostelExpiringBookingsPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
-  const [renewBooking, setRenewBooking] = useState<any>(null);
-  const [renewDialogOpen, setRenewDialogOpen] = useState(false);
+
+
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
@@ -79,15 +79,7 @@ export default function HostelExpiringBookingsPage() {
   const getStatusColor = (days: number) => { if (days <= 2) return 'destructive'; if (days <= 5) return 'warning'; return 'secondary'; };
 
   const handleRenew = (booking: any) => {
-    const bed = booking.hostel_beds as any;
-    setRenewBooking({
-      ...booking,
-      _id: booking.id,
-      endDate: booking.end_date,
-      seatId: { _id: booking.bed_id, price: bed?.price_override || booking.total_price || 0 },
-      cabinId: { _id: booking.hostel_id },
-    });
-    setRenewDialogOpen(true);
+    navigate(`${routePrefix}/hostel-bookings/${booking.id}`);
   };
 
   const handleExport = () => {
@@ -210,24 +202,8 @@ export default function HostelExpiringBookingsPage() {
         </CardContent>
       </Card>
 
-      {renewBooking && (
-        <BookingExtensionDialog
-          open={renewDialogOpen}
-          onOpenChange={(open) => {
-            setRenewDialogOpen(open);
-            if (!open) setRenewBooking(null);
-          }}
-          bookingId={renewBooking.id}
-          booking={renewBooking}
-          bookingType="hostel"
-          currentEndDate={new Date(renewBooking.end_date)}
-          onExtensionComplete={() => {
-            setRenewDialogOpen(false);
-            setRenewBooking(null);
-            fetchData();
-          }}
-        />
-      )}
+
+
     </div>
   );
 }
