@@ -32,6 +32,7 @@ interface CabinItemProps {
   onManageSeats: (cabinId: string) => void;
   onToggleActive?: (cabinId: string, isActive: boolean) => void;
   onToggleBooking?: (cabinId: string, isActive: boolean) => void;
+  partnerId?: string;
 }
 
 export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBooking, onManageSeats }: CabinItemProps) {
