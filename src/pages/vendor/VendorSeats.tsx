@@ -1000,6 +1000,93 @@ const VendorSeats: React.FC = () => {
         </div>
       )}
 
+      {/* ──── Room View ──── */}
+      {viewMode === 'room' && (() => {
+        const roomGroups: { cabinName: string; floor: number; category: string; seats: typeof filteredSeats }[] = [];
+        const roomMap = new Map<string, number>();
+        filteredSeats.forEach(seat => {
+          const key = `${seat.cabinId}::${seat.floor}`;
+          if (roomMap.has(key)) {
+            roomGroups[roomMap.get(key)!].seats.push(seat);
+          } else {
+            roomMap.set(key, roomGroups.length);
+            roomGroups.push({ cabinName: seat.cabinName, floor: seat.floor, category: seat.category, seats: [seat] });
+          }
+        });
+        return (
+          <div className="space-y-3">
+            {roomGroups.map((group, gi) => (
+              <div key={gi} className="border rounded-lg overflow-hidden">
+                <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border-b">
+                  <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="text-xs font-semibold">{group.cabinName}</span>
+                  <Badge variant="outline" className="text-[9px] px-1 py-0">{group.category}</Badge>
+                  <span className="text-[10px] text-muted-foreground">Floor {group.floor}</span>
+                  <span className="text-[10px] text-muted-foreground ml-auto">{group.seats.length} seats</span>
+                </div>
+                <div className="flex flex-wrap gap-1 p-2">
+                  {group.seats.map(seat => (
+                    <div
+                      key={seat._id}
+                      onClick={() => handleSeatClick(seat)}
+                      className={cn(
+                        "relative border rounded cursor-pointer p-1 flex flex-col items-center justify-center text-center transition-all hover:shadow-md group min-h-[72px] min-w-[72px] max-w-[80px]",
+                        statusColors(seat.dateStatus)
+                      )}
+                    >
+                      <span className="text-xs font-bold leading-none">{seatLabel(seat)}</span>
+                      <div className="flex items-center gap-0.5">
+                        <span className="text-[9px] font-medium leading-tight">₹{seat.price}</span>
+                        {canEditPrice && (
+                          <button className="h-3 w-3 inline-flex items-center justify-center text-muted-foreground hover:text-foreground" onClick={(e) => { e.stopPropagation(); setEditingSeatId(seat._id); setEditPrice(String(seat.price)); }}>
+                            <Edit className="h-2.5 w-2.5" />
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-0.5 mt-0.5">
+                        {statusIcon(seat.dateStatus)}
+                        <span className="text-[8px]">{statusLabel(seat.dateStatus)}</span>
+                        {seat.currentBooking?.slotId && seat.currentBooking?.slotName && (
+                          <Badge className={cn("text-[7px] px-1 py-0 h-3 ml-0.5 border-0", seat.currentBooking.slotName.toLowerCase().includes('morning') ? "bg-violet-500 text-white" : "bg-blue-500 text-white")}>
+                            {seat.currentBooking.slotName.toLowerCase().includes('morning') ? 'AM' : 'PM'}
+                          </Badge>
+                        )}
+                      </div>
+                      {(seat.dateStatus === 'booked' || seat.dateStatus === 'expiring_soon') && seat.currentBooking?.studentName && (
+                        <div className="text-[7px] truncate w-full leading-none mt-0.5 font-medium opacity-80">{seat.currentBooking.studentName}</div>
+                      )}
+                      {seat.dateStatus === 'available' && seat.allBookings?.length > 0 && seat.allBookings[0]?.studentName && (
+                        <div className="text-[7px] truncate w-full leading-none mt-0.5 font-medium opacity-60">{seat.allBookings[0].studentName}</div>
+                      )}
+                      {(canBlockSeat || canEditPrice) && (
+                        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1 rounded">
+                          {canBlockSeat && (
+                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => openBlockDialog(seat, e)} title={seat.isAvailable ? 'Block' : 'Unblock'}>
+                              {seat.isAvailable ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                            </Button>
+                          )}
+                          {canEditPrice && (
+                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => { e.stopPropagation(); setEditingSeatId(seat._id); setEditPrice(String(seat.price)); }}>
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                          )}
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => { e.stopPropagation(); handleSeatClick(seat); }}>
+                            <Info className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+            {roomGroups.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground text-sm">No seats found</div>
+            )}
+          </div>
+        );
+      })()}
+
       {/* ──── Table View ──── */}
       {viewMode === 'table' && (
         <div className="border rounded-md overflow-hidden">
