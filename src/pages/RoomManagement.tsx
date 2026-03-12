@@ -386,7 +386,10 @@ const RoomManagement: React.FC<RoomManagementProps> = ({ autoCreateNew, onTrigge
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-lg font-semibold tracking-tight">Reading Room Management</h1>
+          <h1 className="text-lg font-semibold tracking-tight">
+            Reading Room Management
+            {totalItems > 0 && <Badge variant="secondary" className="ml-2 text-xs font-normal">{totalItems}</Badge>}
+          </h1>
           <p className="text-muted-foreground text-xs mt-0.5">
             Configure and manage your reading room inventory.
           </p>
