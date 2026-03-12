@@ -27,6 +27,7 @@ const ManageProperties: React.FC = () => {
   const navigate = useNavigate();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [triggerNew, setTriggerNew] = useState(false);
+  const [showPlansDialog, setShowPlansDialog] = useState(false);
 
   // Check for active universal subscription
   const { data: partner } = useQuery({
