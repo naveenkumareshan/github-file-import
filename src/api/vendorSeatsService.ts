@@ -122,6 +122,7 @@ export interface PartnerBookingData {
   advancePaid?: number;
   dueDate?: string;
   slotId?: string;
+  paymentProofUrl?: string;
 }
 
 export interface BlockHistoryEntry {
@@ -582,6 +583,7 @@ export const vendorSeatsService = {
           collected_by_name: data.collectedByName || '',
           transaction_id: data.transactionId || '',
           slot_id: data.slotId || null,
+          payment_proof_url: data.paymentProofUrl || null,
         })
         .select('id, serial_number')
         .single();
@@ -645,6 +647,7 @@ export const vendorSeatsService = {
           collected_by_name: data.collectedByName || '',
           receipt_type: 'booking_payment',
           notes: data.isAdvanceBooking ? 'Advance payment' : '',
+          payment_proof_url: data.paymentProofUrl || null,
         } as any);
       } catch (e) {
         console.error('Receipt creation failed:', e);
@@ -898,7 +901,7 @@ export const vendorSeatsService = {
     }
   },
 
-  collectDuePayment: async (dueId: string, amount: number, paymentMethod: string, txnId: string, notes: string) => {
+  collectDuePayment: async (dueId: string, amount: number, paymentMethod: string, txnId: string, notes: string, paymentProofUrl?: string) => {
     try {
       // Duplicate transaction ID check for non-cash methods
       if (paymentMethod !== 'cash' && txnId && txnId.trim()) {
@@ -919,6 +922,7 @@ export const vendorSeatsService = {
         collected_by: user?.id || null,
         collected_by_name: profile?.name || '',
         notes: notes || '',
+        payment_proof_url: paymentProofUrl || null,
       } as any);
 
       const { data: due, error: dueError } = await supabase
@@ -962,6 +966,7 @@ export const vendorSeatsService = {
           collected_by_name: profile?.name || '',
           receipt_type: 'due_collection',
           notes: notes || '',
+          payment_proof_url: paymentProofUrl || null,
         } as any);
       } catch (e) {
         console.error('Receipt creation failed:', e);

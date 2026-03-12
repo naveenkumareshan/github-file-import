@@ -616,6 +616,7 @@ const HostelBedMap: React.FC = () => {
       receipt_type: 'due_collection',
       collected_by: user?.id,
       collected_by_name: collectedByName,
+      payment_proof_url: paymentProofUrl || null,
     });
     if (!receiptError) {
       // Update booking remaining_amount
@@ -949,6 +950,7 @@ const HostelBedMap: React.FC = () => {
       transaction_id: transactionId,
       collected_by: user?.id,
       collected_by_name: collectedByName,
+      payment_proof_url: paymentProofUrl || null,
     }).select('id, serial_number').single();
 
     if (!error && newBooking) {
@@ -980,6 +982,7 @@ const HostelBedMap: React.FC = () => {
         receipt_type: 'booking_payment',
         collected_by: user?.id,
         collected_by_name: collectedByName,
+        payment_proof_url: paymentProofUrl || null,
       });
 
       // Create hostel_dues entry if advance booking (partial payment)

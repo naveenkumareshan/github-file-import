@@ -417,7 +417,7 @@ const VendorSeats: React.FC = () => {
     const amt = parseFloat(dueCollectAmount);
     if (amt <= 0) { toast({ title: 'Enter valid amount', variant: 'destructive' }); return; }
     setCollectingDue(true);
-    const res = await vendorSeatsService.collectDuePayment(dueId, amt, dueCollectMethod, dueCollectTxnId, dueCollectNotes);
+    const res = await vendorSeatsService.collectDuePayment(dueId, amt, dueCollectMethod, dueCollectTxnId, dueCollectNotes, paymentProofUrl);
     if (res.success) {
       toast({ title: 'Payment collected' });
       setExpandedDueBookingId('');
@@ -684,6 +684,7 @@ const VendorSeats: React.FC = () => {
       collectedBy: user?.id,
       collectedByName: collectedByName,
       transactionId: transactionId,
+      paymentProofUrl: paymentProofUrl,
       isAdvanceBooking: isAdvanceBooking && !!advanceComputed,
       advancePaid: isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : undefined,
       dueDate: isAdvanceBooking && advanceComputed ? format(advanceComputed.proportionalEndDate, 'yyyy-MM-dd') : undefined,

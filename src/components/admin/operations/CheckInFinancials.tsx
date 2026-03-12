@@ -18,6 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { vendorSeatsService } from '@/api/vendorSeatsService';
 import { DuePaymentHistory } from '@/components/booking/DuePaymentHistory';
 import { HostelDuePaymentHistory } from '@/components/booking/HostelDuePaymentHistory';
+import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
 
 type Module = 'reading_room' | 'hostel';
 
@@ -35,6 +36,7 @@ export const CollectDrawer: React.FC<CollectDrawerProps> = ({ open, onOpenChange
   const [method, setMethod] = useState('cash');
   const [txnId, setTxnId] = useState('');
   const [notes, setNotes] = useState('');
+  const [proofUrl, setProofUrl] = useState('');
   const [collecting, setCollecting] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -46,6 +48,7 @@ export const CollectDrawer: React.FC<CollectDrawerProps> = ({ open, onOpenChange
       setMethod('cash');
       setTxnId('');
       setNotes('');
+      setProofUrl('');
     }
   }, [due, open]);
 
@@ -66,7 +69,7 @@ export const CollectDrawer: React.FC<CollectDrawerProps> = ({ open, onOpenChange
     setCollecting(true);
 
     if (module === 'reading_room') {
-      const res = await vendorSeatsService.collectDuePayment(due.id, amt, method, txnId, notes);
+      const res = await vendorSeatsService.collectDuePayment(due.id, amt, method, txnId, notes, proofUrl);
       if (res.success) {
         toast({ title: 'Payment collected successfully' });
         onOpenChange(false);
@@ -89,6 +92,7 @@ export const CollectDrawer: React.FC<CollectDrawerProps> = ({ open, onOpenChange
         collected_by: user?.id,
         collected_by_name: collectedByName,
         notes,
+        payment_proof_url: proofUrl || null,
       });
 
       if (paymentError) {
@@ -113,6 +117,7 @@ export const CollectDrawer: React.FC<CollectDrawerProps> = ({ open, onOpenChange
         collected_by: user?.id,
         collected_by_name: collectedByName,
         notes,
+        payment_proof_url: proofUrl || null,
       });
 
       if (newStatus === 'paid' && due.booking_id) {
@@ -169,6 +174,10 @@ export const CollectDrawer: React.FC<CollectDrawerProps> = ({ open, onOpenChange
               <Label className="text-xs">Transaction ID</Label>
               <Input className="h-8 text-xs" value={txnId} onChange={e => setTxnId(e.target.value)} />
             </div>
+          )}
+
+          {method !== 'cash' && (
+            <PaymentProofUpload value={proofUrl} onChange={setProofUrl} />
           )}
 
           <div>
