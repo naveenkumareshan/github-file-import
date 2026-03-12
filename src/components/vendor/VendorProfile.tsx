@@ -135,53 +135,6 @@ export const VendorProfile: React.FC = () => {
     }
   };
 
-  const handleAddProperty = async () => {
-    if (!newPropertyName.trim()) {
-      toast({ title: "Error", description: "Property name is required", variant: "destructive" });
-      return;
-    }
-    setAddingProperty(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      if (newPropertyType === 'reading_room') {
-        const result = await adminCabinsService.createCabin({
-          name: newPropertyName,
-          city: newPropertyCity || null,
-          state: newPropertyState || null,
-          is_active: false,
-          isActive: false,
-          created_by: user.id,
-        });
-        if (!result.success) throw new Error(result.message || 'Failed to create reading room');
-        if (result.data?.id) {
-          await supabase.from('cabins').update({ is_approved: false, is_active: false }).eq('id', result.data.id);
-        }
-      } else {
-        const { error } = await supabase.from('hostels').insert({
-          name: newPropertyName,
-          location: [newPropertyCity, newPropertyState].filter(Boolean).join(', '),
-          gender: newPropertyGender,
-          is_active: false,
-          is_approved: false,
-          created_by: user.id,
-        });
-        if (error) throw error;
-      }
-
-      toast({ title: "Success", description: "Property submitted for approval!" });
-      setShowAddProperty(false);
-      setNewPropertyName('');
-      setNewPropertyCity('');
-      setNewPropertyState('');
-      fetchProperties();
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message || "Failed to add property", variant: "destructive" });
-    } finally {
-      setAddingProperty(false);
-    }
-  };
 
   const isSectionLocked = (section: string) => docApprovals[section] === 'approved';
 
