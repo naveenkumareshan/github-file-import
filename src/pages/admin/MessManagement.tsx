@@ -20,7 +20,12 @@ const ITEMS_PER_PAGE = 9;
 const MEALS = ['breakfast', 'lunch', 'dinner'];
 const MEAL_LABELS: Record<string, string> = { breakfast: 'Breakfast', lunch: 'Lunch', dinner: 'Dinner' };
 
-export default function MessManagement() {
+interface MessManagementProps {
+  autoCreateNew?: boolean;
+  onTriggerConsumed?: () => void;
+}
+
+export default function MessManagement({ autoCreateNew, onTriggerConsumed }: MessManagementProps = {}) {
   const [messes, setMesses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
