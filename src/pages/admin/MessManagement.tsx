@@ -36,6 +36,7 @@ export default function MessManagement({ autoCreateNew, onTriggerConsumed }: Mes
   const [isPackagesOpen, setIsPackagesOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const { user } = useAuth();
 
   // Packages state
