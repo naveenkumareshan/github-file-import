@@ -117,6 +117,7 @@ export const CollectDrawer: React.FC<CollectDrawerProps> = ({ open, onOpenChange
         collected_by: user?.id,
         collected_by_name: collectedByName,
         notes,
+        payment_proof_url: proofUrl || null,
       });
 
       if (newStatus === 'paid' && due.booking_id) {
