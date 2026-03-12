@@ -32,6 +32,7 @@ const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTr
   const [isPackagesOpen, setIsPackagesOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const navigate = useNavigate();
   const { user } = useAuth();
 
