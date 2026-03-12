@@ -211,6 +211,7 @@ export default function MessManagement({ autoCreateNew, onTriggerConsumed }: Mes
                   onManagePackages={handleManagePackages}
                   onToggleActive={handleToggleActive}
                   onToggleBooking={handleToggleBooking}
+                  onTogglePartnerVisible={handleTogglePartnerVisible}
                 />
               ))}
             </div>
