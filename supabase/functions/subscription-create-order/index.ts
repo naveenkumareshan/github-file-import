@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
     if (propertyType !== 'universal' && propertyId) {
       const { data } = await adminClient
         .from("property_subscriptions")
-        .select("plan_id, subscription_plans(display_order)")
+        .select("plan_id, subscription_plans!property_subscriptions_plan_id_fkey(display_order)")
         .eq("property_id", propertyId)
         .eq("status", "active")
         .order("created_at", { ascending: false })
