@@ -328,7 +328,13 @@ export default function MySubscriptions() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-bold flex items-center gap-2"><Crown className="h-5 w-5" /> My Subscriptions</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold flex items-center gap-2"><Crown className="h-5 w-5" /> My Subscriptions</h1>
+        <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={() => setShowPlansDialog(true)}>
+          <LayoutGrid className="h-3 w-3" /> View Plans
+        </Button>
+      </div>
+      <PlansComparisonDialog open={showPlansDialog} onOpenChange={setShowPlansDialog} />
 
       {/* Universal Package Banner */}
       {!universalSub && (
