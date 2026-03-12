@@ -5,6 +5,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Edit, FileMinus, FilePlus, Trash2, Users, MessageCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { WhatsAppPropertyDialog } from './WhatsAppPropertyDialog';
+import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
+import { Badge } from '@/components/ui/badge';
+import { ShieldCheck, Clock, AlertTriangle } from 'lucide-react';
 
 interface CabinData {
   _id: string;
@@ -29,12 +32,40 @@ interface CabinItemProps {
   onManageSeats: (cabinId: string) => void;
   onToggleActive?: (cabinId: string, isActive: boolean) => void;
   onToggleBooking?: (cabinId: string, isActive: boolean) => void;
+  partnerId?: string;
 }
 
-export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBooking, onManageSeats }: CabinItemProps) {
+export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBooking, onManageSeats, partnerId }: CabinItemProps) {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const [waDialogOpen, setWaDialogOpen] = useState(false);
+  const { hasSubscription, daysRemaining, isExpired, currentPlan } = useSubscriptionAccess(cabin._id || cabin.id, 'reading_room', partnerId);
+
+  const renderSubscriptionBadge = () => {
+    if (isAdmin) return null;
+    if (hasSubscription && currentPlan) {
+      return (
+        <Badge variant="outline" className="gap-1 text-[10px] border-primary/50 text-primary">
+          <ShieldCheck className="h-2.5 w-2.5" />
+          {currentPlan.name} ({daysRemaining}d)
+        </Badge>
+      );
+    }
+    if (!isExpired && daysRemaining > 0) {
+      return (
+        <Badge variant="outline" className="gap-1 text-[10px] border-amber-500 text-amber-600">
+          <Clock className="h-2.5 w-2.5" />
+          Trial ({daysRemaining}d)
+        </Badge>
+      );
+    }
+    return (
+      <Badge variant="outline" className="gap-1 text-[10px] border-muted-foreground/50 text-muted-foreground">
+        <AlertTriangle className="h-2.5 w-2.5" />
+        No Plan
+      </Badge>
+    );
+  };
 
   const getCategoryBadgeStyle = (category: string) => {
     switch (category) {
@@ -73,6 +104,7 @@ export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBoo
         <div className="p-4 flex-1 flex flex-col gap-2.5">
           {/* Meta row */}
           <div className="flex items-center gap-1.5 flex-wrap">
+            {renderSubscriptionBadge()}
             {user?.role === 'admin' && cabin.vendorId && (
               <span className="bg-muted text-muted-foreground px-2 py-0.5 rounded-full text-xs">
                 {cabin.vendorId.businessName}

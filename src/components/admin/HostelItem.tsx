@@ -8,6 +8,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ShareButton } from '@/components/ShareButton';
 import { generateHostelShareText } from '@/utils/shareUtils';
 import { WhatsAppPropertyDialog } from './WhatsAppPropertyDialog';
+import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
+import { Badge } from '@/components/ui/badge';
+import { ShieldCheck, Clock, AlertTriangle } from 'lucide-react';
 
 interface HostelItemProps {
   hostel: any;
@@ -17,13 +20,41 @@ interface HostelItemProps {
   onManagePackages: (hostel: any) => void;
   onToggleActive?: (hostelId: string, isActive: boolean) => void;
   onToggleBooking?: (hostelId: string, isBookingActive: boolean) => void;
+  partnerId?: string;
 }
 
-export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePackages, onToggleActive, onToggleBooking }: HostelItemProps) {
+export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePackages, onToggleActive, onToggleBooking, partnerId }: HostelItemProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const isAdmin = user?.role === 'admin';
   const [waDialogOpen, setWaDialogOpen] = useState(false);
+  const { hasSubscription, daysRemaining, isExpired, currentPlan } = useSubscriptionAccess(hostel.id, 'hostel', partnerId);
+
+  const renderSubscriptionBadge = () => {
+    if (isAdmin) return null;
+    if (hasSubscription && currentPlan) {
+      return (
+        <Badge variant="outline" className="gap-1 text-[10px] border-primary/50 text-primary">
+          <ShieldCheck className="h-2.5 w-2.5" />
+          {currentPlan.name} ({daysRemaining}d)
+        </Badge>
+      );
+    }
+    if (!isExpired && daysRemaining > 0) {
+      return (
+        <Badge variant="outline" className="gap-1 text-[10px] border-amber-500 text-amber-600">
+          <Clock className="h-2.5 w-2.5" />
+          Trial ({daysRemaining}d)
+        </Badge>
+      );
+    }
+    return (
+      <Badge variant="outline" className="gap-1 text-[10px] border-muted-foreground/50 text-muted-foreground">
+        <AlertTriangle className="h-2.5 w-2.5" />
+        No Plan
+      </Badge>
+    );
+  };
 
   const getGenderBadgeStyle = (gender: string) => {
     switch (gender) {
@@ -66,6 +97,7 @@ export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePac
         <div className="p-4 flex-1 flex flex-col gap-2.5">
           {/* Meta row */}
           <div className="flex items-center gap-1.5 flex-wrap">
+            {renderSubscriptionBadge()}
             {hostel.serial_number && (
               <span className="bg-muted text-muted-foreground px-2 py-0.5 rounded-full text-xs font-mono">
                 #{hostel.serial_number}
