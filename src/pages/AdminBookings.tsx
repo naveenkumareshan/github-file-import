@@ -17,6 +17,8 @@ import { BookingFilters } from "@/types/BookingTypes";
 import { Eye, Search, Filter, BookOpen } from "lucide-react";
 import { AdminTablePagination, getSerialNumber } from "@/components/admin/AdminTablePagination";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useAuth } from "@/contexts/AuthContext";
+import { getEffectiveOwnerId } from "@/utils/getEffectiveOwnerId";
 
 type BookingStatus = "pending" | "completed" | "failed";
 
