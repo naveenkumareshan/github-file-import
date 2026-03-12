@@ -1,71 +1,48 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+# Redesign "My Subscriptions" Page — Summary Cards, Table View, Filters, Actions
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+## Current State
+The page shows property cards with subscribe/upgrade buttons and a Razorpay checkout dialog. It works but lacks:
+- Summary cards (active count, monthly cost, yearly billing, next renewal)
+- Tabular view of all subscriptions with actions
+- Filters by property type/name
+- View Details, Download Invoice, Upgrade, Cancel actions
+- **Bug**: Query uses `subscription_plans(*)` but table has two FKs to `subscription_plans` (`plan_id` and `previous_plan_id`), causing PGRST201 error. Must use `subscription_plans!property_subscriptions_plan_id_fkey(*)`.
 
-## Changes
+## Changes — `src/pages/partner/MySubscriptions.tsx` (full rewrite)
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+### Fix the FK ambiguity bug
+All queries using `.select('*, subscription_plans(*)')` on `property_subscriptions` will be changed to `.select('*, subscription_plans!property_subscriptions_plan_id_fkey(*)')`.
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+### Top Summary Cards (4 cards)
+1. **Active Subscriptions** — count of subscriptions with `status = 'active'`
+2. **Total Monthly Cost** — sum of `amount_paid / 12` for active subs
+3. **Total Yearly Billing** — sum of `amount_paid` for active subs
+4. **Next Renewal** — earliest `end_date` among active subs, with a "Renew" button
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+### Filters Row
+- Property Type dropdown: All / Reading Room / Hostel / Universal
+- Property Name search input (text filter)
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+### Subscriptions Table
+Columns: Property Name, Plan, Billing Cycle (always "Yearly"), Amount Paid, Status (badge), Next Renewal Date
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
+Row actions (dropdown or inline buttons):
+- **View Details** — opens dialog showing full subscription info (plan features, capacity, dates, payment IDs)
+- **Download Invoice** — generates and prints an invoice HTML (reuse invoice pattern)
+- **Upgrade Plan** — opens existing plan selection dialog (reuse current flow)
+- **Cancel Subscription** — only enabled if `end_date > today` (cancels future renewal, sets a `cancel_at_period_end` flag or updates status). For now: confirms and updates status to `cancelled` only if end_date is in the future (current period continues).
 
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
+### Keep existing subscribe/upgrade dialog
+The Razorpay checkout flow (steps 1-3) remains intact, triggered by "Upgrade Plan" action or the "Renew" button.
 
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
+### Fetch all subscriptions (not just active)
+Query includes `active`, `cancelled`, `expired` statuses to show full history.
 
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
+### Resolve property names
+Join property names by looking up `cabins` and `hostels` data already fetched. For universal subs, show "All Properties".
 
-**Reviews section**: Shown below the booking flow (not in a tab)
-
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
-
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
-
-| File | Change |
-|------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+## Files Modified
+- `src/pages/partner/MySubscriptions.tsx` — full redesign with summary cards, table, filters, actions
 
