@@ -107,6 +107,7 @@ const AdminBookings = () => {
         <div className="min-w-0">
           <p className="font-medium text-xs truncate">{b.userId?.name || "N/A"}</p>
           <p className="text-[10px] text-muted-foreground truncate">{b.userId?.email || ""}</p>
+          {b.userId?.phone && <p className="text-[10px] text-muted-foreground truncate">{b.userId.phone}</p>}
         </div>
         <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium capitalize ${badgeCls(b.status || "pending")}`}>
           {b.status || "pending"}
@@ -204,8 +205,9 @@ const AdminBookings = () => {
                         <TableCell className="py-1 px-2 text-[11px] text-muted-foreground">{getSerialNumber(idx, currentPage, pageSize)}</TableCell>
                         <TableCell className="py-1 px-2 font-mono text-[10px]">{b.bookingId || b._id}</TableCell>
                         <TableCell className="py-1 px-2 text-[11px] whitespace-nowrap">
-                          <span className="font-medium">{b.userId?.name || "N/A"}</span>
-                          {b.userId?.email && <span className="text-muted-foreground ml-1 max-w-[140px] truncate inline-block align-bottom">({b.userId.email})</span>}
+                          <div className="font-medium">{b.userId?.name || "N/A"}</div>
+                          {b.userId?.email && <div className="text-[10px] text-muted-foreground truncate max-w-[160px]">{b.userId.email}</div>}
+                          {b.userId?.phone && <div className="text-[10px] text-muted-foreground">{b.userId.phone}</div>}
                         </TableCell>
                         <TableCell className="py-1 px-2"><Badge variant="outline" className="text-[10px] px-1.5 py-0 leading-none">{b.seatCategory || "—"}</Badge></TableCell>
                         <TableCell className="py-1 px-2 text-[10px] whitespace-nowrap">
