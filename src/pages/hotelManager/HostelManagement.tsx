@@ -140,8 +140,7 @@ const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTr
     const q = searchQuery.toLowerCase();
     return h.name?.toLowerCase().includes(q) || h.serial_number?.toLowerCase().includes(q) || h.locality?.toLowerCase().includes(q);
   });
-  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
-  const paginated = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   if (showEditor) {
     return (
