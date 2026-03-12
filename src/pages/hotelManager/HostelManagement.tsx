@@ -151,7 +151,7 @@ const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTr
             <h1 className="text-lg font-semibold tracking-tight">Manage Hostels</h1>
             <p className="text-xs text-muted-foreground mt-0.5">View and manage all hostels and their rooms.</p>
           </div>
-          {user?.role === 'admin' && (
+          {(user?.role === 'admin' || user?.role === 'vendor') && (
             <Button onClick={handleAddHostel} size="sm" className="flex items-center gap-1.5">
               <Plus className="h-4 w-4" /> Add Hostel
             </Button>
