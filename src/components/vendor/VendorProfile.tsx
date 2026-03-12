@@ -277,7 +277,6 @@ export const VendorProfile: React.FC = () => {
           <TabsTrigger value="business" className="text-xs">Business Details</TabsTrigger>
           <TabsTrigger value="bank" className="text-xs">Bank Details</TabsTrigger>
           <TabsTrigger value="documents" className="text-xs">Documents</TabsTrigger>
-          <TabsTrigger value="properties" className="text-xs">Properties</TabsTrigger>
         </TabsList>
 
         <TabsContent value="basic" className="space-y-3">
