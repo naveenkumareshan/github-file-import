@@ -35,6 +35,7 @@ import { PaymentMethodSelector } from '@/components/vendor/PaymentMethodSelector
 import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
 import { BookingUpdateDatesDialog } from '@/components/admin/BookingUpdateDatesDialog';
 import { Textarea } from '@/components/ui/textarea';
+import { bookingEmailService } from '@/api/bookingEmailService';
 
 type ViewMode = 'grid' | 'table';
 type StatusFilter = 'all' | 'available' | 'booked' | 'expiring_soon' | 'blocked' | 'future_booked';
