@@ -205,6 +205,7 @@ export const BookingTransactions: React.FC<BookingTransactionsProps> = ({ dateRa
         { header: 'Booking ID', key: 'bookingId', width: 20 },
         { header: 'Customer Name', key: 'customerName', width: 25 },
         { header: 'Email', key: 'email', width: 30 },
+        { header: 'Phone', key: 'phone', width: 18 },
         { header: 'Property', key: 'property', width: 25 },
         { header: 'Seat', key: 'seat', width: 10 },
         { header: 'Amount', key: 'amount', width: 15 },
