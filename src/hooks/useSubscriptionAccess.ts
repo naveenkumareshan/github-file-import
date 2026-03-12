@@ -96,9 +96,41 @@ export function useSubscriptionAccess(propertyId?: string, propertyType?: 'hoste
     enabled: !!partnerId && !propertySub,
   });
 
-  const isLoading = propLoading || uniLoading;
+  // Fetch property's free_trial_days and created_at for trial calculation
+  const { data: propertyTrialInfo, isLoading: trialLoading } = useQuery({
+    queryKey: ['property-trial-info', propertyId, propertyType],
+    queryFn: async () => {
+      if (!propertyId || !propertyType) return null;
+      const table = propertyType === 'hostel' ? 'hostels' : 'cabins';
+      const { data, error } = await supabase
+        .from(table)
+        .select('free_trial_days, created_at')
+        .eq('id', propertyId)
+        .maybeSingle();
+      if (error) {
+        console.error('Error fetching property trial info:', error);
+        return null;
+      }
+      return data as { free_trial_days: number; created_at: string } | null;
+    },
+    enabled: !!propertyId && !!propertyType,
+  });
+
+  const isLoading = propLoading || uniLoading || trialLoading;
   const subscription = propertySub || universalSub || null;
   const currentPlan = subscription?.plan || null;
+
+  // Calculate trial days from property
+  const calcTrialDaysRemaining = (): number => {
+    if (!propertyTrialInfo || !propertyTrialInfo.free_trial_days || propertyTrialInfo.free_trial_days <= 0) return 0;
+    const createdAt = new Date(propertyTrialInfo.created_at);
+    const now = new Date();
+    const daysSinceCreation = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
+    return Math.max(0, propertyTrialInfo.free_trial_days - daysSinceCreation);
+  };
+
+  const trialDaysRemaining = calcTrialDaysRemaining();
+  const isInTrial = !subscription && trialDaysRemaining > 0;
 
   const hasFeature = (featureKey: string): boolean => {
     if (!currentPlan) return false;
@@ -122,7 +154,7 @@ export function useSubscriptionAccess(propertyId?: string, propertyType?: 'hoste
     return currentCount < limit;
   };
 
-  const daysRemaining = (): number => {
+  const subDaysRemaining = (): number => {
     if (!subscription?.end_date) return 0;
     const end = new Date(subscription.end_date);
     const now = new Date();
@@ -130,7 +162,8 @@ export function useSubscriptionAccess(propertyId?: string, propertyType?: 'hoste
     return Math.max(0, diff);
   };
 
-  const isExpired = !subscription || subscription.status !== 'active' || daysRemaining() <= 0;
+  const daysRemainingVal = subDaysRemaining();
+  const isExpired = !subscription && !isInTrial;
   const needsUpgrade = (currentCount: number) => !isWithinCapacity(currentCount);
 
   return {
@@ -139,8 +172,10 @@ export function useSubscriptionAccess(propertyId?: string, propertyType?: 'hoste
     hasFeature,
     isWithinCapacity,
     getCapacityLimit,
-    daysRemaining: daysRemaining(),
+    daysRemaining: subscription ? daysRemainingVal : trialDaysRemaining,
     isExpired,
+    isInTrial,
+    trialDaysRemaining,
     needsUpgrade,
     isLoading,
     hasSubscription: !!subscription && subscription.status === 'active',
