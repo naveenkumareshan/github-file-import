@@ -202,24 +202,8 @@ export default function HostelExpiringBookingsPage() {
         </CardContent>
       </Card>
 
-      {renewBooking && (
-        <BookingExtensionDialog
-          open={renewDialogOpen}
-          onOpenChange={(open) => {
-            setRenewDialogOpen(open);
-            if (!open) setRenewBooking(null);
-          }}
-          bookingId={renewBooking.id}
-          booking={renewBooking}
-          bookingType="hostel"
-          currentEndDate={new Date(renewBooking.end_date)}
-          onExtensionComplete={() => {
-            setRenewDialogOpen(false);
-            setRenewBooking(null);
-            fetchData();
-          }}
-        />
-      )}
+
+
     </div>
   );
 }
