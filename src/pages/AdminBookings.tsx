@@ -55,8 +55,17 @@ const AdminBookings = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
   const isMobile = useIsMobile();
   const routePrefix = location.pathname.startsWith('/admin') ? '/admin' : '/partner';
+  const isPartner = user?.role === 'vendor' || user?.role === 'vendor_employee';
+  const [partnerUserId, setPartnerUserId] = useState<string | undefined>();
+
+  useEffect(() => {
+    if (isPartner) {
+      getEffectiveOwnerId().then(({ ownerId }) => setPartnerUserId(ownerId));
+    }
+  }, [isPartner]);
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
