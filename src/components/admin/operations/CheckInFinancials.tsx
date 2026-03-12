@@ -19,6 +19,7 @@ import { vendorSeatsService } from '@/api/vendorSeatsService';
 import { DuePaymentHistory } from '@/components/booking/DuePaymentHistory';
 import { HostelDuePaymentHistory } from '@/components/booking/HostelDuePaymentHistory';
 import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
+import { bookingEmailService } from '@/api/bookingEmailService';
 
 type Module = 'reading_room' | 'hostel';
 
