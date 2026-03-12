@@ -1264,6 +1264,13 @@ const HostelBedMap: React.FC = () => {
                 {statusIcon(bed.dateStatus)}
                 <span className="text-[8px]">{statusLabel(bed.dateStatus)}</span>
               </div>
+              {/* Student name */}
+              {(bed.dateStatus === 'booked' || bed.dateStatus === 'expiring_soon') && bed.currentBooking?.studentName && (
+                <div className="text-[7px] truncate w-full leading-none mt-0.5 font-medium opacity-80">{bed.currentBooking.studentName}</div>
+              )}
+              {bed.dateStatus === 'future_booked' && bed.allBookings?.[0]?.studentName && (
+                <div className="text-[7px] truncate w-full leading-none mt-0.5 font-medium opacity-60">{bed.allBookings[0].studentName}</div>
+              )}
               {/* Hover actions */}
               <div className="absolute inset-0 bg-background/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1 rounded">
                 <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={(e) => openBlockDialog(bed, e)} title={bed.is_blocked ? 'Unblock' : 'Block'}>

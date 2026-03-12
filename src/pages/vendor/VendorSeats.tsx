@@ -967,6 +967,13 @@ const VendorSeats: React.FC = () => {
                   </Badge>
                 )}
               </div>
+              {/* Student name */}
+              {(seat.dateStatus === 'booked' || seat.dateStatus === 'expiring_soon') && seat.currentBooking?.studentName && (
+                <div className="text-[7px] truncate w-full leading-none mt-0.5 font-medium opacity-80">{seat.currentBooking.studentName}</div>
+              )}
+              {seat.dateStatus === 'future_booked' && seat.allBookings?.[0]?.studentName && (
+                <div className="text-[7px] truncate w-full leading-none mt-0.5 font-medium opacity-60">{seat.allBookings[0].studentName}</div>
+              )}
               {/* Hover actions: block + details */}
               {(canBlockSeat || canEditPrice) && (
                 <div className="absolute inset-0 bg-background/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1 rounded">
