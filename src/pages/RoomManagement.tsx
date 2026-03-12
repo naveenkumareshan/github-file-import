@@ -123,6 +123,7 @@ const RoomManagement: React.FC<RoomManagementProps> = ({ autoCreateNew, onTrigge
           images: cabin.images || [],
           isActive: cabin.is_active !== false,
           isBookingActive: cabin.is_booking_active !== false,
+          isPartnerVisible: cabin.is_partner_visible !== false,
         }));
         
         setCabins(processedCabins);
