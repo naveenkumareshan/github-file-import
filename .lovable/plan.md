@@ -1,71 +1,40 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+# Fix Property Cards: Show Trial Days + Subscribe Button (with Razorpay)
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+## Problem
+Property cards in Manage Properties show "No Plan" even when the property has `free_trial_days` set by admin. There's no way to subscribe directly from the card — partners must navigate to "My Subscriptions" separately.
+
+## Root Cause
+`useSubscriptionAccess` hook only checks `property_subscriptions` table. It doesn't check the property's `free_trial_days` field or `created_at` to calculate remaining trial days. When no subscription exists, it always returns `isExpired=true` and `daysRemaining=0`.
 
 ## Changes
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+### 1. `src/hooks/useSubscriptionAccess.ts` — Add trial day awareness
+- Add a new query to fetch the property's `free_trial_days` and `created_at` from `cabins` or `hostels` table (based on `propertyType`)
+- Calculate trial days remaining: `free_trial_days - daysSince(created_at)`
+- Return new fields: `trialDaysRemaining`, `isInTrial` (true if no subscription but trial days > 0)
+- Adjust `isExpired` to be false when in trial
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+### 2. `src/components/admin/CabinItem.tsx` — Show trial badge + Subscribe button
+- Use new `isInTrial` and `trialDaysRemaining` from hook
+- When in trial: show amber badge "Trial (Xd left)" instead of "No Plan"
+- When no plan and no trial: show "No Plan" + a small "Subscribe" button
+- Subscribe button opens a dialog with plan selection + Razorpay checkout (reuse the `MySubscriptions` payment logic inline)
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+### 3. `src/components/admin/HostelItem.tsx` — Same changes as CabinItem
+- Mirror the trial badge and Subscribe button logic
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+### 4. New component: `src/components/admin/PropertySubscribeDialog.tsx`
+- Reusable dialog that accepts `propertyId`, `propertyName`, `propertyType`, `partnerId`
+- Shows available plans from `subscription_plans` table (non-universal, active)
+- Step 1: Select plan → Step 2: Capacity upgrades (if enabled) → Step 3: Summary + coupon + Pay button
+- Uses same Razorpay flow as `MySubscriptions`: calls `subscription-create-order` edge function, opens Razorpay checkout, verifies via `subscription-verify-payment`
+- On success: invalidates subscription queries, shows success toast
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
-
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
-
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
-
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
-
-**Reviews section**: Shown below the booking flow (not in a tab)
-
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
-
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
-
-| File | Change |
-|------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+## Files Modified
+- `src/hooks/useSubscriptionAccess.ts` — add trial calculation from property table
+- `src/components/admin/CabinItem.tsx` — update badge logic + add Subscribe button
+- `src/components/admin/HostelItem.tsx` — update badge logic + add Subscribe button
+- `src/components/admin/PropertySubscribeDialog.tsx` — new reusable subscription dialog
 
