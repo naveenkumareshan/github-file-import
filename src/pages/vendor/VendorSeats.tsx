@@ -1847,8 +1847,8 @@ const VendorSeats: React.FC = () => {
                         />
                       </div>
 
-                      {/* Transaction ID (required for UPI/Bank) */}
-                      {(paymentMethod === 'upi' || paymentMethod === 'bank_transfer' || paymentMethod.startsWith('custom_')) && (
+                      {/* Transaction ID (required for all non-cash) */}
+                      {paymentMethod !== 'cash' && (
                         <div>
                           <Label className="text-[10px] uppercase text-muted-foreground">Transaction ID *</Label>
                           <Input className="h-8 text-xs" placeholder="Enter transaction reference ID" value={transactionId} onChange={e => setTransactionId(e.target.value)} />
