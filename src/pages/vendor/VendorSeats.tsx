@@ -971,7 +971,7 @@ const VendorSeats: React.FC = () => {
               {(seat.dateStatus === 'booked' || seat.dateStatus === 'expiring_soon') && seat.currentBooking?.studentName && (
                 <div className="text-[7px] truncate w-full leading-none mt-0.5 font-medium opacity-80">{seat.currentBooking.studentName}</div>
               )}
-              {seat.dateStatus === 'future_booked' && seat.allBookings?.[0]?.studentName && (
+              {seat.dateStatus === 'available' && seat.allBookings?.length > 0 && seat.allBookings[0]?.studentName && (
                 <div className="text-[7px] truncate w-full leading-none mt-0.5 font-medium opacity-60">{seat.allBookings[0].studentName}</div>
               )}
               {/* Hover actions: block + details */}
