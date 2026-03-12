@@ -922,6 +922,7 @@ export const vendorSeatsService = {
         collected_by: user?.id || null,
         collected_by_name: profile?.name || '',
         notes: notes || '',
+        payment_proof_url: paymentProofUrl || null,
       } as any);
 
       const { data: due, error: dueError } = await supabase
