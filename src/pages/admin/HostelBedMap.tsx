@@ -604,6 +604,10 @@ const HostelBedMap: React.FC = () => {
     if (!dueCollectAmount || !selectedBed) return;
     const amt = parseFloat(dueCollectAmount);
     if (amt <= 0) { toast({ title: 'Enter valid amount', variant: 'destructive' }); return; }
+    if (dueCollectMethod !== 'cash' && !dueCollectTxnId.trim()) {
+      toast({ title: 'Transaction ID is required for non-cash payments', variant: 'destructive' });
+      return;
+    }
     setCollectingDue(true);
     const collectedByName = user?.name || user?.email || 'Admin';
     // Create receipt
@@ -917,8 +921,8 @@ const HostelBedMap: React.FC = () => {
   // Create booking
   const handleCreateBooking = async () => {
     if (!selectedBed || !selectedStudent) return;
-    if ((paymentMethod === 'upi' || paymentMethod === 'bank_transfer') && !transactionId.trim()) {
-      toast({ title: 'Transaction ID is required for UPI/Bank Transfer', variant: 'destructive' });
+    if (paymentMethod !== 'cash' && !transactionId.trim()) {
+      toast({ title: 'Transaction ID is required for non-cash payments', variant: 'destructive' });
       return;
     }
     setCreatingBooking(true);
@@ -1909,7 +1913,7 @@ const HostelBedMap: React.FC = () => {
                         />
                       </div>
 
-                      {(paymentMethod === 'upi' || paymentMethod === 'bank_transfer' || paymentMethod.startsWith('custom_')) && (
+                      {paymentMethod !== 'cash' && (
                         <div>
                           <Label className="text-[10px] uppercase text-muted-foreground">Transaction ID *</Label>
                           <Input className="h-8 text-xs" placeholder="Enter transaction reference ID" value={transactionId} onChange={e => setTransactionId(e.target.value)} />
@@ -1927,7 +1931,7 @@ const HostelBedMap: React.FC = () => {
                           <ArrowLeft className="h-3 w-3 mr-1" /> Back
                         </Button>
                         <Button className="flex-1 h-9 text-xs"
-                          disabled={creatingBooking || ((paymentMethod === 'upi' || paymentMethod === 'bank_transfer') && !transactionId.trim())}
+                          disabled={creatingBooking || (paymentMethod !== 'cash' && !transactionId.trim())}
                           onClick={handleCreateBooking}>
                           {creatingBooking ? 'Creating...' : `Confirm · ₹${isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : (computedTotal + (collectSecurityDeposit ? (parseFloat(securityDepositAmount) || 0) : 0))}`}
                         </Button>
@@ -1996,8 +2000,8 @@ const HostelBedMap: React.FC = () => {
                                       compact
                                     />
                                   </div>
-                                  {(dueCollectMethod === 'upi' || dueCollectMethod === 'bank_transfer' || dueCollectMethod.startsWith('custom_')) && (
-                                    <div><Label className="text-[10px]">Transaction ID</Label><Input className="h-7 text-xs" value={dueCollectTxnId} onChange={e => setDueCollectTxnId(e.target.value)} /></div>
+                                  {dueCollectMethod !== 'cash' && (
+                                    <div><Label className="text-[10px]">Transaction ID *</Label><Input className="h-7 text-xs" value={dueCollectTxnId} onChange={e => setDueCollectTxnId(e.target.value)} /></div>
                                   )}
                                   {dueCollectMethod !== 'cash' && (
                                     <PaymentProofUpload value={paymentProofUrl} onChange={setPaymentProofUrl} />

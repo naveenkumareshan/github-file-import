@@ -135,6 +135,10 @@ const DueManagement: React.FC = () => {
     if (!selectedDue || !collectAmount) return;
     const amt = parseFloat(collectAmount);
     if (amt <= 0) { toast({ title: 'Enter a valid amount', variant: 'destructive' }); return; }
+    if (collectMethod !== 'cash' && !collectTxnId.trim()) {
+      toast({ title: 'Transaction ID is required for non-cash payments', variant: 'destructive' });
+      return;
+    }
     setCollecting(true);
     const res = await vendorSeatsService.collectDuePayment(selectedDue.id, amt, collectMethod, collectTxnId, collectNotes);
     if (res.success) {
@@ -381,9 +385,9 @@ const DueManagement: React.FC = () => {
                 />
               </div>
 
-              {(collectMethod === 'upi' || collectMethod === 'bank_transfer' || collectMethod.startsWith('custom_')) && (
+              {collectMethod !== 'cash' && (
                 <div>
-                  <Label className="text-xs">Transaction ID</Label>
+                  <Label className="text-xs">Transaction ID *</Label>
                   <Input className="h-8 text-xs" value={collectTxnId} onChange={e => setCollectTxnId(e.target.value)} />
                 </div>
               )}

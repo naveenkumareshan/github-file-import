@@ -142,8 +142,8 @@ export const RenewalSheet: React.FC<RenewalSheetProps> = ({
 
   const handleCreateBooking = async () => {
     if (!booking) return;
-    if ((paymentMethod === 'upi' || paymentMethod === 'bank_transfer') && !transactionId.trim()) {
-      toast({ title: 'Transaction ID is required for UPI/Bank Transfer', variant: 'destructive' });
+    if (paymentMethod !== 'cash' && !transactionId.trim()) {
+      toast({ title: 'Transaction ID is required for non-cash payments', variant: 'destructive' });
       return;
     }
     setCreating(true);
@@ -422,7 +422,7 @@ export const RenewalSheet: React.FC<RenewalSheetProps> = ({
                 </div>
 
                 {/* Transaction ID */}
-                {(paymentMethod === 'upi' || paymentMethod === 'bank_transfer' || paymentMethod.startsWith('custom_')) && (
+                {paymentMethod !== 'cash' && (
                   <div>
                     <Label className="text-[10px] uppercase text-muted-foreground">Transaction ID *</Label>
                     <Input className="h-8 text-xs" placeholder="Enter transaction reference ID" value={transactionId} onChange={e => setTransactionId(e.target.value)} />
@@ -445,7 +445,7 @@ export const RenewalSheet: React.FC<RenewalSheetProps> = ({
                   </Button>
                   <Button
                     className="flex-1 h-9 text-xs"
-                    disabled={creating || ((paymentMethod === 'upi' || paymentMethod === 'bank_transfer') && !transactionId.trim())}
+                    disabled={creating || (paymentMethod !== 'cash' && !transactionId.trim())}
                     onClick={handleCreateBooking}
                   >
                     {creating ? 'Creating...' : `Confirm · ₹${isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : computedTotal}`}

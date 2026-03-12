@@ -417,6 +417,10 @@ const VendorSeats: React.FC = () => {
     if (!dueCollectAmount) return;
     const amt = parseFloat(dueCollectAmount);
     if (amt <= 0) { toast({ title: 'Enter valid amount', variant: 'destructive' }); return; }
+    if (dueCollectMethod !== 'cash' && !dueCollectTxnId.trim()) {
+      toast({ title: 'Transaction ID is required for non-cash payments', variant: 'destructive' });
+      return;
+    }
     setCollectingDue(true);
     const res = await vendorSeatsService.collectDuePayment(dueId, amt, dueCollectMethod, dueCollectTxnId, dueCollectNotes, paymentProofUrl);
     if (res.success) {
@@ -661,8 +665,8 @@ const VendorSeats: React.FC = () => {
   // Create booking
   const handleCreateBooking = async () => {
     if (!selectedSeat || !selectedStudent) return;
-    if ((paymentMethod === 'upi' || paymentMethod === 'bank_transfer') && !transactionId.trim()) {
-      toast({ title: 'Transaction ID is required for UPI/Bank Transfer', variant: 'destructive' });
+    if (paymentMethod !== 'cash' && !transactionId.trim()) {
+      toast({ title: 'Transaction ID is required for non-cash payments', variant: 'destructive' });
       return;
     }
     setCreatingBooking(true);
@@ -1847,8 +1851,8 @@ const VendorSeats: React.FC = () => {
                         />
                       </div>
 
-                      {/* Transaction ID (required for UPI/Bank) */}
-                      {(paymentMethod === 'upi' || paymentMethod === 'bank_transfer' || paymentMethod.startsWith('custom_')) && (
+                      {/* Transaction ID (required for all non-cash) */}
+                      {paymentMethod !== 'cash' && (
                         <div>
                           <Label className="text-[10px] uppercase text-muted-foreground">Transaction ID *</Label>
                           <Input className="h-8 text-xs" placeholder="Enter transaction reference ID" value={transactionId} onChange={e => setTransactionId(e.target.value)} />
@@ -1875,7 +1879,7 @@ const VendorSeats: React.FC = () => {
                         </Button>
                         <Button
                           className="flex-1 h-9 text-xs"
-                          disabled={creatingBooking || ((paymentMethod === 'upi' || paymentMethod === 'bank_transfer') && !transactionId.trim())}
+                          disabled={creatingBooking || (paymentMethod !== 'cash' && !transactionId.trim())}
                           onClick={handleCreateBooking}
                         >
                           {creatingBooking ? 'Creating...' : `Confirm · ₹${isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : computedTotal}`}
@@ -2018,9 +2022,9 @@ const VendorSeats: React.FC = () => {
                                       </div>
                                     </RadioGroup>
                                   </div>
-                                  {(dueCollectMethod === 'upi' || dueCollectMethod === 'bank_transfer') && (
+                                  {dueCollectMethod !== 'cash' && (
                                     <div>
-                                      <Label className="text-[10px]">Transaction ID</Label>
+                                      <Label className="text-[10px]">Transaction ID *</Label>
                                       <Input className="h-7 text-xs" value={dueCollectTxnId} onChange={e => setDueCollectTxnId(e.target.value)} />
                                     </div>
                                   )}
