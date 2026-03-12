@@ -160,7 +160,10 @@ const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTr
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-semibold tracking-tight">Manage Hostels</h1>
+            <h1 className="text-lg font-semibold tracking-tight">
+              Manage Hostels
+              {filtered.length > 0 && <Badge variant="secondary" className="ml-2 text-xs font-normal">{filtered.length}</Badge>}
+            </h1>
             <p className="text-xs text-muted-foreground mt-0.5">View and manage all hostels and their rooms.</p>
           </div>
           {(user?.role === 'admin' || user?.role === 'vendor') && (
