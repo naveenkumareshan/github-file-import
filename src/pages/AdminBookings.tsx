@@ -82,7 +82,7 @@ const AdminBookings = () => {
       setLoading(true);
       const filters: BookingFilters = { page: currentPage, limit: pageSize, search: searchQuery };
       if (status) filters.status = status as BookingStatus;
-      const response = await adminBookingsService.getAllBookings(filters);
+      const response = await adminBookingsService.getAllBookings(filters, partnerUserId);
       if (response.success) {
         setBookings(response.data || []);
         const count = response.count || 0;
