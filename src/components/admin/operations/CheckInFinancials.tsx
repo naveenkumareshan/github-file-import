@@ -69,7 +69,7 @@ export const CollectDrawer: React.FC<CollectDrawerProps> = ({ open, onOpenChange
     setCollecting(true);
 
     if (module === 'reading_room') {
-      const res = await vendorSeatsService.collectDuePayment(due.id, amt, method, txnId, notes);
+      const res = await vendorSeatsService.collectDuePayment(due.id, amt, method, txnId, notes, proofUrl);
       if (res.success) {
         toast({ title: 'Payment collected successfully' });
         onOpenChange(false);
