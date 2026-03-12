@@ -86,19 +86,18 @@ export const BookingEmailTriggers: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const result = await bookingEmailService.triggerBookingFailed({
-        userEmail: emailData.userEmail,
-        userName: emailData.userName,
-        bookingId: emailData.bookingId,
-        bookingType: emailData.bookingType,
-        totalPrice: emailData.totalPrice ? parseFloat(emailData.totalPrice) : undefined,
+      const result = await bookingEmailService.sendReceiptEmail({
+        to: emailData.userEmail,
+        studentName: emailData.userName,
+        serialNumber: emailData.bookingId,
+        propertyName: emailData.cabinName || emailData.location || '',
+        seatOrBedNumber: emailData.seatNumber || emailData.roomNumber,
         startDate: emailData.startDate,
         endDate: emailData.endDate,
-        location: emailData.location,
-        cabinName: emailData.cabinName,
-        roomNumber: emailData.roomNumber,
-        seatNumber: emailData.seatNumber
-      }, emailData.errorMessage);
+        amount: emailData.totalPrice ? parseFloat(emailData.totalPrice) : 0,
+        totalAmount: emailData.totalPrice ? parseFloat(emailData.totalPrice) : 0,
+        bookingType: emailData.bookingType === 'hostel' ? 'hostel' : 'reading_room',
+      });
 
       if (result.success) {
         toast({
