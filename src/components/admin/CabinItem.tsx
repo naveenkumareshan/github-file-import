@@ -35,10 +35,37 @@ interface CabinItemProps {
   partnerId?: string;
 }
 
-export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBooking, onManageSeats }: CabinItemProps) {
+export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBooking, onManageSeats, partnerId }: CabinItemProps) {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const [waDialogOpen, setWaDialogOpen] = useState(false);
+  const { hasSubscription, daysRemaining, isExpired, currentPlan } = useSubscriptionAccess(cabin._id || cabin.id, 'reading_room', partnerId);
+
+  const renderSubscriptionBadge = () => {
+    if (isAdmin) return null;
+    if (hasSubscription && currentPlan) {
+      return (
+        <Badge variant="outline" className="gap-1 text-[10px] border-primary/50 text-primary">
+          <ShieldCheck className="h-2.5 w-2.5" />
+          {currentPlan.name} ({daysRemaining}d)
+        </Badge>
+      );
+    }
+    if (!isExpired && daysRemaining > 0) {
+      return (
+        <Badge variant="outline" className="gap-1 text-[10px] border-amber-500 text-amber-600">
+          <Clock className="h-2.5 w-2.5" />
+          Trial ({daysRemaining}d)
+        </Badge>
+      );
+    }
+    return (
+      <Badge variant="outline" className="gap-1 text-[10px] border-muted-foreground/50 text-muted-foreground">
+        <AlertTriangle className="h-2.5 w-2.5" />
+        No Plan
+      </Badge>
+    );
+  };
 
   const getCategoryBadgeStyle = (category: string) => {
     switch (category) {
