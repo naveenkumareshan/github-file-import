@@ -1247,7 +1247,7 @@ const HostelBedMap: React.FC = () => {
               key={bed.id}
               onClick={() => handleBedClick(bed)}
               className={cn(
-                "relative border rounded cursor-pointer p-1 flex flex-col items-center justify-center text-center transition-all hover:shadow-md group min-h-[72px]",
+                "relative border rounded cursor-pointer p-1 flex flex-col items-center justify-center text-center transition-all hover:shadow-md group min-h-[72px] max-w-[90px] overflow-hidden",
                 statusColors(bed.dateStatus)
               )}
             >
@@ -1322,7 +1322,7 @@ const HostelBedMap: React.FC = () => {
                       key={bed.id}
                       onClick={() => handleBedClick(bed)}
                       className={cn(
-                        "relative border rounded cursor-pointer p-1.5 flex flex-col items-center justify-center text-center transition-all hover:shadow-md min-w-[68px] min-h-[64px]",
+                        "relative border rounded cursor-pointer p-1.5 flex flex-col items-center justify-center text-center transition-all hover:shadow-md w-[76px] min-h-[64px] overflow-hidden",
                         statusColors(bed.dateStatus)
                       )}
                     >
