@@ -144,7 +144,7 @@ const HostelDueManagement: React.FC = () => {
     const remaining = Number(due.due_amount) - Number(due.paid_amount);
     if (due.status === 'paid' || remaining <= 0) return <Badge className="bg-emerald-500 text-white text-[10px]">Paid</Badge>;
     if (due.status === 'partially_paid') return <Badge className="bg-orange-500 text-white text-[10px]">Partial</Badge>;
-    if (due.due_date < today) return <Badge className="bg-red-500 text-white text-[10px]">Overdue</Badge>;
+    if (due.status === 'overdue' || due.due_date < today) return <Badge className="bg-red-500 text-white text-[10px]">Overdue</Badge>;
     return <Badge className="bg-amber-500 text-white text-[10px]">Pending</Badge>;
   };
 

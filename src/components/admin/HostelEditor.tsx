@@ -71,6 +71,8 @@ export function HostelEditor({ onSave, onCancel, existingHostel, isAdmin = true 
     food_menu_image: existingHostel?.food_menu_image || '',
     show_food_price: existingHostel?.show_food_price ?? true,
     payment_proof_required: existingHostel?.payment_proof_required ?? false,
+    billing_type: existingHostel?.billing_type || 'day_model',
+    payment_window_days: existingHostel?.payment_window_days ?? 5,
   });
 
   const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
