@@ -80,29 +80,6 @@ export const VendorProfile: React.FC = () => {
     } catch {}
   };
 
-  const fetchProperties = async () => {
-    try {
-      let effectiveOwnerId: string;
-      try {
-        const { ownerId } = await getEffectiveOwnerId();
-        effectiveOwnerId = ownerId;
-      } catch {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        effectiveOwnerId = user.id;
-      }
-      const [cabinsRes, hostelsRes] = await Promise.all([
-        supabase.from('cabins').select('id, name, capacity, is_active, is_approved').eq('created_by', effectiveOwnerId),
-        supabase.from('hostels').select('id, name, is_active, is_approved').eq('created_by', effectiveOwnerId),
-      ]);
-      const props: PropertyInfo[] = [
-        ...(cabinsRes.data || []).map(c => ({ id: c.id, name: c.name, type: 'Reading Room' as const, capacity: c.capacity || 0, is_active: c.is_active !== false, is_approved: (c as any).is_approved ?? true })),
-        ...(hostelsRes.data || []).map(h => ({ id: h.id, name: h.name, type: 'Hostel' as const, capacity: 0, is_active: h.is_active !== false, is_approved: h.is_approved })),
-      ];
-      setProperties(props);
-    } catch {}
-  };
-
   const handleDocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
