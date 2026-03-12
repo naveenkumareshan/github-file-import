@@ -48,6 +48,7 @@ export const CollectDrawer: React.FC<CollectDrawerProps> = ({ open, onOpenChange
       setMethod('cash');
       setTxnId('');
       setNotes('');
+      setProofUrl('');
     }
   }, [due, open]);
 
