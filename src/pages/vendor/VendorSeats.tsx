@@ -417,6 +417,10 @@ const VendorSeats: React.FC = () => {
     if (!dueCollectAmount) return;
     const amt = parseFloat(dueCollectAmount);
     if (amt <= 0) { toast({ title: 'Enter valid amount', variant: 'destructive' }); return; }
+    if (dueCollectMethod !== 'cash' && !dueCollectTxnId.trim()) {
+      toast({ title: 'Transaction ID is required for non-cash payments', variant: 'destructive' });
+      return;
+    }
     setCollectingDue(true);
     const res = await vendorSeatsService.collectDuePayment(dueId, amt, dueCollectMethod, dueCollectTxnId, dueCollectNotes, paymentProofUrl);
     if (res.success) {
