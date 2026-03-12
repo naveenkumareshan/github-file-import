@@ -2000,8 +2000,8 @@ const HostelBedMap: React.FC = () => {
                                       compact
                                     />
                                   </div>
-                                  {(dueCollectMethod === 'upi' || dueCollectMethod === 'bank_transfer' || dueCollectMethod.startsWith('custom_')) && (
-                                    <div><Label className="text-[10px]">Transaction ID</Label><Input className="h-7 text-xs" value={dueCollectTxnId} onChange={e => setDueCollectTxnId(e.target.value)} /></div>
+                                  {dueCollectMethod !== 'cash' && (
+                                    <div><Label className="text-[10px]">Transaction ID *</Label><Input className="h-7 text-xs" value={dueCollectTxnId} onChange={e => setDueCollectTxnId(e.target.value)} /></div>
                                   )}
                                   {dueCollectMethod !== 'cash' && (
                                     <PaymentProofUpload value={paymentProofUrl} onChange={setPaymentProofUrl} />
