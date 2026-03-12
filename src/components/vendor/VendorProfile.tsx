@@ -16,18 +16,7 @@ import {
 } from 'lucide-react';
 import { vendorProfileService, VendorProfileData, VendorProfileUpdateData } from '@/api/vendorProfileService';
 import { supabase } from '@/integrations/supabase/client';
-import { adminCabinsService } from '@/api/adminCabinsService';
 
-interface PropertyInfo {
-  id: string;
-  name: string;
-  type: 'Reading Room' | 'Hostel';
-  capacity: number;
-  is_active: boolean;
-  is_approved: boolean;
-}
-
-type NewPropertyType = 'reading_room' | 'hostel';
 
 export const VendorProfile: React.FC = () => {
   const { toast } = useToast();
@@ -38,15 +27,7 @@ export const VendorProfile: React.FC = () => {
   const [formData, setFormData] = useState<VendorProfileUpdateData>({});
   const [documents, setDocuments] = useState<{ name: string; url: string }[]>([]);
   const [uploadingDoc, setUploadingDoc] = useState(false);
-  const [properties, setProperties] = useState<PropertyInfo[]>([]);
   const [docApprovals, setDocApprovals] = useState<Record<string, string>>({});
-  const [showAddProperty, setShowAddProperty] = useState(false);
-  const [newPropertyType, setNewPropertyType] = useState<NewPropertyType>('reading_room');
-  const [newPropertyName, setNewPropertyName] = useState('');
-  const [newPropertyCity, setNewPropertyCity] = useState('');
-  const [newPropertyState, setNewPropertyState] = useState('');
-  const [newPropertyGender, setNewPropertyGender] = useState('Co-ed');
-  const [addingProperty, setAddingProperty] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const hasFetched = useRef(false);
 
@@ -55,7 +36,6 @@ export const VendorProfile: React.FC = () => {
       hasFetched.current = true;
       fetchProfile();
       fetchDocuments();
-      fetchProperties();
     }
   }, []);
 
