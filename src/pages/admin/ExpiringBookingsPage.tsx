@@ -14,7 +14,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 import { useAuth } from '@/contexts/AuthContext';
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
-import { BookingExtensionDialog } from '@/components/admin/BookingExtensionDialog';
+import { RenewalSheet } from '@/components/admin/RenewalSheet';
 
 export default function ExpiringBookingsPage() {
   const [bookings, setBookings] = useState<any[]>([]);
@@ -25,7 +25,7 @@ export default function ExpiringBookingsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [renewBooking, setRenewBooking] = useState<any>(null);
-  const [renewDialogOpen, setRenewDialogOpen] = useState(false);
+  const [renewSheetOpen, setRenewSheetOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
@@ -80,14 +80,23 @@ export default function ExpiringBookingsPage() {
 
   const handleRenew = (booking: any) => {
     const seat = booking.seats as any;
+    const cabin = booking.cabins as any;
+    const profile = booking.profiles as any;
     setRenewBooking({
-      ...booking,
-      _id: booking.id,
+      bookingId: booking.id,
       endDate: booking.end_date,
-      seatId: { _id: booking.seat_id, price: seat?.price || 0 },
-      cabinId: { _id: booking.cabin_id },
+      studentName: profile?.name || 'N/A',
+      studentEmail: profile?.email || '',
+      studentPhone: profile?.phone || '',
+      studentId: booking.user_id,
+      seatId: booking.seat_id,
+      seatNumber: seat?.number || 0,
+      seatPrice: seat?.price || 0,
+      cabinId: booking.cabin_id,
+      cabinName: cabin?.name || '',
+      allowedDurations: cabin?.allowed_durations || ['daily', 'weekly', 'monthly'],
     });
-    setRenewDialogOpen(true);
+    setRenewSheetOpen(true);
   };
 
   const handleExport = () => {
@@ -207,24 +216,19 @@ export default function ExpiringBookingsPage() {
         </CardContent>
       </Card>
 
-      {renewBooking && (
-        <BookingExtensionDialog
-          open={renewDialogOpen}
-          onOpenChange={(open) => {
-            setRenewDialogOpen(open);
-            if (!open) setRenewBooking(null);
-          }}
-          bookingId={renewBooking.id}
-          booking={renewBooking}
-          bookingType="cabin"
-          currentEndDate={new Date(renewBooking.end_date)}
-          onExtensionComplete={() => {
-            setRenewDialogOpen(false);
-            setRenewBooking(null);
-            fetchData();
-          }}
-        />
-      )}
+      <RenewalSheet
+        open={renewSheetOpen}
+        onOpenChange={(open) => {
+          setRenewSheetOpen(open);
+          if (!open) setRenewBooking(null);
+        }}
+        booking={renewBooking}
+        onComplete={() => {
+          setRenewSheetOpen(false);
+          setRenewBooking(null);
+          fetchData();
+        }}
+      />
     </div>
   );
 }
