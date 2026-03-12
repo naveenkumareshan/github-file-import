@@ -73,7 +73,7 @@ export default function SubscriptionPlans() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('property_subscriptions')
-        .select('*, subscription_plans(name)')
+        .select('*, subscription_plans!property_subscriptions_plan_id_fkey(name)')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
