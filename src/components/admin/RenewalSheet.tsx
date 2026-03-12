@@ -422,7 +422,7 @@ export const RenewalSheet: React.FC<RenewalSheetProps> = ({
                 </div>
 
                 {/* Transaction ID */}
-                {(paymentMethod === 'upi' || paymentMethod === 'bank_transfer' || paymentMethod.startsWith('custom_')) && (
+                {paymentMethod !== 'cash' && (
                   <div>
                     <Label className="text-[10px] uppercase text-muted-foreground">Transaction ID *</Label>
                     <Input className="h-8 text-xs" placeholder="Enter transaction reference ID" value={transactionId} onChange={e => setTransactionId(e.target.value)} />
