@@ -14,7 +14,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 import { useAuth } from '@/contexts/AuthContext';
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
-import { BookingExtensionDialog } from '@/components/admin/BookingExtensionDialog';
+
 
 export default function HostelExpiringBookingsPage() {
   const [bookings, setBookings] = useState<any[]>([]);
