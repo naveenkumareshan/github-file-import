@@ -417,7 +417,7 @@ const VendorSeats: React.FC = () => {
     const amt = parseFloat(dueCollectAmount);
     if (amt <= 0) { toast({ title: 'Enter valid amount', variant: 'destructive' }); return; }
     setCollectingDue(true);
-    const res = await vendorSeatsService.collectDuePayment(dueId, amt, dueCollectMethod, dueCollectTxnId, dueCollectNotes);
+    const res = await vendorSeatsService.collectDuePayment(dueId, amt, dueCollectMethod, dueCollectTxnId, dueCollectNotes, paymentProofUrl);
     if (res.success) {
       toast({ title: 'Payment collected' });
       setExpandedDueBookingId('');
