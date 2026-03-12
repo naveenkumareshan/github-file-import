@@ -12,6 +12,8 @@ import ErrorBoundary from '../../components/ErrorBoundary';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
+import { AdminTablePagination } from '@/components/admin/AdminTablePagination';
+import { Badge } from '@/components/ui/badge';
 
 const ITEMS_PER_PAGE = 9;
 
