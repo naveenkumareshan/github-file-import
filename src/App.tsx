@@ -12,6 +12,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Toaster } from "@/components/ui/toaster";
 const AdminLayout = lazy(() => import("./components/AdminLayout"));
 const MobileAppLayout = lazy(() => import("./components/student/MobileAppLayout"));
+const PartnerResponsiveLayout = lazy(() => import("./components/PartnerResponsiveLayout"));
 import { AuthProvider } from "./contexts/AuthContext";
 const HostelDetails = lazy(() => import("./pages/HostelRoomDetails"));
 const HostelRooms = lazy(() => import("./pages/HostelRooms"));
