@@ -381,7 +381,29 @@ const HostelRoomDetails = () => {
         },
       };
       const rzp = new (window as any).Razorpay(rzpOptions);
+      rzp.on('payment.failed', async () => {
+        try {
+          await hostelBookingService.cancelBooking(booking.id, 'Payment failed');
+        } catch (e) { console.error('Failed to cancel booking on payment failure:', e); }
+      });
       rzp.open();
+
+      // Handle dismiss (user closes modal without paying)
+      // Razorpay calls modal.ondismiss — add it to options
+      rzpOptions.modal = {
+        ondismiss: async () => {
+          try {
+            await hostelBookingService.cancelBooking(booking.id, 'Payment cancelled by user');
+          } catch (e) { console.error('Failed to cancel booking on dismiss:', e); }
+          setIsProcessing(false);
+          toast({ title: "Payment Cancelled", description: "Your booking has been cancelled.", variant: "destructive" });
+        },
+        animation: false,
+        backdropclose: false,
+      };
+      // Re-create with modal options
+      const rzpWithModal = new (window as any).Razorpay(rzpOptions);
+      rzpWithModal.open();
     } catch (error: any) {
       console.error('Error processing booking:', error);
       toast({ title: "Booking Failed", description: error.message || 'An error occurred', variant: "destructive" });

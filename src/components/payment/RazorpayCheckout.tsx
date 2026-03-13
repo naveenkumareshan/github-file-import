@@ -194,6 +194,7 @@ export function RazorpayCheckout({
           ondismiss: () => {
             setIsLoading(false);
             toast({ title: "Payment Cancelled", description: "You cancelled the payment", variant: "destructive" });
+            if (onDismiss) onDismiss();
           },
           animation: false,
           backdropclose: false,
