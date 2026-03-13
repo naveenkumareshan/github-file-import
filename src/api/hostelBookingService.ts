@@ -1,6 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { format, getDaysInMonth } from 'date-fns';
+import { format } from 'date-fns';
 
 export interface CreateHostelBookingData {
   hostel_id: string;
