@@ -1,18 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePartnerEmployeePermissions } from '@/hooks/useVendorEmployeePermissions';
 import { usePartnerPropertyTypes } from '@/hooks/usePartnerPropertyTypes';
+import { usePartnerNavPreferences } from '@/hooks/usePartnerNavPreferences';
 import { cn } from '@/lib/utils';
 import {
   User, MapIcon, Wallet, Calendar, CreditCard, Activity, Clock,
   Bed, ClipboardCheck, Users, Plus, TicketPlus, Building, Star,
   BarChart2, Users2, MessageSquare, Megaphone, Crown, Shirt,
-  UtensilsCrossed, LogOut, Settings,
+  UtensilsCrossed, LogOut, Settings, Pencil,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import PartnerNavCustomizer from './PartnerNavCustomizer';
 
 interface MoreMenuProps {
   open: boolean;
