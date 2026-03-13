@@ -12,6 +12,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Toaster } from "@/components/ui/toaster";
 const AdminLayout = lazy(() => import("./components/AdminLayout"));
 const MobileAppLayout = lazy(() => import("./components/student/MobileAppLayout"));
+const PartnerResponsiveLayout = lazy(() => import("./components/PartnerResponsiveLayout"));
 import { AuthProvider } from "./contexts/AuthContext";
 const HostelDetails = lazy(() => import("./pages/HostelRoomDetails"));
 const HostelRooms = lazy(() => import("./pages/HostelRooms"));
@@ -235,8 +236,8 @@ function App() {
               path="/partner"
               element={
                 <ProtectedRoute requiredRole="admin" redirectPath="/partner/login">
-                  <Suspense fallback={<div className="p-6 text-center">Loading partner panel...</div>}>
-                    <AdminLayout />
+                  <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}>
+                    <PartnerResponsiveLayout />
                   </Suspense>
                 </ProtectedRoute>
               }
