@@ -417,12 +417,29 @@ Deno.serve(async (req) => {
         .single();
 
       if (booking) {
+        // For advance payments, get actual paid amount from Razorpay order
+        let receiptAmount = booking.total_price;
+        if (updateData.payment_status === "advance_paid") {
+          try {
+            const RAZORPAY_KEY_ID = Deno.env.get("RAZORPAY_KEY_ID");
+            const orderRes = await fetch(`https://api.razorpay.com/v1/orders/${razorpay_order_id}`, {
+              headers: {
+                Authorization: "Basic " + btoa(`${RAZORPAY_KEY_ID}:${RAZORPAY_KEY_SECRET}`),
+              },
+            });
+            const orderData = await orderRes.json();
+            receiptAmount = (orderData.amount_paid || orderData.amount || 0) / 100;
+          } catch (e) {
+            console.error("Error fetching order amount for receipt:", e);
+          }
+        }
+
         await insertReceiptIfNotExists("receipts", "booking_id", bookingId, razorpay_payment_id, {
           booking_id: bookingId,
           user_id: booking.user_id,
           cabin_id: booking.cabin_id,
           seat_id: booking.seat_id,
-          amount: booking.total_price,
+          amount: receiptAmount,
           payment_method: "online",
           transaction_id: razorpay_payment_id,
           receipt_type: "booking_payment",
