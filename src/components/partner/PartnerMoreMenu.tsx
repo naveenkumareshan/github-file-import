@@ -40,6 +40,8 @@ const PartnerMoreMenu: React.FC<MoreMenuProps> = ({ open, onOpenChange }) => {
   const { user, logout } = useAuth();
   const { hasPermission } = usePartnerEmployeePermissions();
   const { hasReadingRooms, hasHostels, hasLaundry, hasMess } = usePartnerPropertyTypes();
+  const { pinnedItems, savePreferences, isSaving } = usePartnerNavPreferences();
+  const [customizerOpen, setCustomizerOpen] = useState(false);
 
   const isVendor = user?.role === 'vendor';
   const prefix = '/partner';
