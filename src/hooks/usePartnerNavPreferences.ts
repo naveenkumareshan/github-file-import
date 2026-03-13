@@ -64,7 +64,7 @@ export function usePartnerNavPreferences() {
         .eq('user_id', user.id)
         .maybeSingle();
       if (error) throw error;
-      return data?.nav_items as NavItem[] | null;
+      return (data?.nav_items as unknown as NavItem[]) ?? null;
     },
     enabled: !!user?.id,
   });
