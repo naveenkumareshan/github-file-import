@@ -36,6 +36,7 @@ export function RazorpayCheckout({
   onSuccess,
   onError,
   onFailure,
+  onDismiss,
   buttonText = "Pay Now",
   buttonVariant = "default",
   buttonDisabled = false,
