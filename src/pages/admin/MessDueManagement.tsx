@@ -256,14 +256,8 @@ const MessDueManagement: React.FC = () => {
             {messPartners.map(m => <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={filterStatus} onValueChange={(v) => { setFilterStatus(v); }}>
-          <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue placeholder="All Status" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all" className="text-xs">All Status</SelectItem>
-            <SelectItem value="pending" className="text-xs">Pending</SelectItem>
-            <SelectItem value="paid" className="text-xs">Paid</SelectItem>
-          </SelectContent>
-        </Select>
+        <Button size="sm" variant={filterStatus === 'pending' ? 'default' : 'outline'} className="h-8 text-xs" onClick={() => setFilterStatus('pending')}>Pending</Button>
+        <Button size="sm" variant={filterStatus === 'paid' ? 'default' : 'outline'} className="h-8 text-xs" onClick={() => setFilterStatus('paid')}>Paid</Button>
         <div className="relative flex-1 min-w-[150px]">
           <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
           <Input placeholder="Search name, phone, ID..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
