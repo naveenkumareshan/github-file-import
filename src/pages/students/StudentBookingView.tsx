@@ -197,7 +197,7 @@ export default function StudentBookingView() {
   };
 
   const fetchReadingRoomBooking = async (id: string) => {
-    const selectQuery = "*, cabins(name, opening_time, closing_time, working_days, is_24_hours, slots_enabled, created_by), seats:seat_id(price, number, category), cabin_slots:slot_id(name, start_time, end_time, price)";
+    const selectQuery = "*, cabins(name, opening_time, closing_time, working_days, is_24_hours, slots_enabled, created_by), seats:seat_id(price, number, category, floor), cabin_slots:slot_id(name, start_time, end_time, price)";
     let res = await supabase.from("bookings").select(selectQuery).eq("serial_number", id).maybeSingle();
     if (!res.data && isUUID(id)) {
       res = await supabase.from("bookings").select(selectQuery).eq("id", id).maybeSingle();
