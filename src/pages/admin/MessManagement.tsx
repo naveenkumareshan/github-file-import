@@ -42,7 +42,7 @@ export default function MessManagement({ autoCreateNew, onTriggerConsumed, onOpe
 
   // Packages state
   const [packages, setPackages] = useState<any[]>([]);
-  const [pkgForm, setPkgForm] = useState({ name: '', meal_types: ['breakfast', 'lunch', 'dinner'], duration_type: 'monthly', duration_count: '1', price: '' });
+  const [pkgForm, setPkgForm] = useState({ name: '', meal_types: ['breakfast', 'lunch', 'dinner'], price: '' });
   const [mealCheckboxes, setMealCheckboxes] = useState({ breakfast: true, lunch: true, dinner: true });
 
   useEffect(() => { fetchMesses(); }, []);
