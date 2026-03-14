@@ -114,12 +114,27 @@ export default function MessAttendance() {
     getMessAttendance(mess.id, manualDate).then(setManualAttendance);
   }, [mess?.id, manualDate]);
 
-  const getCurrentMealType = (): string => {
-    const hours = new Date().getHours();
+  const getCurrentMealType = useCallback((): string => {
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    if (mealTimings.length > 0) {
+      for (const timing of mealTimings) {
+        const [startH, startM] = (timing.start_time || '').split(':').map(Number);
+        const [endH, endM] = (timing.end_time || '').split(':').map(Number);
+        if (!isNaN(startH) && !isNaN(endH)) {
+          const startMin = startH * 60 + (startM || 0);
+          const endMin = endH * 60 + (endM || 0);
+          if (currentMinutes >= startMin && currentMinutes <= endMin) {
+            return timing.meal_type;
+          }
+        }
+      }
+    }
+    const hours = now.getHours();
     if (hours < 11) return 'breakfast';
     if (hours < 16) return 'lunch';
     return 'dinner';
-  };
+  }, [mealTimings]);
   const currentMeal = getCurrentMealType();
 
   const handleMarkAttendance = async (subId: string, studentId: string, mealType: string) => {
