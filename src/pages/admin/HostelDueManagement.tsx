@@ -30,6 +30,8 @@ const HostelDueManagement: React.FC = () => {
   const [filterHostel, setFilterHostel] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Receipts dialog
   const [receiptsOpen, setReceiptsOpen] = useState(false);
