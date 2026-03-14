@@ -261,14 +261,12 @@ const ManageProperties: React.FC = () => {
 
       {/* QR Code Dialog */}
       <Dialog open={showQrDialog} onOpenChange={setShowQrDialog}>
-        <DialogContent className="sm:max-w-xs">
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle className="text-sm">Property QR Code</DialogTitle>
           </DialogHeader>
-          <div className="text-center space-y-4">
-            <p className="text-xs text-muted-foreground">{qrPropertyName}</p>
-            {qrDataUrl && <img src={qrDataUrl} alt="QR Code" className="mx-auto w-48 h-48 rounded-lg border" />}
-            <p className="text-[10px] text-muted-foreground">Print and place this QR code at the property entrance for student check-in</p>
+          <div className="flex flex-col items-center gap-4">
+            {qrDataUrl && <img src={qrDataUrl} alt="QR Code" className="w-full max-w-[320px] h-auto rounded-lg" />}
             <Button size="sm" className="w-full gap-1.5" onClick={handleDownloadQr}>
               <Download className="h-3.5 w-3.5" /> Download QR Code
             </Button>
