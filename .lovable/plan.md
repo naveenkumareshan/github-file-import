@@ -1,71 +1,83 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+# Add Pagination, S.No., and Mess Due Page — Standardization
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+## Audit Summary
+
+Pages **already have** AdminTablePagination + S.No.: MessBookings, DueManagement, HostelDueManagement, Receipts, HostelReceipts, MessReceipts, ExpiringBookings, HostelExpiringBookings, AdminStudents, BookingActivityLog, Reconciliation, SponsoredListings, MyPromotions, HostelDeposits, MessManagement, RoomManagement.
+
+Pages **missing** pagination and/or S.No.:
+
+| Page | Missing |
+|------|---------|
+| `PropertyAttendance.tsx` | Pagination, S.No. uses `i+1` instead of `getSerialNumber` |
+| `AttendanceHistory.tsx` (student) | Pagination, no S.No. column at all |
+| `MessAttendance.tsx` | No table pagination for manual attendance list (subscriber list) |
+| `ReviewsManagement.tsx` | Has pagination but review cards have no S.No. numbering |
+| `VendorEmployees.tsx` | No pagination, S.No. uses `idx+1` |
+| `AdminEmployees.tsx` | No pagination, S.No. uses `idx+1` |
+| `PartnerEarnings.tsx` | No pagination on settlements or ledger tables, S.No. uses `idx+1` |
+| **Mess Due Management** | **Page does not exist** — dues are handled inline in MessBookings |
 
 ## Changes
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+### 1. Create `src/pages/admin/MessDueManagement.tsx` (NEW)
+- Mirror structure of `DueManagement.tsx` / `HostelDueManagement.tsx`
+- Query `mess_dues` table with joins to `profiles`, `mess_partners`, `mess_subscriptions`
+- Summary cards: Total Due, Overdue, Due Today, Collected This Month
+- Filters: mess property, status, search
+- Table with S.No., Due ID, Student, Mess, Subscription, Due Amount, Paid, Remaining, Due Date, Status, Actions (Collect, History)
+- Collect due Sheet with PaymentMethodSelector
+- AdminTablePagination with getSerialNumber
+- Add route in `App.tsx`: `mess-due-management`
+- Add sidebar link in `AdminSidebar.tsx` and `PartnerMoreMenu.tsx`
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+### 2. Fix `PropertyAttendance.tsx`
+- Add `currentPage`, `pageSize` state
+- Slice `records` for pagination
+- Replace `{i + 1}` with `getSerialNumber(i, currentPage, pageSize)`
+- Add `AdminTablePagination` after table
+- Import `AdminTablePagination, getSerialNumber`
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+### 3. Fix `AttendanceHistory.tsx` (student)
+- Add `currentPage`, `pageSize` state
+- Add S.No. column header + cell with `getSerialNumber`
+- Slice `records` for pagination
+- Add `AdminTablePagination` after table
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+### 4. Fix `MessAttendance.tsx`
+- The manual attendance subscriber list: add S.No. numbering to each subscriber card
+- No table pagination needed here (it's a card-based attendance marking UI, not a data table)
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
+### 5. Fix `ReviewsManagement.tsx`
+- Add S.No. to each review card (prefix the card with a small numbered badge)
+- Pagination already exists — just needs serial numbering
 
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
+### 6. Fix `VendorEmployees.tsx`
+- Add `currentPage`, `pageSize` state
+- Slice `employees` for pagination
+- Replace `{idx + 1}` with `getSerialNumber(idx, currentPage, pageSize)`
+- Add `AdminTablePagination` after table
 
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
+### 7. Fix `AdminEmployees.tsx`
+- Same as VendorEmployees: add pagination state, slice, getSerialNumber, AdminTablePagination
 
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
+### 8. Fix `PartnerEarnings.tsx`
+- Add pagination state for settlements tab and ledger tab
+- Slice filtered data, replace `{idx + 1}` with `getSerialNumber`
+- Add `AdminTablePagination` to both tabs
+- Add S.No. column to ledger tab (currently missing)
 
-**Reviews section**: Shown below the booking flow (not in a tab)
-
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
-
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
-
-| File | Change |
-|------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+## Files Modified
+- `src/pages/admin/MessDueManagement.tsx` — **NEW**
+- `src/App.tsx` — add route
+- `src/components/admin/AdminSidebar.tsx` — add menu item
+- `src/components/partner/PartnerMoreMenu.tsx` — add menu item
+- `src/pages/admin/PropertyAttendance.tsx`
+- `src/pages/student/AttendanceHistory.tsx`
+- `src/pages/admin/MessAttendance.tsx`
+- `src/pages/admin/ReviewsManagement.tsx`
+- `src/pages/vendor/VendorEmployees.tsx`
+- `src/pages/admin/AdminEmployees.tsx`
+- `src/pages/partner/PartnerEarnings.tsx`
 
