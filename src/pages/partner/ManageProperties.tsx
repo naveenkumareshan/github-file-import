@@ -29,6 +29,12 @@ const ManageProperties: React.FC = () => {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [triggerNew, setTriggerNew] = useState(false);
   const [showPlansDialog, setShowPlansDialog] = useState(false);
+  const [showQrDialog, setShowQrDialog] = useState(false);
+  const [qrPropertyId, setQrPropertyId] = useState('');
+  const [qrPropertyType, setQrPropertyType] = useState('');
+  const [qrPropertyName, setQrPropertyName] = useState('');
+  const [qrDataUrl, setQrDataUrl] = useState('');
+  const [qrProperties, setQrProperties] = useState<{ id: string; name: string; type: string }[]>([]);
 
   // Check for active universal subscription
   const { data: partner } = useQuery({
