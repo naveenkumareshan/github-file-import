@@ -54,7 +54,7 @@ const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTr
       setError(null);
       let data;
       if (user?.role === 'admin') {
-        data = await hostelService.getAllHostels();
+        data = await hostelService.getAllHostels({ admin: true });
       } else {
         data = await hostelService.getUserHostels();
       }
