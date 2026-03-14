@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { isUUID } from "@/utils/idUtils";
 import { MessageCircle } from "lucide-react";
 import { whatsappLeadService } from "@/api/whatsappLeadService";
+import { supabase } from "@/integrations/supabase/client";
 
 const SeatBookingForm = lazy(() =>
   import("@/components/seats/SeatBookingForm").then((m) => ({
