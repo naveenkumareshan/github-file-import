@@ -266,18 +266,6 @@ export default function MessManagement({ autoCreateNew, onTriggerConsumed, onOpe
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div><Label>Package Name</Label><Input value={pkgForm.name} onChange={e => setPkgForm(f => ({ ...f, name: e.target.value }))} /></div>
                 <div><Label>Price (₹)</Label><Input type="number" value={pkgForm.price} onChange={e => setPkgForm(f => ({ ...f, price: e.target.value }))} /></div>
-                <div>
-                  <Label>Duration Type</Label>
-                  <Select value={pkgForm.duration_type} onValueChange={v => setPkgForm(f => ({ ...f, duration_type: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="daily">Daily</SelectItem>
-                      <SelectItem value="weekly">Weekly</SelectItem>
-                      <SelectItem value="monthly">Monthly</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div><Label>Duration Count</Label><Input type="number" value={pkgForm.duration_count} onChange={e => setPkgForm(f => ({ ...f, duration_count: e.target.value }))} /></div>
                 <div className="col-span-full">
                   <Label>Meals Included</Label>
                   <div className="flex gap-4 mt-1">

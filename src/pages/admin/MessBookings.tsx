@@ -859,7 +859,7 @@ export default function MessBookings() {
                   </div>
                   <div className="mt-1">
                     <Badge variant="outline" className="text-[10px]">
-                      {selectedPackage.duration_count || 1} {selectedPackage.duration_type || 'month'}(s)
+                      {durationCount} {durationType === 'daily' ? 'day' : durationType === 'weekly' ? 'week' : 'month'}(s)
                     </Badge>
                   </div>
                 </div>

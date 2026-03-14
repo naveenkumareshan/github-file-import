@@ -430,7 +430,7 @@ export default function MessDetail() {
                 <div>
                   <Label className="block mb-1 text-xs font-medium text-muted-foreground">Duration Type</Label>
                   <div className="flex gap-1.5 bg-muted/50 rounded-xl p-1">
-                    {availableDurationTypes.map(type => (
+                    {(['daily', 'weekly', 'monthly'] as const).map(type => (
                       <button
                         key={type}
                         onClick={() => { setDurationType(type); setDurationCount(1); }}
