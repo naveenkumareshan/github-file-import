@@ -405,7 +405,7 @@ export default function MessBookings() {
               </div>
               <div><Label className="text-xs">Txn ID</Label><Input value={collectTxnId} onChange={e => setCollectTxnId(e.target.value)} className="h-8 text-xs" /></div>
             </div>
-            {collectPaymentMethod !== 'cash' && <PaymentProofUpload onUpload={setCollectProofUrl} existingUrl={collectProofUrl} />}
+            {collectPaymentMethod !== 'cash' && <PaymentProofUpload value={collectProofUrl} onChange={setCollectProofUrl} />}
             <Textarea value={collectNotes} onChange={e => setCollectNotes(e.target.value)} placeholder="Notes..." rows={2} className="text-xs" />
           </div>
           <DialogFooter>

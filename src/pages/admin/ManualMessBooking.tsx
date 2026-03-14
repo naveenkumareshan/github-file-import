@@ -375,7 +375,7 @@ export default function ManualMessBooking() {
               <div><Label className="text-xs">Collected By</Label><Input value={collectedByName} onChange={e => setCollectedByName(e.target.value)} placeholder={user?.name || ''} className="h-8 text-xs" /></div>
             </div>
             {paymentMethod !== 'cash' && (
-              <PaymentProofUpload onUpload={setPaymentProofUrl} existingUrl={paymentProofUrl} />
+              <PaymentProofUpload value={paymentProofUrl} onChange={setPaymentProofUrl} />
             )}
             <div><Label className="text-xs">Notes</Label><Textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} className="text-xs" /></div>
 
