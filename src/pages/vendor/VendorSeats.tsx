@@ -162,6 +162,9 @@ const VendorSeats: React.FC = () => {
   const [dateEditOpen, setDateEditOpen] = useState(false);
   const [dateEditBooking, setDateEditBooking] = useState<any>(null);
 
+  // Attendance presence dots
+  const [attendanceSet, setAttendanceSet] = useState<Set<string>>(new Set());
+
   const { toast } = useToast();
   const { hasPermission } = useVendorEmployeePermissions();
   const { user } = useAuth();

@@ -30,6 +30,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { attendanceService } from '@/api/attendanceService';
 import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
 import { PaymentMethodSelector } from '@/components/vendor/PaymentMethodSelector';
 import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
