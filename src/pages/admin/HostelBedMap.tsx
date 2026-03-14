@@ -501,7 +501,7 @@ const HostelBedMap: React.FC = () => {
       return a.bed_number - b.bed_number;
     });
     return result;
-  }, [beds, statusFilter, searchTerm, selectedFloor, selectedRoom]);
+  }, [beds, statusFilter, searchTerm, selectedFloor, selectedRoom, attendanceSet]);
 
   // Stats
   const stats = useMemo(() => {
