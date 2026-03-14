@@ -46,7 +46,7 @@ import { BookingUpdateDatesDialog } from '@/components/admin/BookingUpdateDatesD
 import { bookingEmailService } from '@/api/bookingEmailService';
 
 type ViewMode = 'grid' | 'table' | 'room';
-type StatusFilter = 'all' | 'available' | 'booked' | 'expiring_soon' | 'blocked';
+type StatusFilter = 'all' | 'available' | 'booked' | 'expiring_soon' | 'blocked' | 'present';
 
 const VendorSeats: React.FC = () => {
   const [cabins, setCabins] = useState<VendorCabin[]>([]);
