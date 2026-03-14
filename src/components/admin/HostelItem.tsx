@@ -261,14 +261,21 @@ export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePac
                 )}
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-7 w-7"
-                      onClick={() => setWaDialogOpen(true)}
-                    >
-                      <MessageCircle className="h-3.5 w-3.5" style={{ color: '#25D366' }} />
-                    </Button>
+                    <div className="relative inline-block">
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        className="h-7 w-7"
+                        onClick={() => setWaDialogOpen(true)}
+                      >
+                        <MessageCircle className="h-3.5 w-3.5" style={{ color: '#25D366' }} />
+                      </Button>
+                      {waClickCount > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground text-[9px] font-bold min-w-[16px] h-4 flex items-center justify-center rounded-full px-1 border-2 border-background">
+                          {waClickCount}
+                        </span>
+                      )}
+                    </div>
                   </TooltipTrigger>
                   <TooltipContent>WhatsApp Settings</TooltipContent>
                 </Tooltip>
