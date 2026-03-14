@@ -374,7 +374,7 @@ export default function MessAttendance() {
         <CardContent>
           {filteredSubs.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              {activeSubsForAttendance.length === 0 ? 'No active subscribers.' : 'No matching students.'}
+              {manualDateSubs.length === 0 ? 'No active subscribers for this date.' : 'No matching students.'}
             </p>
           ) : (
             <div className="space-y-2 max-h-[400px] overflow-y-auto">
