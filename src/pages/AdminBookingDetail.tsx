@@ -238,6 +238,7 @@ const AdminBookingDetail = () => {
         studentSerialNumber: user?.userId || '',
         cabinName: cabin?.name || '-',
         seatNumber: seat?.number || booking.seatNumber || 0,
+        floor: seat?.floor,
         startDate: booking.startDate || '',
         endDate: booking.endDate || '',
         duration: booking.bookingDuration || booking.duration || '-',

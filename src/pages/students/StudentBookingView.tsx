@@ -460,6 +460,9 @@ export default function StudentBookingView() {
           {isHostel && booking.hostel_rooms?.room_number && (
             <InfoRow label="Room" value={booking.hostel_rooms.room_number} />
           )}
+          {!isHostel && booking.seats?.floor && (
+            <InfoRow label="Floor" value={booking.seats.floor} />
+          )}
           <InfoRow label={`${unitLabel} Number`} value={`#${unitNumber}`} />
           <InfoRow label="Booking ID" value={booking.serial_number || `#${booking.id?.slice(0, 8)}`} />
           <InfoRow label="Check-in" value={safeFmt(booking.start_date, "dd MMM yyyy")} />
