@@ -1,9 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Edit, FileMinus, FilePlus, Users, MessageCircle, CreditCard, Eye, EyeOff, Globe, GlobeLock, QrCode } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { WhatsAppPropertyDialog } from './WhatsAppPropertyDialog';
 import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
 import { PropertySubscribeDialog } from './PropertySubscribeDialog';
@@ -45,8 +46,20 @@ export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBoo
   const isAdmin = user?.role === 'admin';
   const [waDialogOpen, setWaDialogOpen] = useState(false);
   const [subDialogOpen, setSubDialogOpen] = useState(false);
+  const [waClickCount, setWaClickCount] = useState(0);
   const propertyId = cabin._id || cabin.id;
   const { hasSubscription, daysRemaining, isExpired, isInTrial, trialDaysRemaining, currentPlan } = useSubscriptionAccess(propertyId, 'reading_room', partnerId);
+
+  useEffect(() => {
+    const fetchClickCount = async () => {
+      const { count } = await supabase
+        .from('whatsapp_clicks' as any)
+        .select('*', { count: 'exact', head: true })
+        .eq('property_id', propertyId);
+      setWaClickCount(count || 0);
+    };
+    fetchClickCount();
+  }, [propertyId]);
 
   const renderSubscriptionBadge = () => {
     if (isAdmin) return null;
@@ -224,14 +237,21 @@ export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBoo
                 )}
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="h-7 w-7"
-                      onClick={() => setWaDialogOpen(true)}
-                    >
-                      <MessageCircle className="h-3.5 w-3.5" style={{ color: '#25D366' }} />
-                    </Button>
+                    <div className="relative inline-block">
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        className="h-7 w-7"
+                        onClick={() => setWaDialogOpen(true)}
+                      >
+                        <MessageCircle className="h-3.5 w-3.5" style={{ color: '#25D366' }} />
+                      </Button>
+                      {waClickCount > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground text-[9px] font-bold min-w-[16px] h-4 flex items-center justify-center rounded-full px-1 border-2 border-background">
+                          {waClickCount}
+                        </span>
+                      )}
+                    </div>
                   </TooltipTrigger>
                   <TooltipContent>WhatsApp Settings</TooltipContent>
                 </Tooltip>
