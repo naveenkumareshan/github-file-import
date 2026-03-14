@@ -52,14 +52,15 @@ export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBoo
   const { hasSubscription, daysRemaining, isExpired, isInTrial, trialDaysRemaining, currentPlan } = useSubscriptionAccess(propertyId, 'reading_room', partnerId);
 
   useEffect(() => {
-    const fetchClickCount = async () => {
-      const { count } = await supabase
-        .from('whatsapp_clicks' as any)
-        .select('*', { count: 'exact', head: true })
-        .eq('property_id', propertyId);
-      setWaClickCount(count || 0);
+    const fetchCounts = async () => {
+      const [waResult, viewResult] = await Promise.all([
+        supabase.from('whatsapp_clicks' as any).select('*', { count: 'exact', head: true }).eq('property_id', propertyId),
+        supabase.from('property_views' as any).select('*', { count: 'exact', head: true }).eq('property_id', propertyId),
+      ]);
+      setWaClickCount(waResult.count || 0);
+      setViewCount(viewResult.count || 0);
     };
-    fetchClickCount();
+    fetchCounts();
   }, [propertyId]);
 
   const renderSubscriptionBadge = () => {
