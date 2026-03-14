@@ -306,7 +306,7 @@ export default function MessBookings() {
     setStartDate(new Date()); setEndDate('');
     setPaymentMethod(''); setTransactionId('');
     setPricePaid(0); setDiscountAmount(0); setAdvanceAmount(0);
-    setPaymentProofUrl(''); setCollectedByName(''); setNotes('');
+    setPaymentProofUrl(''); setCollectedByName(user?.name || '');
   };
 
   const openBookingSheet = () => {
