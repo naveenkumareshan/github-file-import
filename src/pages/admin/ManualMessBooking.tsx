@@ -175,7 +175,7 @@ export default function ManualMessBooking() {
 
       // Create receipt
       await createMessReceipt({
-        subscription_id: sub.id,
+        subscription_id: (sub as any).id,
         user_id: selectedUserId,
         mess_id: selectedMess.id,
         amount: advanceAmount,
