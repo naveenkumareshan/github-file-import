@@ -64,8 +64,12 @@ export default function MessAttendance() {
         const m = await getMyMessPartner(userId);
         setMess(m);
         if (m) {
-          const subs = await getMessSubscriptions(m.id);
+          const [subs, timings] = await Promise.all([
+            getMessSubscriptions(m.id),
+            getMealTimings(m.id),
+          ]);
           setSubscriptions(subs);
+          setMealTimings(timings);
         }
       } catch {
         toast({ title: 'Error loading data', variant: 'destructive' });
