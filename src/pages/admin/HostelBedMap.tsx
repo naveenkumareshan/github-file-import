@@ -1559,10 +1559,11 @@ const HostelBedMap: React.FC = () => {
         <>
           <div className="fixed inset-0 z-50" onClick={closeContextMenu} onTouchEnd={closeContextMenu} />
           <div
-            className="fixed z-50 bg-popover border rounded-lg shadow-lg p-2 min-w-[180px]"
+            className="absolute z-[60] bg-popover border rounded-lg shadow-lg p-2 min-w-[180px]"
             style={{
-              left: Math.min(contextMenuPosition.x, window.innerWidth - 200),
-              top: Math.min(contextMenuPosition.y - 10, window.innerHeight - 200),
+              position: 'fixed',
+              left: Math.max(8, Math.min(contextMenuPosition.x - 90, window.innerWidth - 200)),
+              top: Math.max(8, Math.min(contextMenuPosition.y - window.scrollY - 10, window.innerHeight - 200)),
             }}
           >
             <div className="text-xs font-semibold px-2 py-1 border-b mb-1 text-foreground">
