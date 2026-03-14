@@ -87,8 +87,7 @@ const ManageProperties: React.FC = () => {
     setQrPropertyId(propertyId);
     setQrPropertyType(propertyType);
     setQrPropertyName(propertyName);
-    const qrData = JSON.stringify({ propertyId, type: propertyType });
-    const url = await QRCode.toDataURL(qrData, { width: 400, margin: 2, color: { dark: '#000000', light: '#ffffff' } });
+    const url = await generateBrandedQrPng(propertyId, propertyType, propertyName);
     setQrDataUrl(url);
     setShowQrDialog(true);
   };

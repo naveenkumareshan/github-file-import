@@ -45,8 +45,7 @@ const QrCodesTab = () => {
   const typeLabel = (t: string) => t === 'reading_room' ? 'RR' : t === 'hostel' ? 'H' : 'M';
 
   const handleView = async (prop: Property) => {
-    const qrData = JSON.stringify({ propertyId: prop.id, type: prop.type });
-    const url = await QRCode.toDataURL(qrData, { width: 400, margin: 2, color: { dark: '#000000', light: '#ffffff' } });
+    const url = await generateBrandedQrPng(prop.id, prop.type, prop.name);
     setQrDataUrl(url);
     setViewing(prop);
   };
