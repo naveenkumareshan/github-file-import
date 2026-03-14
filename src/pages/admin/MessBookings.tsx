@@ -443,7 +443,6 @@ export default function MessBookings() {
     setSubmitting(false);
   };
 
-  const canProceedToConfirm = selectedUserId && selectedMess && selectedPackage && endDate;
 
   return (
     <div className="flex flex-col gap-4">
