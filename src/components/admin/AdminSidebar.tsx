@@ -344,6 +344,12 @@ export function AdminSidebar() {
         roles: ['admin', 'vendor', 'vendor_employee'],
       },
       {
+        title: 'Due Management',
+        url: `${routePrefix}/mess-due-management`,
+        icon: Wallet,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+      },
+      {
         title: 'Receipts',
         url: `${routePrefix}/mess-receipts`,
         icon: CreditCard,

@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 import { useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 
 interface AttendanceRow {
   id: string;
@@ -46,6 +47,8 @@ const PropertyAttendance: React.FC = () => {
   const [records, setRecords] = useState<AttendanceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Fetch properties
   useEffect(() => {
@@ -145,6 +148,7 @@ const PropertyAttendance: React.FC = () => {
     }
 
     setRecords(rows);
+    setCurrentPage(1);
     setLoading(false);
     setRefreshing(false);
   };
@@ -277,7 +281,7 @@ const PropertyAttendance: React.FC = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-xs w-[40px]">#</TableHead>
+                <TableHead className="text-xs w-[40px]">S.No.</TableHead>
                 <TableHead className="text-xs">Student</TableHead>
                 <TableHead className="text-xs">Phone</TableHead>
                 <TableHead className="text-xs">Seat / Bed</TableHead>
@@ -286,9 +290,9 @@ const PropertyAttendance: React.FC = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {records.map((r, i) => (
+              {records.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((r, i) => (
                 <TableRow key={r.id}>
-                  <TableCell className="text-xs text-muted-foreground">{i + 1}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{getSerialNumber(i, currentPage, pageSize)}</TableCell>
                   <TableCell className="text-xs font-medium">{r.student_name || '-'}</TableCell>
                   <TableCell className="text-xs">{r.student_phone || '-'}</TableCell>
                   <TableCell className="text-xs">
@@ -308,6 +312,13 @@ const PropertyAttendance: React.FC = () => {
               ))}
             </TableBody>
           </Table>
+          <AdminTablePagination
+            currentPage={currentPage}
+            totalItems={records.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
+          />
         </div>
       )}
     </div>

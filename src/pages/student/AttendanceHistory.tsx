@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { UserCheck, CalendarIcon, ArrowLeft } from 'lucide-react';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 
 interface AttendanceRecord {
   id: string;
@@ -27,6 +28,8 @@ const AttendanceHistory: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
   const [dateOpen, setDateOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     fetchRecords();
@@ -82,6 +85,7 @@ const AttendanceHistory: React.FC = () => {
     });
 
     setRecords(rows);
+    setCurrentPage(1);
     setLoading(false);
   };
 
@@ -133,6 +137,7 @@ const AttendanceHistory: React.FC = () => {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="text-xs w-[40px]">S.No.</TableHead>
                 <TableHead className="text-xs">Date</TableHead>
                 <TableHead className="text-xs">Time</TableHead>
                 <TableHead className="text-xs">Property</TableHead>
@@ -140,8 +145,9 @@ const AttendanceHistory: React.FC = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {records.map((r) => (
+              {records.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((r, i) => (
                 <TableRow key={r.id}>
+                  <TableCell className="text-xs text-muted-foreground">{getSerialNumber(i, currentPage, pageSize)}</TableCell>
                   <TableCell className="text-xs font-medium">
                     {format(new Date(r.date), 'dd MMM yyyy')}
                   </TableCell>
@@ -163,6 +169,13 @@ const AttendanceHistory: React.FC = () => {
               ))}
             </TableBody>
           </Table>
+          <AdminTablePagination
+            currentPage={currentPage}
+            totalItems={records.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
+          />
         </div>
       )}
     </div>

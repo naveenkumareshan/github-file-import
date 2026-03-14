@@ -11,6 +11,7 @@ import { Loader2, Wallet, TrendingDown, CheckCircle, Clock, Eye, IndianRupee, Do
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { formatCurrency } from '@/utils/currency';
 import ExcelJS from 'exceljs';
+import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 
 const PartnerEarnings: React.FC = () => {
   const [partner, setPartner] = useState<any>(null);
@@ -22,6 +23,10 @@ const PartnerEarnings: React.FC = () => {
   const [statementLoading, setStatementLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [settPage, setSettPage] = useState(1);
+  const [settPageSize, setSettPageSize] = useState(10);
+  const [ledgerPage, setLedgerPage] = useState(1);
+  const [ledgerPageSize, setLedgerPageSize] = useState(10);
 
   useEffect(() => {
     const init = async () => {
@@ -202,9 +207,9 @@ const PartnerEarnings: React.FC = () => {
               <TableBody>
                 {filteredSettlements.length === 0 ? (
                   <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground text-xs">No settlements</TableCell></TableRow>
-                ) : filteredSettlements.map((s, idx) => (
+                 ) : filteredSettlements.slice((settPage - 1) * settPageSize, settPage * settPageSize).map((s, idx) => (
                   <TableRow key={s.id} className="text-[11px]">
-                    <TableCell className="px-2 py-1.5">{idx + 1}</TableCell>
+                    <TableCell className="px-2 py-1.5">{getSerialNumber(idx, settPage, settPageSize)}</TableCell>
                     <TableCell className="px-2 py-1.5 font-mono text-[10px]">{s.serial_number || s.id.slice(0, 8)}</TableCell>
                     <TableCell className="px-2 py-1.5 whitespace-nowrap">{s.period_start} → {s.period_end}</TableCell>
                     <TableCell className="px-2 py-1.5 text-right">{s.total_bookings}</TableCell>
@@ -224,6 +229,13 @@ const PartnerEarnings: React.FC = () => {
               </TableBody>
             </Table>
           </div>
+          <AdminTablePagination
+            currentPage={settPage}
+            totalItems={filteredSettlements.length}
+            pageSize={settPageSize}
+            onPageChange={setSettPage}
+            onPageSizeChange={(s) => { setSettPageSize(s); setSettPage(1); }}
+          />
         </TabsContent>
 
         <TabsContent value="ledger">
@@ -231,6 +243,7 @@ const PartnerEarnings: React.FC = () => {
             <Table>
               <TableHeader>
                 <TableRow className="text-[10px]">
+                  <TableHead className="px-2 py-1">S.No.</TableHead>
                   <TableHead className="px-2 py-1">Date</TableHead>
                   <TableHead className="px-2 py-1">Type</TableHead>
                   <TableHead className="px-2 py-1">Category</TableHead>
@@ -241,9 +254,10 @@ const PartnerEarnings: React.FC = () => {
               </TableHeader>
               <TableBody>
                 {ledger.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-4 text-xs text-muted-foreground">No ledger entries yet</TableCell></TableRow>
-                ) : ledger.map(e => (
+                  <TableRow><TableCell colSpan={7} className="text-center py-4 text-xs text-muted-foreground">No ledger entries yet</TableCell></TableRow>
+                ) : ledger.slice((ledgerPage - 1) * ledgerPageSize, ledgerPage * ledgerPageSize).map((e, idx) => (
                   <TableRow key={e.id} className="text-[10px]">
+                    <TableCell className="px-2 py-1 text-muted-foreground">{getSerialNumber(idx, ledgerPage, ledgerPageSize)}</TableCell>
                     <TableCell className="px-2 py-1">{new Date(e.created_at).toLocaleDateString()}</TableCell>
                     <TableCell className="px-2 py-1">
                       <span className={`px-1 py-0.5 rounded text-[9px] font-medium ${e.entry_type === 'credit' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
@@ -259,6 +273,13 @@ const PartnerEarnings: React.FC = () => {
               </TableBody>
             </Table>
           </div>
+          <AdminTablePagination
+            currentPage={ledgerPage}
+            totalItems={ledger.length}
+            pageSize={ledgerPageSize}
+            onPageChange={setLedgerPage}
+            onPageSizeChange={(s) => { setLedgerPageSize(s); setLedgerPage(1); }}
+          />
         </TabsContent>
 
         <TabsContent value="settings">

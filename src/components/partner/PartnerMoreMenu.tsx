@@ -114,6 +114,7 @@ const PartnerMoreMenu: React.FC<MoreMenuProps> = ({ open, onOpenChange }) => {
       items: [
         { title: 'Manage Mess', url: `${prefix}/mess`, icon: UtensilsCrossed },
         { title: 'Subscriptions', url: `${prefix}/mess-bookings`, icon: Users },
+        { title: 'Due Management', url: `${prefix}/mess-due-management`, icon: Wallet },
         { title: 'Receipts', url: `${prefix}/mess-receipts`, icon: CreditCard },
         { title: 'Attendance', url: `${prefix}/mess-attendance`, icon: ClipboardCheck },
       ],
