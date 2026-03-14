@@ -104,71 +104,77 @@ export function MessItem({ mess, onEdit, onDelete, onManagePackages, onToggleAct
 
           {/* Actions */}
           <TooltipProvider delayDuration={300}>
-            <div className="border-t pt-2 mt-0.5 flex flex-wrap gap-1 items-center">
-              <ShareButton
-                title={mess.name}
-                text={`Check out ${mess.name} - ${badge.label} mess at ${mess.location}`}
-                url={`${window.location.origin}/mess`}
-                className="h-7 w-7 rounded-full bg-muted text-muted-foreground hover:bg-accent"
-              />
-              <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => onEdit(mess)}>
-                <Edit className="h-3 w-3 mr-1" />Edit
-              </Button>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => onManagePackages(mess)}>
-                    <Package className="h-3.5 w-3.5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Packages</TooltipContent>
-              </Tooltip>
-              {onToggleActive && (
+            <div className="border-t pt-2 mt-0.5 space-y-1.5">
+              {/* Row 1: Primary actions */}
+              <div className="flex items-center gap-1.5">
+                <ShareButton
+                  title={mess.name}
+                  text={`Check out ${mess.name} - ${badge.label} mess at ${mess.location}`}
+                  url={`${window.location.origin}/mess`}
+                  className="h-7 w-7 rounded-full bg-muted text-muted-foreground hover:bg-accent"
+                />
+                <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => onEdit(mess)}>
+                  <Edit className="h-3 w-3 mr-1" />Edit
+                </Button>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className={`h-7 w-7 ${mess.is_active ? "text-red-600 border-red-200 hover:bg-red-50" : "text-emerald-600 border-emerald-200 hover:bg-emerald-50"}`}
-                      onClick={() => onToggleActive(mess.id, !mess.is_active)}
-                    >
-                      {mess.is_active ? <FileMinus className="h-3.5 w-3.5" /> : <FilePlus className="h-3.5 w-3.5" />}
+                    <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => onManagePackages(mess)}>
+                      <Package className="h-3.5 w-3.5" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>{mess.is_active ? 'Deactivate' : 'Activate'}</TooltipContent>
+                  <TooltipContent>Packages</TooltipContent>
                 </Tooltip>
-              )}
-              {onToggleBooking && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      disabled={!mess.is_active}
-                      className={`h-7 w-7 ${!mess.is_booking_active ? "text-emerald-600 border-emerald-200 hover:bg-emerald-50" : "text-orange-600 border-orange-200 hover:bg-orange-50"}`}
-                      onClick={() => onToggleBooking(mess.id, !mess.is_booking_active)}
-                    >
-                      {!mess.is_booking_active ? <Globe className="h-3.5 w-3.5" /> : <GlobeLock className="h-3.5 w-3.5" />}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{!mess.is_booking_active ? 'Turn Online On' : 'Turn Online Off'}</TooltipContent>
-                </Tooltip>
-              )}
-              {onTogglePartnerVisible && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      disabled={!mess.is_active}
-                      className={`h-7 w-7 ${mess.is_partner_visible === false ? "text-blue-600 border-blue-200 hover:bg-blue-50" : "text-muted-foreground border-border hover:bg-muted"}`}
-                      onClick={() => onTogglePartnerVisible(mess.id, !(mess.is_partner_visible !== false))}
-                    >
-                      {mess.is_partner_visible === false ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{mess.is_partner_visible === false ? 'Show to Employees' : 'Hide from Employees'}</TooltipContent>
-                </Tooltip>
-              )}
+              </div>
+              {/* Row 2: Toggles */}
+              <div className="flex items-center gap-1">
+                {onToggleActive && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        className={`h-7 w-7 ${mess.is_active ? "text-red-600 border-red-200 hover:bg-red-50" : "text-emerald-600 border-emerald-200 hover:bg-emerald-50"}`}
+                        onClick={() => onToggleActive(mess.id, !mess.is_active)}
+                      >
+                        {mess.is_active ? <FileMinus className="h-3.5 w-3.5" /> : <FilePlus className="h-3.5 w-3.5" />}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{mess.is_active ? 'Deactivate' : 'Activate'}</TooltipContent>
+                  </Tooltip>
+                )}
+                {onToggleBooking && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        disabled={!mess.is_active}
+                        className={`h-7 w-7 ${!mess.is_booking_active ? "text-emerald-600 border-emerald-200 hover:bg-emerald-50" : "text-orange-600 border-orange-200 hover:bg-orange-50"}`}
+                        onClick={() => onToggleBooking(mess.id, !mess.is_booking_active)}
+                      >
+                        {!mess.is_booking_active ? <Globe className="h-3.5 w-3.5" /> : <GlobeLock className="h-3.5 w-3.5" />}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{!mess.is_booking_active ? 'Turn Online On' : 'Turn Online Off'}</TooltipContent>
+                  </Tooltip>
+                )}
+                {onTogglePartnerVisible && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        disabled={!mess.is_active}
+                        className={`h-7 w-7 ${mess.is_partner_visible === false ? "text-blue-600 border-blue-200 hover:bg-blue-50" : "text-muted-foreground border-border hover:bg-muted"}`}
+                        onClick={() => onTogglePartnerVisible(mess.id, !(mess.is_partner_visible !== false))}
+                      >
+                        {mess.is_partner_visible === false ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{mess.is_partner_visible === false ? 'Show to Employees' : 'Hide from Employees'}</TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
             </div>
           </TooltipProvider>
         </div>

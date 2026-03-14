@@ -57,6 +57,7 @@ import { generateHostelShareText } from "@/utils/shareUtils";
 import { isUUID } from "@/utils/idUtils";
 import { MessageCircle } from "lucide-react";
 import { whatsappLeadService } from "@/api/whatsappLeadService";
+import { supabase } from "@/integrations/supabase/client";
 /* ─── Skeleton ─── */
 const HostelDetailSkeleton = () => (
   <div className="min-h-screen bg-background pb-24">
