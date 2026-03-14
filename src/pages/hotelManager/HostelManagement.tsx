@@ -257,7 +257,7 @@ const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTr
                   onTogglePartnerVisible={handleTogglePartnerVisible}
                   onToggleStudentVisible={handleToggleStudentVisible}
                   onDownloadQr={onOpenQr}
-                  linkedMesses={messLinksMap[hostel.id]}
+                  linkedMesses={messLinksMap[hostel.id] || []}
                 />
               ))}
             </div>
