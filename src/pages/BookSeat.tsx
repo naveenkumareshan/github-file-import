@@ -66,6 +66,7 @@ export interface Cabin {
   fullAddress?: string;
   createdBy?: string;
   whatsappChatEnabled?: boolean;
+  whatsappNumber?: string;
 }
 
 export interface RoomElement {
