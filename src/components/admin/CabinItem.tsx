@@ -47,6 +47,7 @@ export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBoo
   const [waDialogOpen, setWaDialogOpen] = useState(false);
   const [subDialogOpen, setSubDialogOpen] = useState(false);
   const [waClickCount, setWaClickCount] = useState(0);
+  const [viewCount, setViewCount] = useState(0);
   const propertyId = cabin._id || cabin.id;
   const { hasSubscription, daysRemaining, isExpired, isInTrial, trialDaysRemaining, currentPlan } = useSubscriptionAccess(propertyId, 'reading_room', partnerId);
 
