@@ -347,6 +347,24 @@ export default function MessDetail() {
                     </button>
                   </div>
                 )}
+                {(mess as any).whatsapp_chat_enabled && (mess as any).whatsapp_number && (
+                  <>
+                    <Separator className="my-2.5 opacity-50" />
+                    <Button
+                      className="w-full bg-[#25D366] hover:bg-[#128C7E] text-white"
+                      size="sm"
+                      onClick={() => {
+                        if (mess.user_id) whatsappLeadService.trackClick(mess.user_id, 'mess', mess.id);
+                        const cleanNumber = ((mess as any).whatsapp_number || '').replace(/[^0-9]/g, '');
+                        const message = `Hi, I'm interested in ${mess.name} (mess). Can you share more details?`;
+                        window.open(`https://wa.me/${cleanNumber}?text=${encodeURIComponent(message)}`, '_blank');
+                      }}
+                    >
+                      <MessageCircle className="h-4 w-4 mr-2" fill="#fff" />
+                      Contact Property on WhatsApp
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           </div>
