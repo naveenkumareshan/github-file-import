@@ -1,71 +1,72 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+# Property-Specific Serial Numbers for Bookings, Receipts, and Dues
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+## Format
+Each property gets a unique number. Serial numbers follow:
+```text
+IS-{PropertyNum}-{TypeCode}-{EntityCode}-{Increment}
 
-## Changes
+Examples:
+  Property #3 (Reading Room):
+    Booking:  IS-00003-RR-BK-00001
+    Receipt:  IS-00003-RR-RC-00001
+    Due:      IS-00003-RR-DU-00001
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+  Property #7 (Hostel):
+    Booking:  IS-00007-HS-BK-00001
+    Receipt:  IS-00007-HS-RC-00001
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+  Property #12 (Mess):
+    Subscription: IS-00012-M-BK-00001
+    Receipt:      IS-00012-M-RC-00001
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+  Property #15 (Laundry):
+    Order:    IS-00015-L-BK-00001
+    Receipt:  IS-00015-L-RC-00001
+```
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+Type codes: **RR** (Reading Room), **HS** (Hostel), **M** (Mess), **L** (Laundry)
+Entity codes: **BK** (Booking/Subscription/Order), **RC** (Receipt), **DU** (Dues)
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
+## Database Changes (Single Migration)
 
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
+### 1. Shared sequence + property_number column
+- Create sequence `property_number_seq`
+- Add `property_number integer DEFAULT nextval('property_number_seq')` to: `cabins`, `hostels`, `mess_partners`, `laundry_partners`
+- Backfill existing rows ordered by `created_at`
 
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
+### 2. New function: `generate_property_serial(p_property_id uuid, p_property_table text, p_type_code text, p_entity_code text)`
+- Looks up `property_number` from the appropriate table
+- Uses `serial_counters` with composite key `{property_number}-{type_code}-{entity_code}` as entity_type
+- Returns `IS-{padded_prop_num}-{type_code}-{entity_code}-{padded_seq}`
 
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
+### 3. Update 12 trigger functions
+Each trigger now calls `generate_property_serial` instead of `generate_serial_number`:
 
-**Reviews section**: Shown below the booking flow (not in a tab)
+| Table | Property FK | Type | Entity |
+|-------|-----------|------|--------|
+| `bookings` | `cabin_id` → cabins | RR | BK |
+| `receipts` | `cabin_id` → cabins | RR | RC |
+| `dues` / `due_payments` | `cabin_id` → cabins | RR | DU |
+| `hostel_bookings` | `hostel_id` → hostels | HS | BK |
+| `hostel_receipts` | `hostel_id` → hostels | HS | RC |
+| `hostel_dues` | `hostel_id` → hostels | HS | DU |
+| `mess_subscriptions` | `mess_id` → mess_partners | M | BK |
+| `mess_receipts` | `mess_id` → mess_partners | M | RC |
+| `mess_dues` | `mess_id` → mess_partners | M | DU |
+| `laundry_orders` | `laundry_partner_id` → laundry_partners | L | BK |
+| `laundry_receipts` | `laundry_partner_id` → laundry_partners | L | RC |
+| `laundry_complaints` | keep existing global serial (not property-scoped) |
 
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
+### 4. Keep existing global serials untouched
+- Properties themselves (cabins, hostels, etc.) keep their current IS-ROOM/IS-INSH serials
+- Profiles, complaints, support tickets, settlements, attendance — unchanged
+- Existing serial numbers on old bookings/receipts are NOT re-numbered (only new ones get the new format)
 
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
+## No Frontend Changes Needed
+Serial numbers are stored as strings and displayed as-is everywhere. The new format will just render differently. No code changes required in any of the 71+ files that display `serial_number`.
 
-## File Summary
-
-| File | Change |
-|------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+## Files Modified
+- **1 database migration** — all schema + function + trigger changes in a single SQL migration
 
