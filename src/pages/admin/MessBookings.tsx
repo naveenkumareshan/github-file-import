@@ -149,7 +149,7 @@ export default function MessBookings() {
       setLoading(true);
       let query = supabase
         .from('mess_subscriptions' as any)
-        .select('*, profiles:user_id(name, email, phone), mess_partners:mess_id(name), mess_packages:package_id(name, meal_types, duration_type)', { count: 'exact' })
+        .select('*, profiles:user_id(name, email, phone), mess_partners:mess_id(name), mess_packages:package_id(name, meal_types, duration_type), hostel_bookings:hostel_booking_id(hostel_id, hostels:hostel_id(name))', { count: 'exact' })
         .order('created_at', { ascending: false });
 
       if (status) query = query.eq('status', status);
