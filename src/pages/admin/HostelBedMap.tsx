@@ -205,6 +205,9 @@ const HostelBedMap: React.FC = () => {
   const isLongPressRef = React.useRef(false);
   const touchStartPosRef = React.useRef<{ x: number; y: number } | null>(null);
 
+  // Attendance presence dots
+  const [attendanceSet, setAttendanceSet] = useState<Set<string>>(new Set());
+
   const { toast } = useToast();
   const { user } = useAuth();
 
