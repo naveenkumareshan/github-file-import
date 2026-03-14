@@ -481,7 +481,11 @@ const HostelBedMap: React.FC = () => {
       result = result.filter(b => b.room_id === selectedRoom);
     }
     if (statusFilter !== 'all') {
-      result = result.filter(b => b.dateStatus === statusFilter);
+      if (statusFilter === 'present') {
+        result = result.filter(b => attendanceSet.has(b.id));
+      } else {
+        result = result.filter(b => b.dateStatus === statusFilter);
+      }
     }
     if (searchTerm) {
       const q = searchTerm.toLowerCase();
