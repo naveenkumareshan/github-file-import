@@ -11,7 +11,7 @@ import {
   User, MapIcon, Wallet, Calendar, CreditCard, Activity, Clock,
   Bed, ClipboardCheck, Users, Plus, TicketPlus, Building, Star,
   BarChart2, Users2, MessageSquare, Megaphone, Crown, Shirt,
-  UtensilsCrossed, LogOut, Settings, Pencil,
+  UtensilsCrossed, LogOut, Settings,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import PartnerNavCustomizer from './PartnerNavCustomizer';
