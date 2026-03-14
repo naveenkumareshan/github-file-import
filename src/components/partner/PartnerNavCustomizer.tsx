@@ -15,7 +15,7 @@ interface Props {
   isSaving: boolean;
 }
 
-const PartnerNavCustomizer: React.FC<Props> = ({ open, onOpenChange, currentItems, onSave, isSaving }) => {
+const PartnerNavCustomizer: React.FC<Props> = ({ open, onOpenChange, currentItems, availableOptions, onSave, isSaving }) => {
   const [selected, setSelected] = useState<NavItem[]>(currentItems);
 
   const handleToggle = (item: NavItem) => {
