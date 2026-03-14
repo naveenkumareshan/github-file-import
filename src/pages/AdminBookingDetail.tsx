@@ -248,7 +248,7 @@ const AdminBookingDetail = () => {
         lockerIncluded: booking.lockerIncluded || false,
         lockerPrice: booking.lockerPrice || 0,
         totalAmount: booking.totalPrice || 0,
-        paymentMethod: booking.paymentMethod || 'cash',
+        paymentMethod: getMethodLabel(booking.paymentMethod || 'cash', customLabels),
         transactionId: booking.transactionId || '',
         collectedByName: booking.collectedByName || '-',
       };
