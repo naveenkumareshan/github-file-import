@@ -171,14 +171,14 @@ export default function MessAttendance() {
   // Meal stats per meal for selected date
   const mealStats = useMemo(() => {
     return MEALS.map(meal => {
-      const total = activeSubsForAttendance.filter(s =>
+      const total = activeSubsForDate.filter(s =>
         (s.mess_packages?.meal_types as string[])?.includes(meal)
       ).length;
       const consumed = isFutureDate ? 0 : dateAttendance.filter(a => a.meal_type === meal).length;
       const pct = total > 0 ? Math.round((consumed / total) * 100) : 0;
       return { meal, total, consumed, pct };
     });
-  }, [activeSubsForAttendance, dateAttendance, isFutureDate]);
+  }, [activeSubsForDate, dateAttendance, isFutureDate]);
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[40vh]">
