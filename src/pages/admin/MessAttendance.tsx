@@ -139,14 +139,31 @@ export default function MessAttendance() {
     a.click();
   };
 
-  // Derived stats
-  const activeSubsForAttendance = subscriptions.filter(s => s.status === 'active');
+  // Date-aware subscription filtering for stats
+  const activeSubsForDate = useMemo(() => {
+    return subscriptions.filter(s =>
+      s.status === 'active' &&
+      s.start_date <= selectedDateStr &&
+      s.end_date >= selectedDateStr
+    );
+  }, [subscriptions, selectedDateStr]);
+
   const uniqueStudentsOnDate = new Set(dateAttendance.map(a => a.user_id)).size;
-  const totalSubscribers = activeSubsForAttendance.length;
+  const totalSubscribers = activeSubsForDate.length;
   const absentOnDate = Math.max(0, totalSubscribers - uniqueStudentsOnDate);
 
-  // Filtered subscribers for manual correction
-  const filteredSubs = activeSubsForAttendance.filter(s =>
+  // Date-aware filtering for manual correction
+  const manualDateSubs = useMemo(() => {
+    return subscriptions.filter(s =>
+      s.status === 'active' &&
+      s.start_date <= manualDate &&
+      s.end_date >= manualDate
+    );
+  }, [subscriptions, manualDate]);
+
+  const isManualDateFuture = manualDate > todayStr;
+
+  const filteredSubs = manualDateSubs.filter(s =>
     !searchQuery || s.profiles?.name?.toLowerCase().includes(searchQuery.toLowerCase())
     || s.profiles?.phone?.includes(searchQuery)
   );
