@@ -252,6 +252,7 @@ const DueManagement: React.FC = () => {
                     const remaining = Number(due.due_amount) - Number(due.paid_amount);
                     return (
                       <div key={due.id} className="border rounded-lg p-3 bg-card space-y-2">
+                        <div className="text-[10px] text-muted-foreground font-medium">#{getSerialNumber(idx, currentPage, pageSize)}</div>
                         <div className="flex items-start justify-between">
                           <div className="min-w-0">
                             <p className="font-medium text-xs">{(due.profiles as any)?.name || 'N/A'}</p>
