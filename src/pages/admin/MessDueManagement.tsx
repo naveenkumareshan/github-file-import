@@ -402,7 +402,7 @@ const MessDueManagement: React.FC = () => {
                   <Label className="text-xs">Amount</Label>
                   <Input type="number" value={collectAmount} onChange={e => setCollectAmount(e.target.value)} className="h-8 text-xs" />
                 </div>
-                <PaymentMethodSelector value={collectMethod} onChange={setCollectMethod} partnerId={partnerId} customLabels={customLabels} />
+                <PaymentMethodSelector value={collectMethod} onValueChange={setCollectMethod} partnerId={partnerId} />
                 <div>
                   <Label className="text-xs">Transaction ID</Label>
                   <Input value={collectTxnId} onChange={e => setCollectTxnId(e.target.value)} className="h-8 text-xs" placeholder="Optional" />
