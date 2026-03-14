@@ -182,7 +182,9 @@ export default function StudentBookingView() {
           supabase.from("hostel_receipts").select("*").eq("booking_id", resolvedId).order("created_at", { ascending: false }),
           supabase.from("hostel_dues").select("id, due_amount, paid_amount, status").eq("booking_id", resolvedId).in("status", ["pending", "partial"]).maybeSingle(),
         ]);
-        setReceipts((receiptsRes.data as ReceiptItem[]) || []);
+        const hReceipts = (receiptsRes.data as ReceiptItem[]) || [];
+        setReceipts(hReceipts);
+        resolvePaymentMethodLabels(hReceipts.map(r => r.payment_method).filter(Boolean)).then(setCustomLabels);
         setDueRecord(duesRes.data as DueRecord | null);
 
         // Fetch partner info for hostel
