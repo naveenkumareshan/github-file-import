@@ -80,6 +80,7 @@ const MessManagement = lazy(() => import("./pages/admin/MessManagement"));
 const MessBookings = lazy(() => import("./pages/admin/MessBookings"));
 
 const MessReceipts = lazy(() => import("./pages/admin/MessReceipts"));
+const MessDueManagement = lazy(() => import("./pages/admin/MessDueManagement"));
 const MessAttendance = lazy(() => import("./pages/admin/MessAttendance"));
 const StudentLaundryOrders = lazy(() => import("./pages/StudentLaundryOrders"));
 const Reconciliation = lazy(() => import("./pages/admin/Reconciliation"));
