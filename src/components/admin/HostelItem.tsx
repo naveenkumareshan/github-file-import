@@ -231,6 +231,21 @@ export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePac
                     <TooltipContent>{hostel.is_partner_visible === false ? 'Show to Employees' : 'Hide from Employees'}</TooltipContent>
                   </Tooltip>
                 )}
+                {onDownloadQr && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        className="h-7 w-7"
+                        onClick={() => onDownloadQr(hostel.id, hostel.name)}
+                      >
+                        <QrCode className="h-3.5 w-3.5 text-primary" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Download QR Code</TooltipContent>
+                  </Tooltip>
+                )}
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button

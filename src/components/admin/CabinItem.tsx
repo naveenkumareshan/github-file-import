@@ -207,6 +207,21 @@ export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBoo
                     <TooltipContent>{cabin.isPartnerVisible === false ? 'Show to Employees' : 'Hide from Employees'}</TooltipContent>
                   </Tooltip>
                 )}
+                {onDownloadQr && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        className="h-7 w-7"
+                        onClick={() => onDownloadQr(cabin._id, cabin.name)}
+                      >
+                        <QrCode className="h-3.5 w-3.5 text-primary" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Download QR Code</TooltipContent>
+                  </Tooltip>
+                )}
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button

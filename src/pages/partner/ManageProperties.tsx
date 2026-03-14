@@ -181,7 +181,7 @@ const ManageProperties: React.FC = () => {
           {(showAllTabs || hasHostels || activeTab === 'hostels') && (
             <TabsContent value="hostels">
               <Suspense fallback={<LoadingFallback />}>
-                <HostelManagement autoCreateNew={activeTab === 'hostels' && triggerNew} onTriggerConsumed={handleTriggerConsumed} />
+                <HostelManagement autoCreateNew={activeTab === 'hostels' && triggerNew} onTriggerConsumed={handleTriggerConsumed} onOpenQr={(id, name) => handleOpenQr(id, 'hostel', name)} />
               </Suspense>
             </TabsContent>
           )}
