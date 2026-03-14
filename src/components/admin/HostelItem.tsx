@@ -34,7 +34,19 @@ export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePac
   const isAdmin = user?.role === 'admin';
   const [waDialogOpen, setWaDialogOpen] = useState(false);
   const [subDialogOpen, setSubDialogOpen] = useState(false);
+  const [waClickCount, setWaClickCount] = useState(0);
   const { hasSubscription, daysRemaining, isExpired, isInTrial, trialDaysRemaining, currentPlan } = useSubscriptionAccess(hostel.id, 'hostel', partnerId);
+
+  useEffect(() => {
+    const fetchClickCount = async () => {
+      const { count } = await supabase
+        .from('whatsapp_clicks' as any)
+        .select('*', { count: 'exact', head: true })
+        .eq('property_id', hostel.id);
+      setWaClickCount(count || 0);
+    };
+    fetchClickCount();
+  }, [hostel.id]);
 
   const renderSubscriptionBadge = () => {
     if (isAdmin) return null;
