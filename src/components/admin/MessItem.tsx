@@ -29,6 +29,18 @@ export function MessItem({ mess, onEdit, onDelete, onManagePackages, onToggleAct
   const isAdmin = user?.role === 'admin';
   const badge = FOOD_BADGES[mess.food_type] || FOOD_BADGES.both;
   const mainImage = mess.logo_image || (mess.images && mess.images[0]) || '/placeholder.svg';
+  const [viewCount, setViewCount] = useState(0);
+
+  useEffect(() => {
+    const fetchViewCount = async () => {
+      const { count } = await supabase
+        .from('property_views' as any)
+        .select('*', { count: 'exact', head: true })
+        .eq('property_id', mess.id);
+      setViewCount(count || 0);
+    };
+    fetchViewCount();
+  }, [mess.id]);
 
   return (
     <Card className="group h-full flex flex-col overflow-hidden transition-all duration-200 hover:shadow-md rounded-xl border border-border/60">
