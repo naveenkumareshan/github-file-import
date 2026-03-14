@@ -133,6 +133,17 @@ const ManageProperties: React.FC = () => {
         </div>
       </div>
 
+      {/* QR Code Buttons for properties */}
+      {qrProperties.length > 0 && (
+        <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+          {qrProperties.map(p => (
+            <Button key={p.id} size="sm" variant="outline" className="h-7 text-[10px] gap-1 shrink-0" onClick={() => handleOpenQr(p.id, p.type, p.name)}>
+              <QrCode className="h-3 w-3" /> {p.name}
+            </Button>
+          ))}
+        </div>
+      )}
+
       {!universalSub && (
         <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-accent/10">
           <CardContent className="p-3 flex items-center justify-between gap-3">
