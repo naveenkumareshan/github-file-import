@@ -1074,16 +1074,6 @@ const HostelRoomDetails = () => {
 
       </div>
 
-      {hostel?.created_by && (
-        <WhatsAppChatButton
-          partnerUserId={hostel.created_by}
-          propertyType="hostel"
-          propertyId={hostel.id}
-          propertyName={hostel.name}
-          whatsappChatEnabled={!!(hostel as any).whatsapp_chat_enabled}
-          whatsappNumber={(hostel as any).whatsapp_number || ''}
-        />
-      )}
       </div>
     </ErrorBoundary>
   );
