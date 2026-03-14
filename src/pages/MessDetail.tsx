@@ -169,24 +169,15 @@ export default function MessDetail() {
     });
   }, [selectedMealPlan, messPackages]);
 
-  // Available duration types from matching packages
-  const availableDurationTypes = useMemo(() => {
-    const types = new Set(matchingPackages.map((p: any) => p.duration_type));
-    return ['daily', 'weekly', 'monthly'].filter(t => types.has(t)) as ('daily' | 'weekly' | 'monthly')[];
-  }, [matchingPackages]);
-
-  // Auto-set duration type when meal plan changes
+  // Reset duration when meal plan changes
   useEffect(() => {
-    if (availableDurationTypes.length > 0 && !availableDurationTypes.includes(durationType)) {
-      setDurationType(availableDurationTypes[0]);
-    }
     setDurationCount(1);
-  }, [availableDurationTypes]);
+  }, [selectedMealPlan]);
 
-  // Selected package based on meal plan + duration type
+  // Selected package = first matching package for selected meal plan
   const selectedPackage = useMemo(() => {
-    return matchingPackages.find((p: any) => p.duration_type === durationType) || null;
-  }, [matchingPackages, durationType]);
+    return matchingPackages.length > 0 ? matchingPackages[0] : null;
+  }, [matchingPackages]);
 
   const endDate = useMemo(() => {
     return calculateBookingEndDate(checkInDate, durationType, durationCount);
@@ -426,7 +417,7 @@ export default function MessDetail() {
           </div>
 
           {/* ═══ Step 2: Select Duration ═══ */}
-          {selectedMealPlan && availableDurationTypes.length > 0 && (
+          {selectedMealPlan && selectedPackage && (
             <>
               <Separator className="my-0" />
               <div className="px-3 pt-2">
@@ -439,7 +430,7 @@ export default function MessDetail() {
                 <div>
                   <Label className="block mb-1 text-xs font-medium text-muted-foreground">Duration Type</Label>
                   <div className="flex gap-1.5 bg-muted/50 rounded-xl p-1">
-                    {availableDurationTypes.map(type => (
+                    {(['daily', 'weekly', 'monthly'] as const).map(type => (
                       <button
                         key={type}
                         onClick={() => { setDurationType(type); setDurationCount(1); }}

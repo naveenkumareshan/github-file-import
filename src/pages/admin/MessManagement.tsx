@@ -42,7 +42,7 @@ export default function MessManagement({ autoCreateNew, onTriggerConsumed, onOpe
 
   // Packages state
   const [packages, setPackages] = useState<any[]>([]);
-  const [pkgForm, setPkgForm] = useState({ name: '', meal_types: ['breakfast', 'lunch', 'dinner'], duration_type: 'monthly', duration_count: '1', price: '' });
+  const [pkgForm, setPkgForm] = useState({ name: '', meal_types: ['breakfast', 'lunch', 'dinner'], price: '' });
   const [mealCheckboxes, setMealCheckboxes] = useState({ breakfast: true, lunch: true, dinner: true });
 
   useEffect(() => { fetchMesses(); }, []);
@@ -142,10 +142,10 @@ export default function MessManagement({ autoCreateNew, onTriggerConsumed, onOpe
     if (!selectedMess?.id) return;
     const meal_types = Object.entries(mealCheckboxes).filter(([, v]) => v).map(([k]) => k);
     try {
-      await upsertMessPackage({ mess_id: selectedMess.id, name: pkgForm.name, meal_types, duration_type: pkgForm.duration_type, duration_count: parseInt(pkgForm.duration_count) || 1, price: parseFloat(pkgForm.price) || 0 });
+      await upsertMessPackage({ mess_id: selectedMess.id, name: pkgForm.name, meal_types, price: parseFloat(pkgForm.price) || 0 });
       toast({ title: 'Package saved!' });
       setPackages(await getMessPackages(selectedMess.id));
-      setPkgForm({ name: '', meal_types: [], duration_type: 'monthly', duration_count: '1', price: '' });
+      setPkgForm({ name: '', meal_types: [], price: '' });
     } catch (e: any) { toast({ title: 'Error', description: e.message, variant: 'destructive' }); }
   };
 
@@ -254,7 +254,7 @@ export default function MessManagement({ autoCreateNew, onTriggerConsumed, onOpe
                 <div key={p.id} className="flex items-center justify-between p-3 border rounded">
                   <div>
                     <p className="font-medium">{p.name}</p>
-                    <p className="text-xs text-muted-foreground">{(p.meal_types as string[])?.join(', ')} · {p.duration_count} {p.duration_type}</p>
+                    <p className="text-xs text-muted-foreground">{(p.meal_types as string[])?.join(', ')}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="font-bold">{formatCurrency(p.price)}</span>
@@ -266,18 +266,6 @@ export default function MessManagement({ autoCreateNew, onTriggerConsumed, onOpe
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div><Label>Package Name</Label><Input value={pkgForm.name} onChange={e => setPkgForm(f => ({ ...f, name: e.target.value }))} /></div>
                 <div><Label>Price (₹)</Label><Input type="number" value={pkgForm.price} onChange={e => setPkgForm(f => ({ ...f, price: e.target.value }))} /></div>
-                <div>
-                  <Label>Duration Type</Label>
-                  <Select value={pkgForm.duration_type} onValueChange={v => setPkgForm(f => ({ ...f, duration_type: v }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="daily">Daily</SelectItem>
-                      <SelectItem value="weekly">Weekly</SelectItem>
-                      <SelectItem value="monthly">Monthly</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div><Label>Duration Count</Label><Input type="number" value={pkgForm.duration_count} onChange={e => setPkgForm(f => ({ ...f, duration_count: e.target.value }))} /></div>
                 <div className="col-span-full">
                   <Label>Meals Included</Label>
                   <div className="flex gap-4 mt-1">

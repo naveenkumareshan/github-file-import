@@ -97,6 +97,10 @@ export default function MessBookings() {
   const [packages, setPackages] = useState<any[]>([]);
   const [selectedPackage, setSelectedPackage] = useState<any>(null);
 
+  // Duration
+  const [durationType, setDurationType] = useState<'daily' | 'weekly' | 'monthly'>('monthly');
+  const [durationCount, setDurationCount] = useState(1);
+
   // Dates
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState('');
@@ -298,6 +302,7 @@ export default function MessBookings() {
     setSelectedUserId(''); setSelectedStudentName('');
     setShowNewStudent(false); setNewName(''); setNewEmail(''); setNewPhone('');
     setSelectedMess(null); setPackages([]); setSelectedPackage(null);
+    setDurationType('monthly'); setDurationCount(1);
     setStartDate(new Date()); setEndDate('');
     setPaymentMethod(''); setTransactionId('');
     setPricePaid(0); setDiscountAmount(0); setAdvanceAmount(0);
@@ -339,16 +344,15 @@ export default function MessBookings() {
 
   const handlePackageSelect = (pkg: any) => {
     setSelectedPackage(pkg);
-    setPricePaid(pkg.price);
-    setAdvanceAmount(pkg.price);
-    recalcEndDate(startDate, pkg);
+    setPricePaid(pkg.price * durationCount);
+    setAdvanceAmount(pkg.price * durationCount);
+    recalcEndDate(startDate, durationType, durationCount);
   };
 
-  const recalcEndDate = (start: Date, pkg: any) => {
-    const count = pkg.duration_count || 1;
+  const recalcEndDate = (start: Date, type: string, count: number) => {
     let end: Date;
-    if (pkg.duration_type === 'daily') end = addDays(start, count - 1);
-    else if (pkg.duration_type === 'weekly') end = addDays(start, count * 7 - 1);
+    if (type === 'daily') end = addDays(start, count - 1);
+    else if (type === 'weekly') end = addDays(start, count * 7 - 1);
     else end = subDays(addMonths(start, count), 1);
     setEndDate(format(end, 'yyyy-MM-dd'));
   };
@@ -356,7 +360,26 @@ export default function MessBookings() {
   const handleStartDateChange = (d: Date) => {
     setStartDate(d);
     setStartDateOpen(false);
-    if (selectedPackage) recalcEndDate(d, selectedPackage);
+    recalcEndDate(d, durationType, durationCount);
+  };
+
+  const handleDurationTypeChange = (type: 'daily' | 'weekly' | 'monthly') => {
+    setDurationType(type);
+    setDurationCount(1);
+    if (selectedPackage) {
+      setPricePaid(selectedPackage.price * 1);
+      setAdvanceAmount(selectedPackage.price * 1);
+    }
+    recalcEndDate(startDate, type, 1);
+  };
+
+  const handleDurationCountChange = (count: number) => {
+    setDurationCount(count);
+    if (selectedPackage) {
+      setPricePaid(selectedPackage.price * count);
+      setAdvanceAmount(selectedPackage.price * count);
+    }
+    recalcEndDate(startDate, durationType, count);
   };
 
   const totalAfterDiscount = Math.max(0, pricePaid - discountAmount);
@@ -735,6 +758,29 @@ export default function MessBookings() {
                 </div>
               )}
 
+              {/* Duration type & count */}
+              {selectedPackage && (
+                <div>
+                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Duration</Label>
+                  <div className="flex gap-1.5 mt-1.5">
+                    {(['daily', 'weekly', 'monthly'] as const).map(type => (
+                      <button key={type} onClick={() => handleDurationTypeChange(type)}
+                        className={cn("px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap border transition-all",
+                          durationType === type ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
+                        )}>
+                        {type === 'daily' ? 'Daily' : type === 'weekly' ? 'Weekly' : 'Monthly'}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-2">
+                    <Label className="text-[10px] text-muted-foreground">
+                      {durationType === 'daily' ? 'Days' : durationType === 'weekly' ? 'Weeks' : 'Months'}
+                    </Label>
+                    <Input type="number" min={1} value={durationCount} onChange={e => handleDurationCountChange(Math.max(1, Number(e.target.value)))} className="h-8 text-xs w-24" />
+                  </div>
+                </div>
+              )}
+
               {selectedPackage && <Separator />}
 
               {/* Student search */}
@@ -813,7 +859,7 @@ export default function MessBookings() {
                   </div>
                   <div className="mt-1">
                     <Badge variant="outline" className="text-[10px]">
-                      {selectedPackage.duration_count || 1} {selectedPackage.duration_type || 'month'}(s)
+                      {durationCount} {durationType === 'daily' ? 'day' : durationType === 'weekly' ? 'week' : 'month'}(s)
                     </Badge>
                   </div>
                 </div>
