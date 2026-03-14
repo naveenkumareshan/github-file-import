@@ -38,14 +38,15 @@ export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePac
   const { hasSubscription, daysRemaining, isExpired, isInTrial, trialDaysRemaining, currentPlan } = useSubscriptionAccess(hostel.id, 'hostel', partnerId);
 
   useEffect(() => {
-    const fetchClickCount = async () => {
-      const { count } = await supabase
-        .from('whatsapp_clicks' as any)
-        .select('*', { count: 'exact', head: true })
-        .eq('property_id', hostel.id);
-      setWaClickCount(count || 0);
+    const fetchCounts = async () => {
+      const [waResult, viewResult] = await Promise.all([
+        supabase.from('whatsapp_clicks' as any).select('*', { count: 'exact', head: true }).eq('property_id', hostel.id),
+        supabase.from('property_views' as any).select('*', { count: 'exact', head: true }).eq('property_id', hostel.id),
+      ]);
+      setWaClickCount(waResult.count || 0);
+      setViewCount(viewResult.count || 0);
     };
-    fetchClickCount();
+    fetchCounts();
   }, [hostel.id]);
 
   const renderSubscriptionBadge = () => {
