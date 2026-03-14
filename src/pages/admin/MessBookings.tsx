@@ -758,6 +758,29 @@ export default function MessBookings() {
                 </div>
               )}
 
+              {/* Duration type & count */}
+              {selectedPackage && (
+                <div>
+                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Duration</Label>
+                  <div className="flex gap-1.5 mt-1.5">
+                    {(['daily', 'weekly', 'monthly'] as const).map(type => (
+                      <button key={type} onClick={() => handleDurationTypeChange(type)}
+                        className={cn("px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap border transition-all",
+                          durationType === type ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
+                        )}>
+                        {type === 'daily' ? 'Daily' : type === 'weekly' ? 'Weekly' : 'Monthly'}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-2">
+                    <Label className="text-[10px] text-muted-foreground">
+                      {durationType === 'daily' ? 'Days' : durationType === 'weekly' ? 'Weeks' : 'Months'}
+                    </Label>
+                    <Input type="number" min={1} value={durationCount} onChange={e => handleDurationCountChange(Math.max(1, Number(e.target.value)))} className="h-8 text-xs w-24" />
+                  </div>
+                </div>
+              )}
+
               {selectedPackage && <Separator />}
 
               {/* Student search */}
