@@ -40,7 +40,7 @@ interface CabinItemProps {
   onDownloadQr?: (cabinId: string, cabinName: string) => void;
 }
 
-export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBooking, onTogglePartnerVisible, onManageSeats, partnerId }: CabinItemProps) {
+export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBooking, onTogglePartnerVisible, onManageSeats, partnerId, onDownloadQr }: CabinItemProps) {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const [waDialogOpen, setWaDialogOpen] = useState(false);
