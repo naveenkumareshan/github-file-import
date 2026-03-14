@@ -8,21 +8,16 @@ import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 import { vendorSeatsService } from '@/api/vendorSeatsService';
 import { getMessPackages, createMessReceipt } from '@/api/messService';
 import { formatCurrency } from '@/utils/currency';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, UserPlus, Loader2, Check } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
-
-type Step = 'student' | 'mess' | 'package' | 'dates' | 'payment' | 'review';
-
-const allSteps: Step[] = ['student', 'mess', 'package', 'dates', 'payment', 'review'];
-const stepLabels = ['Select Student', 'Select Mess', 'Select Package', 'Select Dates', 'Payment Details', 'Review & Create'];
+import { Search, UserPlus, Loader2, Check, CalendarIcon } from 'lucide-react';
 
 export default function ManualMessBooking() {
   const { toast } = useToast();
@@ -67,7 +62,6 @@ export default function ManualMessBooking() {
   const [collectedByName, setCollectedByName] = useState('');
   const [notes, setNotes] = useState('');
 
-  const [step, setStep] = useState<Step>('student');
   const [submitting, setSubmitting] = useState(false);
 
   // Student search
@@ -98,7 +92,6 @@ export default function ManualMessBooking() {
     setSelectedStudentName(`${s.name} (${s.email})`);
     setStudentQuery(s.name);
     setShowResults(false);
-    setStep('mess');
   };
 
   const handleCreateStudent = async () => {
@@ -110,16 +103,15 @@ export default function ManualMessBooking() {
       setSelectedStudentName(`${newName} (${newEmail})`);
       setShowNewStudent(false);
       toast({ title: res.existing ? 'Existing student selected' : 'Student created' });
-      setStep('mess');
     } else { toast({ title: 'Error', description: res.error, variant: 'destructive' }); }
     setCreatingStudent(false);
   };
 
   const handleMessSelect = async (mess: any) => {
     setSelectedMess(mess);
+    setSelectedPackage(null);
     const pkgs = await getMessPackages(mess.id);
     setPackages(pkgs);
-    setStep('package');
   };
 
   const handlePackageSelect = (pkg: any) => {
@@ -133,7 +125,6 @@ export default function ManualMessBooking() {
     else if (pkg.duration_type === 'weekly') end = addDays(start, count * 7 - 1);
     else end = subDays(addMonths(start, count), 1);
     setEndDate(format(end, 'yyyy-MM-dd'));
-    setStep('dates');
   };
 
   const handleStartDateChange = (val: string) => {
@@ -212,24 +203,37 @@ export default function ManualMessBooking() {
     setSubmitting(false);
   };
 
-  const currentIdx = allSteps.indexOf(step);
+  const paymentMethods = [
+    { value: 'cash', label: 'Cash' },
+    { value: 'upi', label: 'UPI' },
+    { value: 'bank_transfer', label: 'Bank Transfer' },
+    { value: 'card', label: 'Card' },
+  ];
 
-  // ─── Render: Student Selection ────────────────────────────
-  const renderStudentSelection = () => (
-    <Card>
-      <CardHeader>
-        <CardTitle>Select Student</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+  return (
+    <div className="max-w-3xl mx-auto pb-24">
+      {/* Page Header */}
+      <div className="px-3 pt-2 pb-1">
+        <h1 className="text-lg font-bold text-foreground leading-tight">Manual Mess Booking</h1>
+        <p className="text-xs text-muted-foreground mt-0.5">Create an offline mess subscription for a student.</p>
+      </div>
+
+      {/* ═══ Step 1: Select Student ═══ */}
+      <Separator className="my-0" />
+      <div className="px-3 pt-2">
+        <div className="flex items-center gap-2 mb-1.5">
+          <div className="h-6 w-6 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center text-[10px] font-bold">1</div>
+          <Label className="text-sm font-semibold text-foreground">Select Student</Label>
+        </div>
+
         <div className="relative" ref={studentSearchRef}>
-          <Label className="text-sm mb-1 block">Search by Name, Phone or Email</Label>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Type to search students..."
+              placeholder="Search by name, phone or email..."
               value={studentQuery}
               onChange={(e) => { setStudentQuery(e.target.value); setShowResults(true); if (!e.target.value) { setSelectedUserId(''); setSelectedStudentName(''); } }}
-              className="pl-9"
+              className="pl-9 h-9"
             />
             {studentSearching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
           </div>
@@ -247,278 +251,259 @@ export default function ManualMessBooking() {
 
           {showResults && studentQuery.length >= 2 && !studentSearching && studentResults.length === 0 && (
             <div className="absolute z-50 w-full mt-1 bg-card border rounded-md shadow-lg p-3">
-              <p className="text-sm text-muted-foreground">No students found. Create a new one below.</p>
+              <p className="text-xs text-muted-foreground">No students found. Create a new one below.</p>
             </div>
           )}
         </div>
 
         {selectedStudentName && (
-          <div className="flex items-center gap-2 p-2 bg-muted/30 rounded-md">
-            <Badge variant="outline" className="text-xs">Selected</Badge>
-            <span className="text-sm font-medium">{selectedStudentName}</span>
+          <div className="flex items-center gap-1.5 mt-1.5">
+            <span className="inline-flex items-center gap-1 text-xs font-medium bg-secondary/10 text-secondary rounded-full px-3 py-1">
+              <Check className="h-3 w-3" />
+              {selectedStudentName}
+            </span>
           </div>
         )}
 
         <Collapsible open={showNewStudent} onOpenChange={setShowNewStudent}>
           <CollapsibleTrigger asChild>
-            <Button variant="outline" size="sm" className="w-full gap-2">
-              <UserPlus className="h-4 w-4" />
+            <button className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-secondary/10 text-secondary border border-secondary/20 hover:bg-secondary/20 transition-colors cursor-pointer">
+              <UserPlus className="h-3.5 w-3.5" />
               {showNewStudent ? 'Hide' : 'Create New Student'}
-            </Button>
+            </button>
           </CollapsibleTrigger>
-          <CollapsibleContent className="mt-3 space-y-3 border rounded-md p-3">
+          <CollapsibleContent className="mt-2 space-y-2 bg-muted/20 rounded-xl p-2.5 border border-border/50">
             <div>
-              <Label className="text-sm">Name *</Label>
-              <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Student name" />
+              <Label className="text-xs text-muted-foreground">Name *</Label>
+              <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Student name" className="h-9" />
             </div>
             <div>
-              <Label className="text-sm">Email *</Label>
-              <Input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="student@email.com" />
+              <Label className="text-xs text-muted-foreground">Email *</Label>
+              <Input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="student@email.com" className="h-9" />
             </div>
             <div>
-              <Label className="text-sm">Phone</Label>
-              <Input value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="Phone number" />
+              <Label className="text-xs text-muted-foreground">Phone</Label>
+              <Input value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="Phone number" className="h-9" />
             </div>
             <Button size="sm" onClick={handleCreateStudent} disabled={creatingStudent} className="w-full">
               {creatingStudent ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Creating...</> : 'Create & Select Student'}
             </Button>
           </CollapsibleContent>
         </Collapsible>
-      </CardContent>
-    </Card>
-  );
+      </div>
 
-  // ─── Render: Mess Selection ───────────────────────────────
-  const renderMessSelection = () => (
-    <div>
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Select a Mess</h2>
-        <Button variant="outline" size="sm" onClick={() => setStep('student')}>← Back</Button>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {messes.map((m) => (
-          <Card
-            key={m.id}
-            className={`cursor-pointer transition-all ${selectedMess?.id === m.id ? 'border-primary' : 'hover:shadow-md'}`}
-            onClick={() => handleMessSelect(m)}
-          >
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">{m.name}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground capitalize">{m.food_type}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-      {messes.length === 0 && <p className="text-center py-12 text-muted-foreground">No mess found.</p>}
-    </div>
-  );
-
-  // ─── Render: Package Selection ────────────────────────────
-  const renderPackageSelection = () => (
-    <div>
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Select a Package — {selectedMess?.name}</h2>
-        <Button variant="outline" size="sm" onClick={() => setStep('mess')}>← Back</Button>
-      </div>
-      {packages.length === 0 ? (
-        <p className="text-center py-12 text-muted-foreground">No packages found for this mess.</p>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {packages.map((p) => (
-            <Card
-              key={p.id}
-              className={`cursor-pointer transition-all ${selectedPackage?.id === p.id ? 'border-primary' : 'hover:shadow-md'}`}
-              onClick={() => handlePackageSelect(p)}
-            >
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">{p.name}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">{(p.meal_types as string[])?.join(', ')} · {p.duration_count} {p.duration_type}</p>
-                <p className="font-semibold mt-2 text-primary">{formatCurrency(p.price)}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+      {/* ═══ Step 2: Select Mess ═══ */}
+      {selectedUserId && (
+        <>
+          <Separator className="my-0 mt-3" />
+          <div className="px-3 pt-2">
+            <div className="flex items-center gap-2 mb-1.5">
+              <div className="h-6 w-6 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center text-[10px] font-bold">2</div>
+              <Label className="text-sm font-semibold text-foreground">Select Mess</Label>
+            </div>
+            <div className="flex gap-1.5 overflow-x-auto pb-2 no-scrollbar">
+              {messes.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-2">No mess found.</p>
+              ) : (
+                messes.map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => handleMessSelect(m)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all ${
+                      selectedMess?.id === m.id
+                        ? 'bg-secondary text-secondary-foreground border-secondary'
+                        : 'bg-muted/50 text-muted-foreground border-border hover:border-secondary/50'
+                    }`}
+                  >
+                    {m.name}
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </>
       )}
-    </div>
-  );
 
-  // ─── Render: Date Selection ───────────────────────────────
-  const renderDateSelection = () => (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold">Select Dates for {selectedPackage?.name}</h2>
-        <Button variant="outline" onClick={() => setStep('package')}>Back to Package Selection</Button>
-      </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Select Booking Period</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="startDate">Start Date</Label>
-              <Input type="date" id="startDate" value={startDate} onChange={(e) => handleStartDateChange(e.target.value)} />
+      {/* ═══ Step 3: Select Package ═══ */}
+      {selectedMess && (
+        <>
+          <Separator className="my-0" />
+          <div className="px-3 pt-2">
+            <div className="flex items-center gap-2 mb-1.5">
+              <div className="h-6 w-6 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center text-[10px] font-bold">3</div>
+              <Label className="text-sm font-semibold text-foreground">Select Package</Label>
             </div>
-            <div>
-              <Label>Duration</Label>
-              <Input value={`${selectedPackage?.duration_count || 1} ${selectedPackage?.duration_type || 'month'}`} disabled />
+            {packages.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-2">No packages found for this mess.</p>
+            ) : (
+              <div className="flex gap-1.5 flex-wrap pb-2">
+                {packages.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => handlePackageSelect(p)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all ${
+                      selectedPackage?.id === p.id
+                        ? 'bg-secondary text-secondary-foreground border-secondary'
+                        : 'bg-muted/50 text-muted-foreground border-border hover:border-secondary/50'
+                    }`}
+                  >
+                    {p.name} · {formatCurrency(p.price)}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* ═══ Step 4: Select Dates ═══ */}
+      {selectedPackage && (
+        <>
+          <Separator className="my-0" />
+          <div className="px-3 pt-2">
+            <div className="flex items-center gap-2 mb-1.5">
+              <div className="h-6 w-6 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center text-[10px] font-bold">4</div>
+              <Label className="text-sm font-semibold text-foreground">Select Dates</Label>
             </div>
-            <div>
-              <Label htmlFor="endDate">End Date</Label>
-              <Input type="date" id="endDate" value={endDate} disabled />
+
+            <div className="flex items-end gap-2 bg-muted/20 rounded-xl p-2.5 border border-border/50">
+              <div className="flex-1">
+                <Label className="block mb-1 text-xs text-muted-foreground">Start Date</Label>
+                <Input type="date" value={startDate} onChange={(e) => handleStartDateChange(e.target.value)} className="h-9" />
+              </div>
+              <div className="w-28">
+                <Label className="block mb-1 text-xs text-muted-foreground">Duration</Label>
+                <Input value={`${selectedPackage.duration_count || 1} ${selectedPackage.duration_type || 'month'}`} disabled className="h-9" />
+              </div>
             </div>
-            <div>
-              <Label>Package Price</Label>
-              <Input value={formatCurrency(selectedPackage?.price || 0)} disabled />
+
+            {endDate && (
+              <div className="flex items-center gap-1.5 mt-1.5">
+                <span className="inline-flex items-center gap-1 text-xs font-medium bg-secondary/10 text-secondary rounded-full px-3 py-1">
+                  <CalendarIcon className="h-3 w-3" />
+                  Ends: {endDate}
+                </span>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* ═══ Step 5: Payment Details ═══ */}
+      {selectedPackage && endDate && (
+        <>
+          <Separator className="my-0 mt-3" />
+          <div className="px-3 pt-2">
+            <div className="flex items-center gap-2 mb-1.5">
+              <div className="h-6 w-6 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center text-[10px] font-bold">5</div>
+              <Label className="text-sm font-semibold text-foreground">Payment Details</Label>
+            </div>
+
+            {/* Payment method pills */}
+            <div className="mb-2">
+              <Label className="block mb-1 text-xs text-muted-foreground">Payment Method</Label>
+              <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                {paymentMethods.map((pm) => (
+                  <button
+                    key={pm.value}
+                    onClick={() => setPaymentMethod(pm.value)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all ${
+                      paymentMethod === pm.value
+                        ? 'bg-secondary text-secondary-foreground border-secondary'
+                        : 'bg-muted/50 text-muted-foreground border-border hover:border-secondary/50'
+                    }`}
+                  >
+                    {pm.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-muted/20 rounded-xl p-2.5 border border-border/50 space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Package Price</Label>
+                  <Input type="number" value={pricePaid} onChange={(e) => setPricePaid(Number(e.target.value))} className="h-9" />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Discount</Label>
+                  <Input type="number" value={discountAmount} onChange={(e) => setDiscountAmount(Number(e.target.value))} className="h-9" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Collecting Now</Label>
+                  <Input type="number" value={advanceAmount} onChange={(e) => setAdvanceAmount(Number(e.target.value))} className="h-9" />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Transaction ID</Label>
+                  <Input value={transactionId} onChange={(e) => setTransactionId(e.target.value)} className="h-9" />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Collected By</Label>
+                <Input value={collectedByName} onChange={(e) => setCollectedByName(e.target.value)} placeholder={user?.name || ''} className="h-9" />
+              </div>
+            </div>
+
+            {paymentMethod !== 'cash' && (
+              <div className="mt-2">
+                <PaymentProofUpload value={paymentProofUrl} onChange={setPaymentProofUrl} />
+              </div>
+            )}
+
+            <div className="mt-2">
+              <Label className="text-xs text-muted-foreground">Notes</Label>
+              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="text-sm" />
             </div>
           </div>
-          <Button onClick={() => setStep('payment')} className="mt-4" disabled={!startDate || !endDate}>
-            Continue to Payment Details
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
-  );
+        </>
+      )}
 
-  // ─── Render: Payment Details ──────────────────────────────
-  const renderPaymentDetails = () => (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold">Payment Details</h2>
-        <Button variant="outline" onClick={() => setStep('dates')}>Back to Dates</Button>
-      </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Payment Information</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label>Package Price</Label>
-              <Input type="number" value={pricePaid} onChange={(e) => setPricePaid(Number(e.target.value))} />
+      {/* ═══ Step 6: Review & Create ═══ */}
+      {selectedPackage && endDate && (
+        <>
+          <Separator className="my-0 mt-3" />
+          <div className="px-3 pt-2 pb-6">
+            <div className="flex items-center gap-2 mb-1.5">
+              <div className="h-6 w-6 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center text-[10px] font-bold">6</div>
+              <Label className="text-sm font-semibold text-foreground">Review & Create</Label>
             </div>
-            <div>
-              <Label>Discount</Label>
-              <Input type="number" value={discountAmount} onChange={(e) => setDiscountAmount(Number(e.target.value))} />
-            </div>
-            <div>
-              <Label>Amount Collecting Now</Label>
-              <Input type="number" value={advanceAmount} onChange={(e) => setAdvanceAmount(Number(e.target.value))} />
-            </div>
-            <div>
-              <Label>Payment Method</Label>
-              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cash">Cash</SelectItem>
-                  <SelectItem value="upi">UPI</SelectItem>
-                  <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                  <SelectItem value="card">Card</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Transaction ID</Label>
-              <Input value={transactionId} onChange={(e) => setTransactionId(e.target.value)} />
-            </div>
-            <div>
-              <Label>Collected By</Label>
-              <Input value={collectedByName} onChange={(e) => setCollectedByName(e.target.value)} placeholder={user?.name || ''} />
+
+            <div className="bg-muted/30 rounded-xl border border-border/50 divide-y divide-border/50">
+              {/* Booking Summary */}
+              <div className="p-3 space-y-1.5 text-xs">
+                <h4 className="text-sm font-semibold text-foreground mb-2">Booking Summary</h4>
+                <div className="flex justify-between"><span className="text-muted-foreground">Student</span><span className="font-medium text-foreground">{selectedStudentName}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Mess</span><span className="font-medium text-foreground">{selectedMess?.name}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Package</span><span className="font-medium text-foreground">{selectedPackage?.name}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Start Date</span><span className="font-medium text-foreground">{startDate}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">End Date</span><span className="font-medium text-foreground">{endDate}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Payment</span><span className="font-medium text-foreground capitalize">{paymentMethod.replace('_', ' ')}</span></div>
+              </div>
+
+              {/* Price Breakdown */}
+              <div className="p-3 space-y-1.5 text-xs">
+                <h4 className="text-sm font-semibold text-foreground mb-2">Price Breakdown</h4>
+                <div className="flex justify-between"><span className="text-muted-foreground">Package Price</span><span className="font-medium text-foreground">{formatCurrency(pricePaid)}</span></div>
+                {discountAmount > 0 && <div className="flex justify-between text-destructive"><span>Discount</span><span>-{formatCurrency(discountAmount)}</span></div>}
+                <Separator className="my-1.5 opacity-50" />
+                <div className="flex justify-between text-sm"><span className="font-semibold text-foreground">Total</span><span className="font-bold text-secondary">{formatCurrency(totalAfterDiscount)}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Collecting Now</span><span className="font-medium text-foreground">{formatCurrency(advanceAmount)}</span></div>
+                {dueAmount > 0 && <div className="flex justify-between text-destructive font-medium"><span>Due Amount</span><span>{formatCurrency(dueAmount)}</span></div>}
+              </div>
+
+              {/* Create Button */}
+              <div className="p-3">
+                <Button onClick={handleSubmit} disabled={submitting} className="w-full gap-2">
+                  {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                  Create Subscription
+                </Button>
+              </div>
             </div>
           </div>
-
-          {paymentMethod !== 'cash' && (
-            <PaymentProofUpload value={paymentProofUrl} onChange={setPaymentProofUrl} />
-          )}
-
-          <div>
-            <Label>Notes</Label>
-            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
-          </div>
-
-          {/* Payment Summary */}
-          <div className="bg-muted/50 rounded-lg p-4 space-y-2 text-sm">
-            <div className="flex justify-between"><span>Package Price</span><span>{formatCurrency(pricePaid)}</span></div>
-            {discountAmount > 0 && <div className="flex justify-between text-destructive"><span>Discount</span><span>-{formatCurrency(discountAmount)}</span></div>}
-            <div className="flex justify-between font-semibold border-t pt-2"><span>Total</span><span>{formatCurrency(totalAfterDiscount)}</span></div>
-            <div className="flex justify-between"><span>Collecting Now</span><span>{formatCurrency(advanceAmount)}</span></div>
-            {dueAmount > 0 && <div className="flex justify-between text-destructive font-medium"><span>Due</span><span>{formatCurrency(dueAmount)}</span></div>}
-          </div>
-
-          <Button onClick={() => setStep('review')} className="mt-2">
-            Review Booking →
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
-  );
-
-  // ─── Render: Review & Create ──────────────────────────────
-  const renderReview = () => (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold">Review & Create</h2>
-        <Button variant="outline" onClick={() => setStep('payment')}>Back to Payment</Button>
-      </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Booking Summary</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div><span className="text-muted-foreground">Student:</span> <span className="font-medium ml-1">{selectedStudentName}</span></div>
-            <div><span className="text-muted-foreground">Mess:</span> <span className="font-medium ml-1">{selectedMess?.name}</span></div>
-            <div><span className="text-muted-foreground">Package:</span> <span className="font-medium ml-1">{selectedPackage?.name}</span></div>
-            <div><span className="text-muted-foreground">Dates:</span> <span className="ml-1">{startDate} → {endDate}</span></div>
-            <div><span className="text-muted-foreground">Total:</span> <span className="font-semibold ml-1">{formatCurrency(totalAfterDiscount)}</span></div>
-            <div><span className="text-muted-foreground">Paid Now:</span> <span className="ml-1">{formatCurrency(advanceAmount)}</span></div>
-            {dueAmount > 0 && <div><span className="text-destructive">Due:</span> <span className="text-destructive font-medium ml-1">{formatCurrency(dueAmount)}</span></div>}
-            <div><span className="text-muted-foreground">Payment:</span> <span className="capitalize ml-1">{paymentMethod.replace('_', ' ')}</span></div>
-          </div>
-
-          <Button onClick={handleSubmit} disabled={submitting} className="mt-4 gap-2">
-            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-            Create Subscription
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
-  );
-
-  return (
-    <div className="flex flex-col gap-4">
-      {/* Page Header */}
-      <div>
-        <h1 className="text-lg font-semibold tracking-tight">Manual Mess Booking</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">Create an offline mess subscription for a student.</p>
-      </div>
-
-      {/* Step Indicator */}
-      <div className="flex items-center gap-2">
-        {allSteps.map((s, idx) => (
-          <React.Fragment key={s}>
-            <div className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold transition-colors ${idx <= currentIdx ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-              {idx + 1}
-            </div>
-            <span className={`text-xs hidden sm:inline ${idx === currentIdx ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>{stepLabels[idx]}</span>
-            {idx < allSteps.length - 1 && <div className={`flex-1 h-px ${idx < currentIdx ? 'bg-primary' : 'bg-border'}`} />}
-          </React.Fragment>
-        ))}
-      </div>
-
-      {/* Step Content */}
-      <div className="space-y-4 mt-0">
-        {step === 'student' && renderStudentSelection()}
-        {step === 'mess' && renderMessSelection()}
-        {step === 'package' && renderPackageSelection()}
-        {step === 'dates' && renderDateSelection()}
-        {step === 'payment' && renderPaymentDetails()}
-        {step === 'review' && renderReview()}
-      </div>
+        </>
+      )}
     </div>
   );
 }
