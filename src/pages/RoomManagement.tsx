@@ -462,6 +462,7 @@ const RoomManagement: React.FC<RoomManagementProps> = ({ autoCreateNew, onTrigge
                       onEdit={() => handleEditCabin(cabin)}
                       onDelete={() => handleDeleteCabin(cabin._id)}
                       onManageSeats={() => handleManageSeats(cabin._id)}
+                      onDownloadQr={onOpenQr}
                     />
                   ))}
                 </div>

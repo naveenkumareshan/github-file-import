@@ -216,6 +216,7 @@ const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTr
                   onToggleActive={handleToggleActive}
                   onToggleBooking={handleToggleBooking}
                   onTogglePartnerVisible={handleTogglePartnerVisible}
+                  onDownloadQr={onOpenQr}
                 />
               ))}
             </div>
