@@ -909,6 +909,7 @@ const VendorSeats: React.FC = () => {
             <SelectItem value="booked" className="text-xs">Booked</SelectItem>
             <SelectItem value="expiring_soon" className="text-xs">Expiring Soon</SelectItem>
             <SelectItem value="blocked" className="text-xs">Blocked</SelectItem>
+            <SelectItem value="present" className="text-xs">Present</SelectItem>
           </SelectContent>
         </Select>
 

@@ -1289,6 +1289,7 @@ const HostelBedMap: React.FC = () => {
             <SelectItem value="future_booked" className="text-xs">Future Booked</SelectItem>
             <SelectItem value="expiring_soon" className="text-xs">Expiring Soon</SelectItem>
             <SelectItem value="blocked" className="text-xs">Blocked</SelectItem>
+            <SelectItem value="present" className="text-xs">Present</SelectItem>
           </SelectContent>
         </Select>
 
