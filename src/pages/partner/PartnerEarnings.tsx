@@ -229,6 +229,13 @@ const PartnerEarnings: React.FC = () => {
               </TableBody>
             </Table>
           </div>
+          <AdminTablePagination
+            currentPage={settPage}
+            totalItems={filteredSettlements.length}
+            pageSize={settPageSize}
+            onPageChange={setSettPage}
+            onPageSizeChange={(s) => { setSettPageSize(s); setSettPage(1); }}
+          />
         </TabsContent>
 
         <TabsContent value="ledger">
