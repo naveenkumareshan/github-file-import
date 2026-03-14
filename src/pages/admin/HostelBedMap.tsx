@@ -1310,6 +1310,7 @@ const HostelBedMap: React.FC = () => {
               onTouchStart={(e) => handleTouchStart(e, bed)}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
+              style={{ touchAction: 'manipulation' }}
               className={cn(
                 "relative border rounded cursor-pointer p-1 flex flex-col items-center justify-center text-center transition-all hover:shadow-md group min-h-[72px] max-w-[90px] overflow-hidden select-none",
                 statusColors(bed.dateStatus)
