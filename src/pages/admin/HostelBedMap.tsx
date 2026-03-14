@@ -542,13 +542,13 @@ const HostelBedMap: React.FC = () => {
     }
   };
 
-  const handleBedCardClick = useCallback((bed: HostelBed) => {
+  const handleBedCardClick = (bed: HostelBed) => {
     if (isLongPressRef.current) {
       isLongPressRef.current = false;
       return; // Long press fired, don't open sheet
     }
     handleBedClick(bed);
-  }, []);
+  };
 
   const closeContextMenu = useCallback(() => {
     setContextMenuBed(null);
