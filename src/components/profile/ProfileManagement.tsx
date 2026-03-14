@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from '@/hooks/use-toast';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { User, MailIcon, GraduationCap, Shield, AlertTriangle, Pencil, X, Check, LogOut, FileText, Lock, BookMarked, ChevronRight, ChevronDown, Info, MessageSquareWarning, Headphones, Phone, Camera, Loader2, BadgeCheck, Mail } from 'lucide-react';
+import { User, MailIcon, GraduationCap, Shield, AlertTriangle, Pencil, X, Check, LogOut, FileText, Lock, BookMarked, ChevronRight, ChevronDown, Info, MessageSquareWarning, Headphones, Phone, Camera, Loader2, BadgeCheck, Mail, QrCode, History } from 'lucide-react';
 import { userProfileService } from '@/api/userProfileService';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
