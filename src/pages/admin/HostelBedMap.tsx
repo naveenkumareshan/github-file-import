@@ -1377,9 +1377,12 @@ const HostelBedMap: React.FC = () => {
                   {group.beds.map(bed => (
                     <div
                       key={bed.id}
-                      onClick={() => handleBedClick(bed)}
+                      onClick={() => handleBedCardClick(bed)}
+                      onTouchStart={(e) => handleTouchStart(e, bed)}
+                      onTouchMove={handleTouchMove}
+                      onTouchEnd={handleTouchEnd}
                       className={cn(
-                        "relative border rounded cursor-pointer p-1.5 flex flex-col items-center justify-center text-center transition-all hover:shadow-md group w-[76px] min-h-[64px] overflow-hidden",
+                        "relative border rounded cursor-pointer p-1.5 flex flex-col items-center justify-center text-center transition-all hover:shadow-md group w-[76px] min-h-[64px] overflow-hidden select-none",
                         statusColors(bed.dateStatus)
                       )}
                     >
