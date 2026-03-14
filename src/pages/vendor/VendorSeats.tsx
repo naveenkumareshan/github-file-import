@@ -39,6 +39,7 @@ import { DuePaymentHistory } from '@/components/booking/DuePaymentHistory';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
+import { attendanceService } from '@/api/attendanceService';
 import { PaymentMethodSelector } from '@/components/vendor/PaymentMethodSelector';
 import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
 import { BookingUpdateDatesDialog } from '@/components/admin/BookingUpdateDatesDialog';
@@ -161,6 +162,9 @@ const VendorSeats: React.FC = () => {
   const [dateEditOpen, setDateEditOpen] = useState(false);
   const [dateEditBooking, setDateEditBooking] = useState<any>(null);
 
+  // Attendance presence dots
+  const [attendanceSet, setAttendanceSet] = useState<Set<string>>(new Set());
+
   const { toast } = useToast();
   const { hasPermission } = useVendorEmployeePermissions();
   const { user } = useAuth();
@@ -213,6 +217,19 @@ const VendorSeats: React.FC = () => {
   }, [selectedCabinId, selectedDate, cabins]);
 
   useEffect(() => { fetchSeats(); }, [fetchSeats]);
+
+  // Attendance presence dots - auto-refresh every 30s
+  useEffect(() => {
+    const fetchAttendance = async () => {
+      const cabinIds = cabins.map(c => c._id);
+      if (cabinIds.length === 0) return;
+      const set = await attendanceService.getAllPropertiesAttendanceToday(cabinIds);
+      setAttendanceSet(set);
+    };
+    fetchAttendance();
+    const interval = setInterval(fetchAttendance, 30000);
+    return () => clearInterval(interval);
+  }, [cabins]);
 
   // Resolve custom payment method labels from bookings & receipts
   useEffect(() => {
@@ -928,6 +945,7 @@ const VendorSeats: React.FC = () => {
         <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-muted-foreground/40 inline-block" /> Blocked</span>
         <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-violet-500 inline-block" /> Morning</span>
         <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-blue-500 inline-block" /> Evening</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block ring-1 ring-white" /> Present</span>
         <span className="ml-auto">{filteredSeats.length} seats</span>
       </div>
 
@@ -943,6 +961,9 @@ const VendorSeats: React.FC = () => {
                 statusColors(seat.dateStatus)
               )}
             >
+              {attendanceSet.has(seat._id) && (
+                <span className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-emerald-500 ring-1 ring-white z-10" title="Present today" />
+              )}
               <span className="text-xs font-bold leading-none">{seatLabel(seat)}</span>
               <span className="text-[9px] text-muted-foreground leading-tight truncate w-full">{seat.category}</span>
               {/* Price with inline edit button */}

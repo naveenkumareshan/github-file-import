@@ -211,6 +211,14 @@ export function AdminSidebar() {
       }
     }
 
+    readingRoomSubItems.push({
+      title: 'Attendance',
+      url: `${routePrefix}/property-attendance?type=reading_room`,
+      icon: UserCheck,
+      roles: ['admin', 'vendor', 'vendor_employee'],
+      permissions: ['seats_available_map']
+    });
+
     if (readingRoomSubItems.length > 0) {
       menuItems.push({
         title: 'Reading Rooms',
@@ -287,6 +295,13 @@ export function AdminSidebar() {
         icon: Activity,
         roles: ['admin', 'vendor', 'vendor_employee'],
         permissions: ['view_hostel_bookings']
+      },
+      {
+        title: 'Attendance',
+        url: `${routePrefix}/property-attendance?type=hostel`,
+        icon: UserCheck,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+        permissions: ['view_bed_map']
       },
     ];
 

@@ -1,6 +1,7 @@
-import React, { lazy, Suspense, useState } from 'react';
+import React, { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Building, Hotel, Plus, Shirt, Loader2, UtensilsCrossed, Crown, LayoutGrid } from 'lucide-react';
+import { Building, Hotel, Plus, Shirt, Loader2, UtensilsCrossed, Crown, LayoutGrid, QrCode, Download } from 'lucide-react';
+import QRCode from 'qrcode';
 import PlansComparisonDialog from '@/components/partner/PlansComparisonDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -28,6 +29,12 @@ const ManageProperties: React.FC = () => {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [triggerNew, setTriggerNew] = useState(false);
   const [showPlansDialog, setShowPlansDialog] = useState(false);
+  const [showQrDialog, setShowQrDialog] = useState(false);
+  const [qrPropertyId, setQrPropertyId] = useState('');
+  const [qrPropertyType, setQrPropertyType] = useState('');
+  const [qrPropertyName, setQrPropertyName] = useState('');
+  const [qrDataUrl, setQrDataUrl] = useState('');
+  const [qrProperties, setQrProperties] = useState<{ id: string; name: string; type: string }[]>([]);
 
   // Check for active universal subscription
   const { data: partner } = useQuery({
@@ -75,6 +82,36 @@ const ManageProperties: React.FC = () => {
 
   const handleTriggerConsumed = () => setTriggerNew(false);
 
+  // Fetch properties for QR dialog
+  useEffect(() => {
+    if (!user?.id) return;
+    (async () => {
+      const props: { id: string; name: string; type: string }[] = [];
+      const { data: cabins } = await supabase.from('cabins').select('id, name').eq('created_by', user.id).eq('is_active', true);
+      (cabins || []).forEach((c: any) => props.push({ id: c.id, name: c.name, type: 'reading_room' }));
+      const { data: hostels } = await supabase.from('hostels').select('id, name').eq('created_by', user.id).eq('is_active', true);
+      (hostels || []).forEach((h: any) => props.push({ id: h.id, name: h.name, type: 'hostel' }));
+      setQrProperties(props);
+    })();
+  }, [user?.id]);
+
+  const handleOpenQr = async (propertyId: string, propertyType: string, propertyName: string) => {
+    setQrPropertyId(propertyId);
+    setQrPropertyType(propertyType);
+    setQrPropertyName(propertyName);
+    const qrData = JSON.stringify({ propertyId, type: propertyType });
+    const url = await QRCode.toDataURL(qrData, { width: 400, margin: 2, color: { dark: '#000000', light: '#ffffff' } });
+    setQrDataUrl(url);
+    setShowQrDialog(true);
+  };
+
+  const handleDownloadQr = () => {
+    const a = document.createElement('a');
+    a.href = qrDataUrl;
+    a.download = `qr-${qrPropertyName.replace(/\s+/g, '-').toLowerCase()}.png`;
+    a.click();
+  };
+
   const LoadingFallback = () => (
     <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
   );
@@ -95,6 +132,17 @@ const ManageProperties: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      {/* QR Code Buttons for properties */}
+      {qrProperties.length > 0 && (
+        <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+          {qrProperties.map(p => (
+            <Button key={p.id} size="sm" variant="outline" className="h-7 text-[10px] gap-1 shrink-0" onClick={() => handleOpenQr(p.id, p.type, p.name)}>
+              <QrCode className="h-3 w-3" /> {p.name}
+            </Button>
+          ))}
+        </div>
+      )}
 
       {!universalSub && (
         <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-accent/10">
@@ -233,6 +281,23 @@ const ManageProperties: React.FC = () => {
       </Dialog>
 
       <PlansComparisonDialog open={showPlansDialog} onOpenChange={setShowPlansDialog} />
+
+      {/* QR Code Dialog */}
+      <Dialog open={showQrDialog} onOpenChange={setShowQrDialog}>
+        <DialogContent className="sm:max-w-xs">
+          <DialogHeader>
+            <DialogTitle className="text-sm">Property QR Code</DialogTitle>
+          </DialogHeader>
+          <div className="text-center space-y-4">
+            <p className="text-xs text-muted-foreground">{qrPropertyName}</p>
+            {qrDataUrl && <img src={qrDataUrl} alt="QR Code" className="mx-auto w-48 h-48 rounded-lg border" />}
+            <p className="text-[10px] text-muted-foreground">Print and place this QR code at the property entrance for student check-in</p>
+            <Button size="sm" className="w-full gap-1.5" onClick={handleDownloadQr}>
+              <Download className="h-3.5 w-3.5" /> Download QR Code
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

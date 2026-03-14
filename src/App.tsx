@@ -82,6 +82,8 @@ const MessReceipts = lazy(() => import("./pages/admin/MessReceipts"));
 const MessAttendance = lazy(() => import("./pages/admin/MessAttendance"));
 const StudentLaundryOrders = lazy(() => import("./pages/StudentLaundryOrders"));
 const Reconciliation = lazy(() => import("./pages/admin/Reconciliation"));
+const PropertyAttendance = lazy(() => import("./pages/admin/PropertyAttendance"));
+const ScanAttendance = lazy(() => import("./pages/student/ScanAttendance"));
 const BankManagement = lazy(() => import("./pages/admin/BankManagement"));
 const LaundryPartnerDashboard = lazy(() => import("./pages/LaundryPartnerDashboard"));
 const ExpiringBookingsPage = lazy(() => import("./pages/admin/ExpiringBookingsPage"));
@@ -229,6 +231,7 @@ function App() {
               <Route path="expiring-bookings" element={<ExpiringBookingsPage />} />
               <Route path="hostel-expiring-bookings" element={<HostelExpiringBookingsPage />} />
               <Route path="banks" element={<BankManagement />} />
+              <Route path="property-attendance" element={<PropertyAttendance />} />
             </Route>
 
             {/* ── Partner routes (alias for vendor/host admin panel) ── */}
@@ -286,6 +289,7 @@ function App() {
               <Route path="expiring-bookings" element={<ExpiringBookingsPage />} />
               <Route path="hostel-expiring-bookings" element={<HostelExpiringBookingsPage />} />
               <Route path="banks" element={<BankManagement />} />
+              <Route path="property-attendance" element={<PropertyAttendance />} />
             </Route>
 
             {/* ── Partner routes (formerly vendor/host) ── */}
@@ -381,6 +385,10 @@ function App() {
               <Route
                 path="/student/support"
                 element={<ProtectedRoute><StudentSuspense><SupportPage /></StudentSuspense></ProtectedRoute>}
+              />
+              <Route
+                path="/student/scan-attendance"
+                element={<ProtectedRoute><StudentSuspense><ScanAttendance /></StudentSuspense></ProtectedRoute>}
               />
               <Route
                 path="/student/mess"
