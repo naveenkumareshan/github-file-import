@@ -297,7 +297,7 @@ export default function MessBookings() {
 
   // ──── Booking Sheet helpers ────
   const resetBookingSheet = () => {
-    setBookingStep('details');
+    setBookingStep('form');
     setStudentQuery(''); setStudentResults([]); setShowResults(false);
     setSelectedUserId(''); setSelectedStudentName('');
     setShowNewStudent(false); setNewName(''); setNewEmail(''); setNewPhone('');
