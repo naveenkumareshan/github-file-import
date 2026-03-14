@@ -101,7 +101,7 @@ export const generateInvoiceHTML = (data: InvoiceData): string => {
     </div>
     <div class="info-box">
       <div class="section-title">Booking Details</div>
-      <div class="info-value">${data.cabinName} — Seat #${data.seatNumber}</div>
+      <div class="info-value">${data.cabinName}${data.floor ? ` — Floor ${data.floor}` : ''} — ${data.roomNumber ? `Room ${data.roomNumber} · ` : ''}${data.seatLabel || `Seat #${data.seatNumber}`}</div>
       <div class="info-value-sm">${period}</div>
       <div class="info-value-sm">${data.duration}</div>
     </div>
