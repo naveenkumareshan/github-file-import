@@ -402,7 +402,7 @@ export default function MessBookings() {
         transaction_id: transactionId,
         advance_amount: advanceAmount,
         discount_amount: discountAmount,
-        notes,
+        notes: '',
         created_by: user?.id,
         collected_by_name: collectedByName || user?.name || '',
         payment_proof_url: paymentProofUrl || null,
