@@ -449,7 +449,7 @@ const BookSeat = () => {
           propertyId={cabin.id}
           propertyName={cabin.name}
           whatsappChatEnabled={!!cabin.whatsappChatEnabled}
-          whatsappNumber={(cabin as any).whatsappNumber || ''}
+          whatsappNumber={cabin.whatsappNumber || ''}
         />
       )}
       </div>
