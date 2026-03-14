@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 import { useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 
 interface AttendanceRow {
   id: string;
