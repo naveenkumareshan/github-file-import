@@ -141,7 +141,7 @@ const MessDueManagement: React.FC = () => {
       try {
         const res = await getEffectiveOwnerId();
         setPartnerId(res.ownerId);
-        const labels = await resolvePaymentMethodLabels(res.ownerId);
+        const labels = await resolvePaymentMethodLabels(res.ownerId as any);
         setCustomLabels(labels);
       } catch {}
     };
