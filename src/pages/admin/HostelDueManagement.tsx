@@ -350,8 +350,9 @@ const HostelDueManagement: React.FC = () => {
                   {paginatedDues.map((due: any, idx: number) => {
                     const remaining = Number(due.due_amount) - Number(due.paid_amount);
                     return (
-                      <TableRow key={due.id} className="text-[11px]">
-                        <TableCell className="py-2 text-[11px]">
+                       <TableRow key={due.id} className="text-[11px]">
+                         <TableCell className="py-2 text-[11px] text-muted-foreground">{getSerialNumber(idx, currentPage, pageSize)}</TableCell>
+                         <TableCell className="py-2 text-[11px]">
                           {(due.hostel_bookings as any)?.start_date
                             ? format(new Date((due.hostel_bookings as any).start_date), 'dd MMM yy')
                             : '-'}
