@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Download, Eye } from 'lucide-react';
-import QRCode from 'qrcode';
+import { generateBrandedQrPng } from '@/utils/brandedQrGenerator';
 
 interface Property {
   id: string;
