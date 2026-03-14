@@ -37,6 +37,7 @@ interface CabinItemProps {
   onToggleBooking?: (cabinId: string, isActive: boolean) => void;
   onTogglePartnerVisible?: (cabinId: string, isVisible: boolean) => void;
   partnerId?: string;
+  onDownloadQr?: (cabinId: string, cabinName: string) => void;
 }
 
 export function CabinItem({ cabin, onEdit, onDelete, onToggleActive, onToggleBooking, onTogglePartnerVisible, onManageSeats, partnerId }: CabinItemProps) {
