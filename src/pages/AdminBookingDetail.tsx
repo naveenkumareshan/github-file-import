@@ -93,20 +93,26 @@ const AdminBookingDetail = () => {
           .select('*')
           .eq('booking_id', resolvedId)
           .order('created_at', { ascending: false });
-        setReceipts((rcpts || []).map(r => ({
+        const mappedRcpts = (rcpts || []).map(r => ({
           ...r,
           transaction_id: r.transaction_id || '',
           collected_by_name: r.collected_by_name || '',
           notes: r.notes || '',
-        })) as ReceiptRow[]);
-        setDueData(null); // Hostel doesn't use dues table
+        })) as ReceiptRow[];
+        setReceipts(mappedRcpts);
+        const allMethods = [...mappedRcpts.map(r => r.payment_method), bookingData?.payment_method].filter(Boolean);
+        resolvePaymentMethodLabels(allMethods).then(setCustomLabels);
+        setDueData(null);
       } else {
         const { data: rcpts } = await supabase
           .from('receipts')
           .select('*')
           .eq('booking_id', resolvedId)
           .order('created_at', { ascending: false });
-        setReceipts((rcpts || []) as ReceiptRow[]);
+        const cabinRcpts = (rcpts || []) as ReceiptRow[];
+        setReceipts(cabinRcpts);
+        const allMethods = [...cabinRcpts.map(r => r.payment_method), bookingData?.paymentMethod || bookingData?.payment_method].filter(Boolean);
+        resolvePaymentMethodLabels(allMethods).then(setCustomLabels);
         const { data: dues } = await supabase
           .from('dues')
           .select('*')
