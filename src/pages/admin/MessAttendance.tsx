@@ -397,7 +397,7 @@ export default function MessAttendance() {
                             key={meal}
                             variant={marked ? 'default' : 'outline'}
                             size="sm"
-                            disabled={!!marked}
+                            disabled={!!marked || isManualDateFuture}
                             onClick={() => handleMarkAttendance(s.id, s.user_id, meal)}
                           >
                             {MEAL_LABELS[meal]} {marked ? '✓' : ''}
