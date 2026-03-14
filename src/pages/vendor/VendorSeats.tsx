@@ -315,7 +315,7 @@ const VendorSeats: React.FC = () => {
       return ((a as any).floor || 0) - ((b as any).floor || 0);
     });
     return result;
-  }, [seats, statusFilter, searchTerm, selectedFloor]);
+  }, [seats, statusFilter, searchTerm, selectedFloor, attendanceSet]);
 
   // Stats
   const stats = useMemo(() => {
