@@ -355,6 +355,7 @@ export default function MessAttendance() {
           <div className="flex gap-2 mt-2">
             <Input
               type="date"
+              max={todayStr}
               value={manualDate}
               onChange={e => setManualDate(e.target.value)}
               className="w-44"
