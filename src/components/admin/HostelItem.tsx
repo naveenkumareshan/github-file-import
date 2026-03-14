@@ -164,7 +164,6 @@ export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePac
                 <span className="text-[10px] text-muted-foreground italic">No mess linked</span>
               )}
             </div>
-            </div>
 
             <h3 className="font-semibold text-sm leading-snug text-foreground">{hostel.name}</h3>
             <p className="text-xs text-muted-foreground line-clamp-1">
