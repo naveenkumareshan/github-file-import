@@ -1,4 +1,5 @@
-import React, { lazy, Suspense, useState, useEffect, useRef } from 'react';
+import React, { lazy, Suspense, useState, useEffect } from 'react';
+import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Building, Hotel, Plus, Shirt, Loader2, UtensilsCrossed, Crown, LayoutGrid, QrCode, Download } from 'lucide-react';
 import QRCode from 'qrcode';
