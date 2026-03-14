@@ -28,7 +28,7 @@ const HostelDueManagement: React.FC = () => {
   const [summary, setSummary] = useState({ totalDue: 0, overdue: 0, dueToday: 0, collectedThisMonth: 0 });
   const [loading, setLoading] = useState(true);
   const [filterHostel, setFilterHostel] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('pending');
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -89,7 +89,8 @@ const HostelDueManagement: React.FC = () => {
       .order('created_at', { ascending: false });
 
     if (filterHostel !== 'all') duesQuery = duesQuery.eq('hostel_id', filterHostel);
-    if (filterStatus !== 'all') duesQuery = duesQuery.eq('status', filterStatus);
+    if (filterStatus === 'pending') duesQuery = duesQuery.neq('status', 'paid');
+    else if (filterStatus === 'paid') duesQuery = duesQuery.eq('status', 'paid');
 
     const { data: duesData } = await duesQuery;
 
@@ -298,18 +299,8 @@ const HostelDueManagement: React.FC = () => {
             </SelectContent>
           </Select>
         </div>
-        <div className="w-36">
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all" className="text-xs">All Status</SelectItem>
-              <SelectItem value="pending" className="text-xs">Pending</SelectItem>
-              <SelectItem value="overdue" className="text-xs">Overdue</SelectItem>
-              <SelectItem value="partially_paid" className="text-xs">Partially Paid</SelectItem>
-              <SelectItem value="paid" className="text-xs">Paid</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <Button size="sm" variant={filterStatus === 'pending' ? 'default' : 'outline'} className="h-8 text-xs" onClick={() => setFilterStatus('pending')}>Pending</Button>
+        <Button size="sm" variant={filterStatus === 'paid' ? 'default' : 'outline'} className="h-8 text-xs" onClick={() => setFilterStatus('paid')}>Paid</Button>
         <div className="flex-1 min-w-[160px]">
           <div className="relative">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />

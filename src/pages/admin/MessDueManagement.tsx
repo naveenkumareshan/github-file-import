@@ -28,7 +28,7 @@ const MessDueManagement: React.FC = () => {
   const [summary, setSummary] = useState({ totalDue: 0, overdue: 0, dueToday: 0, collectedThisMonth: 0 });
   const [loading, setLoading] = useState(true);
   const [filterMess, setFilterMess] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('pending');
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -83,7 +83,8 @@ const MessDueManagement: React.FC = () => {
       // Fetch dues
       let duesQ = supabase.from('mess_dues' as any).select('*').in('mess_id', messIds).order('created_at', { ascending: false });
       if (filterMess !== 'all') duesQ = duesQ.eq('mess_id', filterMess);
-      if (filterStatus !== 'all') duesQ = duesQ.eq('status', filterStatus);
+      if (filterStatus === 'pending') duesQ = duesQ.neq('status', 'paid');
+      else if (filterStatus === 'paid') duesQ = duesQ.eq('status', 'paid');
       const { data: duesData } = await duesQ;
       let rows = (duesData || []) as any[];
 
@@ -255,14 +256,8 @@ const MessDueManagement: React.FC = () => {
             {messPartners.map(m => <SelectItem key={m.id} value={m.id} className="text-xs">{m.name}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={filterStatus} onValueChange={(v) => { setFilterStatus(v); }}>
-          <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue placeholder="All Status" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all" className="text-xs">All Status</SelectItem>
-            <SelectItem value="pending" className="text-xs">Pending</SelectItem>
-            <SelectItem value="paid" className="text-xs">Paid</SelectItem>
-          </SelectContent>
-        </Select>
+        <Button size="sm" variant={filterStatus === 'pending' ? 'default' : 'outline'} className="h-8 text-xs" onClick={() => setFilterStatus('pending')}>Pending</Button>
+        <Button size="sm" variant={filterStatus === 'paid' ? 'default' : 'outline'} className="h-8 text-xs" onClick={() => setFilterStatus('paid')}>Paid</Button>
         <div className="relative flex-1 min-w-[150px]">
           <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
           <Input placeholder="Search name, phone, ID..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
