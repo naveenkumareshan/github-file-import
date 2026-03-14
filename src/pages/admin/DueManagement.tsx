@@ -86,7 +86,11 @@ const DueManagement: React.FC = () => {
     })();
   }, []);
 
-  const handleSearch = () => fetchData();
+  const handleSearch = () => { setCurrentPage(1); fetchData(); };
+
+  const paginatedDues = useMemo(() => {
+    return dues.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  }, [dues, currentPage, pageSize]);
 
   const getStatusBadge = (due: any) => {
     const today = new Date().toISOString().split('T')[0];
