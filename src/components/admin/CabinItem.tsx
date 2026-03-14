@@ -1,9 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Edit, FileMinus, FilePlus, Users, MessageCircle, CreditCard, Eye, EyeOff, Globe, GlobeLock, QrCode } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { WhatsAppPropertyDialog } from './WhatsAppPropertyDialog';
 import { useSubscriptionAccess } from '@/hooks/useSubscriptionAccess';
 import { PropertySubscribeDialog } from './PropertySubscribeDialog';
