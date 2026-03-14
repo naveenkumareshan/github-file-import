@@ -141,6 +141,9 @@ export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePac
               <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${hostel.is_partner_visible === false ? "bg-muted text-muted-foreground border border-border" : "bg-blue-50 text-blue-700 border border-blue-200"}`}>
                 {hostel.is_partner_visible === false ? "● Emp Hidden" : "● Emp Visible"}
               </span>
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${hostel.is_student_visible === false ? "bg-orange-50 text-orange-700 border border-orange-200" : "bg-teal-50 text-teal-700 border border-teal-200"}`}>
+                {hostel.is_student_visible === false ? "● Student Hidden" : "● Student Visible"}
+              </span>
             </div>
 
             <h3 className="font-semibold text-sm leading-snug text-foreground">{hostel.name}</h3>
