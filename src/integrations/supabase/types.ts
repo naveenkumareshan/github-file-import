@@ -3378,6 +3378,53 @@ export type Database = {
         }
         Relationships: []
       }
+      property_attendance: {
+        Row: {
+          booking_id: string | null
+          check_in_time: string
+          created_at: string | null
+          date: string
+          id: string
+          property_id: string
+          property_type: string
+          seat_or_bed_id: string | null
+          serial_number: string | null
+          student_id: string
+        }
+        Insert: {
+          booking_id?: string | null
+          check_in_time?: string
+          created_at?: string | null
+          date?: string
+          id?: string
+          property_id: string
+          property_type: string
+          seat_or_bed_id?: string | null
+          serial_number?: string | null
+          student_id: string
+        }
+        Update: {
+          booking_id?: string | null
+          check_in_time?: string
+          created_at?: string | null
+          date?: string
+          id?: string
+          property_id?: string
+          property_type?: string
+          seat_or_bed_id?: string | null
+          serial_number?: string | null
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_attendance_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       property_subscriptions: {
         Row: {
           amount_paid: number
@@ -4504,6 +4551,10 @@ export type Database = {
       is_partner_or_employee_of: {
         Args: { owner_id: string }
         Returns: boolean
+      }
+      mark_qr_attendance: {
+        Args: { p_property_id: string; p_property_type: string }
+        Returns: Json
       }
       move_to_dlq: {
         Args: {
