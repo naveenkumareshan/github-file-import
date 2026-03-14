@@ -248,7 +248,7 @@ const DueManagement: React.FC = () => {
             <div className="overflow-x-auto">
               {isMobile ? (
                 <div className="space-y-3 p-3">
-                  {dues.map((due: any) => {
+                  {paginatedDues.map((due: any, idx: number) => {
                     const remaining = Number(due.due_amount) - Number(due.paid_amount);
                     return (
                       <div key={due.id} className="border rounded-lg p-3 bg-card space-y-2">
