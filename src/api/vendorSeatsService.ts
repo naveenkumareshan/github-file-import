@@ -852,7 +852,11 @@ export const vendorSeatsService = {
         query = query.eq('cabin_id', filters.cabinId);
       }
       if (filters?.status && filters.status !== 'all') {
-        query = query.eq('status', filters.status);
+        if (filters.status === 'pending') {
+          query = query.neq('status', 'paid');
+        } else {
+          query = query.eq('status', filters.status);
+        }
       }
 
       const { data, error } = await query;
