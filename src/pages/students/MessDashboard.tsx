@@ -134,15 +134,13 @@ export default function MessDashboard() {
             <Card>
               <CardContent className="p-6 flex flex-col items-center space-y-4">
                 <QrCode className="h-6 w-6 text-primary" />
-                <p className="text-sm text-muted-foreground text-center">Show this QR code to the mess partner to mark your attendance.</p>
+                <p className="text-sm text-muted-foreground text-center">Scan the QR code at the mess entrance to mark your attendance.</p>
                 {activeSub.status === 'active' ? (
-                  <img
-                    src={qrUrl}
-                    alt="Subscription QR Code"
-                    className="w-[250px] h-[250px] border rounded-lg"
-                  />
+                  <Link to="/student/scan-attendance">
+                    <Button className="gap-2"><QrCode className="h-4 w-4" /> Scan Attendance QR</Button>
+                  </Link>
                 ) : (
-                  <p className="text-sm text-destructive">QR is only available for active subscriptions.</p>
+                  <p className="text-sm text-destructive">Scanning is only available for active subscriptions.</p>
                 )}
                 <div className="text-center text-xs text-muted-foreground">
                   <p className="font-medium">{activeSub.mess_partners?.name}</p>
