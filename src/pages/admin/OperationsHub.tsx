@@ -1,9 +1,10 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CheckInTracker from '@/components/admin/operations/CheckInTracker';
 import ComplaintTracker from '@/components/admin/operations/ComplaintTracker';
-import { ClipboardCheck, MessageSquare } from 'lucide-react';
+import QrCodesTab from '@/components/admin/operations/QrCodesTab';
+import { ClipboardCheck, MessageSquare, QrCode } from 'lucide-react';
 
 const OperationsHub = () => {
   return (
@@ -23,6 +24,10 @@ const OperationsHub = () => {
             <MessageSquare className="h-3.5 w-3.5" />
             Complaints
           </TabsTrigger>
+          <TabsTrigger value="qrcodes" className="gap-1.5">
+            <QrCode className="h-3.5 w-3.5" />
+            QR Codes
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="checkin">
@@ -30,6 +35,9 @@ const OperationsHub = () => {
         </TabsContent>
         <TabsContent value="complaints">
           <ComplaintTracker />
+        </TabsContent>
+        <TabsContent value="qrcodes">
+          <QrCodesTab />
         </TabsContent>
       </Tabs>
     </div>
