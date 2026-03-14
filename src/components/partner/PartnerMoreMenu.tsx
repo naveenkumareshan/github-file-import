@@ -5,7 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePartnerEmployeePermissions } from '@/hooks/useVendorEmployeePermissions';
 import { usePartnerPropertyTypes } from '@/hooks/usePartnerPropertyTypes';
-import { usePartnerNavPreferences } from '@/hooks/usePartnerNavPreferences';
+import { usePartnerNavPreferences, ALL_NAV_OPTIONS } from '@/hooks/usePartnerNavPreferences';
 import { cn } from '@/lib/utils';
 import {
   User, MapIcon, Wallet, Calendar, CreditCard, Activity, Clock,
