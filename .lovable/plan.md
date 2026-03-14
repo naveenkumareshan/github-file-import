@@ -1,71 +1,32 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+# Reformat Manual Mess Booking to Vertical Student-Style Layout
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+## Problem
+Current `ManualMessBooking.tsx` uses a horizontal stepper with separate Card-per-step and grid layouts. The user wants it to match the **student-side mess booking** (`MessDetail.tsx`) — a single vertical scrolling page where each step is an inline section with numbered circles, `<Separator>` dividers, pill-based selectors, and compact inline fields. No cards wrapping each step, no horizontal step indicator bar.
 
-## Changes
+## Solution
+Rewrite the JSX of `ManualMessBooking.tsx` to use the `MessDetail.tsx` layout pattern:
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+### Layout Pattern (from MessDetail.tsx)
+- Single `max-w-3xl mx-auto` container
+- Each step section: `<Separator>` → `px-3 pt-2` div → numbered circle (h-6 w-6 rounded-full bg-secondary) + Label → content
+- **Step 1 (Student)**: Numbered circle + search input + collapsible create — shown inline, not in a Card
+- **Step 2 (Mess)**: Pill-based selector buttons (`px-3 py-1.5 rounded-full text-xs font-semibold`) for each mess — appears after student selected
+- **Step 3 (Package)**: Same pill buttons for packages — appears after mess selected
+- **Step 4 (Dates)**: Inline `bg-muted/20 rounded-xl p-2.5 border` section with start date input + end date badge — appears after package selected
+- **Step 5 (Payment)**: Inline section with payment fields in compact layout, discount/advance inputs, payment method pills, payment summary in `bg-muted/30 rounded-xl`
+- **Step 6 (Review & Create)**: Summary in `bg-muted/30 rounded-xl border divide-y` with Create button — same as MessDetail's "Review & Pay" section
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+### Key Differences from Current
+- Remove horizontal step indicator bar entirely
+- Remove separate Card wrappers per step
+- All steps visible vertically on one scrolling page (each appears when previous is completed)
+- Use pill/chip selectors instead of card grids for mess and package selection
+- Use `<Separator>` between sections instead of step navigation
+- Back buttons removed — user can click any previous section to change selection
+- Compact `text-xs` / `text-sm` sizing matching student UI
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
-
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
-
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
-
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
-
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
-
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
-
-**Reviews section**: Shown below the booking flow (not in a tab)
-
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
-
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
-
-| File | Change |
-|------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+## File Modified
+- `src/pages/admin/ManualMessBooking.tsx` — full JSX rewrite, logic unchanged
 
