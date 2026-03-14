@@ -73,7 +73,7 @@ export default function MessBookings() {
 
   // ──── Booking Sheet state ────
   const [bookingSheetOpen, setBookingSheetOpen] = useState(false);
-  const [bookingStep, setBookingStep] = useState<'details' | 'confirm' | 'success'>('details');
+  const [bookingStep, setBookingStep] = useState<'form' | 'success'>('form');
   const studentSearchRef = useRef<HTMLDivElement>(null);
 
   // Student
