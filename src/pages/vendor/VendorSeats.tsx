@@ -294,7 +294,11 @@ const VendorSeats: React.FC = () => {
       result = result.filter(s => String((s as any).floor) === selectedFloor);
     }
     if (statusFilter !== 'all') {
-      result = result.filter(s => s.dateStatus === statusFilter);
+      if (statusFilter === 'present') {
+        result = result.filter(s => attendanceSet.has(s._id));
+      } else {
+        result = result.filter(s => s.dateStatus === statusFilter);
+      }
     }
     if (searchTerm) {
       const q = searchTerm.toLowerCase();
