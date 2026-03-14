@@ -5,13 +5,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePartnerEmployeePermissions } from '@/hooks/useVendorEmployeePermissions';
 import { usePartnerPropertyTypes } from '@/hooks/usePartnerPropertyTypes';
-import { usePartnerNavPreferences } from '@/hooks/usePartnerNavPreferences';
+import { usePartnerNavPreferences, ALL_NAV_OPTIONS } from '@/hooks/usePartnerNavPreferences';
 import { cn } from '@/lib/utils';
 import {
   User, MapIcon, Wallet, Calendar, CreditCard, Activity, Clock,
   Bed, ClipboardCheck, Users, Plus, TicketPlus, Building, Star,
   BarChart2, Users2, MessageSquare, Megaphone, Crown, Shirt,
-  UtensilsCrossed, LogOut, Settings, Pencil,
+  UtensilsCrossed, LogOut, Settings,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import PartnerNavCustomizer from './PartnerNavCustomizer';
@@ -47,6 +47,17 @@ const PartnerMoreMenu: React.FC<MoreMenuProps> = ({ open, onOpenChange }) => {
   const prefix = '/partner';
 
   const can = (perm: string) => isVendor || hasPermission(perm as any);
+
+  // Compute filtered nav options for the customizer
+  const filteredNavOptions = ALL_NAV_OPTIONS.filter((item) => {
+    if (item.category === 'vendor_only' && !isVendor) return false;
+    if (item.category === 'reading_rooms' && !hasReadingRooms) return false;
+    if (item.category === 'hostels' && !hasHostels) return false;
+    if (item.category === 'laundry' && !hasLaundry) return false;
+    if (item.category === 'mess' && !hasMess) return false;
+    if (item.permission && !can(item.permission)) return false;
+    return true;
+  });
 
   const sections: MenuSection[] = [
     {
@@ -168,19 +179,6 @@ const PartnerMoreMenu: React.FC<MoreMenuProps> = ({ open, onOpenChange }) => {
           </SheetHeader>
         <ScrollArea className="h-[calc(85vh-70px)]">
           <div className="px-4 py-3 space-y-5">
-            {/* Customize Nav Button */}
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full justify-center gap-2"
-              onClick={() => {
-                onOpenChange(false);
-                setTimeout(() => setCustomizerOpen(true), 300);
-              }}
-            >
-              <Pencil className="h-4 w-4" />
-              Customize Nav Bar
-            </Button>
 
             {sections.map((section) => {
               if (!section.show) return null;
@@ -225,8 +223,20 @@ const PartnerMoreMenu: React.FC<MoreMenuProps> = ({ open, onOpenChange }) => {
               );
             })}
 
-            {/* Sign Out */}
-            <div className="pt-2 pb-4">
+            {/* Customize Nav + Sign Out */}
+            <div className="pt-2 pb-4 space-y-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  onOpenChange(false);
+                  setTimeout(() => setCustomizerOpen(true), 300);
+                }}
+              >
+                <Settings className="h-3.5 w-3.5" />
+                Customize Nav Bar
+              </Button>
               <Button
                 variant="ghost"
                 className="w-full justify-center text-destructive hover:bg-destructive/10 hover:text-destructive"
@@ -245,6 +255,7 @@ const PartnerMoreMenu: React.FC<MoreMenuProps> = ({ open, onOpenChange }) => {
       open={customizerOpen}
       onOpenChange={setCustomizerOpen}
       currentItems={pinnedItems}
+      availableOptions={filteredNavOptions}
       onSave={savePreferences}
       isSaving={isSaving}
     />
