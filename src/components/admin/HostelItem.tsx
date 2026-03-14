@@ -29,7 +29,7 @@ interface HostelItemProps {
   onDownloadQr?: (hostelId: string, hostelName: string) => void;
 }
 
-export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePackages, onToggleActive, onToggleBooking, onTogglePartnerVisible, partnerId, onDownloadQr }: HostelItemProps) {
+export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePackages, onToggleActive, onToggleBooking, onTogglePartnerVisible, onToggleStudentVisible, partnerId, onDownloadQr }: HostelItemProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const isAdmin = user?.role === 'admin';
