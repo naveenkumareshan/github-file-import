@@ -49,7 +49,7 @@ interface RoomManagementProps {
   onOpenQr?: (propertyId: string, propertyName: string) => void;
 }
 
-const RoomManagement: React.FC<RoomManagementProps> = ({ autoCreateNew, onTriggerConsumed }) => {
+const RoomManagement: React.FC<RoomManagementProps> = ({ autoCreateNew, onTriggerConsumed, onOpenQr }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   
