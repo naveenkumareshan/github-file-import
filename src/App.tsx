@@ -82,6 +82,8 @@ const MessReceipts = lazy(() => import("./pages/admin/MessReceipts"));
 const MessAttendance = lazy(() => import("./pages/admin/MessAttendance"));
 const StudentLaundryOrders = lazy(() => import("./pages/StudentLaundryOrders"));
 const Reconciliation = lazy(() => import("./pages/admin/Reconciliation"));
+const PropertyAttendance = lazy(() => import("./pages/admin/PropertyAttendance"));
+const ScanAttendance = lazy(() => import("./pages/student/ScanAttendance"));
 const BankManagement = lazy(() => import("./pages/admin/BankManagement"));
 const LaundryPartnerDashboard = lazy(() => import("./pages/LaundryPartnerDashboard"));
 const ExpiringBookingsPage = lazy(() => import("./pages/admin/ExpiringBookingsPage"));
