@@ -289,6 +289,7 @@ function App() {
               <Route path="expiring-bookings" element={<ExpiringBookingsPage />} />
               <Route path="hostel-expiring-bookings" element={<HostelExpiringBookingsPage />} />
               <Route path="banks" element={<BankManagement />} />
+              <Route path="property-attendance" element={<PropertyAttendance />} />
             </Route>
 
             {/* ── Partner routes (formerly vendor/host) ── */}
