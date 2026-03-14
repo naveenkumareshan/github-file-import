@@ -78,12 +78,12 @@ const QrCodesTab = () => {
       </div>
 
       <Dialog open={!!viewing} onOpenChange={() => setViewing(null)}>
-        <DialogContent className="sm:max-w-xs">
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle className="text-sm">{viewing?.name}</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col items-center gap-4">
-            {qrDataUrl && <img src={qrDataUrl} alt="QR Code" className="w-56 h-56" />}
+            {qrDataUrl && <img src={qrDataUrl} alt="QR Code" className="w-full max-w-[320px] h-auto rounded-lg" />}
             <Button size="sm" className="gap-1.5" onClick={handleDownload}>
               <Download className="h-3.5 w-3.5" /> Download
             </Button>
