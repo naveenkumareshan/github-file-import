@@ -142,10 +142,10 @@ export default function MessManagement({ autoCreateNew, onTriggerConsumed, onOpe
     if (!selectedMess?.id) return;
     const meal_types = Object.entries(mealCheckboxes).filter(([, v]) => v).map(([k]) => k);
     try {
-      await upsertMessPackage({ mess_id: selectedMess.id, name: pkgForm.name, meal_types, duration_type: pkgForm.duration_type, duration_count: parseInt(pkgForm.duration_count) || 1, price: parseFloat(pkgForm.price) || 0 });
+      await upsertMessPackage({ mess_id: selectedMess.id, name: pkgForm.name, meal_types, price: parseFloat(pkgForm.price) || 0 });
       toast({ title: 'Package saved!' });
       setPackages(await getMessPackages(selectedMess.id));
-      setPkgForm({ name: '', meal_types: [], duration_type: 'monthly', duration_count: '1', price: '' });
+      setPkgForm({ name: '', meal_types: [], price: '' });
     } catch (e: any) { toast({ title: 'Error', description: e.message, variant: 'destructive' }); }
   };
 
