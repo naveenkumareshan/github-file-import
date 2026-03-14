@@ -39,7 +39,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { bookingEmailService } from '@/api/bookingEmailService';
 
 type ViewMode = 'grid' | 'table' | 'room';
-type StatusFilter = 'all' | 'available' | 'booked' | 'expiring_soon' | 'blocked' | 'future_booked';
+type StatusFilter = 'all' | 'available' | 'booked' | 'expiring_soon' | 'blocked' | 'future_booked' | 'present';
 
 interface HostelBed {
   id: string;
