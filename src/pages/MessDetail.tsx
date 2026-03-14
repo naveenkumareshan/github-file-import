@@ -608,16 +608,6 @@ export default function MessDetail() {
         </DialogContent>
       </Dialog>
 
-      {mess?.user_id && (
-        <WhatsAppChatButton
-          partnerUserId={mess.user_id}
-          propertyType="mess"
-          propertyId={mess.id}
-          propertyName={mess.name}
-          whatsappChatEnabled={!!(mess as any).whatsapp_chat_enabled}
-          whatsappNumber={(mess as any).whatsapp_number || ''}
-        />
-      )}
     </ErrorBoundary>
   );
 }
