@@ -24,6 +24,7 @@ interface HostelItemProps {
   onToggleBooking?: (hostelId: string, isBookingActive: boolean) => void;
   onTogglePartnerVisible?: (hostelId: string, isVisible: boolean) => void;
   partnerId?: string;
+  onDownloadQr?: (hostelId: string, hostelName: string) => void;
 }
 
 export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePackages, onToggleActive, onToggleBooking, onTogglePartnerVisible, partnerId }: HostelItemProps) {
