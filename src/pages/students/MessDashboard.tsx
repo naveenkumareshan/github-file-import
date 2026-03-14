@@ -90,10 +90,6 @@ export default function MessDashboard() {
 
   const activeSub = subscriptions.find(s => s.id === selectedSub);
 
-  // QR code data
-  const qrData = activeSub ? JSON.stringify({ subscription_id: activeSub.id, user_id: user?.id }) : '';
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrData)}`;
-
   return (
     <div className="container max-w-2xl mx-auto py-6 px-4 space-y-4">
       <div className="flex items-center gap-2">
