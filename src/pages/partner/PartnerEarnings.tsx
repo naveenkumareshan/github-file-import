@@ -207,9 +207,9 @@ const PartnerEarnings: React.FC = () => {
               <TableBody>
                 {filteredSettlements.length === 0 ? (
                   <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground text-xs">No settlements</TableCell></TableRow>
-                ) : filteredSettlements.map((s, idx) => (
+                 ) : filteredSettlements.slice((settPage - 1) * settPageSize, settPage * settPageSize).map((s, idx) => (
                   <TableRow key={s.id} className="text-[11px]">
-                    <TableCell className="px-2 py-1.5">{idx + 1}</TableCell>
+                    <TableCell className="px-2 py-1.5">{getSerialNumber(idx, settPage, settPageSize)}</TableCell>
                     <TableCell className="px-2 py-1.5 font-mono text-[10px]">{s.serial_number || s.id.slice(0, 8)}</TableCell>
                     <TableCell className="px-2 py-1.5 whitespace-nowrap">{s.period_start} → {s.period_end}</TableCell>
                     <TableCell className="px-2 py-1.5 text-right">{s.total_bookings}</TableCell>
