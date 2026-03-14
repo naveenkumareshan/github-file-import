@@ -11,6 +11,7 @@ import { Loader2, Wallet, TrendingDown, CheckCircle, Clock, Eye, IndianRupee, Do
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { formatCurrency } from '@/utils/currency';
 import ExcelJS from 'exceljs';
+import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 
 const PartnerEarnings: React.FC = () => {
   const [partner, setPartner] = useState<any>(null);
