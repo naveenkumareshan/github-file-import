@@ -12,7 +12,8 @@ import { ShareButton } from "@/components/ShareButton";
 import { generateCabinShareText } from "@/utils/shareUtils";
 import { useAuth } from "@/hooks/use-auth";
 import { isUUID } from "@/utils/idUtils";
-import { WhatsAppChatButton } from "@/components/WhatsAppChatButton";
+import { MessageCircle } from "lucide-react";
+import { whatsappLeadService } from "@/api/whatsappLeadService";
 
 const SeatBookingForm = lazy(() =>
   import("@/components/seats/SeatBookingForm").then((m) => ({
