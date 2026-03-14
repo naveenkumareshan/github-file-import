@@ -35,6 +35,8 @@ const AdminEmployees: React.FC = () => {
   const [passwordDialog, setPasswordDialog] = useState<AdminEmployeeData | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [resetLoading, setResetLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const { toast } = useToast();
 
   useEffect(() => { fetchEmployees(); }, []);
