@@ -255,8 +255,9 @@ const PartnerEarnings: React.FC = () => {
               <TableBody>
                 {ledger.length === 0 ? (
                   <TableRow><TableCell colSpan={6} className="text-center py-4 text-xs text-muted-foreground">No ledger entries yet</TableCell></TableRow>
-                ) : ledger.map(e => (
+                ) : ledger.slice((ledgerPage - 1) * ledgerPageSize, ledgerPage * ledgerPageSize).map((e, idx) => (
                   <TableRow key={e.id} className="text-[10px]">
+                    <TableCell className="px-2 py-1 text-muted-foreground">{getSerialNumber(idx, ledgerPage, ledgerPageSize)}</TableCell>
                     <TableCell className="px-2 py-1">{new Date(e.created_at).toLocaleDateString()}</TableCell>
                     <TableCell className="px-2 py-1">
                       <span className={`px-1 py-0.5 rounded text-[9px] font-medium ${e.entry_type === 'credit' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
