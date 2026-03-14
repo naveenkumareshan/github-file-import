@@ -148,6 +148,7 @@ const PropertyAttendance: React.FC = () => {
     }
 
     setRecords(rows);
+    setCurrentPage(1);
     setLoading(false);
     setRefreshing(false);
   };
