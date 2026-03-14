@@ -321,14 +321,8 @@ const VendorSeats: React.FC = () => {
     const expiring = seats.filter(s => s.dateStatus === 'expiring_soon').length;
     const blocked = seats.filter(s => s.dateStatus === 'blocked').length;
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
-    const revenue = seats.reduce((sum, s) => {
-      if (s.dateStatus === 'booked' || s.dateStatus === 'expiring_soon') {
-        const active = s.allBookings.find(b => b.startDate <= dateStr && b.endDate >= dateStr);
-        return sum + (active?.totalPrice || 0);
-      }
-      return sum;
-    }, 0);
-    return { total, booked, available, expiring, blocked, revenue };
+    const present = attendanceSet.size;
+    return { total, booked, available, expiring, blocked, present };
   }, [seats, selectedDate]);
 
   // Seat click -> open sheet
