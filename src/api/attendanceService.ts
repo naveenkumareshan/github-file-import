@@ -36,7 +36,7 @@ export const attendanceService = {
       p_property_type: propertyType,
     });
     if (error) return { success: false, error: error.message };
-    return data as MarkAttendanceResult;
+    return data as unknown as MarkAttendanceResult;
   },
 
   async getPropertyAttendance(propertyId: string, date: string): Promise<AttendanceRecord[]> {
