@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Download, Eye } from 'lucide-react';
-import QRCode from 'qrcode';
+import { generateBrandedQrPng } from '@/utils/brandedQrGenerator';
 
 interface Property {
   id: string;
@@ -45,8 +45,7 @@ const QrCodesTab = () => {
   const typeLabel = (t: string) => t === 'reading_room' ? 'RR' : t === 'hostel' ? 'H' : 'M';
 
   const handleView = async (prop: Property) => {
-    const qrData = JSON.stringify({ propertyId: prop.id, type: prop.type });
-    const url = await QRCode.toDataURL(qrData, { width: 400, margin: 2, color: { dark: '#000000', light: '#ffffff' } });
+    const url = await generateBrandedQrPng(prop.id, prop.type, prop.name);
     setQrDataUrl(url);
     setViewing(prop);
   };

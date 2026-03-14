@@ -1,7 +1,7 @@
 import React, { lazy, Suspense, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Building, Hotel, Plus, Shirt, Loader2, UtensilsCrossed, Crown, LayoutGrid, Download } from 'lucide-react';
-import QRCode from 'qrcode';
+import { generateBrandedQrPng } from '@/utils/brandedQrGenerator';
 import PlansComparisonDialog from '@/components/partner/PlansComparisonDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -87,8 +87,7 @@ const ManageProperties: React.FC = () => {
     setQrPropertyId(propertyId);
     setQrPropertyType(propertyType);
     setQrPropertyName(propertyName);
-    const qrData = JSON.stringify({ propertyId, type: propertyType });
-    const url = await QRCode.toDataURL(qrData, { width: 400, margin: 2, color: { dark: '#000000', light: '#ffffff' } });
+    const url = await generateBrandedQrPng(propertyId, propertyType, propertyName);
     setQrDataUrl(url);
     setShowQrDialog(true);
   };
