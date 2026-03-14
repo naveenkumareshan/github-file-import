@@ -417,7 +417,7 @@ export default function MessDetail() {
           </div>
 
           {/* ═══ Step 2: Select Duration ═══ */}
-          {selectedMealPlan && availableDurationTypes.length > 0 && (
+          {selectedMealPlan && selectedPackage && (
             <>
               <Separator className="my-0" />
               <div className="px-3 pt-2">
