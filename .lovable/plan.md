@@ -1,37 +1,71 @@
 
 
-# Fix: Dues with 0 remaining should appear under "Paid" tab
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-## Problem
-Dues where `due_amount = 0` or `paid_amount >= due_amount` still have `status = 'pending'` in the database. The filter `.neq('status', 'paid')` only checks the DB status column, so these zero-remaining dues show up under "Pending" instead of "Paid".
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
-## Solution
-Add a **client-side post-filter** after fetching data: any due where `remaining <= 0` should be moved to the "Paid" group regardless of DB status.
+## Changes
 
-### All 3 files: same pattern
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-After fetching and before setting state, add:
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-```tsx
-// Post-filter: treat zero-remaining dues as paid
-if (filterStatus === 'pending') {
-  filteredDues = filteredDues.filter(d => (d.due_amount || 0) - (d.paid_amount || 0) > 0);
-} else if (filterStatus === 'paid') {
-  // Also include dues where remaining is 0 even if DB status isn't 'paid'
-  // Re-fetch without status filter, then filter client-side
-}
-```
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
 
-Since the "Paid" tab uses `.eq('status', 'paid')` at DB level, zero-remaining dues with `status='pending'` won't appear there either. The cleanest fix:
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
 
-1. **Remove DB-level status filter** — fetch all dues regardless of status
-2. **Apply status filter client-side** based on actual remaining amount:
-   - "Pending": `(due_amount - paid_amount) > 0`
-   - "Paid": `(due_amount - paid_amount) <= 0 OR status === 'paid'`
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
 
-### Files
-- `src/pages/admin/DueManagement.tsx` — update `vendorSeatsService.getAllDues` call + post-filter
-- `src/api/vendorSeatsService.ts` — update `getAllDues` to filter by remaining amount instead of status field
-- `src/pages/admin/HostelDueManagement.tsx` — client-side remaining-based filter
-- `src/pages/admin/MessDueManagement.tsx` — client-side remaining-based filter
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
+
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
+
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
+
+**Reviews section**: Shown below the booking flow (not in a tab)
+
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
+
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
+
+## File Summary
+
+| File | Change |
+|------|--------|
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
 
