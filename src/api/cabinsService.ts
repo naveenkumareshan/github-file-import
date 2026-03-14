@@ -68,6 +68,7 @@ export const cabinsService = {
         .from('cabins')
         .select('*')
         .eq('is_active', true)
+        .eq('is_student_visible', true)
         .order('created_at', { ascending: false })
         .limit(6);
       return { success: !error, data: data || [] };
