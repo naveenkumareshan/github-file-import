@@ -3,13 +3,14 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { ALL_NAV_OPTIONS, DEFAULT_NAV_ITEMS, type NavItem } from '@/hooks/usePartnerNavPreferences';
+import { DEFAULT_NAV_ITEMS, type NavItem } from '@/hooks/usePartnerNavPreferences';
 import { ICON_MAP } from './partnerIconMap';
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   currentItems: NavItem[];
+  availableOptions: NavItem[];
   onSave: (items: NavItem[]) => Promise<void>;
   isSaving: boolean;
 }
