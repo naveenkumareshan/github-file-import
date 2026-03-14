@@ -138,7 +138,7 @@ const HostelDueManagement: React.FC = () => {
     setLoading(false);
   };
 
-  useEffect(() => { fetchData(); }, [filterHostel, filterStatus]);
+  useEffect(() => { fetchData(); setCurrentPage(1); }, [filterHostel, filterStatus]);
 
   const handleSearch = () => fetchData();
 
