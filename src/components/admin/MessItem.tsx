@@ -18,6 +18,7 @@ interface MessItemProps {
   onTogglePartnerVisible?: (messId: string, isVisible: boolean) => void;
   onToggleStudentVisible?: (messId: string, isVisible: boolean) => void;
   onDownloadQr?: (mess: any) => void;
+  linkedHostels?: { hostel_id: string; hostel_name: string; is_default: boolean }[];
 }
 
 const FOOD_BADGES: Record<string, { label: string; cls: string }> = {
@@ -26,7 +27,7 @@ const FOOD_BADGES: Record<string, { label: string; cls: string }> = {
   both: { label: '🟡 Both', cls: 'bg-amber-50 text-amber-700 border border-amber-200' },
 };
 
-export function MessItem({ mess, onEdit, onDelete, onManagePackages, onToggleActive, onToggleBooking, onTogglePartnerVisible, onToggleStudentVisible, onDownloadQr }: MessItemProps) {
+export function MessItem({ mess, onEdit, onDelete, onManagePackages, onToggleActive, onToggleBooking, onTogglePartnerVisible, onToggleStudentVisible, onDownloadQr, linkedHostels }: MessItemProps) {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const badge = FOOD_BADGES[mess.food_type] || FOOD_BADGES.both;
@@ -95,6 +96,11 @@ export function MessItem({ mess, onEdit, onDelete, onManagePackages, onToggleAct
             <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${mess.is_student_visible === false ? "bg-orange-50 text-orange-700 border border-orange-200" : "bg-teal-50 text-teal-700 border border-teal-200"}`}>
               {mess.is_student_visible === false ? "● Student Hidden" : "● Student Visible"}
             </span>
+            {linkedHostels && linkedHostels.length > 0 && linkedHostels.map(lh => (
+              <span key={lh.hostel_id} className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                🏨 {lh.hostel_name}{lh.is_default ? ' ★' : ''}
+              </span>
+            ))}
           </div>
 
           <h3 className="font-semibold text-sm leading-snug text-foreground">{mess.name}</h3>

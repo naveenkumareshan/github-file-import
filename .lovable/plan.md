@@ -1,49 +1,71 @@
 
 
-# Mess Attendance Timing, Linked Hostels Display & Source-Based Analytics
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-## 1. Connect Meal Timings to Attendance
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
-Currently, meal type detection in `MessAttendance.tsx` uses hardcoded hour thresholds (breakfast < 11, lunch < 16, else dinner). The `mess_meal_timings` table already stores per-mess `start_time`/`end_time` for each meal. 
+## Changes
 
-**Change**: Load `mess_meal_timings` for the mess and use them to determine `currentMeal` dynamically. If a timing exists, use its time range; fallback to the hardcoded thresholds if no timings are configured.
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-**File**: `src/pages/admin/MessAttendance.tsx`
-- Import `getMealTimings` from messService
-- Load timings on mess load
-- Replace `getCurrentMealType()` with a function that checks current time against configured timings
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-## 2. Show Linked Hostels on Mess Card
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
 
-The `MessItem` card doesn't fetch or display linked hostels. 
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
 
-**Change**: In `MessManagement.tsx`, after fetching mess list, batch-fetch all `hostel_mess_links` with hostel names for those mess IDs. Pass linked hostel names as a prop to `MessItem`. Display them as small badges below the "Student Visible/Hidden" badge row.
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
 
-**Files**:
-- `src/pages/admin/MessManagement.tsx` — fetch links, pass to MessItem
-- `src/components/admin/MessItem.tsx` — accept `linkedHostels` prop, render hostel name badges
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
 
-## 3. Source-Based Analytics (Hostel vs Manual vs Addon)
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
 
-Add a summary section in `MessBookings.tsx` showing subscription counts and revenue grouped by `source_type`. This lets partners track how many subscribers come from each hostel vs manual bookings.
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
 
-**Change**: After fetching subscriptions, compute aggregated stats:
-- Count & revenue per `source_type` (manual, hostel_inclusive, addon_purchase)
-- For hostel sources, further group by hostel name
-- Display as compact stat cards above the table
+**Reviews section**: Shown below the booking flow (not in a tab)
 
-Additionally, in the `MessAttendance.tsx` subscriber summary section, show a breakdown of subscribers by source (how many from hostel X, how many manual).
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
 
-**Files**:
-- `src/pages/admin/MessBookings.tsx` — add source analytics cards above the table
-- `src/pages/admin/MessAttendance.tsx` — add source breakdown in subscriber summary
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
 
-## Summary of File Changes
+## File Summary
 
 | File | Change |
 |------|--------|
-| `src/pages/admin/MessAttendance.tsx` | Use meal timings for current meal detection; add source breakdown in subscriber stats |
-| `src/pages/admin/MessManagement.tsx` | Fetch hostel_mess_links and pass to MessItem |
-| `src/components/admin/MessItem.tsx` | Display linked hostel names as badges |
-| `src/pages/admin/MessBookings.tsx` | Add source-based revenue/count analytics cards |
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
 

@@ -11,10 +11,10 @@ import { Calendar } from '@/components/ui/calendar';
 import { toast } from '@/hooks/use-toast';
 import {
   Loader2, Download, Search, Eye, CalendarIcon,
-  Coffee, UtensilsCrossed, Moon, Users, UserCheck, UserX, Activity,
+  Coffee, UtensilsCrossed, Moon, Users, UserCheck, UserX, Activity, Building2,
 } from 'lucide-react';
 import {
-  getMyMessPartner, getMessSubscriptions, getMessAttendance, markAttendance,
+  getMyMessPartner, getMessSubscriptions, getMessAttendance, markAttendance, getMealTimings,
 } from '@/api/messService';
 import { generateBrandedQrPng } from '@/utils/brandedQrGenerator';
 import { format, isSameDay, isFuture, parseISO } from 'date-fns';
@@ -38,6 +38,7 @@ export default function MessAttendance() {
   const [mess, setMess] = useState<any>(null);
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [mealTimings, setMealTimings] = useState<any[]>([]);
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -63,8 +64,12 @@ export default function MessAttendance() {
         const m = await getMyMessPartner(userId);
         setMess(m);
         if (m) {
-          const subs = await getMessSubscriptions(m.id);
+          const [subs, timings] = await Promise.all([
+            getMessSubscriptions(m.id),
+            getMealTimings(m.id),
+          ]);
           setSubscriptions(subs);
+          setMealTimings(timings);
         }
       } catch {
         toast({ title: 'Error loading data', variant: 'destructive' });
@@ -109,12 +114,27 @@ export default function MessAttendance() {
     getMessAttendance(mess.id, manualDate).then(setManualAttendance);
   }, [mess?.id, manualDate]);
 
-  const getCurrentMealType = (): string => {
-    const hours = new Date().getHours();
+  const getCurrentMealType = useCallback((): string => {
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    if (mealTimings.length > 0) {
+      for (const timing of mealTimings) {
+        const [startH, startM] = (timing.start_time || '').split(':').map(Number);
+        const [endH, endM] = (timing.end_time || '').split(':').map(Number);
+        if (!isNaN(startH) && !isNaN(endH)) {
+          const startMin = startH * 60 + (startM || 0);
+          const endMin = endH * 60 + (endM || 0);
+          if (currentMinutes >= startMin && currentMinutes <= endMin) {
+            return timing.meal_type;
+          }
+        }
+      }
+    }
+    const hours = now.getHours();
     if (hours < 11) return 'breakfast';
     if (hours < 16) return 'lunch';
     return 'dinner';
-  };
+  }, [mealTimings]);
   const currentMeal = getCurrentMealType();
 
   const handleMarkAttendance = async (subId: string, studentId: string, mealType: string) => {
@@ -309,6 +329,28 @@ export default function MessAttendance() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Source Breakdown */}
+      {(() => {
+        const sourceBreakdown = activeSubsForDate.reduce((acc: Record<string, number>, s: any) => {
+          const src = s.source_type || 'manual';
+          acc[src] = (acc[src] || 0) + 1;
+          return acc;
+        }, {});
+        const entries = Object.entries(sourceBreakdown);
+        if (entries.length <= 1 && entries[0]?.[0] === 'manual') return null;
+        const sourceLabels: Record<string, string> = { manual: 'Manual', hostel_inclusive: 'Hostel Package', addon_purchase: 'Addon' };
+        return (
+          <div className="flex flex-wrap gap-2">
+            {entries.map(([src, count]) => (
+              <Badge key={src} variant="outline" className="text-[10px] gap-1">
+                <Building2 className="h-3 w-3" />
+                {sourceLabels[src] || src}: {count as number}
+              </Badge>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Live Attendance Feed (only for today/past) */}
       {!isFutureDate && (
