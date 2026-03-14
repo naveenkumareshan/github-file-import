@@ -243,6 +243,7 @@ const PartnerEarnings: React.FC = () => {
             <Table>
               <TableHeader>
                 <TableRow className="text-[10px]">
+                  <TableHead className="px-2 py-1">S.No.</TableHead>
                   <TableHead className="px-2 py-1">Date</TableHead>
                   <TableHead className="px-2 py-1">Type</TableHead>
                   <TableHead className="px-2 py-1">Category</TableHead>
