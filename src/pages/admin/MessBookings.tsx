@@ -667,18 +667,18 @@ export default function MessBookings() {
             </div>
           ) : (
             /* ──── Single Form ──── */
-            <div className="flex-1 p-4 space-y-4 overflow-y-auto">
+            <div className="flex-1 p-3 space-y-3 overflow-y-auto">
 
               {/* 1. Mess pills */}
               <div>
-                <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Select Mess</Label>
-                <div className="flex gap-1.5 overflow-x-auto pb-1 mt-1.5 no-scrollbar">
+                <Label className="text-[11px] font-semibold uppercase tracking-wide text-primary">Select Mess</Label>
+                <div className="flex gap-1.5 overflow-x-auto pb-1 mt-1 no-scrollbar">
                   {messes.length === 0 ? (
                     <p className="text-[11px] text-muted-foreground">No mess found.</p>
                   ) : messes.map(m => (
                     <button key={m.id} onClick={() => handleMessSelect(m)}
-                      className={cn("px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap border transition-all",
-                        selectedMess?.id === m.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
+                      className={cn("px-3 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap border transition-all",
+                        selectedMess?.id === m.id ? 'bg-primary text-primary-foreground border-primary shadow-sm' : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
                       )}>
                       {m.name}
                     </button>
@@ -689,8 +689,8 @@ export default function MessBookings() {
               {/* 2. Student search */}
               {selectedMess && (
                 <div>
-                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Student</Label>
-                  <div className="relative mt-1.5" ref={studentSearchRef}>
+                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-primary">Student</Label>
+                  <div className="relative mt-1" ref={studentSearchRef}>
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                     <Input placeholder="Search by name, phone or email..." value={studentQuery}
                       onChange={e => { setStudentQuery(e.target.value); setShowResults(true); if (!e.target.value) { setSelectedUserId(''); setSelectedStudentName(''); } }}
@@ -710,7 +710,7 @@ export default function MessBookings() {
                   </div>
 
                   {selectedStudentName && (
-                    <div className="flex items-center gap-1.5 mt-1.5">
+                    <div className="flex items-center gap-1.5 mt-1">
                       <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-emerald-50 text-emerald-700 rounded-full px-2.5 py-0.5">
                         <Check className="h-3 w-3" /> {selectedStudentName}
                       </span>
@@ -719,11 +719,11 @@ export default function MessBookings() {
 
                   <Collapsible open={showNewStudent} onOpenChange={setShowNewStudent}>
                     <CollapsibleTrigger asChild>
-                      <button className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-muted/50 text-muted-foreground border hover:bg-muted transition-colors">
+                      <button className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-muted/50 text-muted-foreground border hover:bg-muted transition-colors">
                         <UserPlus className="h-3 w-3" /> {showNewStudent ? 'Hide' : 'Create New'}
                       </button>
                     </CollapsibleTrigger>
-                    <CollapsibleContent className="mt-2 space-y-1.5 bg-muted/20 rounded-lg p-2.5 border">
+                    <CollapsibleContent className="mt-1.5 space-y-1.5 bg-muted/20 rounded-lg p-2.5 border">
                       <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Student name *" className="h-7 text-[11px]" />
                       <Input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="Email *" className="h-7 text-[11px]" />
                       <Input value={newPhone} onChange={e => setNewPhone(e.target.value)} placeholder="Phone" className="h-7 text-[11px]" />
@@ -738,24 +738,24 @@ export default function MessBookings() {
               {/* 3. Duration type, count & dates */}
               {selectedMess && selectedUserId && (
                 <div>
-                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Duration</Label>
-                  <div className="flex gap-1.5 mt-1.5">
+                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-primary">Duration</Label>
+                  <div className="flex gap-1.5 mt-1">
                     {(['daily', 'weekly', 'monthly'] as const).map(type => (
                       <button key={type} onClick={() => handleDurationTypeChange(type)}
-                        className={cn("px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap border transition-all",
-                          durationType === type ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
+                        className={cn("px-3 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap border transition-all",
+                          durationType === type ? 'bg-accent text-accent-foreground border-primary shadow-sm' : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
                         )}>
                         {type === 'daily' ? 'Daily' : type === 'weekly' ? 'Weekly' : 'Monthly'}
                       </button>
                     ))}
                   </div>
-                  <div className="mt-2">
+                  <div className="mt-1.5">
                     <Label className="text-[10px] text-muted-foreground">
                       {durationType === 'daily' ? 'Days' : durationType === 'weekly' ? 'Weeks' : 'Months'}
                     </Label>
                     <Input type="number" min={1} value={durationCount} onChange={e => handleDurationCountChange(Math.max(1, Number(e.target.value)))} className="h-8 text-xs w-24" />
                   </div>
-                  <div className="grid grid-cols-2 gap-2 mt-2">
+                  <div className="grid grid-cols-2 gap-2 mt-1.5">
                     <div>
                       <Label className="text-[10px] text-muted-foreground">Start Date</Label>
                       <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
@@ -782,15 +782,15 @@ export default function MessBookings() {
               {/* 4. Package pills */}
               {selectedMess && selectedUserId && (
                 <div>
-                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Select Package</Label>
+                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-primary">Select Package</Label>
                   {packages.length === 0 ? (
                     <p className="text-[11px] text-muted-foreground mt-1">No packages found.</p>
                   ) : (
-                    <div className="flex gap-1.5 flex-wrap mt-1.5">
+                    <div className="flex gap-1.5 flex-wrap mt-1">
                       {packages.map(p => (
                         <button key={p.id} onClick={() => handlePackageSelect(p)}
-                          className={cn("px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap border transition-all",
-                            selectedPackage?.id === p.id ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/50 text-muted-foreground border-border hover:border-primary/50'
+                          className={cn("px-3 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap border transition-all",
+                            selectedPackage?.id === p.id ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm' : 'bg-muted/50 text-muted-foreground border-border hover:border-emerald-400'
                           )}>
                           {p.name} · {formatCurrency(p.price)}
                         </button>
@@ -802,15 +802,14 @@ export default function MessBookings() {
 
               {/* 5. Pricing & Dues */}
               {selectedPackage && selectedUserId && endDate && (
-                <div className="bg-muted/20 rounded-lg border p-3 space-y-2">
-                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Pricing</Label>
+                <div className="bg-primary/5 rounded-lg border border-primary/20 p-3 space-y-2">
+                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-primary">Pricing</Label>
                   <div className="text-xs flex justify-between"><span className="text-muted-foreground">Package Price ({durationCount} {durationType === 'daily' ? 'day' : durationType === 'weekly' ? 'week' : 'month'}(s))</span><span className="font-medium">{formatCurrency(pricePaid)}</span></div>
                   <div>
                     <Label className="text-[10px] text-muted-foreground">Discount</Label>
                     <Input type="number" min={0} value={discountAmount} onChange={e => {
                       const d = Math.max(0, Number(e.target.value));
                       setDiscountAmount(d);
-                      // Keep advance <= total after discount
                       const newTotal = Math.max(0, pricePaid - d);
                       if (advanceAmount > newTotal) setAdvanceAmount(newTotal);
                     }} className="h-8 text-xs" />
@@ -822,45 +821,62 @@ export default function MessBookings() {
                     <Input type="number" min={0} max={totalAfterDiscount} value={advanceAmount} onChange={e => setAdvanceAmount(Math.min(totalAfterDiscount, Math.max(0, Number(e.target.value))))} className="h-8 text-xs" />
                   </div>
                   {dueAmount > 0 && (
-                    <div className="text-xs flex justify-between text-red-600 font-medium"><span>Due Remaining</span><span>{formatCurrency(dueAmount)}</span></div>
+                    <div className="text-xs flex justify-between text-destructive font-medium"><span>Due Remaining</span><span>{formatCurrency(dueAmount)}</span></div>
                   )}
                 </div>
               )}
 
-              {/* 6. Payment Method */}
+              {/* 6. Review Summary */}
+              {selectedPackage && selectedUserId && endDate && (
+                <div className="rounded-lg border p-3 space-y-1.5 bg-muted/30">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">Booking Summary</p>
+                  <div className="text-xs flex justify-between"><span className="text-muted-foreground">Student</span><span className="font-medium">{selectedStudentName}</span></div>
+                  <Separator className="opacity-30" />
+                  <div className="text-xs flex justify-between"><span className="text-muted-foreground">Mess</span><span className="font-medium">{selectedMess?.name}</span></div>
+                  <div className="text-xs flex justify-between"><span className="text-muted-foreground">Package</span><span className="font-medium">{selectedPackage?.name}</span></div>
+                  <div className="text-xs flex justify-between"><span className="text-muted-foreground">Period</span><span className="font-medium">{format(startDate, 'dd MMM yyyy')} → {endDate ? fmtDate(endDate) : '—'}</span></div>
+                  <Separator className="opacity-30" />
+                  <div className="text-xs flex justify-between"><span className="text-muted-foreground">Package Price</span><span className="font-medium">{formatCurrency(pricePaid)}</span></div>
+                  {discountAmount > 0 && <div className="text-xs flex justify-between text-destructive"><span>Discount</span><span>-{formatCurrency(discountAmount)}</span></div>}
+                  <Separator className="opacity-30" />
+                  <div className="text-xs flex justify-between font-bold"><span>Total</span><span>{formatCurrency(totalAfterDiscount)}</span></div>
+                  <div className="text-xs flex justify-between text-amber-600 font-medium"><span>Collecting Now</span><span>{formatCurrency(advanceAmount)}</span></div>
+                  {dueAmount > 0 && <div className="text-xs flex justify-between text-destructive font-medium"><span>Due Balance</span><span>{formatCurrency(dueAmount)}</span></div>}
+                </div>
+              )}
+
+              {/* 7. Payment Method */}
               {selectedPackage && selectedUserId && endDate && (
                 <div>
-                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Payment Method</Label>
-                  <div className="mt-1.5">
-                    <PaymentMethodSelector value={paymentMethod} onValueChange={setPaymentMethod} partnerId={partnerId} compact />
+                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-primary">Payment Method</Label>
+                  <div className="mt-1">
+                    <PaymentMethodSelector value={paymentMethod} onValueChange={setPaymentMethod} partnerId={partnerId} columns={3} compact />
                   </div>
                 </div>
               )}
 
-              {/* 7. Transaction ID & Proof */}
-              {paymentMethod && !paymentMethod.includes('cash') && (
-                <>
+              {/* 8. Transaction ID & Proof */}
+              {paymentMethod && requiresTransactionId(paymentMethod) && (
+                <div className="space-y-2">
                   <div>
-                    <Label className="text-xs text-muted-foreground">Transaction ID</Label>
+                    <Label className="text-[10px] text-muted-foreground">Transaction ID</Label>
                     <Input value={transactionId} onChange={e => setTransactionId(e.target.value)} className="h-8 text-xs" placeholder="Enter txn ID" />
                   </div>
                   <PaymentProofUpload value={paymentProofUrl} onChange={setPaymentProofUrl} />
-                </>
-              )}
-
-              {/* 8. Collected By */}
-              {selectedPackage && selectedUserId && endDate && (
-                <div>
-                  <Label className="text-xs text-muted-foreground">Collected By</Label>
-                  <Input value={collectedByName} onChange={e => setCollectedByName(e.target.value)} className="h-8 text-xs" />
                 </div>
               )}
 
-              {/* 9. Submit */}
+              {/* 9. Collected By (static) */}
+              {selectedPackage && selectedUserId && endDate && (
+                <p className="text-[11px] text-muted-foreground">Collected by: <span className="font-semibold text-foreground">{user?.name || 'Partner'}</span></p>
+              )}
+
+              {/* 10. Submit */}
               {selectedUserId && selectedMess && selectedPackage && endDate && paymentMethod && (
-                <Button className="w-full text-xs gap-1" onClick={handleBookingSubmit} disabled={submitting}>
+                <Button className="w-full text-xs gap-1" onClick={handleBookingSubmit}
+                  disabled={submitting || (requiresTransactionId(paymentMethod) && !transactionId)}>
                   {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                  Create Subscription
+                  Confirm Booking · {formatCurrency(advanceAmount)}
                 </Button>
               )}
             </div>
