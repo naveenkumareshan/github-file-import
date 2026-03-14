@@ -507,13 +507,8 @@ const HostelBedMap: React.FC = () => {
     const expiring = beds.filter(b => b.dateStatus === 'expiring_soon').length;
     const blocked = beds.filter(b => b.dateStatus === 'blocked').length;
     const futureBooked = beds.filter(b => b.dateStatus === 'future_booked').length;
-    const revenue = beds.reduce((sum, b) => {
-      if (b.dateStatus === 'booked' || b.dateStatus === 'expiring_soon') {
-        return sum + (b.currentBooking?.totalPrice || 0);
-      }
-      return sum;
-    }, 0);
-    return { total, booked, available, expiring, blocked, futureBooked, revenue };
+    const present = attendanceSet.size;
+    return { total, booked, available, expiring, blocked, futureBooked, present };
   }, [beds]);
 
   // Get hostel info for selected bed
