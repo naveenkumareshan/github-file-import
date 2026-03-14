@@ -18,6 +18,7 @@ import {
   Mail,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { resolvePaymentMethodLabels, getMethodLabel } from "@/utils/paymentMethodLabels";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { razorpayService } from "@/api/razorpayService";
 import { getTimingDisplay, getClosedDaysDisplay, formatTime } from "@/utils/timingUtils";
