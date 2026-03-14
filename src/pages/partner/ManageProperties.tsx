@@ -35,7 +35,7 @@ const ManageProperties: React.FC = () => {
   const [qrPropertyType, setQrPropertyType] = useState('');
   const [qrPropertyName, setQrPropertyName] = useState('');
   const [qrDataUrl, setQrDataUrl] = useState('');
-  const [qrProperties, setQrProperties] = useState<{ id: string; name: string; type: string }[]>([]);
+  
 
   // Check for active universal subscription
   const { data: partner } = useQuery({
