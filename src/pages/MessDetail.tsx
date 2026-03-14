@@ -30,6 +30,7 @@ import { cn } from '@/lib/utils';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { MessageCircle } from 'lucide-react';
 import { whatsappLeadService } from '@/api/whatsappLeadService';
+import { supabase } from '@/integrations/supabase/client';
 import {
   ArrowLeft, CalendarIcon, Clock, IndianRupee, Loader2,
   MapPin, Star, UtensilsCrossed, Users,

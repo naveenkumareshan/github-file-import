@@ -35,6 +35,7 @@ export function HostelItem({ hostel, onEdit, onDelete, onManageBeds, onManagePac
   const [waDialogOpen, setWaDialogOpen] = useState(false);
   const [subDialogOpen, setSubDialogOpen] = useState(false);
   const [waClickCount, setWaClickCount] = useState(0);
+  const [viewCount, setViewCount] = useState(0);
   const { hasSubscription, daysRemaining, isExpired, isInTrial, trialDaysRemaining, currentPlan } = useSubscriptionAccess(hostel.id, 'hostel', partnerId);
 
   useEffect(() => {

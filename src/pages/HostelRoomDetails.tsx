@@ -139,6 +139,15 @@ const HostelRoomDetails = () => {
   
 
   /* ─── Data fetch ─── */
+  // Track property view
+  useEffect(() => {
+    if (!hostel) return;
+    const key = `pv_hostel_${hostel.id}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, '1');
+    supabase.from('property_views' as any).insert({ property_id: hostel.id, property_type: 'hostel', user_id: user?.id || null }).then(() => {});
+  }, [hostel?.id]);
+
   useEffect(() => {
     const fetchData = async () => {
       if (!hostelId || fetchedRef.current) return;
