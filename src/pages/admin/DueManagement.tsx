@@ -74,7 +74,7 @@ const DueManagement: React.FC = () => {
     setLoading(false);
   };
 
-  useEffect(() => { fetchData(); }, [filterCabin, filterStatus]);
+  useEffect(() => { fetchData(); setCurrentPage(1); }, [filterCabin, filterStatus]);
 
   // Resolve partner ID and custom labels for payment methods
   useEffect(() => {
