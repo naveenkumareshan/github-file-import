@@ -8,6 +8,8 @@ export interface NavItem {
   label: string;
   url: string;
   icon: string;
+  category?: 'general' | 'reading_rooms' | 'hostels' | 'laundry' | 'mess' | 'vendor_only';
+  permission?: string;
 }
 
 export const DEFAULT_NAV_ITEMS: NavItem[] = [
