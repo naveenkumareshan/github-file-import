@@ -44,8 +44,8 @@ export default function AdminLaundry({ autoCreateNew, onTriggerConsumed }: Admin
 
   // Item form
   const [itemForm, setItemForm] = useState({ name: '', icon: '👕', price: '', category: 'clothing' });
-  // Slot form
   const [slotForm, setSlotForm] = useState({ slot_name: '', start_time: '09:00', end_time: '12:00', max_orders: '10' });
+  const [whatsAppPartner, setWhatsAppPartner] = useState<any>(null);
 
   useEffect(() => {
     if (authChecked && user?.id) fetchPartners();
