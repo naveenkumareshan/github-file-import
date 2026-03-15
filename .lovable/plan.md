@@ -1,71 +1,38 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+## Add Module Toggle Settings for Student-Facing Features
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+### Problem
+The admin settings "Navigation Menu" section only has 5 toggles (Cabin Booking, Hostels, Laundry, Room Sharing, About). Missing modules like **Mess/Food, Complaints, Attendance, Support** are not controllable. When a module is disabled, students should see it as "Launching Soon" instead of it being hidden entirely.
 
-## Changes
+### What We'll Build
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+**1. Expand the `enabled_menus` settings in `SiteSettingsForm.tsx`**
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+Add these additional module toggles:
+- **Mess / Food** (`mess`) — currently hardcoded as always visible
+- **Complaints** (`complaints`)
+- **Attendance** (`attendance`)
+- **Support** (`support`)
+- **Laundry Orders** (`laundryOrders`) — student laundry orders section
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+Group them visually:
+- **Navigation Menus** — Cabin Booking, Hostels, Mess/Food, About
+- **Student Features** — Laundry, Complaints, Attendance, Support, Room Sharing
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+**2. Update `Navigation.tsx`** — Use the `mess` toggle for the Food/Mess nav link (currently hardcoded `show: true`). When disabled, show the link with a "Launching Soon" badge instead of hiding it.
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
+**3. Update `MobileBottomNav.tsx`** — Fetch `enabled_menus` from `site_settings`. For disabled modules, show the tab grayed out with a "Launching Soon" toast when tapped instead of navigating.
 
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
+**4. Update student pages** — On disabled module pages (e.g., `/mess`, `/student/laundry-orders`), show a "Launching Soon" card with a message instead of the actual content, checking the `enabled_menus` config.
 
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
+### Files to Modify
+- `src/components/admin/SiteSettingsForm.tsx` — Add new toggle items, group them into sections
+- `src/components/Navigation.tsx` — Show disabled items with "Launching Soon" badge, update `enabledMenus` interface
+- `src/components/student/MobileBottomNav.tsx` — Fetch settings, show disabled tabs as grayed out with toast
+- Create `src/components/student/LaunchingSoonGuard.tsx` — Reusable wrapper that shows "Launching Soon" screen for disabled modules
+- `src/App.tsx` — Wrap relevant student routes with the guard component
 
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
-
-**Reviews section**: Shown below the booking flow (not in a tab)
-
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
-
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
-
-| File | Change |
-|------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+### No Database Changes
+The existing `site_settings` table with the `enabled_menus` key already stores a JSON object. We just add more keys to it — fully backward compatible.
 
