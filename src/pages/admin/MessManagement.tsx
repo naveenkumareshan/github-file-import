@@ -81,8 +81,9 @@ export default function MessManagement({ autoCreateNew, onTriggerConsumed, onOpe
     }
   };
 
-  // Fetch linked hostels via secure RPC after messes are loaded
+  // Fetch linked hostels via secure RPC after messes are loaded AND auth is ready
   useEffect(() => {
+    if (!authChecked || !user?.id) return;
     if (messes.length === 0) { setHostelLinksMap({}); return; }
     const fetchLinks = async () => {
       const messIds = messes.map((m: any) => m.id);
@@ -104,7 +105,7 @@ export default function MessManagement({ autoCreateNew, onTriggerConsumed, onOpe
       setHostelLinksMap(map);
     };
     fetchLinks();
-  }, [messes]);
+  }, [messes, authChecked, user?.id]);
 
   const handleAddMess = () => { setSelectedMess(null); setShowEditor(true); };
   const handleEditMess = (mess: any) => { setSelectedMess(mess); setShowEditor(true); };
