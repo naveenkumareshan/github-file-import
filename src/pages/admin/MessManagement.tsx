@@ -81,10 +81,14 @@ export default function MessManagement({ autoCreateNew, onTriggerConsumed, onOpe
     if (messes.length === 0) { setHostelLinksMap({}); return; }
     const fetchLinks = async () => {
       const messIds = messes.map((m: any) => m.id);
-      const { data: links } = await supabase
+      const { data: links, error: linkErr } = await supabase
         .from('hostel_mess_links' as any)
-        .select('mess_id, hostel_id, is_default, hostels:hostel_id(name)')
+        .select('mess_id, hostel_id, is_default, hostels!hostel_mess_links_hostel_id_fkey(name)')
         .in('mess_id', messIds);
+      if (linkErr) {
+        console.error('Error fetching hostel links for mess:', linkErr);
+        return;
+      }
       const map: Record<string, { hostel_id: string; hostel_name: string; is_default: boolean }[]> = {};
       (links || []).forEach((l: any) => {
         if (!map[l.mess_id]) map[l.mess_id] = [];

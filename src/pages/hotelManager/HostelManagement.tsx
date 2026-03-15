@@ -75,7 +75,7 @@ const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTr
       const hostelIds = hostels.map((h: any) => h.id);
       const { data: links, error: linkErr } = await supabase
         .from('hostel_mess_links' as any)
-        .select('hostel_id, mess_id, is_default, mess_partners:mess_id(name)')
+        .select('hostel_id, mess_id, is_default, mess_partners!hostel_mess_links_mess_id_fkey(name)')
         .in('hostel_id', hostelIds);
       if (linkErr) {
         console.error('Error fetching mess links:', linkErr);
