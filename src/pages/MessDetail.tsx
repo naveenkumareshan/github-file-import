@@ -229,11 +229,13 @@ export default function MessDetail() {
 
   const handlePaymentDismiss = async () => {
     setSubscribing(false);
-    if (pendingSubId) {
+    const idToCancel = pendingSubId || pendingSubIdRef.current;
+    if (idToCancel) {
       try {
-        await supabase.from('mess_subscriptions' as any).update({ status: 'cancelled', payment_status: 'cancelled' }).eq('id', pendingSubId);
+        await supabase.from('mess_subscriptions' as any).update({ status: 'cancelled', payment_status: 'cancelled' }).eq('id', idToCancel);
       } catch {}
       setPendingSubId(null);
+      pendingSubIdRef.current = null;
     }
   };
 
