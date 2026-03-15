@@ -100,7 +100,7 @@ export function Navigation() {
             <img 
               src={logoSrc} 
               alt="Logo" 
-              className="h-10 w-auto"
+              className="h-12 w-auto"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 target.src = inhalestaysLogo;
