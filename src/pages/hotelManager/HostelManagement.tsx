@@ -37,9 +37,14 @@ const HostelManagement: React.FC<HostelManagementProps> = ({ autoCreateNew, onTr
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [messLinksMap, setMessLinksMap] = useState<Record<string, { mess_id: string; mess_name: string; is_default: boolean }[]>>({});
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, authChecked } = useAuth();
 
-  useEffect(() => { fetchHostels(); }, []);
+  // Only fetch after auth is ready
+  useEffect(() => {
+    if (authChecked && user?.id) {
+      fetchHostels();
+    }
+  }, [authChecked, user?.id]);
 
   // Auto-create new when triggered from parent
   useEffect(() => {
