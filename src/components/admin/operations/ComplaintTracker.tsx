@@ -271,4 +271,4 @@ const ComplaintTracker = () => {
   );
 };
 
-export default ComplaintsManagement;
+export default ComplaintTracker;
