@@ -115,7 +115,7 @@ const StudentBookingView = lazy(() => import("./pages/students/StudentBookingVie
 const BookingTransactions = lazy(() => import("./pages/students/BookingTransactions"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Laundry = lazy(() => import("./pages/Laundry"));
-const LaundryDetail = lazy(() => import("./pages/LaundryDetail"));
+const LaundryDetail = lazy(() => import("./pages/LaundryDetail" /* laundry-detail */));
 const LaundryRequest = lazy(() => import("./pages/LaundryRequest"));
 const MessMarketplace = lazy(() => import("./pages/MessMarketplace"));
 const MessDetail = lazy(() => import("./pages/MessDetail"));
