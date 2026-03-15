@@ -603,14 +603,35 @@ export default function MessDetail() {
                       </label>
                     </div>
 
-                    <Button
+                    <RazorpayCheckout
+                      amount={totalPrice}
+                      bookingId={pendingSubId || ''}
+                      bookingType="mess"
+                      endDate={endDate}
+                      bookingDuration={durationType}
+                      durationCount={durationCount}
+                      onSuccess={handlePaymentSuccess}
+                      onError={() => setSubscribing(false)}
+                      onDismiss={handlePaymentDismiss}
+                      buttonText={`Pay ${formatCurrency(totalPrice)}`}
+                      buttonDisabled={!agreedToTerms || subscribing}
                       className="w-full"
-                      onClick={handleSubscribe}
-                      disabled={!agreedToTerms || subscribing}
-                    >
-                      {subscribing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                      Pay {formatCurrency(totalPrice)}
-                    </Button>
+                      createOrder={async () => {
+                        const subId = pendingSubId || await handleCreatePendingSub();
+                        if (!subId) return null;
+                        const { razorpayService } = await import('@/api/razorpayService');
+                        const res = await razorpayService.createOrder({
+                          amount: totalPrice,
+                          currency: 'INR',
+                          bookingId: subId,
+                          bookingType: 'mess',
+                          bookingDuration: durationType,
+                          durationCount,
+                        });
+                        if (!res.success || !res.data) throw new Error(res.error?.message || 'Failed');
+                        return res.data;
+                      }}
+                    />
                   </div>
                 </div>
               </div>
