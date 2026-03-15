@@ -50,7 +50,7 @@ const PropertyApprovals = () => {
       const [cabinsRes, hostelsRes, messRes, laundryRes] = await Promise.all([
         supabase.from('cabins').select('id, name, serial_number, city, state, is_approved, is_active, created_by, created_at').order('created_at', { ascending: false }),
         supabase.from('hostels').select('id, name, serial_number, location, gender, is_approved, is_active, created_by, commission_percentage, created_at').order('created_at', { ascending: false }),
-        supabase.from('mess_partners').select('id, name, serial_number, city, state, is_approved, is_active, user_id, commission_percentage, created_at').order('created_at', { ascending: false }),
+        supabase.from('mess_partners').select('id, name, serial_number, location, is_approved, is_active, user_id, commission_percentage, created_at').order('created_at', { ascending: false }),
         supabase.from('laundry_partners').select('id, business_name, serial_number, city, state, is_approved, is_active, user_id, commission_percentage, created_at').order('created_at', { ascending: false }),
       ]);
 
