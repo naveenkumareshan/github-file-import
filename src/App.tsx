@@ -339,8 +339,8 @@ function App() {
               <Route path="/booking-confirmation/:bookingId" element={<StudentSuspense><HostelBookConfirmation /></StudentSuspense>} />
               <Route path="/laundry" element={<StudentSuspense><Laundry /></StudentSuspense>} />
               <Route path="/laundry-request" element={<StudentSuspense><Laundry /></StudentSuspense>} />
-              <Route path="/mess" element={<StudentSuspense><MessMarketplace /></StudentSuspense>} />
-              <Route path="/mess/:id" element={<StudentSuspense><MessDetail /></StudentSuspense>} />
+              <Route path="/mess" element={<StudentSuspense><LaunchingSoonGuard moduleKey="mess" moduleName="Mess / Food"><MessMarketplace /></LaunchingSoonGuard></StudentSuspense>} />
+              <Route path="/mess/:id" element={<StudentSuspense><LaunchingSoonGuard moduleKey="mess" moduleName="Mess / Food"><MessDetail /></LaunchingSoonGuard></StudentSuspense>} />
               <Route path="/privacy-policy" element={<StudentSuspense><PrivacyPolicy /></StudentSuspense>} />
               <Route path="/terms" element={<StudentSuspense><TermsAndConditions /></StudentSuspense>} />
               
