@@ -339,6 +339,12 @@ export function AdminSidebar() {
         icon: Activity,
         roles: ['admin', 'vendor', 'vendor_employee'],
       },
+      {
+        title: 'Laundry Receipts',
+        url: `${routePrefix}/laundry-receipts`,
+        icon: Receipt,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+      },
     ];
     menuItems.push({
       title: 'Laundry',
