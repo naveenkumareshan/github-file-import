@@ -291,6 +291,26 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Create mess receipt in test mode
+      if (isMess) {
+        const { data: sub } = await adminClient
+          .from("mess_subscriptions")
+          .select("user_id, mess_id, price_paid")
+          .eq("id", bookingId)
+          .single();
+
+        if (sub) {
+          await insertReceiptIfNotExists("mess_receipts", "subscription_id", bookingId, testTxnId, {
+            subscription_id: bookingId,
+            user_id: sub.user_id,
+            mess_id: sub.mess_id,
+            amount: sub.price_paid,
+            payment_method: "online",
+            transaction_id: testTxnId,
+          });
+        }
+      }
+
       return new Response(
         JSON.stringify({ success: true, testMode: true, message: "Test payment confirmed" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
