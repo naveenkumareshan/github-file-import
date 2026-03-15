@@ -1,380 +1,364 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { toast } from '@/hooks/use-toast';
+import { LaundryItem } from '@/components/admin/LaundryItem';
+import { LaundryEditor } from '@/components/admin/LaundryEditor';
+import { Plus, Shirt, Search, Loader2, Trash2, Pencil } from 'lucide-react';
+import ErrorBoundary from '../../components/ErrorBoundary';
+import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { AdminTablePagination } from '@/components/admin/AdminTablePagination';
 import { laundryCloudService } from '@/api/laundryCloudService';
-import { toast } from '@/hooks/use-toast';
-import { Loader2, Plus, Pencil, Trash2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
-const ORDER_STATUSES = ['pending', 'confirmed', 'pickup_scheduled', 'picked_up', 'washing', 'ready', 'out_for_delivery', 'delivered', 'cancelled'];
+const DEFAULT_PAGE_SIZE = 9;
 
-const statusColors: Record<string, string> = {
-  pending: 'bg-amber-100 text-amber-800', confirmed: 'bg-blue-100 text-blue-800',
-  pickup_scheduled: 'bg-indigo-100 text-indigo-800', picked_up: 'bg-violet-100 text-violet-800',
-  washing: 'bg-cyan-100 text-cyan-800', ready: 'bg-teal-100 text-teal-800',
-  out_for_delivery: 'bg-orange-100 text-orange-800', delivered: 'bg-green-100 text-green-800',
-  cancelled: 'bg-red-100 text-red-800',
-};
+interface AdminLaundryProps {
+  autoCreateNew?: boolean;
+  onTriggerConsumed?: () => void;
+}
 
-// ── Orders Tab ──
-const OrdersTab = () => {
-  const [orders, setOrders] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all');
+export default function AdminLaundry({ autoCreateNew, onTriggerConsumed }: AdminLaundryProps = {}) {
   const [partners, setPartners] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showEditor, setShowEditor] = useState(false);
+  const [selectedPartner, setSelectedPartner] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const { user, authChecked } = useAuth();
 
-  const load = async () => {
-    setLoading(true);
-    try {
-      const [o, p] = await Promise.all([
-        laundryCloudService.adminGetAllOrders({ status: filter }),
-        laundryCloudService.adminGetPartners(),
-      ]);
-      setOrders(o || []);
-      setPartners(p || []);
-    } catch { /* empty */ } finally { setLoading(false); }
-  };
-
-  useEffect(() => { load(); }, [filter]);
-
-  const updateOrder = async (id: string, updates: Record<string, any>) => {
-    try {
-      await laundryCloudService.adminUpdateOrder(id, updates);
-      toast({ title: 'Order updated' });
-      load();
-    } catch (e: any) { toast({ title: 'Error', description: e.message, variant: 'destructive' }); }
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="flex gap-2 flex-wrap">
-        <Select value={filter} onValueChange={setFilter}>
-          <SelectTrigger className="w-[180px] h-8 text-xs"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            {ORDER_STATUSES.map(s => <SelectItem key={s} value={s}>{s.replace(/_/g, ' ')}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {loading ? <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div> : (
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="text-[11px]">S.No.</TableHead>
-                <TableHead className="text-[11px]">Order #</TableHead>
-                <TableHead className="text-[11px]">Student</TableHead>
-                <TableHead className="text-[11px]">Items</TableHead>
-                <TableHead className="text-[11px]">Total</TableHead>
-                <TableHead className="text-[11px]">Status</TableHead>
-                <TableHead className="text-[11px]">Partner</TableHead>
-                <TableHead className="text-[11px]">Pickup</TableHead>
-                <TableHead className="text-[11px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {orders.map((o, i) => (
-                <TableRow key={o.id}>
-                  <TableCell className="text-[11px]">{i + 1}</TableCell>
-                  <TableCell className="text-[11px] font-medium">{o.serial_number}</TableCell>
-                  <TableCell className="text-[11px]">{(o.profiles as any)?.name || '—'}</TableCell>
-                  <TableCell className="text-[11px]">{o.laundry_order_items?.length || 0}</TableCell>
-                  <TableCell className="text-[11px]">₹{o.total_amount}</TableCell>
-                  <TableCell>
-                    <Select value={o.status} onValueChange={(v) => updateOrder(o.id, { status: v })}>
-                      <SelectTrigger className="h-6 text-[10px] w-[130px]"><SelectValue /></SelectTrigger>
-                      <SelectContent>{ORDER_STATUSES.map(s => <SelectItem key={s} value={s}>{s.replace(/_/g, ' ')}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell>
-                    <Select value={o.partner_id || ''} onValueChange={(v) => updateOrder(o.id, { partner_id: v })}>
-                      <SelectTrigger className="h-6 text-[10px] w-[120px]"><SelectValue placeholder="Assign" /></SelectTrigger>
-                      <SelectContent>{partners.filter((p: any) => p.status === 'approved').map((p: any) => <SelectItem key={p.id} value={p.id}>{p.business_name}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell className="text-[11px]">
-                    <Input type="date" className="h-6 text-[10px] w-[120px]" value={o.pickup_date || ''} onChange={e => updateOrder(o.id, { pickup_date: e.target.value })} />
-                  </TableCell>
-                  <TableCell>
-                    <Input type="date" className="h-6 text-[10px] w-[120px]" placeholder="Delivery" value={o.delivery_date || ''} onChange={e => updateOrder(o.id, { delivery_date: e.target.value })} />
-                  </TableCell>
-                </TableRow>
-              ))}
-              {orders.length === 0 && <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">No orders</TableCell></TableRow>}
-            </TableBody>
-          </Table>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// ── Items Tab ──
-const ItemsTab = () => {
+  // Items & Slots dialogs
+  const [isItemsOpen, setIsItemsOpen] = useState(false);
+  const [isSlotsOpen, setIsSlotsOpen] = useState(false);
   const [items, setItems] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ name: '', icon: '👕', price: 0, category: 'clothing' });
+  const [slots, setSlots] = useState<any[]>([]);
+  const [itemCounts, setItemCounts] = useState<Record<string, number>>({});
+  const [slotCounts, setSlotCounts] = useState<Record<string, number>>({});
 
-  const load = async () => { setLoading(true); try { setItems(await laundryCloudService.adminGetAllItems() || []); } catch {} finally { setLoading(false); } };
-  useEffect(() => { load(); }, []);
+  // Item form
+  const [itemForm, setItemForm] = useState({ name: '', icon: '👕', price: '', category: 'clothing' });
+  // Slot form
+  const [slotForm, setSlotForm] = useState({ slot_name: '', start_time: '09:00', end_time: '12:00', max_orders: '10' });
 
-  const save = async () => {
+  useEffect(() => {
+    if (authChecked && user?.id) fetchPartners();
+  }, [authChecked, user?.id]);
+
+  useEffect(() => {
+    if (autoCreateNew) {
+      handleAddPartner();
+      onTriggerConsumed?.();
+    }
+  }, [autoCreateNew]);
+
+  const fetchPartners = async () => {
     try {
-      await laundryCloudService.adminCreateItem(form);
+      setLoading(true);
+      let query = supabase.from('laundry_partners').select('*, profiles:user_id(name, email, phone)');
+      if (user?.role !== 'admin') {
+        const userId = user?.role === 'vendor_employee' && user.vendorId ? user.vendorId : user?.id;
+        query = query.eq('user_id', userId);
+      }
+      const { data, error } = await query.order('created_at', { ascending: false });
+      if (error) throw error;
+      setPartners(data || []);
+
+      // Fetch item/slot counts
+      const ids = (data || []).map((p: any) => p.id);
+      if (ids.length > 0) {
+        const [itemsRes, slotsRes] = await Promise.all([
+          supabase.from('laundry_items').select('partner_id').in('partner_id', ids),
+          supabase.from('laundry_pickup_slots').select('partner_id').in('partner_id', ids),
+        ]);
+        const ic: Record<string, number> = {};
+        const sc: Record<string, number> = {};
+        (itemsRes.data || []).forEach((i: any) => { ic[i.partner_id] = (ic[i.partner_id] || 0) + 1; });
+        (slotsRes.data || []).forEach((s: any) => { sc[s.partner_id] = (sc[s.partner_id] || 0) + 1; });
+        setItemCounts(ic);
+        setSlotCounts(sc);
+      }
+    } catch (err) {
+      console.error('Error fetching laundry partners:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddPartner = () => { setSelectedPartner(null); setShowEditor(true); };
+  const handleEditPartner = (p: any) => { setSelectedPartner(p); setShowEditor(true); };
+
+  const handleToggleActive = async (id: string, isActive: boolean) => {
+    try {
+      await laundryCloudService.adminUpdatePartner(id, { is_active: isActive, ...(isActive ? {} : { is_booking_active: false, is_partner_visible: false }) });
+      toast({ title: `Partner ${isActive ? 'activated' : 'deactivated'}` });
+      fetchPartners();
+    } catch { toast({ title: 'Error', variant: 'destructive' }); }
+  };
+
+  const handleToggleBooking = async (id: string, val: boolean) => {
+    try {
+      await laundryCloudService.adminUpdatePartner(id, { is_booking_active: val });
+      toast({ title: `Online booking ${val ? 'enabled' : 'disabled'}` });
+      fetchPartners();
+    } catch { toast({ title: 'Error', variant: 'destructive' }); }
+  };
+
+  const handleTogglePartnerVisible = async (id: string, val: boolean) => {
+    try {
+      await laundryCloudService.adminUpdatePartner(id, { is_partner_visible: val });
+      toast({ title: `Partner ${val ? 'shown' : 'hidden'} from employees` });
+      fetchPartners();
+    } catch { toast({ title: 'Error', variant: 'destructive' }); }
+  };
+
+  const handleToggleStudentVisible = async (id: string, val: boolean) => {
+    try {
+      await laundryCloudService.adminUpdatePartner(id, { is_student_visible: val });
+      toast({ title: `Partner ${val ? 'shown to' : 'hidden from'} students` });
+      fetchPartners();
+    } catch { toast({ title: 'Error', variant: 'destructive' }); }
+  };
+
+  const handleEditorSave = async (data: any) => {
+    try {
+      if (data.id) {
+        await laundryCloudService.adminUpdatePartner(data.id, data);
+      } else {
+        await laundryCloudService.adminCreatePartner(data);
+      }
+      setShowEditor(false);
+      fetchPartners();
+      toast({ title: 'Laundry partner saved' });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    }
+  };
+
+  // ── Items Dialog ──
+  const openItems = async (partner: any) => {
+    setSelectedPartner(partner);
+    setIsItemsOpen(true);
+    try {
+      setItems(await laundryCloudService.adminGetAllItems(partner.id) || []);
+    } catch { setItems([]); }
+  };
+
+  const saveItem = async () => {
+    if (!selectedPartner?.id || !itemForm.name) return;
+    try {
+      await laundryCloudService.adminCreateItem({
+        name: itemForm.name, icon: itemForm.icon, price: parseFloat(itemForm.price) || 0,
+        category: itemForm.category, partner_id: selectedPartner.id,
+      });
       toast({ title: 'Item added' });
-      setForm({ name: '', icon: '👕', price: 0, category: 'clothing' });
-      setShowAdd(false);
-      load();
+      setItemForm({ name: '', icon: '👕', price: '', category: 'clothing' });
+      setItems(await laundryCloudService.adminGetAllItems(selectedPartner.id) || []);
+      fetchPartners();
     } catch (e: any) { toast({ title: 'Error', description: e.message, variant: 'destructive' }); }
   };
 
-  return (
-    <div className="space-y-4">
-      <div className="flex justify-end">
-        <Dialog open={showAdd} onOpenChange={setShowAdd}>
-          <DialogTrigger asChild><Button size="sm"><Plus className="h-4 w-4 mr-1" /> Add Item</Button></DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Add Laundry Item</DialogTitle></DialogHeader>
-            <div className="space-y-3">
-              <div><Label>Name</Label><Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} /></div>
-              <div><Label>Icon (Emoji)</Label><Input value={form.icon} onChange={e => setForm(p => ({ ...p, icon: e.target.value }))} /></div>
-              <div><Label>Price (₹)</Label><Input type="number" value={form.price} onChange={e => setForm(p => ({ ...p, price: Number(e.target.value) }))} /></div>
-              <div><Label>Category</Label>
-                <Select value={form.category} onValueChange={v => setForm(p => ({ ...p, category: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="clothing">Clothing</SelectItem>
-                    <SelectItem value="bedding">Bedding</SelectItem>
-                    <SelectItem value="special">Special</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button onClick={save} className="w-full">Save</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
+  const toggleItem = async (id: string, isActive: boolean) => {
+    await laundryCloudService.adminUpdateItem(id, { is_active: !isActive });
+    if (selectedPartner?.id) setItems(await laundryCloudService.adminGetAllItems(selectedPartner.id) || []);
+    fetchPartners();
+  };
 
-      {loading ? <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div> : (
-        <Table>
-          <TableHeader><TableRow>
-            <TableHead className="text-[11px]">Icon</TableHead>
-            <TableHead className="text-[11px]">Name</TableHead>
-            <TableHead className="text-[11px]">Price</TableHead>
-            <TableHead className="text-[11px]">Category</TableHead>
-            <TableHead className="text-[11px]">Status</TableHead>
-            <TableHead className="text-[11px]">Actions</TableHead>
-          </TableRow></TableHeader>
-          <TableBody>
-            {items.map(it => (
-              <TableRow key={it.id}>
-                <TableCell>{it.icon}</TableCell>
-                <TableCell className="text-[11px]">{it.name}</TableCell>
-                <TableCell className="text-[11px]">₹{it.price}</TableCell>
-                <TableCell className="text-[11px] capitalize">{it.category}</TableCell>
-                <TableCell><Badge variant={it.is_active ? 'default' : 'secondary'} className="text-[10px]">{it.is_active ? 'Active' : 'Inactive'}</Badge></TableCell>
-                <TableCell>
-                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={async () => {
-                    await laundryCloudService.adminDeleteItem(it.id);
-                    toast({ title: 'Item deactivated' }); load();
-                  }}><Trash2 className="h-3 w-3" /></Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
-    </div>
-  );
-};
-
-// ── Partners Tab ──
-const PartnersTab = () => {
-  const [partners, setPartners] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ user_id: '', business_name: '', contact_person: '', phone: '', email: '', service_area: '', commission_percentage: 10, status: 'approved' });
-
-  const load = async () => { setLoading(true); try { setPartners(await laundryCloudService.adminGetPartners() || []); } catch {} finally { setLoading(false); } };
-  useEffect(() => { load(); }, []);
-
-  const save = async () => {
+  // ── Slots Dialog ──
+  const openSlots = async (partner: any) => {
+    setSelectedPartner(partner);
+    setIsSlotsOpen(true);
     try {
-      await laundryCloudService.adminCreatePartner(form);
-      toast({ title: 'Partner added' });
-      setShowAdd(false);
-      setForm({ user_id: '', business_name: '', contact_person: '', phone: '', email: '', service_area: '', commission_percentage: 10, status: 'approved' });
-      load();
+      setSlots(await laundryCloudService.adminGetAllSlots(partner.id) || []);
+    } catch { setSlots([]); }
+  };
+
+  const saveSlot = async () => {
+    if (!selectedPartner?.id || !slotForm.slot_name) return;
+    try {
+      await laundryCloudService.adminCreateSlot({
+        slot_name: slotForm.slot_name, start_time: slotForm.start_time, end_time: slotForm.end_time,
+        max_orders: parseInt(slotForm.max_orders) || 10, partner_id: selectedPartner.id,
+      });
+      toast({ title: 'Slot added' });
+      setSlotForm({ slot_name: '', start_time: '09:00', end_time: '12:00', max_orders: '10' });
+      setSlots(await laundryCloudService.adminGetAllSlots(selectedPartner.id) || []);
+      fetchPartners();
     } catch (e: any) { toast({ title: 'Error', description: e.message, variant: 'destructive' }); }
   };
 
-  return (
-    <div className="space-y-4">
-      <div className="flex justify-end">
-        <Dialog open={showAdd} onOpenChange={setShowAdd}>
-          <DialogTrigger asChild><Button size="sm"><Plus className="h-4 w-4 mr-1" /> Add Partner</Button></DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Add Laundry Partner</DialogTitle></DialogHeader>
-            <div className="space-y-3">
-              <div><Label>User ID (from profiles)</Label><Input value={form.user_id} onChange={e => setForm(p => ({ ...p, user_id: e.target.value }))} placeholder="UUID of the partner user" /></div>
-              <div><Label>Business Name</Label><Input value={form.business_name} onChange={e => setForm(p => ({ ...p, business_name: e.target.value }))} /></div>
-              <div><Label>Contact Person</Label><Input value={form.contact_person} onChange={e => setForm(p => ({ ...p, contact_person: e.target.value }))} /></div>
-              <div><Label>Phone</Label><Input value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} /></div>
-              <div><Label>Email</Label><Input value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} /></div>
-              <div><Label>Service Area</Label><Input value={form.service_area} onChange={e => setForm(p => ({ ...p, service_area: e.target.value }))} /></div>
-              <div><Label>Commission %</Label><Input type="number" value={form.commission_percentage} onChange={e => setForm(p => ({ ...p, commission_percentage: Number(e.target.value) }))} /></div>
-              <Button onClick={save} className="w-full">Save Partner</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
+  const toggleSlot = async (id: string, isActive: boolean) => {
+    await laundryCloudService.adminUpdateSlot(id, { is_active: !isActive });
+    if (selectedPartner?.id) setSlots(await laundryCloudService.adminGetAllSlots(selectedPartner.id) || []);
+    fetchPartners();
+  };
 
-      {loading ? <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div> : (
-        <Table>
-          <TableHeader><TableRow>
-            <TableHead className="text-[11px]">S.No.</TableHead>
-            <TableHead className="text-[11px]">Serial #</TableHead>
-            <TableHead className="text-[11px]">Business Name</TableHead>
-            <TableHead className="text-[11px]">Contact</TableHead>
-            <TableHead className="text-[11px]">Phone</TableHead>
-            <TableHead className="text-[11px]">Area</TableHead>
-            <TableHead className="text-[11px]">Commission</TableHead>
-            <TableHead className="text-[11px]">Status</TableHead>
-            <TableHead className="text-[11px]">Actions</TableHead>
-          </TableRow></TableHeader>
-          <TableBody>
-            {partners.map((p, i) => (
-              <TableRow key={p.id}>
-                <TableCell className="text-[11px]">{i + 1}</TableCell>
-                <TableCell className="text-[11px]">{p.serial_number}</TableCell>
-                <TableCell className="text-[11px] font-medium">{p.business_name}</TableCell>
-                <TableCell className="text-[11px]">{p.contact_person}</TableCell>
-                <TableCell className="text-[11px]">{p.phone}</TableCell>
-                <TableCell className="text-[11px]">{p.service_area}</TableCell>
-                <TableCell className="text-[11px]">{p.commission_percentage}%</TableCell>
-                <TableCell>
-                  <Select value={p.status} onValueChange={async (v) => {
-                    await laundryCloudService.adminUpdatePartner(p.id, { status: v, is_active: v === 'approved' });
-                    toast({ title: 'Partner updated' }); load();
-                  }}>
-                    <SelectTrigger className="h-6 text-[10px] w-[100px]"><SelectValue /></SelectTrigger>
+  // Filter & paginate
+  const filtered = partners.filter(p => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return p.business_name?.toLowerCase().includes(q) || p.serial_number?.toLowerCase().includes(q) || p.service_area?.toLowerCase().includes(q);
+  });
+  const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  if (showEditor) {
+    return (
+      <ErrorBoundary>
+        <LaundryEditor
+          existingPartner={selectedPartner}
+          onSave={handleEditorSave}
+          onCancel={() => setShowEditor(false)}
+          isAdmin={user?.role === 'admin'}
+        />
+      </ErrorBoundary>
+    );
+  }
+
+  return (
+    <ErrorBoundary>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-semibold tracking-tight">
+              Manage Laundry
+              {filtered.length > 0 && <Badge variant="secondary" className="ml-2 text-xs font-normal">{filtered.length}</Badge>}
+            </h1>
+            <p className="text-xs text-muted-foreground mt-0.5">View and manage all laundry partners.</p>
+          </div>
+          <Button onClick={handleAddPartner} size="sm" className="flex items-center gap-1.5">
+            <Plus className="h-4 w-4" /> Add Laundry
+          </Button>
+        </div>
+
+        <div className="relative max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Search laundry partners..." value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }} className="pl-9 h-9" />
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <Shirt className="h-10 w-10 text-muted-foreground/30 mb-3" />
+            <p className="text-sm font-medium">{searchQuery ? 'No partners match your search' : 'No Laundry Partners Found'}</p>
+            <p className="text-xs text-muted-foreground mb-4">{searchQuery ? 'Try a different search term' : 'Start by adding your first laundry partner.'}</p>
+            {!searchQuery && <Button onClick={handleAddPartner} size="sm"><Plus className="h-4 w-4 mr-1" /> Add Laundry</Button>}
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {paginated.map((p) => (
+                <LaundryItem
+                  key={p.id}
+                  partner={p}
+                  onEdit={handleEditPartner}
+                  onManageItems={openItems}
+                  onManageSlots={openSlots}
+                  onToggleActive={handleToggleActive}
+                  onToggleBooking={handleToggleBooking}
+                  onTogglePartnerVisible={handleTogglePartnerVisible}
+                  onToggleStudentVisible={handleToggleStudentVisible}
+                  itemCount={itemCounts[p.id] || 0}
+                  slotCount={slotCounts[p.id] || 0}
+                />
+              ))}
+            </div>
+
+            <AdminTablePagination
+              currentPage={currentPage}
+              totalItems={filtered.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(s) => { setPageSize(s); setCurrentPage(1); }}
+              pageSizeOptions={[9, 18, 36, 72]}
+            />
+          </>
+        )}
+
+        {/* Items Dialog */}
+        <Dialog open={isItemsOpen} onOpenChange={setIsItemsOpen}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Laundry Items — {selectedPartner?.business_name}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              {items.map(it => (
+                <div key={it.id} className="flex items-center justify-between p-3 border rounded">
+                  <div className="flex items-center gap-2">
+                    <span>{it.icon}</span>
+                    <div>
+                      <p className="font-medium text-sm">{it.name}</p>
+                      <p className="text-xs text-muted-foreground capitalize">{it.category} · ₹{it.price}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={it.is_active ? 'default' : 'secondary'} className="text-[10px]">{it.is_active ? 'Active' : 'Inactive'}</Badge>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleItem(it.id, it.is_active)}>
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              <div className="border-t pt-3 grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div><Label className="text-xs">Name</Label><Input value={itemForm.name} onChange={e => setItemForm(f => ({ ...f, name: e.target.value }))} className="h-8 text-xs" /></div>
+                <div><Label className="text-xs">Icon</Label><Input value={itemForm.icon} onChange={e => setItemForm(f => ({ ...f, icon: e.target.value }))} className="h-8 text-xs" /></div>
+                <div><Label className="text-xs">Price (₹)</Label><Input type="number" value={itemForm.price} onChange={e => setItemForm(f => ({ ...f, price: e.target.value }))} className="h-8 text-xs" /></div>
+                <div>
+                  <Label className="text-xs">Category</Label>
+                  <Select value={itemForm.category} onValueChange={v => setItemForm(f => ({ ...f, category: v }))}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="approved">Approved</SelectItem>
-                      <SelectItem value="suspended">Suspended</SelectItem>
+                      <SelectItem value="clothing">Clothing</SelectItem>
+                      <SelectItem value="bedding">Bedding</SelectItem>
+                      <SelectItem value="special">Special</SelectItem>
                     </SelectContent>
                   </Select>
-                </TableCell>
-                <TableCell>
-                  <Button size="icon" variant="ghost" className="h-6 w-6"><Pencil className="h-3 w-3" /></Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
-    </div>
-  );
-};
+                </div>
+              </div>
+              <Button onClick={saveItem} disabled={!itemForm.name} size="sm"><Plus className="h-4 w-4 mr-1" /> Add Item</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
-// ── Slots Tab ──
-const SlotsTab = () => {
-  const [slots, setSlots] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ slot_name: '', start_time: '09:00', end_time: '12:00', max_orders: 10 });
-
-  const load = async () => { setLoading(true); try { setSlots(await laundryCloudService.adminGetAllSlots() || []); } catch {} finally { setLoading(false); } };
-  useEffect(() => { load(); }, []);
-
-  const save = async () => {
-    try {
-      await laundryCloudService.adminCreateSlot(form);
-      toast({ title: 'Slot added' });
-      setShowAdd(false);
-      load();
-    } catch (e: any) { toast({ title: 'Error', description: e.message, variant: 'destructive' }); }
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="flex justify-end">
-        <Dialog open={showAdd} onOpenChange={setShowAdd}>
-          <DialogTrigger asChild><Button size="sm"><Plus className="h-4 w-4 mr-1" /> Add Slot</Button></DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Add Pickup Slot</DialogTitle></DialogHeader>
-            <div className="space-y-3">
-              <div><Label>Slot Name</Label><Input value={form.slot_name} onChange={e => setForm(p => ({ ...p, slot_name: e.target.value }))} placeholder="e.g. Morning" /></div>
-              <div><Label>Start Time</Label><Input type="time" value={form.start_time} onChange={e => setForm(p => ({ ...p, start_time: e.target.value }))} /></div>
-              <div><Label>End Time</Label><Input type="time" value={form.end_time} onChange={e => setForm(p => ({ ...p, end_time: e.target.value }))} /></div>
-              <div><Label>Max Orders</Label><Input type="number" value={form.max_orders} onChange={e => setForm(p => ({ ...p, max_orders: Number(e.target.value) }))} /></div>
-              <Button onClick={save} className="w-full">Save</Button>
+        {/* Slots Dialog */}
+        <Dialog open={isSlotsOpen} onOpenChange={setIsSlotsOpen}>
+          <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Pickup Slots — {selectedPartner?.business_name}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              {slots.map(s => (
+                <div key={s.id} className="flex items-center justify-between p-3 border rounded">
+                  <div>
+                    <p className="font-medium text-sm">{s.slot_name}</p>
+                    <p className="text-xs text-muted-foreground">{s.start_time?.slice(0, 5)} – {s.end_time?.slice(0, 5)} · Max {s.max_orders}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={s.is_active ? 'default' : 'secondary'} className="text-[10px]">{s.is_active ? 'Active' : 'Inactive'}</Badge>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleSlot(s.id, s.is_active)}>
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              <div className="border-t pt-3 grid grid-cols-2 gap-2">
+                <div><Label className="text-xs">Slot Name</Label><Input value={slotForm.slot_name} onChange={e => setSlotForm(f => ({ ...f, slot_name: e.target.value }))} className="h-8 text-xs" placeholder="e.g., Morning" /></div>
+                <div><Label className="text-xs">Max Orders</Label><Input type="number" value={slotForm.max_orders} onChange={e => setSlotForm(f => ({ ...f, max_orders: e.target.value }))} className="h-8 text-xs" /></div>
+                <div><Label className="text-xs">Start Time</Label><Input type="time" value={slotForm.start_time} onChange={e => setSlotForm(f => ({ ...f, start_time: e.target.value }))} className="h-8 text-xs" /></div>
+                <div><Label className="text-xs">End Time</Label><Input type="time" value={slotForm.end_time} onChange={e => setSlotForm(f => ({ ...f, end_time: e.target.value }))} className="h-8 text-xs" /></div>
+              </div>
+              <Button onClick={saveSlot} disabled={!slotForm.slot_name} size="sm"><Plus className="h-4 w-4 mr-1" /> Add Slot</Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
-
-      {loading ? <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div> : (
-        <Table>
-          <TableHeader><TableRow>
-            <TableHead className="text-[11px]">Slot Name</TableHead>
-            <TableHead className="text-[11px]">Time</TableHead>
-            <TableHead className="text-[11px]">Max Orders</TableHead>
-            <TableHead className="text-[11px]">Status</TableHead>
-            <TableHead className="text-[11px]">Actions</TableHead>
-          </TableRow></TableHeader>
-          <TableBody>
-            {slots.map(s => (
-              <TableRow key={s.id}>
-                <TableCell className="text-[11px] font-medium">{s.slot_name}</TableCell>
-                <TableCell className="text-[11px]">{s.start_time?.slice(0, 5)} - {s.end_time?.slice(0, 5)}</TableCell>
-                <TableCell className="text-[11px]">{s.max_orders}</TableCell>
-                <TableCell><Badge variant={s.is_active ? 'default' : 'secondary'} className="text-[10px]">{s.is_active ? 'Active' : 'Inactive'}</Badge></TableCell>
-                <TableCell>
-                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={async () => {
-                    await laundryCloudService.adminUpdateSlot(s.id, { is_active: !s.is_active });
-                    toast({ title: s.is_active ? 'Slot deactivated' : 'Slot activated' }); load();
-                  }}><Pencil className="h-3 w-3" /></Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
-    </div>
+    </ErrorBoundary>
   );
-};
-
-// ── Main Page ──
-const AdminLaundry = () => {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Laundry Management</h1>
-        <p className="text-sm text-muted-foreground">Manage orders, items, partners and pickup slots</p>
-      </div>
-      <Tabs defaultValue="orders">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="orders" className="text-xs">Orders</TabsTrigger>
-          <TabsTrigger value="items" className="text-xs">Items</TabsTrigger>
-          <TabsTrigger value="partners" className="text-xs">Partners</TabsTrigger>
-          <TabsTrigger value="slots" className="text-xs">Slots</TabsTrigger>
-        </TabsList>
-        <TabsContent value="orders"><OrdersTab /></TabsContent>
-        <TabsContent value="items"><ItemsTab /></TabsContent>
-        <TabsContent value="partners"><PartnersTab /></TabsContent>
-        <TabsContent value="slots"><SlotsTab /></TabsContent>
-      </Tabs>
-    </div>
-  );
-};
-
-export default AdminLaundry;
+}
