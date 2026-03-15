@@ -60,6 +60,7 @@ const routeLabels: Record<string, string> = {
   "/partner/due-management": "Due Management",
   "/partner/receipts": "Receipts",
   "/partner/laundry": "Laundry",
+  "/partner/laundry-receipts": "Laundry Receipts",
 };
 
 const getPageLabel = (pathname: string): string => {
