@@ -264,10 +264,36 @@ export function SiteSettingsForm() {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-semibold">Navigation Menu</CardTitle>
+          <p className="text-[11px] text-muted-foreground">Control which items appear in the main navigation. Disabled items show as "Launching Soon" to students.</p>
         </CardHeader>
         <CardContent>
           <div className="divide-y divide-border">
-            {menuItems.map(item => (
+            {navMenuItems.map(item => (
+              <div key={item.key} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
+                <div>
+                  <p className="text-xs font-medium">{item.label}</p>
+                  <p className="text-[11px] text-muted-foreground">{item.desc}</p>
+                </div>
+                <Switch
+                  checked={enabledMenus[item.key]}
+                  onCheckedChange={() => toggleMenu(item.key)}
+                  className="scale-90"
+                />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Student Features Toggles */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold">Student Features</CardTitle>
+          <p className="text-[11px] text-muted-foreground">Enable or disable student-facing features. Disabled features show a "Launching Soon" page.</p>
+        </CardHeader>
+        <CardContent>
+          <div className="divide-y divide-border">
+            {featureItems.map(item => (
               <div key={item.key} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
                 <div>
                   <p className="text-xs font-medium">{item.label}</p>

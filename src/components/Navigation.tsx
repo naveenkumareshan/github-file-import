@@ -192,15 +192,22 @@ export function Navigation() {
                 {navLinks.filter(link => link.show).map((link) => (
                   <Link
                     key={link.href}
-                    to={link.href}
+                    to={link.enabled ? link.href : '#'}
+                    onClick={link.enabled ? undefined : (e) => e.preventDefault()}
                     className={cn(
-                      "px-4 py-3 text-sm font-medium rounded-lg transition-colors",
+                      "px-4 py-3 text-sm font-medium rounded-lg transition-colors flex items-center justify-between",
+                      !link.enabled && "opacity-60 cursor-default",
                       isActive(link)
                         ? "bg-primary/10 text-primary"
                         : "text-muted-foreground hover:text-foreground hover:bg-muted"
                     )}
                   >
                     {link.label}
+                    {!link.enabled && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
+                        Launching Soon
+                      </span>
+                    )}
                   </Link>
                 ))}
                 
