@@ -184,6 +184,9 @@ Deno.serve(async (req) => {
       if (isHostel || isLaundry) {
         updateData.status = "confirmed";
       }
+      if (isMess) {
+        updateData.status = "active";
+      }
 
       // For hostel test mode, check advance
       if (isHostel) {
