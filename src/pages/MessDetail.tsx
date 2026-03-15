@@ -609,7 +609,7 @@ export default function MessDetail() {
 
                     <RazorpayCheckout
                       amount={totalPrice}
-                      bookingId={pendingSubId || ''}
+                      bookingId={pendingSubIdRef.current || pendingSubId || ''}
                       bookingType="mess"
                       endDate={endDate}
                       bookingDuration={durationType}
@@ -621,8 +621,10 @@ export default function MessDetail() {
                       buttonDisabled={!agreedToTerms || subscribing}
                       className="w-full"
                       createOrder={async () => {
-                        const subId = pendingSubId || await handleCreatePendingSub();
+                        const subId = pendingSubIdRef.current || pendingSubId || await handleCreatePendingSub();
                         if (!subId) return null;
+                        // Update the ref immediately for the verify handler
+                        pendingSubIdRef.current = subId;
                         const { razorpayService } = await import('@/api/razorpayService');
                         const res = await razorpayService.createOrder({
                           amount: totalPrice,

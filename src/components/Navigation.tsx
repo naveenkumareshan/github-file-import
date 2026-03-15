@@ -138,7 +138,7 @@ export function Navigation() {
                   ? "/admin/dashboard" 
                   : "/student/dashboard"}
                 className={cn(
-                  "px-4 py-2 text-sm font-medium rounded-lg transition-colors",
+                  "px-4 py-2 text-base font-medium rounded-lg transition-colors",
                   pathname.startsWith("/admin/") || pathname === "/student/dashboard"
                     ? "bg-primary/10 text-primary"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
