@@ -155,6 +155,11 @@ const ComplaintsPage = () => {
           <button onClick={() => setSelectedComplaint(null)} className="p-1"><ArrowLeft className="h-5 w-5" /></button>
           <div className="flex-1 min-w-0">
             <p className="text-[13px] font-semibold truncate">{selectedComplaint.subject}</p>
+            {(selectedComplaint.cabins?.name || selectedComplaint.hostels?.name || selectedComplaint.mess_partners?.name) && (
+              <p className="text-[11px] text-muted-foreground truncate">
+                {selectedComplaint.cabins?.name || selectedComplaint.hostels?.name || selectedComplaint.mess_partners?.name}
+              </p>
+            )}
             <div className="flex items-center gap-2">
               {selectedComplaint.serial_number && <span className="text-[10px] font-mono text-muted-foreground">{selectedComplaint.serial_number}</span>}
               <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${statusBadge[selectedComplaint.status] || ''}`}>
