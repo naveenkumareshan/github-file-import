@@ -52,7 +52,8 @@ Deno.serve(async (req) => {
 
     const isHostel = bookingType === "hostel";
     const isLaundry = bookingType === "laundry";
-    const tableName = isHostel ? "hostel_bookings" : isLaundry ? "laundry_orders" : "bookings";
+    const isMess = bookingType === "mess";
+    const tableName = isHostel ? "hostel_bookings" : isLaundry ? "laundry_orders" : isMess ? "mess_subscriptions" : "bookings";
 
     // Helper: insert receipt only if no duplicate exists
     async function insertReceiptIfNotExists(
