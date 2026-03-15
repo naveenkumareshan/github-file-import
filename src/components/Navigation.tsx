@@ -22,22 +22,21 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import inhalestaysLogo from '@/assets/inhalestays-logo.png';
 
+import { EnabledMenus } from '@/hooks/useEnabledMenus';
+
 interface SiteSettings {
   siteName: string;
   logoUrl: string;
-  enabledMenus: {
-    bookings: boolean;
-    hostel: boolean;
-    laundry: boolean;
-    roomSharing: boolean;
-    about: boolean;
-  };
+  enabledMenus: EnabledMenus;
 }
 
 const DEFAULT_SETTINGS: SiteSettings = {
   siteName: "InhaleStays",
   logoUrl: "",
-  enabledMenus: { bookings: true, hostel: false, laundry: false, roomSharing: true, about: true },
+  enabledMenus: {
+    bookings: true, hostel: false, laundry: false, roomSharing: true, about: true,
+    mess: true, complaints: true, attendance: true, support: true, laundryOrders: true,
+  },
 };
 
 export function Navigation() {
@@ -78,11 +77,11 @@ export function Navigation() {
   const logoSrc = settings.logoUrl || inhalestaysLogo;
 
   const navLinks = [
-    { href: "/", label: "Home", show: true },
-    { href: "/cabins", label: "Reading Rooms", show: settings.enabledMenus.bookings, matchPaths: ["/cabins", "/book-seat"] },
-    { href: "/hostels", label: "Hostels", show: settings.enabledMenus.hostel, matchPaths: ["/hostels"] },
-    { href: "/mess", label: "Food / Mess", show: true, matchPaths: ["/mess"] },
-    { href: "/about", label: "About", show: settings.enabledMenus.about },
+    { href: "/", label: "Home", show: true, enabled: true },
+    { href: "/cabins", label: "Reading Rooms", show: true, enabled: settings.enabledMenus.bookings, matchPaths: ["/cabins", "/book-seat"] },
+    { href: "/hostels", label: "Hostels", show: true, enabled: settings.enabledMenus.hostel, matchPaths: ["/hostels"] },
+    { href: "/mess", label: "Food / Mess", show: true, enabled: settings.enabledMenus.mess, matchPaths: ["/mess"] },
+    { href: "/about", label: "About", show: true, enabled: settings.enabledMenus.about },
   ];
 
   const isActive = (link: typeof navLinks[0]) => {
@@ -115,15 +114,22 @@ export function Navigation() {
             {navLinks.filter(link => link.show).map((link) => (
               <Link
                 key={link.href}
-                to={link.href}
+                to={link.enabled ? link.href : '#'}
+                onClick={link.enabled ? undefined : (e) => e.preventDefault()}
                 className={cn(
-                  "px-4 py-2 text-sm font-medium rounded-lg transition-colors",
+                  "px-4 py-2 text-sm font-medium rounded-lg transition-colors relative",
+                  !link.enabled && "opacity-60 cursor-default",
                   isActive(link) 
                     ? "bg-primary/10 text-primary" 
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 )}
               >
                 {link.label}
+                {!link.enabled && (
+                  <span className="ml-1.5 text-[9px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium align-middle">
+                    Soon
+                  </span>
+                )}
               </Link>
             ))}
             {isAuthenticated && (
@@ -186,15 +192,22 @@ export function Navigation() {
                 {navLinks.filter(link => link.show).map((link) => (
                   <Link
                     key={link.href}
-                    to={link.href}
+                    to={link.enabled ? link.href : '#'}
+                    onClick={link.enabled ? undefined : (e) => e.preventDefault()}
                     className={cn(
-                      "px-4 py-3 text-sm font-medium rounded-lg transition-colors",
+                      "px-4 py-3 text-sm font-medium rounded-lg transition-colors flex items-center justify-between",
+                      !link.enabled && "opacity-60 cursor-default",
                       isActive(link)
                         ? "bg-primary/10 text-primary"
                         : "text-muted-foreground hover:text-foreground hover:bg-muted"
                     )}
                   >
                     {link.label}
+                    {!link.enabled && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
+                        Launching Soon
+                      </span>
+                    )}
                   </Link>
                 ))}
                 

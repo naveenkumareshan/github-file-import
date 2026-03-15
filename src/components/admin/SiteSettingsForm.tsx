@@ -10,13 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Save, Loader2, Upload, X, Image as ImageIcon, Camera } from 'lucide-react';
 
-interface EnabledMenus {
-  bookings: boolean;
-  hostel: boolean;
-  laundry: boolean;
-  roomSharing: boolean;
-  about: boolean;
-}
+import { EnabledMenus } from '@/hooks/useEnabledMenus';
 
 const SETTINGS_KEYS = ['site_name', 'site_description', 'site_logo', 'site_tagline', 'enabled_menus', 'admin_whatsapp'];
 
@@ -28,6 +22,7 @@ export function SiteSettingsForm() {
   const [adminWhatsapp, setAdminWhatsapp] = useState('');
   const [enabledMenus, setEnabledMenus] = useState<EnabledMenus>({
     bookings: true, hostel: true, laundry: true, roomSharing: true, about: true,
+    mess: true, complaints: true, attendance: true, support: true, laundryOrders: true,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -134,12 +129,20 @@ export function SiteSettingsForm() {
     );
   }
 
-  const menuItems: { key: keyof EnabledMenus; label: string; desc: string }[] = [
+  const navMenuItems: { key: keyof EnabledMenus; label: string; desc: string }[] = [
     { key: 'bookings', label: 'Cabin Booking', desc: 'Reading rooms / cabin bookings menu' },
     { key: 'hostel', label: 'Hostels', desc: 'Hostel listings and booking menu' },
-    { key: 'laundry', label: 'Laundry', desc: 'Laundry service menu' },
-    { key: 'roomSharing', label: 'Room Sharing', desc: 'Room sharing listings' },
+    { key: 'mess', label: 'Mess / Food', desc: 'Mess marketplace and food services' },
     { key: 'about', label: 'About', desc: 'About page in navigation' },
+  ];
+
+  const featureItems: { key: keyof EnabledMenus; label: string; desc: string }[] = [
+    { key: 'laundry', label: 'Laundry', desc: 'Laundry service menu' },
+    { key: 'laundryOrders', label: 'Laundry Orders', desc: 'Student laundry orders section' },
+    { key: 'complaints', label: 'Complaints', desc: 'Student complaints module' },
+    { key: 'attendance', label: 'Attendance', desc: 'QR scan attendance tracking' },
+    { key: 'support', label: 'Support', desc: 'Student support tickets' },
+    { key: 'roomSharing', label: 'Room Sharing', desc: 'Room sharing listings' },
   ];
 
   return (
@@ -261,10 +264,36 @@ export function SiteSettingsForm() {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-semibold">Navigation Menu</CardTitle>
+          <p className="text-[11px] text-muted-foreground">Control which items appear in the main navigation. Disabled items show as "Launching Soon" to students.</p>
         </CardHeader>
         <CardContent>
           <div className="divide-y divide-border">
-            {menuItems.map(item => (
+            {navMenuItems.map(item => (
+              <div key={item.key} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
+                <div>
+                  <p className="text-xs font-medium">{item.label}</p>
+                  <p className="text-[11px] text-muted-foreground">{item.desc}</p>
+                </div>
+                <Switch
+                  checked={enabledMenus[item.key]}
+                  onCheckedChange={() => toggleMenu(item.key)}
+                  className="scale-90"
+                />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Student Features Toggles */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold">Student Features</CardTitle>
+          <p className="text-[11px] text-muted-foreground">Enable or disable student-facing features. Disabled features show a "Launching Soon" page.</p>
+        </CardHeader>
+        <CardContent>
+          <div className="divide-y divide-border">
+            {featureItems.map(item => (
               <div key={item.key} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
                 <div>
                   <p className="text-xs font-medium">{item.label}</p>
