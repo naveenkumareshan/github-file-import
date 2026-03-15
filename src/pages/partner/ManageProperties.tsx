@@ -19,7 +19,7 @@ import {
 
 const RoomManagement = lazy(() => import('@/pages/RoomManagement'));
 const HostelManagement = lazy(() => import('@/pages/hotelManager/HostelManagement'));
-const LaundryPartnerDashboard = lazy(() => import('@/pages/LaundryPartnerDashboard'));
+const AdminLaundry = lazy(() => import('@/pages/admin/AdminLaundry'));
 const MessManagement = lazy(() => import('@/pages/admin/MessManagement'));
 
 const ManageProperties: React.FC = () => {
