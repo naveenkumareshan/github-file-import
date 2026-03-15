@@ -641,9 +641,11 @@ export type Database = {
           description: string
           hostel_id: string | null
           id: string
+          laundry_id: string | null
           mess_id: string | null
           module: string | null
           priority: string
+          resolved_at: string | null
           responded_at: string | null
           responded_by: string | null
           response: string | null
@@ -661,9 +663,11 @@ export type Database = {
           description: string
           hostel_id?: string | null
           id?: string
+          laundry_id?: string | null
           mess_id?: string | null
           module?: string | null
           priority?: string
+          resolved_at?: string | null
           responded_at?: string | null
           responded_by?: string | null
           response?: string | null
@@ -681,9 +685,11 @@ export type Database = {
           description?: string
           hostel_id?: string | null
           id?: string
+          laundry_id?: string | null
           mess_id?: string | null
           module?: string | null
           priority?: string
+          resolved_at?: string | null
           responded_at?: string | null
           responded_by?: string | null
           response?: string | null
@@ -713,6 +719,13 @@ export type Database = {
             columns: ["hostel_id"]
             isOneToOne: false
             referencedRelation: "hostels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "complaints_laundry_id_fkey"
+            columns: ["laundry_id"]
+            isOneToOne: false
+            referencedRelation: "laundry_partners"
             referencedColumns: ["id"]
           },
           {
