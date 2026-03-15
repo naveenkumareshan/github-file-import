@@ -1,24 +1,40 @@
 import { supabase } from '@/integrations/supabase/client';
 
 export const laundryCloudService = {
-  // ── Items (public) ──
-  getItems: async () => {
-    const { data, error } = await supabase
+  // ── Items (public, optionally scoped to partner) ──
+  getItems: async (partnerId?: string) => {
+    let q = supabase
       .from('laundry_items')
       .select('*')
       .eq('is_active', true)
       .order('display_order');
+    if (partnerId) q = q.eq('partner_id', partnerId);
+    const { data, error } = await q;
     if (error) throw error;
     return data;
   },
 
-  // ── Pickup Slots (public) ──
-  getPickupSlots: async () => {
-    const { data, error } = await supabase
+  // ── Pickup Slots (public, optionally scoped to partner) ──
+  getPickupSlots: async (partnerId?: string) => {
+    let q = supabase
       .from('laundry_pickup_slots')
       .select('*')
       .eq('is_active', true)
       .order('start_time');
+    if (partnerId) q = q.eq('partner_id', partnerId);
+    const { data, error } = await q;
+    if (error) throw error;
+    return data;
+  },
+
+  // ── Active partners for student marketplace ──
+  getActivePartners: async () => {
+    const { data, error } = await supabase
+      .from('laundry_partners')
+      .select('*')
+      .eq('is_active', true)
+      .eq('status', 'active')
+      .order('business_name');
     if (error) throw error;
     return data;
   },
@@ -32,6 +48,7 @@ export const laundryCloudService = {
     total_amount: number;
     payment_method: string;
     notes?: string;
+    partner_id?: string;
     items: { item_id: string; item_name: string; item_price: number; quantity: number; subtotal: number }[];
   }) => {
     const { items, ...order } = orderData;
@@ -42,7 +59,6 @@ export const laundryCloudService = {
       .single();
     if (error) throw error;
 
-    // Insert order items
     const orderItems = items.map(i => ({ ...i, order_id: newOrder.id }));
     const { error: itemsError } = await supabase
       .from('laundry_order_items')
@@ -97,17 +113,16 @@ export const laundryCloudService = {
     return data;
   },
 
-  // ── Items CRUD (admin) ──
-  adminGetAllItems: async () => {
-    const { data, error } = await supabase
-      .from('laundry_items')
-      .select('*')
-      .order('display_order');
+  // ── Items CRUD (admin / partner) ──
+  adminGetAllItems: async (partnerId?: string) => {
+    let q = supabase.from('laundry_items').select('*').order('display_order');
+    if (partnerId) q = q.eq('partner_id', partnerId);
+    const { data, error } = await q;
     if (error) throw error;
     return data;
   },
 
-  adminCreateItem: async (item: { name: string; icon: string; price: number; category: string }) => {
+  adminCreateItem: async (item: { name: string; icon: string; price: number; category: string; partner_id?: string }) => {
     const { data, error } = await supabase
       .from('laundry_items')
       .insert(item)
@@ -152,6 +167,13 @@ export const laundryCloudService = {
     service_area: string;
     commission_percentage?: number;
     status?: string;
+    description?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    delivery_time_hours?: number;
+    images?: string[];
+    operating_hours?: any;
   }) => {
     const { data, error } = await supabase
       .from('laundry_partners')
@@ -173,17 +195,16 @@ export const laundryCloudService = {
     return data;
   },
 
-  // ── Pickup Slots CRUD (admin) ──
-  adminGetAllSlots: async () => {
-    const { data, error } = await supabase
-      .from('laundry_pickup_slots')
-      .select('*')
-      .order('start_time');
+  // ── Pickup Slots CRUD (admin / partner) ──
+  adminGetAllSlots: async (partnerId?: string) => {
+    let q = supabase.from('laundry_pickup_slots').select('*').order('start_time');
+    if (partnerId) q = q.eq('partner_id', partnerId);
+    const { data, error } = await q;
     if (error) throw error;
     return data;
   },
 
-  adminCreateSlot: async (slot: { slot_name: string; start_time: string; end_time: string; max_orders: number }) => {
+  adminCreateSlot: async (slot: { slot_name: string; start_time: string; end_time: string; max_orders: number; partner_id?: string }) => {
     const { data, error } = await supabase
       .from('laundry_pickup_slots')
       .insert(slot)
@@ -238,10 +259,21 @@ export const laundryCloudService = {
   },
 
   // ── Partner dashboard ──
+  getMyPartnerRecord: async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+    const { data, error } = await supabase
+      .from('laundry_partners')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+
   partnerGetOrders: async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
-    // Get partner record
     const { data: partner } = await supabase
       .from('laundry_partners')
       .select('id')

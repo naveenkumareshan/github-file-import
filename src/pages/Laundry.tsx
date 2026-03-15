@@ -10,14 +10,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { laundryCloudService } from '@/api/laundryCloudService';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { Minus, Plus, ShoppingBag, MapPin, Clock, CreditCard, CheckCircle2, ArrowLeft, ArrowRight, Loader2, Sparkles } from 'lucide-react';
+import { Minus, Plus, ShoppingBag, MapPin, Clock, CreditCard, CheckCircle2, ArrowLeft, ArrowRight, Loader2, Sparkles, Truck, Star } from 'lucide-react';
 import { format } from 'date-fns';
 
 type LaundryItem = { id: string; name: string; icon: string; price: number; category: string };
 type PickupSlot = { id: string; slot_name: string; start_time: string; end_time: string };
 type CartItem = LaundryItem & { quantity: number };
 
-const STEPS = ['Items', 'Address', 'Schedule', 'Review', 'Payment'];
+const STEPS = ['Partner', 'Items', 'Address', 'Schedule', 'Review', 'Payment'];
 
 const CATEGORY_STYLES: Record<string, { bg: string; border: string; badge: string; text: string }> = {
   clothing: { bg: 'bg-primary/5', border: 'border-primary/20', badge: 'bg-primary', text: 'text-primary' },
@@ -29,6 +29,8 @@ const Laundry = () => {
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
+  const [partners, setPartners] = useState<any[]>([]);
+  const [selectedPartner, setSelectedPartner] = useState<any>(null);
   const [items, setItems] = useState<LaundryItem[]>([]);
   const [slots, setSlots] = useState<PickupSlot[]>([]);
   const [cart, setCart] = useState<Record<string, CartItem>>({});
@@ -40,19 +42,32 @@ const Laundry = () => {
   const [notes, setNotes] = useState('');
   const [createdOrder, setCreatedOrder] = useState<any>(null);
 
+  // Load partners on mount
   useEffect(() => {
     const load = async () => {
       try {
-        const [itemsData, slotsData] = await Promise.all([
-          laundryCloudService.getItems(),
-          laundryCloudService.getPickupSlots(),
-        ]);
-        setItems(itemsData || []);
-        setSlots(slotsData || []);
+        const data = await laundryCloudService.getActivePartners();
+        setPartners(data || []);
       } catch { /* empty */ } finally { setLoading(false); }
     };
     load();
   }, []);
+
+  // Load items & slots when partner selected
+  const handleSelectPartner = async (partner: any) => {
+    setSelectedPartner(partner);
+    setCart({});
+    setLoading(true);
+    try {
+      const [itemsData, slotsData] = await Promise.all([
+        laundryCloudService.getItems(partner.id),
+        laundryCloudService.getPickupSlots(partner.id),
+      ]);
+      setItems(itemsData || []);
+      setSlots(slotsData || []);
+      setStep(1);
+    } catch { /* empty */ } finally { setLoading(false); }
+  };
 
   const updateQty = (item: LaundryItem, delta: number) => {
     setCart(prev => {
@@ -68,14 +83,15 @@ const Laundry = () => {
   const totalItems = cartItems.reduce((s, i) => s + i.quantity, 0);
 
   const canProceed = () => {
-    if (step === 0) return totalItems > 0;
-    if (step === 1) return address.room && address.block && address.floor;
-    if (step === 2) return pickupDate && selectedSlot;
+    if (step === 0) return !!selectedPartner;
+    if (step === 1) return totalItems > 0;
+    if (step === 2) return address.room && address.block && address.floor;
+    if (step === 3) return pickupDate && selectedSlot;
     return true;
   };
 
   const handleSubmit = async () => {
-    if (!user) return;
+    if (!user || !selectedPartner) return;
     setSubmitting(true);
     try {
       const order = await laundryCloudService.createOrder({
@@ -86,6 +102,7 @@ const Laundry = () => {
         total_amount: total,
         payment_method: 'online',
         notes,
+        partner_id: selectedPartner.id,
         items: cartItems.map(i => ({
           item_id: i.id,
           item_name: i.name,
@@ -94,9 +111,6 @@ const Laundry = () => {
           subtotal: i.price * i.quantity,
         })),
       });
-
-      const { data: session } = await supabase.auth.getSession();
-      const token = session?.session?.access_token;
 
       const res = await supabase.functions.invoke('razorpay-create-order', {
         body: { amount: total, bookingId: order.id, bookingType: 'laundry' },
@@ -107,7 +121,7 @@ const Laundry = () => {
           body: { bookingId: order.id, bookingType: 'laundry', testMode: true },
         });
         setCreatedOrder(order);
-        setStep(4);
+        setStep(5);
         toast({ title: 'Order placed!', description: 'Test mode — payment auto-confirmed.' });
       } else if (res.data?.id) {
         const options = {
@@ -128,7 +142,7 @@ const Laundry = () => {
               },
             });
             setCreatedOrder(order);
-            setStep(4);
+            setStep(5);
             toast({ title: 'Payment successful!', description: 'Your laundry order has been placed.' });
           },
           prefill: { name: user.name || '', email: user.email || '' },
@@ -169,7 +183,9 @@ const Laundry = () => {
             <h1 className="text-xl font-bold flex items-center gap-2">
               <Sparkles className="h-5 w-5" /> Laundry Service
             </h1>
-            <p className="text-xs opacity-80 mt-0.5">Professional pickup & delivery</p>
+            <p className="text-xs opacity-80 mt-0.5">
+              {selectedPartner ? selectedPartner.business_name : 'Choose a laundry partner'}
+            </p>
           </div>
           <Button variant="secondary" size="sm" asChild className="bg-white/20 text-primary-foreground border-0 hover:bg-white/30 backdrop-blur-sm text-xs">
             <Link to="/student/laundry-orders">My Orders</Link>
@@ -178,9 +194,9 @@ const Laundry = () => {
       </div>
 
       {/* Step indicator */}
-      {step < 4 && (
+      {step < 5 && (
         <div className="flex items-center gap-1.5 mb-5">
-          {STEPS.slice(0, 4).map((s, i) => (
+          {STEPS.slice(0, 5).map((s, i) => (
             <div key={s} className="flex-1 flex flex-col items-center gap-1">
               <div className={`h-2 w-full rounded-full transition-all ${
                 i < step ? 'bg-gradient-to-r from-primary to-accent' :
@@ -197,8 +213,57 @@ const Laundry = () => {
         </div>
       )}
 
-      {/* Step 0: Items */}
+      {/* Step 0: Partner Selection */}
       {step === 0 && (
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Select a Laundry Partner</h2>
+          {partners.map(p => (
+            <Card
+              key={p.id}
+              className={`border shadow-sm cursor-pointer transition-all hover:shadow-md ${
+                selectedPartner?.id === p.id ? 'border-primary ring-2 ring-primary/20' : 'border-border'
+              }`}
+              onClick={() => handleSelectPartner(p)}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h3 className="text-base font-semibold">{p.business_name}</h3>
+                    {p.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{p.description}</p>}
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {p.service_area && (
+                        <Badge variant="secondary" className="text-[10px] gap-1">
+                          <MapPin className="h-2.5 w-2.5" /> {p.service_area}
+                        </Badge>
+                      )}
+                      {p.delivery_time_hours && (
+                        <Badge variant="secondary" className="text-[10px] gap-1">
+                          <Truck className="h-2.5 w-2.5" /> {p.delivery_time_hours}h delivery
+                        </Badge>
+                      )}
+                      {p.operating_hours && (
+                        <Badge variant="secondary" className="text-[10px] gap-1">
+                          <Clock className="h-2.5 w-2.5" /> {(p.operating_hours as any)?.start} - {(p.operating_hours as any)?.end}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  <ArrowRight className="h-5 w-5 text-muted-foreground mt-1 flex-shrink-0" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+          {partners.length === 0 && (
+            <div className="text-center py-12">
+              <ShoppingBag className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+              <p className="text-muted-foreground">No laundry partners available at the moment</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Step 1: Items */}
+      {step === 1 && (
         <div className="space-y-4">
           {['clothing', 'bedding', 'special'].map(cat => {
             const catItems = items.filter(i => i.category === cat);
@@ -244,12 +309,12 @@ const Laundry = () => {
               </div>
             );
           })}
-          {items.length === 0 && <p className="text-center text-muted-foreground py-8">No items available at the moment</p>}
+          {items.length === 0 && <p className="text-center text-muted-foreground py-8">No items available from this partner</p>}
         </div>
       )}
 
-      {/* Step 1: Address */}
-      {step === 1 && (
+      {/* Step 2: Address */}
+      {step === 2 && (
         <div className="space-y-4">
           <Card className="border-2 border-primary/20 shadow-sm overflow-hidden">
             <CardHeader className="pb-3 bg-primary/5">
@@ -267,8 +332,8 @@ const Laundry = () => {
         </div>
       )}
 
-      {/* Step 2: Schedule */}
-      {step === 2 && (
+      {/* Step 3: Schedule */}
+      {step === 3 && (
         <div className="space-y-4">
           <Card className="border-2 border-accent/30 shadow-sm overflow-hidden">
             <CardHeader className="pb-3 bg-accent/10">
@@ -302,14 +367,16 @@ const Laundry = () => {
         </div>
       )}
 
-      {/* Step 3: Review */}
-      {step === 3 && (
+      {/* Step 4: Review */}
+      {step === 4 && (
         <div className="space-y-4">
           <Card className="border-2 border-secondary/30 shadow-sm overflow-hidden">
             <CardHeader className="pb-3 bg-secondary/10">
               <CardTitle className="text-base text-secondary">Order Summary</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 pt-4">
+              <p className="text-xs text-muted-foreground">Partner: <span className="font-semibold text-foreground">{selectedPartner?.business_name}</span></p>
+              <Separator />
               {cartItems.map(i => (
                 <div key={i.id} className="flex justify-between text-sm">
                   <span>{i.icon} {i.name} × {i.quantity}</span>
@@ -333,8 +400,8 @@ const Laundry = () => {
         </div>
       )}
 
-      {/* Step 4: Confirmation */}
-      {step === 4 && createdOrder && (
+      {/* Step 5: Confirmation */}
+      {step === 5 && createdOrder && (
         <div className="text-center space-y-6 py-4">
           <div className="rounded-2xl bg-gradient-to-br from-primary via-primary/90 to-accent/80 p-8 text-primary-foreground shadow-lg">
             <CheckCircle2 className="h-16 w-16 mx-auto mb-3 drop-shadow" />
@@ -360,17 +427,15 @@ const Laundry = () => {
       )}
 
       {/* Bottom bar */}
-      {step < 4 && (
+      {step >= 1 && step < 5 && (
         <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-primary via-primary/90 to-accent/80 p-4 flex items-center gap-3 max-w-lg mx-auto z-10 shadow-[0_-4px_20px_hsl(var(--primary)/0.3)]">
-          {step > 0 && (
-            <Button variant="secondary" size="sm" onClick={() => setStep(s => s - 1)} className="bg-white/20 text-primary-foreground border-0 hover:bg-white/30 backdrop-blur-sm">
-              <ArrowLeft className="h-4 w-4 mr-1" /> Back
-            </Button>
-          )}
+          <Button variant="secondary" size="sm" onClick={() => setStep(s => s - 1)} className="bg-white/20 text-primary-foreground border-0 hover:bg-white/30 backdrop-blur-sm">
+            <ArrowLeft className="h-4 w-4 mr-1" /> Back
+          </Button>
           <div className="flex-1 text-right">
             {totalItems > 0 && <span className="text-sm font-semibold text-primary-foreground">{totalItems} items • ₹{total}</span>}
           </div>
-          {step < 3 ? (
+          {step < 4 ? (
             <Button size="sm" disabled={!canProceed()} onClick={() => setStep(s => s + 1)} className="bg-white text-primary hover:bg-white/90 border-0 font-semibold disabled:opacity-50">
               Next <ArrowRight className="h-4 w-4 ml-1" />
             </Button>
@@ -382,7 +447,7 @@ const Laundry = () => {
           )}
         </div>
       )}
-      {step < 4 && <div className="h-20" />}
+      {step >= 1 && step < 5 && <div className="h-20" />}
     </div>
   );
 };
