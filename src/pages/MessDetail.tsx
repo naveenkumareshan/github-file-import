@@ -198,7 +198,7 @@ export default function MessDetail() {
     });
   }, [messPackages]);
 
-  const handleSubscribe = async () => {
+  const handleCreatePendingSub = async () => {
     if (!user || !selectedPackage || !mess) return;
     if (!isAuthenticated) {
       navigate('/student/login', { state: { from: location.pathname } });
@@ -209,18 +209,30 @@ export default function MessDetail() {
       const sub = await createMessSubscription({
         user_id: user.id, mess_id: mess.id, package_id: selectedPackage.id,
         start_date: format(checkInDate, 'yyyy-MM-dd'), end_date: format(endDate, 'yyyy-MM-dd'),
-        price_paid: totalPrice, payment_status: 'completed', payment_method: 'cash', status: 'active',
+        price_paid: totalPrice, payment_status: 'pending', payment_method: 'online', status: 'pending',
       });
-      await createMessReceipt({
-        subscription_id: (sub as any).id, user_id: user.id, mess_id: mess.id,
-        amount: totalPrice, payment_method: 'cash', transaction_id: `MESS-${Date.now()}`,
-      });
-      toast({ title: 'Subscribed successfully!', description: `${selectedPackage.name} from ${format(checkInDate, 'dd MMM yyyy')}` });
-      navigate('/student/bookings');
+      setPendingSubId((sub as any).id);
+      return (sub as any).id;
     } catch (e: any) {
-      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+      toast({ title: 'Error creating subscription', description: e.message, variant: 'destructive' });
+      setSubscribing(false);
+      return null;
     }
+  };
+
+  const handlePaymentSuccess = () => {
+    setBookingSuccess(true);
     setSubscribing(false);
+  };
+
+  const handlePaymentDismiss = async () => {
+    setSubscribing(false);
+    if (pendingSubId) {
+      try {
+        await supabase.from('mess_subscriptions' as any).update({ status: 'cancelled', payment_status: 'cancelled' }).eq('id', pendingSubId);
+      } catch {}
+      setPendingSubId(null);
+    }
   };
 
   const handleGoBack = () => navigate(-1);
