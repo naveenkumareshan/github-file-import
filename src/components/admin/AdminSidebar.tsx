@@ -52,7 +52,8 @@ import {
   Shirt,
   Activity,
   UtensilsCrossed,
-  Clock
+  Clock,
+  Receipt
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronRight } from 'lucide-react';

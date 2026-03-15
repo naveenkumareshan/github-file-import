@@ -12,7 +12,7 @@ import { formatCurrency } from '@/utils/currency';
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 import { DateFilterSelector } from '@/components/common/DateFilterSelector';
 import { getDateRangeFromFilter } from '@/utils/dateFilterUtils';
-import { getEffectiveOwnerId } from '@/utils/ownerUtils';
+import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 
 export default function LaundryReceipts() {
   const { user } = useAuth();
