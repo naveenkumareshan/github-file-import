@@ -81,13 +81,17 @@ const VendorApproval: React.FC = () => {
     if (partnerUserIds.length === 0) return;
     setPropertiesLoading(true);
     try {
-      const [cabinsRes, hostelsRes, bookingsRes, hostelBookingsRes, seatsRes, bedsRes] = await Promise.all([
+      const [cabinsRes, hostelsRes, bookingsRes, hostelBookingsRes, seatsRes, bedsRes, messRes, laundryRes, messSubsRes, laundryOrdersRes] = await Promise.all([
         supabase.from('cabins').select('id, name, city, state, capacity, is_active, is_approved, created_by, whatsapp_chat_enabled'),
         supabase.from('hostels').select('id, name, location, is_active, is_approved, created_by, whatsapp_chat_enabled'),
         supabase.from('bookings').select('cabin_id, id').in('payment_status', ['confirmed', 'paid']),
         supabase.from('hostel_bookings').select('hostel_id, id').in('status', ['confirmed', 'active']),
         supabase.from('seats').select('cabin_id, id, is_available'),
         supabase.from('hostel_beds').select('room_id, id, is_available').eq('is_blocked', false),
+        supabase.from('mess_partners').select('id, name, location, is_active, is_approved, user_id, whatsapp_chat_enabled'),
+        supabase.from('laundry_partners').select('id, business_name, city, state, is_active, is_approved, user_id, whatsapp_chat_enabled'),
+        supabase.from('mess_subscriptions').select('mess_id, id').eq('status', 'active'),
+        supabase.from('laundry_orders').select('partner_id, id').in('status', ['pending', 'confirmed', 'processing', 'picked_up']),
       ]);
 
       const cabins = cabinsRes.data || [];
