@@ -22,6 +22,7 @@ export function SiteSettingsForm() {
   const [adminWhatsapp, setAdminWhatsapp] = useState('');
   const [enabledMenus, setEnabledMenus] = useState<EnabledMenus>({
     bookings: true, hostel: true, laundry: true, roomSharing: true, about: true,
+    mess: true, complaints: true, attendance: true, support: true, laundryOrders: true,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
