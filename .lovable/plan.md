@@ -1,71 +1,70 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+## Redesign Student Laundry to Match Reading Room / Hostels / Mess Pattern + Insert Test Data
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+### What Changes
 
-## Changes
+**1. Student-side `/laundry` page — Complete rewrite to match Cabins/Hostels/Mess listing pattern**
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+Replace the current multi-step wizard with:
+- **Listing page** (`/laundry`): Sticky header with "Laundry Services" title, search bar, filter pills (All, Clothing, Bedding, Special or by area). Grid of laundry partner cards matching the exact same card layout as Hostels/Mess (thumbnail placeholder with Shirt icon, business name, location, delivery time badge, "View" button).
+- Remove "My Orders" button from header (handled in My Bookings already).
+- Clicking a partner card navigates to `/laundry/:id` (new detail page).
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+**2. New Laundry Detail page (`/laundry/:id`) — matches MessDetail pattern**
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+- Header section: partner name, service area, delivery time, operating hours
+- **Items section**: Shows all partner items grouped by category (clothing/bedding/special) with +/- quantity selectors
+- **Pickup Slots section**: Date picker + time slot pill selection
+- **Address section**: Room, Block, Floor, Landmark fields
+- **Review & Pay bottom bar**: Shows item count + total, Pay button triggers Razorpay flow
+- **After payment**: Shows Pickup OTP prominently (same as current step 5)
+- No separate "partner selection step" — the listing IS the partner selection
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+**3. Remove My Orders from laundry page**
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
+The "My Orders" link/button is removed from the laundry header. Orders are already accessible via student bookings.
 
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
+**4. Admin — Items & Slots CRUD in AdminLaundry**
 
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
+Already implemented via dialogs in AdminLaundry.tsx. Verify the item form (name, icon, price, category) and slot form (name, start_time, end_time, max_orders) work correctly — these are already present.
 
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
+**5. Insert test laundry partner + sample items + slots**
 
-**Reviews section**: Shown below the booking flow (not in a tab)
+Using the database insert tool:
+- Create a `laundry_partners` record for TestPartner (`b7223bac-ef5c-48aa-ba49-d530d15f6f8e`) with business_name "Fresh & Clean Laundry", service_area "Near Campus Gate", status "active", is_active true, is_approved true, is_booking_active true
+- Insert 6 sample `laundry_items` (T-Shirt ₹30, Jeans ₹50, Bedsheet ₹40, Pillow Cover ₹20, Blanket ₹80, Kurta ₹35) linked to this partner
+- Insert 3 sample `laundry_pickup_slots` (Morning 8-11, Afternoon 12-3, Evening 4-7) linked to this partner
 
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
+### Files to Create/Modify
 
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
-
-| File | Change |
+| File | Action |
 |------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+| `src/pages/Laundry.tsx` | **Rewrite** — listing page matching Cabins/Hostels/Mess grid pattern |
+| `src/pages/LaundryDetail.tsx` | **New** — partner detail + item selection + booking flow |
+| `src/App.tsx` | Add `/laundry/:id` route → LaundryDetail |
+| `src/api/laundryCloudService.ts` | Add `getPartnerById(id)` and `getPartnerBySerialNumber(sn)` methods |
+| Database | Insert test partner, items, slots |
+
+### Layout Pattern (matches all other student pages)
+
+```text
+┌─────────────────────────────┐
+│ Sticky Header               │
+│  "Laundry Services"         │
+│  [Search bar]               │
+│  [All] [Area1] [Area2]      │
+├─────────────────────────────┤
+│ 3 partners found            │
+│ ┌───────────────────────┐   │
+│ │ 👕 │ Fresh & Clean     │   │
+│ │    │ Near Campus Gate   │   │
+│ │    │ 48h · View →      │   │
+│ └───────────────────────┘   │
+│ ┌───────────────────────┐   │
+│ │ ...                   │   │
+└─────────────────────────────┘
+```
+
+Detail page follows MessDetail pattern with items, slots, address, and pay flow inline.
 
