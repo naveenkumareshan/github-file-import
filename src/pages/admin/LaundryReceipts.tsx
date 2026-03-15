@@ -39,7 +39,7 @@ export default function LaundryReceipts() {
 
       // Scope to partner's laundry if not admin
       if (user?.role === 'vendor' || user?.role === 'vendor_employee') {
-        const ownerId = getEffectiveOwnerId(user);
+        const { ownerId } = await getEffectiveOwnerId();
         if (ownerId) {
           const { data: partner } = await supabase
             .from('laundry_partners')
