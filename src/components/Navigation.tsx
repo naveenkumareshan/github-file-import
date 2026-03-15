@@ -106,7 +106,7 @@ export function Navigation() {
                 target.src = inhalestaysLogo;
               }}
             />
-            <span className="hidden font-bold text-lg text-foreground sm:inline-block">
+            <span className="hidden font-bold text-xl text-foreground sm:inline-block">
               {settings.siteName}
             </span>
           </Link>
