@@ -188,7 +188,7 @@ const ManageProperties: React.FC = () => {
           {(showAllTabs || hasLaundry || activeTab === 'laundry') && (
             <TabsContent value="laundry">
               <Suspense fallback={<LoadingFallback />}>
-                <LaundryPartnerDashboard autoCreateNew={activeTab === 'laundry' && triggerNew} onTriggerConsumed={handleTriggerConsumed} />
+                <AdminLaundry autoCreateNew={activeTab === 'laundry' && triggerNew} onTriggerConsumed={handleTriggerConsumed} />
               </Suspense>
             </TabsContent>
           )}

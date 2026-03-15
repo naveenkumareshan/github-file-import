@@ -360,6 +360,20 @@ export default function AdminLaundry({ autoCreateNew, onTriggerConsumed }: Admin
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* WhatsApp Dialog */}
+        {whatsAppPartner && (
+          <WhatsAppPropertyDialog
+            open={!!whatsAppPartner}
+            onOpenChange={(open) => { if (!open) setWhatsAppPartner(null); }}
+            propertyId={whatsAppPartner.id}
+            propertyType="laundry"
+            propertyName={whatsAppPartner.business_name}
+            initialNumber={whatsAppPartner.whatsapp_number || ''}
+            initialEnabled={whatsAppPartner.whatsapp_chat_enabled || false}
+            onSaved={fetchPartners}
+          />
+        )}
       </div>
     </ErrorBoundary>
   );
