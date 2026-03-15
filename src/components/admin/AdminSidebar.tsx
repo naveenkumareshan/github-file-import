@@ -320,11 +320,25 @@ export function AdminSidebar() {
 
   // ===== LAUNDRY SECTION - only show for admin or partners with laundry =====
   if (user?.role === 'admin' || (isPartner && propertyTypes.hasLaundry)) {
+    const laundrySubItems: MenuItem[] = [
+      {
+        title: 'Manage Laundry',
+        url: `${routePrefix}/laundry`,
+        icon: Shirt,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+      },
+      {
+        title: 'Laundry Orders',
+        url: `${routePrefix}/laundry-orders`,
+        icon: Shirt,
+        roles: ['admin', 'vendor', 'vendor_employee'],
+      },
+    ];
     menuItems.push({
       title: 'Laundry',
-      url: `${routePrefix}/laundry`,
       icon: Shirt,
       roles: ['admin', 'vendor', 'vendor_employee'],
+      subItems: laundrySubItems,
     });
   }
 
