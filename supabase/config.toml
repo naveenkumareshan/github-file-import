@@ -1,44 +1,36 @@
 project_id = "wzjzrivtemnqlqqpaybh"
 
-[auth.password]
-hibp_enabled = true
-min_length = 6
+[auth]
+  [auth.password]
+    hibp_enabled = true
+    min_length = 6
 
-[functions.admin-reset-password]
-verify_jwt = false
-
-[functions.razorpay-create-order]
-verify_jwt = false
-
-[functions.razorpay-verify-payment]
-verify_jwt = false
-
-[functions.admin-create-user]
-verify_jwt = false
-
-[functions.toggle-user-status]
-verify_jwt = false
-
-[functions.subscription-create-order]
-verify_jwt = false
-
-[functions.subscription-verify-payment]
-verify_jwt = false
-
-[functions.partner-register]
-verify_jwt = false
-
-[functions.partner-create-employee]
-verify_jwt = false
-
-[functions.create-student]
-verify_jwt = false
-
-[functions.send-booking-receipt]
-verify_jwt = false
-
-[functions.generate-monthly-hostel-dues]
-verify_jwt = false
-
-[functions.process-email-queue]
-verify_jwt = false
+[functions]
+  [functions.admin-create-user]
+    verify_jwt = false
+  [functions.admin-reset-password]
+    verify_jwt = false
+  [functions.auth-email-hook]
+    verify_jwt = false
+  [functions.create-student]
+    verify_jwt = false
+  [functions.generate-monthly-hostel-dues]
+    verify_jwt = false
+  [functions.partner-create-employee]
+    verify_jwt = false
+  [functions.partner-register]
+    verify_jwt = false
+  [functions.process-email-queue]
+    verify_jwt = false
+  [functions.razorpay-create-order]
+    verify_jwt = false
+  [functions.razorpay-verify-payment]
+    verify_jwt = false
+  [functions.send-booking-receipt]
+    verify_jwt = false
+  [functions.subscription-create-order]
+    verify_jwt = false
+  [functions.subscription-verify-payment]
+    verify_jwt = false
+  [functions.toggle-user-status]
+    verify_jwt = false
