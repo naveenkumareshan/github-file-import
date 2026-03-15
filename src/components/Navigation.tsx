@@ -117,7 +117,7 @@ export function Navigation() {
                 to={link.enabled ? link.href : '#'}
                 onClick={link.enabled ? undefined : (e) => e.preventDefault()}
                 className={cn(
-                  "px-4 py-2 text-sm font-medium rounded-lg transition-colors relative",
+                  "px-4 py-2 text-base font-medium rounded-lg transition-colors relative",
                   !link.enabled && "opacity-60 cursor-default",
                   isActive(link) 
                     ? "bg-primary/10 text-primary" 
