@@ -12,7 +12,7 @@ interface WhatsAppPropertyDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   propertyId: string;
-  propertyType: 'cabin' | 'hostel' | 'mess';
+  propertyType: 'cabin' | 'hostel' | 'mess' | 'laundry';
   propertyName: string;
   initialNumber: string;
   initialEnabled: boolean;
