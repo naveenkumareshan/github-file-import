@@ -32,6 +32,7 @@ const routeLabels: Record<string, string> = {
   "/admin/operations": "Operations",
   "/admin/manage-properties": "Manage Properties",
   "/admin/laundry": "Laundry",
+  "/admin/laundry-receipts": "Laundry Receipts",
   "/admin/admin-employees": "Admin Employees",
   // Partner route aliases
   "/partner/dashboard": "Dashboard",
