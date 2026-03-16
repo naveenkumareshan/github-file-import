@@ -1,48 +1,43 @@
 
 
-## Attendance System Audit — All Property Types
+## Student Layout Audit — Issues Found & Fix Plan
 
-### Summary: Everything is correctly implemented
+### Issues Identified
 
-After reviewing the `mark_qr_attendance` database function, the `ScanAttendance.tsx` frontend, the `attendanceService.ts` API layer, and the `brandedQrGenerator.ts` QR generation, the attendance system is working correctly for all three property types.
+**1. CabinSearch (Reading Rooms) — Desktop/Tablet Layout Too Narrow**
+- `CabinSearch.tsx` line 194 header uses `max-w-lg mx-auto` (no `lg:max-w-5xl`)
+- Line 259 results section also uses `max-w-lg mx-auto` (no `lg:max-w-5xl`)
+- All other marketplace pages (Hostels, Mess, Laundry) correctly use `max-w-lg lg:max-w-5xl mx-auto`
+- **Fix:** Add `lg:max-w-5xl` to both sections in CabinSearch
 
-### How it works end-to-end
+**2. Laundry Route Missing LaunchingSoonGuard**
+- `/laundry` and `/laundry/:id` routes in App.tsx (lines 350-351) have NO `LaunchingSoonGuard` wrapping
+- But the bottom nav tab for laundry is missing entirely — there's no "Laundry" tab in `MobileBottomNav.tsx`
+- The Navigation.tsx desktop nav also doesn't include a Laundry link
+- **Fix:** Add `LaunchingSoonGuard` with `moduleKey="laundry"` to both laundry routes
 
-```text
-Student scans QR → jsQR decodes {propertyId, type} → RPC mark_qr_attendance() →
-  ├── reading_room: checks active booking → inserts property_attendance with seat_id
-  ├── hostel: checks active booking → inserts property_attendance with bed_id  
-  └── mess: checks active subscription → inserts mess_attendance + property_attendance
-```
+**3. Bottom Nav Missing Laundry Tab**
+- `MobileBottomNav.tsx` has 5 tabs: Home, Study Rooms, Hostels, Mess, Profile
+- No Laundry tab — users can only reach laundry via Quick Actions on home page
+- This is likely intentional (5 tabs is max), but Profile tab could be replaced or a "More" menu added
+- **Decision:** Keep current 5-tab layout (Home, Study Rooms, Hostels, Mess, Profile) — Laundry is accessible via Quick Actions and this is a standard mobile pattern
 
-### Verified for each property type
+**4. Navigation.tsx Desktop Nav Missing Laundry Link**
+- Desktop nav links: Home, Reading Rooms, Hostels, Food/Mess, About
+- No Laundry link on desktop
+- **Fix:** Add Laundry link to desktop navigation between Mess and About
 
-| Check | Reading Room | Hostel | Mess |
-|-------|-------------|--------|------|
-| QR generates correct `type` | `reading_room` | `hostel` | `mess` |
-| Active booking/subscription check | Bookings with `completed`/`partial` status | Bookings with `confirmed`/`pending` status | Subscriptions with `active` status |
-| Duplicate prevention (same day) | By `student_id + property_id + date` | By `student_id + property_id + date` | By `user_id + mess_id + date + meal_type` |
-| Date captured | `CURRENT_DATE` | `CURRENT_DATE` | `CURRENT_DATE` |
-| Time captured | `check_in_time` defaults to `now()` in table, returned in response | Same | `marked_at` column + `now()` in response |
-| Overdue dues check | Yes (blocks if pending dues) | Yes (blocks if pending dues) | No (not applicable) |
-| Seat/Bed label returned | Yes (seat number from `seats`) | Yes (room-bed from `hostel_rooms`/`hostel_beds`) | N/A |
-| Property name returned | Yes (from `cabins`) | Yes (from `hostels`) | Yes (from `mess_partners`) |
-| Serial number auto-generated | Yes (`ATND` prefix) | Yes | Yes |
-| RLS policies | Students insert own, admins/partners read | Same | Same |
+**5. MobileBottomNav Icon/Label Size**
+- Bottom nav icons are `w-5 h-5` and labels are `text-[9px]` — these are quite small
+- Per the memory note about scaled-up navigation, the bottom nav should also be slightly larger
+- **Fix:** Increase icons to `w-6 h-6`, labels to `text-[10px]`, and min-height to `60px`
 
-### Meal type detection for Mess
-- Dynamically checks `mess_meal_timings` table for the current time window
-- Falls back to hardcoded thresholds: before 11am = breakfast, before 4pm = lunch, else dinner
-- Prevents duplicate marking for the same meal on the same day
+### Files to Change
 
-### No issues found
-
-- The `property_attendance` table has a `check_in_time` column defaulting to `now()` — date and time are both captured
-- The `validate_property_attendance_type` trigger correctly allows `reading_room`, `hostel`, and `mess`
-- The frontend correctly parses QR data and displays the result (property name, student name, seat/bed label, check-in time)
-- The "already marked" case is handled gracefully for all types
-
-### No code changes needed
-
-The attendance scanning and recording system is fully functional across all three property types. The QR codes encode the correct data, the database function validates bookings/subscriptions, prevents duplicates, and records both date and time correctly.
+| File | Changes |
+|------|---------|
+| `src/pages/CabinSearch.tsx` | Add `lg:max-w-5xl` to header and results containers |
+| `src/App.tsx` | Wrap `/laundry` and `/laundry/:id` routes with `LaunchingSoonGuard moduleKey="laundry"` |
+| `src/components/Navigation.tsx` | Add Laundry nav link |
+| `src/components/student/MobileBottomNav.tsx` | Increase icon/label sizes for better readability |
 
