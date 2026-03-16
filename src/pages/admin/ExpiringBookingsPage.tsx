@@ -210,8 +210,10 @@ export default function ExpiringBookingsPage() {
                           <TableCell>{booking.start_date ? format(new Date(booking.start_date), 'dd MMM yyyy') : '-'}</TableCell>
                           <TableCell>{format(new Date(booking.end_date), 'dd MMM yyyy')}</TableCell>
                           <TableCell>
-                            <Badge variant={getStatusColor(days) as any} className="text-[10px]">
-                              {days} {days === 1 ? 'day' : 'days'}
+                            <Badge variant={(viewMode === 'expiring' ? getStatusColor(days) : getExpiredColor(days)) as any} className="text-[10px]">
+                              {viewMode === 'expiring' 
+                                ? `${days} ${days === 1 ? 'day' : 'days'}`
+                                : `${days} ${days === 1 ? 'day' : 'days'} ago`}
                             </Badge>
                           </TableCell>
                           <TableCell>
