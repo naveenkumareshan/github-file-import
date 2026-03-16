@@ -107,12 +107,10 @@ export default function MessBookings() {
   const [startDateOpen, setStartDateOpen] = useState(false);
 
   // Payment
-  const [paymentMethod, setPaymentMethod] = useState('');
-  const [transactionId, setTransactionId] = useState('');
+  const [bookingSplits, setBookingSplits] = useState<PaymentSplit[]>([createDefaultSplit(0)]);
   const [pricePaid, setPricePaid] = useState(0);
   const [discountAmount, setDiscountAmount] = useState(0);
   const [advanceAmount, setAdvanceAmount] = useState(0);
-  const [paymentProofUrl, setPaymentProofUrl] = useState('');
   const [collectedByName, setCollectedByName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [partnerId, setPartnerId] = useState('');
