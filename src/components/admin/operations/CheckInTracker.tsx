@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, subDays, parseISO } from 'date-fns';
 import { Search, AlertTriangle, CheckCircle2, Eye, Upload, Receipt, IndianRupee } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import CheckInUploadDialog from './CheckInUploadDialog';
 import ReportedTodaySection from './ReportedTodaySection';
 import CheckInViewDetailsDialog from './CheckInViewDetailsDialog';
@@ -281,9 +282,9 @@ const CheckInTracker = () => {
                     </td>
                     <td className="py-1.5 px-3">
                       {module === 'reading_room' ? (
-                        <span>{b.cabins?.name || '—'} / {b.seats?.floor ? `F${b.seats.floor} · ` : ''}S{b.seats?.number || '—'}</span>
+                        <span><Tooltip><TooltipTrigger asChild><span className="max-w-[100px] truncate inline-block align-bottom cursor-default">{b.cabins?.name || '—'}</span></TooltipTrigger><TooltipContent>{b.cabins?.name || '—'}</TooltipContent></Tooltip> / {b.seats?.floor ? `F${b.seats.floor} · ` : ''}S{b.seats?.number || '—'}</span>
                       ) : (
-                        <span>{b.hostels?.name || '—'} / Room {b.hostel_rooms?.room_number || '—'} · Bed #{b.hostel_beds?.bed_number || '—'}</span>
+                        <span><Tooltip><TooltipTrigger asChild><span className="max-w-[100px] truncate inline-block align-bottom cursor-default">{b.hostels?.name || '—'}</span></TooltipTrigger><TooltipContent>{b.hostels?.name || '—'}</TooltipContent></Tooltip> / Room {b.hostel_rooms?.room_number || '—'} · Bed #{b.hostel_beds?.bed_number || '—'}</span>
                       )}
                     </td>
                     <td className="py-1.5 px-3">

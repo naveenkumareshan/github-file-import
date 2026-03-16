@@ -10,6 +10,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { Search, Receipt, Download, RefreshCw } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/utils/currency';
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
@@ -276,7 +277,7 @@ const Receipts: React.FC = () => {
                   <div><span className="text-muted-foreground">Method: </span>{methodLabel(r.payment_method)}</div>
                   <div><span className="text-muted-foreground">Date: </span>{new Date(r.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
                 </div>
-                {r.cabinName && <p className="text-[10px] text-muted-foreground">{r.cabinName}{r.seatFloor ? ` / F${r.seatFloor}` : ''}{r.seatNumber !== undefined ? ` · S${r.seatNumber}` : ''}</p>}
+                {r.cabinName && <p className="text-[10px] text-muted-foreground"><Tooltip><TooltipTrigger asChild><span className="max-w-[80px] truncate inline-block align-bottom cursor-default">{r.cabinName}</span></TooltipTrigger><TooltipContent>{r.cabinName}</TooltipContent></Tooltip>{r.seatFloor ? ` / F${r.seatFloor}` : ''}{r.seatNumber !== undefined ? ` · S${r.seatNumber}` : ''}</p>}
               </div>
             ))}
           </div>
@@ -308,7 +309,7 @@ const Receipts: React.FC = () => {
                     {(r as any).studentEmail && <div className="text-muted-foreground text-[10px]">{(r as any).studentEmail}</div>}
                   </TableCell>
                   <TableCell className="text-xs">
-                    {r.cabinName}{r.seatFloor ? ` / F${r.seatFloor}` : ''}{r.seatNumber !== undefined ? ` · S${r.seatNumber}` : ''}
+                    <Tooltip><TooltipTrigger asChild><span className="max-w-[100px] truncate inline-block align-bottom cursor-default">{r.cabinName}</span></TooltipTrigger><TooltipContent>{r.cabinName}</TooltipContent></Tooltip>{r.seatFloor ? ` / F${r.seatFloor}` : ''}{r.seatNumber !== undefined ? ` · S${r.seatNumber}` : ''}
                   </TableCell>
                   <TableCell className="text-xs font-semibold">{formatCurrency(r.amount)}</TableCell>
                   <TableCell className="text-xs">{methodLabel(r.payment_method)}</TableCell>

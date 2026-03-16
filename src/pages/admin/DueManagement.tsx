@@ -10,6 +10,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Wallet, AlertTriangle, IndianRupee, Calendar, Search, Receipt, Pencil } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
@@ -270,7 +271,7 @@ const DueManagement: React.FC = () => {
                           {getStatusBadge(due)}
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-[11px]">
-                          <div><span className="text-muted-foreground">Room: </span>{(due.cabins as any)?.name || ''} {(due.seats as any)?.floor ? `F${(due.seats as any).floor} · ` : ''}S{(due.seats as any)?.number || ''}</div>
+                          <div><span className="text-muted-foreground">Room: </span><Tooltip><TooltipTrigger asChild><span className="max-w-[80px] truncate inline-block align-bottom cursor-default">{(due.cabins as any)?.name || ''}</span></TooltipTrigger><TooltipContent>{(due.cabins as any)?.name || ''}</TooltipContent></Tooltip> {(due.seats as any)?.floor ? `F${(due.seats as any).floor} · ` : ''}S{(due.seats as any)?.number || ''}</div>
                           <div><span className="text-muted-foreground">Total: </span>₹{Number(due.total_fee).toLocaleString()}</div>
                           <div className="text-emerald-600">Paid: ₹{(Number(due.advance_paid) + Number(due.paid_amount)).toLocaleString()}</div>
                           <div className="text-red-600 font-medium">Due: ₹{Math.max(0, remaining).toLocaleString()}</div>
@@ -323,7 +324,7 @@ const DueManagement: React.FC = () => {
                           {(due.profiles as any)?.email && <div className="text-[10px] text-muted-foreground">{(due.profiles as any)?.email}</div>}
                         </TableCell>
                         <TableCell className="py-2">
-                          <div className="text-[11px]">{(due.cabins as any)?.name || ''}</div>
+                          <div className="text-[11px]"><Tooltip><TooltipTrigger asChild><span className="max-w-[100px] truncate inline-block align-bottom cursor-default">{(due.cabins as any)?.name || ''}</span></TooltipTrigger><TooltipContent>{(due.cabins as any)?.name || ''}</TooltipContent></Tooltip></div>
                           <div className="text-[10px] text-muted-foreground">{(due.seats as any)?.floor ? `F${(due.seats as any).floor} · ` : ''}S{(due.seats as any)?.number || ''}</div>
                         </TableCell>
                         <TableCell className="py-2">

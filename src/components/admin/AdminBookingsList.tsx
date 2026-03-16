@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Select,
   SelectContent,
@@ -472,9 +473,7 @@ const AdminBookingsList = () => {
                     <TableCell>
                       <div>
                         <div className="font-medium">
-                          {booking.cabinId?.name ||
-                            booking.hostelId?.name ||
-                            "N/A"}
+                          <Tooltip><TooltipTrigger asChild><span className="max-w-[100px] truncate inline-block align-bottom cursor-default">{booking.cabinId?.name || booking.hostelId?.name || "N/A"}</span></TooltipTrigger><TooltipContent>{booking.cabinId?.name || booking.hostelId?.name || "N/A"}</TooltipContent></Tooltip>
                         </div>
 
                         <div className="text-sm text-muted-foreground">
