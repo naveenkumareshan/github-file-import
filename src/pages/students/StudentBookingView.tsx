@@ -482,7 +482,7 @@ export default function StudentBookingView() {
             <InfoRow label="Booking Type" value="Full Day" />
           ) : null}
           {booking.customer_name && <InfoRow label="Booked By" value={booking.customer_name} />}
-          <InfoRow label="Booked On" value={safeFmt(booking.created_at, "dd MMM yyyy")} />
+          <InfoRow label="Booked On" value={safeFmt(booking.created_at, "dd MMM yyyy, hh:mm a")} />
           {!isHostel && booking.cabins?.opening_time && booking.cabins?.closing_time && (
             <InfoRow
               label="Timings"

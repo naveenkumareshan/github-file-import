@@ -191,8 +191,18 @@ export default function MessDashboard() {
                 <CardContent className="p-4 space-y-3">
                   <p className="text-sm">Pause your meals for a date range. Your end date will be extended automatically.</p>
                   <div className="grid grid-cols-2 gap-3">
-                    <div><Label>From</Label><Input type="date" value={pauseStart} onChange={e => setPauseStart(e.target.value)} min={format(new Date(), 'yyyy-MM-dd')} /></div>
-                    <div><Label>To</Label><Input type="date" value={pauseEnd} onChange={e => setPauseEnd(e.target.value)} min={pauseStart || format(new Date(), 'yyyy-MM-dd')} /></div>
+                    {(() => {
+                      const today = format(new Date(), 'yyyy-MM-dd');
+                      const subStart = sub.start_date;
+                      const subEnd = sub.end_date;
+                      const minDate = today > subStart ? today : subStart;
+                      return (
+                        <>
+                          <div><Label>From</Label><Input type="date" value={pauseStart} onChange={e => { setPauseStart(e.target.value); if (pauseEnd && e.target.value > pauseEnd) setPauseEnd(''); }} min={minDate} max={subEnd} /></div>
+                          <div><Label>To</Label><Input type="date" value={pauseEnd} onChange={e => setPauseEnd(e.target.value)} min={pauseStart || minDate} max={subEnd} /></div>
+                        </>
+                      );
+                    })()}
                   </div>
                   <Button onClick={() => handlePause(sub.id)} disabled={!pauseStart || !pauseEnd || pausing}>
                     {pausing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
