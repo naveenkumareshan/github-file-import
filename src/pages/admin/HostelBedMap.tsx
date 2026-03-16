@@ -1128,7 +1128,7 @@ const HostelBedMap: React.FC = () => {
         discountReason,
         totalAmount: total,
         securityDeposit: secDepAmt,
-        paymentMethod: primarySplit.method,
+        paymentMethod: getMethodLabel(primarySplit.method),
         transactionId: primarySplit.txnId,
         collectedByName,
         advanceAmount: advanceAmt,
