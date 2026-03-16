@@ -341,7 +341,7 @@ export default function LaundryDetail() {
           </div>
 
           {/* Bottom Bar */}
-          <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-3 flex items-center gap-3 max-w-lg mx-auto z-10 shadow-lg">
+          <div className="fixed bottom-[60px] md:bottom-0 left-0 right-0 bg-card border-t border-border p-3 flex items-center gap-3 max-w-lg mx-auto z-50 shadow-lg">
             <div className="flex-1">
               <p className="text-xs text-muted-foreground">{totalItems} item{totalItems !== 1 ? 's' : ''}</p>
               <p className="text-base font-bold text-foreground">{formatCurrency(total)}</p>
