@@ -301,9 +301,9 @@ export default function MessBookings() {
     setSelectedMess(null); setPackages([]); setSelectedPackage(null);
     setDurationType('monthly'); setDurationCount(1);
     setStartDate(new Date()); setEndDate('');
-    setPaymentMethod(''); setTransactionId('');
+    setBookingSplits([createDefaultSplit(0)]);
     setPricePaid(0); setDiscountAmount(0); setAdvanceAmount(0);
-    setPaymentProofUrl(''); setCollectedByName(user?.name || '');
+    setCollectedByName(user?.name || '');
   };
 
   const openBookingSheet = () => {
