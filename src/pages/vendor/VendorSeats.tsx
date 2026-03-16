@@ -40,8 +40,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
 import { attendanceService } from '@/api/attendanceService';
-import { PaymentMethodSelector } from '@/components/vendor/PaymentMethodSelector';
+import { PaymentMethodSelector, requiresTransactionId } from '@/components/vendor/PaymentMethodSelector';
 import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
+import { SplitPaymentCollector, PaymentSplit, createDefaultSplit, validateSplits } from '@/components/payment/SplitPaymentCollector';
 import { BookingUpdateDatesDialog } from '@/components/admin/BookingUpdateDatesDialog';
 import { bookingEmailService } from '@/api/bookingEmailService';
 
@@ -144,8 +145,7 @@ const VendorSeats: React.FC = () => {
   const [expandedDueBookingId, setExpandedDueBookingId] = useState<string>('');
   const [bookingDues, setBookingDues] = useState<Record<string, any>>({});
   const [dueCollectAmount, setDueCollectAmount] = useState('');
-  const [dueCollectMethod, setDueCollectMethod] = useState('cash');
-  const [dueCollectTxnId, setDueCollectTxnId] = useState('');
+  const [dueSplits, setDueSplits] = useState<PaymentSplit[]>([]);
   const [dueCollectNotes, setDueCollectNotes] = useState('');
   const [collectingDue, setCollectingDue] = useState(false);
 
@@ -432,21 +432,39 @@ const VendorSeats: React.FC = () => {
     if (!dueCollectAmount) return;
     const amt = parseFloat(dueCollectAmount);
     if (amt <= 0) { toast({ title: 'Enter valid amount', variant: 'destructive' }); return; }
-    if (dueCollectMethod !== 'cash' && !dueCollectTxnId.trim()) {
-      toast({ title: 'Transaction ID is required for non-cash payments', variant: 'destructive' });
+
+    const validationError = validateSplits(dueSplits, amt);
+    if (validationError) {
+      toast({ title: validationError, variant: 'destructive' });
       return;
     }
-    setCollectingDue(true);
-    const res = await vendorSeatsService.collectDuePayment(dueId, amt, dueCollectMethod, dueCollectTxnId, dueCollectNotes, paymentProofUrl);
-    if (res.success) {
-      toast({ title: 'Payment collected' });
-      setExpandedDueBookingId('');
-      fetchSeats();
-      // Refresh dues
-      if (selectedSeat) handleSeatClick(selectedSeat);
-    } else {
-      toast({ title: 'Error', description: res.error, variant: 'destructive' });
+
+    // Duplicate txn ID check
+    for (const split of dueSplits) {
+      if (requiresTransactionId(split.method) && split.txnId.trim()) {
+        const { data: isDuplicate } = await supabase.rpc('check_duplicate_transaction_id', { p_txn_id: split.txnId.trim() });
+        if (isDuplicate) {
+          toast({ title: 'Duplicate Transaction ID', description: `"${split.txnId}" already used.`, variant: 'destructive' });
+          return;
+        }
+      }
     }
+
+    setCollectingDue(true);
+    for (const split of dueSplits) {
+      const splitAmt = parseFloat(split.amount);
+      const res = await vendorSeatsService.collectDuePayment(dueId, splitAmt, split.method, split.txnId, dueCollectNotes, split.proofUrl);
+      if (!res.success) {
+        toast({ title: 'Error', description: res.error, variant: 'destructive' });
+        setCollectingDue(false);
+        return;
+      }
+    }
+    toast({ title: 'Payment collected' });
+    setExpandedDueBookingId('');
+    fetchSeats();
+    // Refresh dues
+    if (selectedSeat) handleSeatClick(selectedSeat);
     setCollectingDue(false);
   };
 
@@ -2013,8 +2031,7 @@ const VendorSeats: React.FC = () => {
                                   } else {
                                     setExpandedDueBookingId(b.bookingId);
                                     setDueCollectAmount(String(dueRemaining));
-                                    setDueCollectMethod('cash');
-                                    setDueCollectTxnId('');
+                                    setDueSplits([createDefaultSplit(dueRemaining)]);
                                     setDueCollectNotes('');
                                   }
                                 }}
@@ -2029,36 +2046,13 @@ const VendorSeats: React.FC = () => {
                                     <Label className="text-[10px]">Amount to Collect (₹)</Label>
                                     <Input type="number" className="h-7 text-xs" value={dueCollectAmount} onChange={e => setDueCollectAmount(e.target.value)} />
                                   </div>
-                                  <div>
-                                    <Label className="text-[10px]">Payment Method</Label>
-                                    <RadioGroup value={dueCollectMethod} onValueChange={setDueCollectMethod} className="grid grid-cols-2 gap-1 mt-1">
-                                      <div className="flex items-center gap-1 border rounded p-1">
-                                        <RadioGroupItem value="cash" id={`dc_cash_${b.bookingId}`} className="h-2.5 w-2.5" />
-                                        <Label htmlFor={`dc_cash_${b.bookingId}`} className="text-[9px] cursor-pointer"><Banknote className="h-2.5 w-2.5 inline mr-0.5" />Cash</Label>
-                                      </div>
-                                      <div className="flex items-center gap-1 border rounded p-1">
-                                        <RadioGroupItem value="upi" id={`dc_upi_${b.bookingId}`} className="h-2.5 w-2.5" />
-                                        <Label htmlFor={`dc_upi_${b.bookingId}`} className="text-[9px] cursor-pointer"><Smartphone className="h-2.5 w-2.5 inline mr-0.5" />UPI</Label>
-                                      </div>
-                                      <div className="flex items-center gap-1 border rounded p-1">
-                                        <RadioGroupItem value="bank_transfer" id={`dc_bank_${b.bookingId}`} className="h-2.5 w-2.5" />
-                                        <Label htmlFor={`dc_bank_${b.bookingId}`} className="text-[9px] cursor-pointer"><Building2 className="h-2.5 w-2.5 inline mr-0.5" />Bank</Label>
-                                      </div>
-                                      <div className="flex items-center gap-1 border rounded p-1">
-                                        <RadioGroupItem value="online" id={`dc_online_${b.bookingId}`} className="h-2.5 w-2.5" />
-                                        <Label htmlFor={`dc_online_${b.bookingId}`} className="text-[9px] cursor-pointer"><CreditCard className="h-2.5 w-2.5 inline mr-0.5" />Online</Label>
-                                      </div>
-                                    </RadioGroup>
-                                  </div>
-                                  {dueCollectMethod !== 'cash' && (
-                                    <div>
-                                      <Label className="text-[10px]">Transaction ID *</Label>
-                                      <Input className="h-7 text-xs" value={dueCollectTxnId} onChange={e => setDueCollectTxnId(e.target.value)} />
-                                    </div>
-                                  )}
-                                  {dueCollectMethod !== 'cash' && (
-                                    <PaymentProofUpload value={paymentProofUrl} onChange={setPaymentProofUrl} />
-                                  )}
+                                  <SplitPaymentCollector
+                                    totalAmount={parseFloat(dueCollectAmount) || 0}
+                                    partnerId={user?.vendorId || user?.id}
+                                    splits={dueSplits}
+                                    onSplitsChange={setDueSplits}
+                                    compact
+                                  />
                                   <Button
                                     size="sm"
                                     className="w-full h-7 text-[10px]"

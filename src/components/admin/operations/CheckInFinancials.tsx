@@ -11,16 +11,16 @@ import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
 import { Banknote, Smartphone, Building2, CreditCard, Receipt } from 'lucide-react';
-import { PaymentMethodSelector, requiresTransactionId, isNonCashMethod } from '@/components/vendor/PaymentMethodSelector';
+import { requiresTransactionId, isNonCashMethod } from '@/components/vendor/PaymentMethodSelector';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { vendorSeatsService } from '@/api/vendorSeatsService';
 import { DuePaymentHistory } from '@/components/booking/DuePaymentHistory';
 import { HostelDuePaymentHistory } from '@/components/booking/HostelDuePaymentHistory';
-import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
 import { bookingEmailService } from '@/api/bookingEmailService';
 import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
+import { SplitPaymentCollector, PaymentSplit, createDefaultSplit, validateSplits } from '@/components/payment/SplitPaymentCollector';
 
 type Module = 'reading_room' | 'hostel';
 
@@ -35,10 +35,8 @@ interface CollectDrawerProps {
 
 export const CollectDrawer: React.FC<CollectDrawerProps> = ({ open, onOpenChange, due, module, onSuccess, partnerId }) => {
   const [amount, setAmount] = useState('');
-  const [method, setMethod] = useState('cash');
-  const [txnId, setTxnId] = useState('');
+  const [splits, setSplits] = useState<PaymentSplit[]>([]);
   const [notes, setNotes] = useState('');
-  const [proofUrl, setProofUrl] = useState('');
   const [collecting, setCollecting] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -47,98 +45,115 @@ export const CollectDrawer: React.FC<CollectDrawerProps> = ({ open, onOpenChange
     if (due && open) {
       const remaining = Math.max(0, Number(due.due_amount) - Number(due.paid_amount));
       setAmount(String(remaining));
-      setMethod('cash');
-      setTxnId('');
+      setSplits([createDefaultSplit(remaining)]);
       setNotes('');
-      setProofUrl('');
     }
   }, [due, open]);
+
+  const totalAmount = parseFloat(amount) || 0;
 
   const handleCollect = async () => {
     if (!due || !amount) return;
     const amt = parseFloat(amount);
     if (amt <= 0) { toast({ title: 'Enter a valid amount', variant: 'destructive' }); return; }
-    if (method !== 'cash' && !txnId.trim()) {
-      toast({ title: 'Transaction ID is required for non-cash payments', variant: 'destructive' });
+
+    const validationError = validateSplits(splits, amt);
+    if (validationError) {
+      toast({ title: validationError, variant: 'destructive' });
       return;
     }
 
-    // Duplicate transaction ID check for non-cash methods
-    if (method !== 'cash' && txnId && txnId.trim()) {
-      const { data: isDuplicate } = await supabase.rpc('check_duplicate_transaction_id', { p_txn_id: txnId.trim() });
-      if (isDuplicate) {
-        toast({ title: 'Duplicate Transaction ID', description: 'This Transaction ID has already been used. Please enter a unique Transaction ID.', variant: 'destructive' });
-        return;
+    // Duplicate transaction ID check for all non-cash splits
+    for (const split of splits) {
+      if (requiresTransactionId(split.method) && split.txnId.trim()) {
+        const { data: isDuplicate } = await supabase.rpc('check_duplicate_transaction_id', { p_txn_id: split.txnId.trim() });
+        if (isDuplicate) {
+          toast({ title: 'Duplicate Transaction ID', description: `Transaction ID "${split.txnId}" has already been used.`, variant: 'destructive' });
+          return;
+        }
       }
     }
 
     setCollecting(true);
 
     if (module === 'reading_room') {
-      const res = await vendorSeatsService.collectDuePayment(due.id, amt, method, txnId, notes, proofUrl);
-      if (res.success) {
-        toast({ title: 'Payment collected successfully' });
-
-        // Fire-and-forget due collection receipt email
-        if (due.profiles?.email) {
-          bookingEmailService.sendDueCollectionReceipt({
-            email: due.profiles.email,
-            studentName: due.profiles.name || 'Student',
-            propertyName: 'Reading Room',
-            amount: amt,
-            paymentMethod: method,
-            transactionId: txnId || undefined,
-            collectedByName: user?.name || user?.email || 'Admin',
-          }).catch(err => console.error('Due receipt email failed:', err));
+      for (const split of splits) {
+        const splitAmt = parseFloat(split.amount);
+        const res = await vendorSeatsService.collectDuePayment(due.id, splitAmt, split.method, split.txnId, notes, split.proofUrl);
+        if (!res.success) {
+          toast({ title: 'Error', description: res.error, variant: 'destructive' });
+          setCollecting(false);
+          return;
         }
-
-        onOpenChange(false);
-        onSuccess();
-      } else {
-        toast({ title: 'Error', description: res.error, variant: 'destructive' });
       }
+
+      toast({ title: 'Payment collected successfully' });
+
+      // Fire-and-forget due collection receipt email
+      if (due.profiles?.email) {
+        const methodSummary = splits.map(s => s.method).join(', ');
+        bookingEmailService.sendDueCollectionReceipt({
+          email: due.profiles.email,
+          studentName: due.profiles.name || 'Student',
+          propertyName: 'Reading Room',
+          amount: amt,
+          paymentMethod: methodSummary,
+          transactionId: splits.map(s => s.txnId).filter(Boolean).join(', ') || undefined,
+          collectedByName: user?.name || user?.email || 'Admin',
+        }).catch(err => console.error('Due receipt email failed:', err));
+      }
+
+      onOpenChange(false);
+      onSuccess();
     } else {
       const collectedByName = user?.name || user?.email || 'Admin';
+      let totalCollected = 0;
+
+      for (const split of splits) {
+        const splitAmt = parseFloat(split.amount);
+        totalCollected += splitAmt;
+
+        const { error: paymentError } = await supabase.from('hostel_due_payments').insert({
+          due_id: due.id,
+          amount: splitAmt,
+          payment_method: split.method,
+          transaction_id: split.txnId,
+          collected_by: user?.id,
+          collected_by_name: collectedByName,
+          notes,
+          payment_proof_url: split.proofUrl || null,
+        });
+
+        if (paymentError) {
+          toast({ title: 'Error', description: paymentError.message, variant: 'destructive' });
+          setCollecting(false);
+          return;
+        }
+
+        await supabase.from('hostel_receipts').insert({
+          hostel_id: due.hostel_id,
+          booking_id: due.booking_id,
+          user_id: due.user_id,
+          amount: splitAmt,
+          payment_method: split.method,
+          transaction_id: split.txnId,
+          receipt_type: 'due_collection',
+          collected_by: user?.id,
+          collected_by_name: collectedByName,
+          notes,
+          payment_proof_url: split.proofUrl || null,
+        });
+      }
+
       const currentPaid = Number(due.paid_amount);
-      const newPaid = currentPaid + amt;
+      const newPaid = currentPaid + totalCollected;
       const dueAmount = Number(due.due_amount);
       const newStatus = newPaid >= dueAmount ? 'paid' : 'partially_paid';
-
-      const { error: paymentError } = await supabase.from('hostel_due_payments').insert({
-        due_id: due.id,
-        amount: amt,
-        payment_method: method,
-        transaction_id: txnId,
-        collected_by: user?.id,
-        collected_by_name: collectedByName,
-        notes,
-        payment_proof_url: proofUrl || null,
-      });
-
-      if (paymentError) {
-        toast({ title: 'Error', description: paymentError.message, variant: 'destructive' });
-        setCollecting(false);
-        return;
-      }
 
       await supabase.from('hostel_dues').update({
         paid_amount: newPaid,
         status: newStatus,
       }).eq('id', due.id);
-
-      await supabase.from('hostel_receipts').insert({
-        hostel_id: due.hostel_id,
-        booking_id: due.booking_id,
-        user_id: due.user_id,
-        amount: amt,
-        payment_method: method,
-        transaction_id: txnId,
-        receipt_type: 'due_collection',
-        collected_by: user?.id,
-        collected_by_name: collectedByName,
-        notes,
-        payment_proof_url: proofUrl || null,
-      });
 
       if (newStatus === 'paid' && due.booking_id) {
         await supabase.from('hostel_bookings').update({
@@ -149,13 +164,14 @@ export const CollectDrawer: React.FC<CollectDrawerProps> = ({ open, onOpenChange
 
       // Fire-and-forget due collection receipt email
       if (due.profiles?.email) {
+        const methodSummary = splits.map(s => s.method).join(', ');
         bookingEmailService.sendDueCollectionReceipt({
           email: due.profiles.email,
           studentName: due.profiles.name || 'Student',
           propertyName: 'Hostel',
           amount: amt,
-          paymentMethod: method,
-          transactionId: txnId || undefined,
+          paymentMethod: methodSummary,
+          transactionId: splits.map(s => s.txnId).filter(Boolean).join(', ') || undefined,
           collectedByName: collectedByName,
         }).catch(err => console.error('Hostel due receipt email failed:', err));
       }
@@ -191,27 +207,12 @@ export const CollectDrawer: React.FC<CollectDrawerProps> = ({ open, onOpenChange
             <Input type="number" className="h-8 text-xs" value={amount} onChange={e => setAmount(e.target.value)} />
           </div>
 
-          <div>
-            <Label className="text-xs">Payment Method</Label>
-            <PaymentMethodSelector
-              value={method}
-              onValueChange={setMethod}
-              partnerId={partnerId}
-              idPrefix="ci"
-              columns={2}
-            />
-          </div>
-
-          {requiresTransactionId(method) && (
-            <div>
-              <Label className="text-xs">Transaction ID</Label>
-              <Input className="h-8 text-xs" value={txnId} onChange={e => setTxnId(e.target.value)} />
-            </div>
-          )}
-
-          {method !== 'cash' && (
-            <PaymentProofUpload value={proofUrl} onChange={setProofUrl} />
-          )}
+          <SplitPaymentCollector
+            totalAmount={totalAmount}
+            partnerId={partnerId}
+            splits={splits}
+            onSplitsChange={setSplits}
+          />
 
           <div>
             <Label className="text-xs">Notes (optional)</Label>

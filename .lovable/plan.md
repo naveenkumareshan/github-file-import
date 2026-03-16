@@ -1,90 +1,71 @@
 
 
-## Split Payment: Multiple Payment Methods for Offline Due Collection
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-### Problem
-Currently, due collection only supports a single payment method per transaction. Partners need to split a collection across multiple methods (e.g., ₹500 Cash + ₹500 UPI) in a single operation.
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
-### Solution
-Replace the single payment method selector with a dynamic "payment splits" system. Users add one or more payment entries, each with its own method, amount, transaction ID, and proof.
+## Changes
 
-### UI Design
-```text
-┌─────────────────────────────────┐
-│ Amount to Collect: ₹1000        │
-├─────────────────────────────────┤
-│ Payment Split #1                │
-│ ┌─────────┐ ┌─────────────────┐│
-│ │ Method   │ │ Amount: ₹500   ││
-│ │ [Cash ●] │ │                 ││
-│ └─────────┘ └─────────────────┘│
-├─────────────────────────────────┤
-│ Payment Split #2                │
-│ ┌─────────┐ ┌─────────────────┐│
-│ │ Method   │ │ Amount: ₹500   ││
-│ │ [UPI ●]  │ │                 ││
-│ │ Txn ID:  │ │ [__________]   ││
-│ │ Proof:   │ │ [Upload]       ││
-│ └─────────┘ └─────────────────┘│
-├─────────────────────────────────┤
-│ [+ Add Another Method]         │
-│                                 │
-│ Total: ₹1000 ✓ (matches)       │
-│ [Confirm Collection · ₹1000]   │
-└─────────────────────────────────┘
-```
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-### Changes
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-**File: `src/components/admin/operations/CheckInFinancials.tsx`** (CollectDrawer)
-1. Replace single `method/txnId/proofUrl` state with array: `paymentSplits: Array<{method, amount, txnId, proofUrl}>`
-2. Default: one split with full remaining amount + cash method
-3. "Add Another Method" button adds a new split entry
-4. Each split shows: PaymentMethodSelector, amount input, conditional txn ID + proof
-5. Validation: sum of split amounts must equal total amount; each non-cash split needs txn ID
-6. On submit: create one due_payment/receipt **per split** (each with its own method, amount, txn ID, proof) — this preserves the existing receipt structure and bank reconciliation logic
-7. Email receipt shows total amount with combined method summary
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
 
-**File: `src/api/vendorSeatsService.ts`** (collectDuePayment)
-- No change needed — we call it once per split from the UI, or refactor to accept an array of splits. Better approach: call the existing function once per split sequentially, since each split creates its own receipt and due_payment record.
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
 
-**File: `src/pages/admin/DueManagement.tsx`**
-- Update the inline collect dialog to also support splits (same pattern)
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
 
-**File: `src/pages/vendor/VendorSeats.tsx`**
-- Update inline due collection to support splits
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
 
-### Key Logic
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
 
-```typescript
-interface PaymentSplit {
-  id: string; // for React key
-  method: string;
-  amount: string;
-  txnId: string;
-  proofUrl: string;
-}
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
 
-// Default state
-const [splits, setSplits] = useState<PaymentSplit[]>([
-  { id: nanoid(), method: 'cash', amount: remainingAmount, txnId: '', proofUrl: '' }
-]);
+**Reviews section**: Shown below the booking flow (not in a tab)
 
-// Validation
-const totalSplitAmount = splits.reduce((sum, s) => sum + parseFloat(s.amount || '0'), 0);
-const isValid = Math.abs(totalSplitAmount - parseFloat(amount)) < 0.01;
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
 
-// Submit: loop through splits, call collectDuePayment for each
-for (const split of splits) {
-  await vendorSeatsService.collectDuePayment(due.id, parseFloat(split.amount), split.method, split.txnId, notes, split.proofUrl);
-}
-```
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
 
-### Hostel Module (same file)
-The hostel branch in CollectDrawer inserts directly into `hostel_due_payments` and `hostel_receipts`. Same loop pattern — one insert per split.
+## File Summary
 
-### Scope
-- **4 files** modified
-- No database changes needed — existing tables already support multiple payment records per due
-- Receipts and bank reconciliation work automatically since each split creates its own receipt
+| File | Change |
+|------|--------|
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
 

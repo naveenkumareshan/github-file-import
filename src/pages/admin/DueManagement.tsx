@@ -17,10 +17,11 @@ import { useToast } from '@/hooks/use-toast';
 import { vendorSeatsService, VendorCabin } from '@/api/vendorSeatsService';
 import { Textarea } from '@/components/ui/textarea';
 import { DuePaymentHistory } from '@/components/booking/DuePaymentHistory';
-import { PaymentMethodSelector } from '@/components/vendor/PaymentMethodSelector';
+import { requiresTransactionId } from '@/components/vendor/PaymentMethodSelector';
 import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
+import { SplitPaymentCollector, PaymentSplit, createDefaultSplit, validateSplits } from '@/components/payment/SplitPaymentCollector';
 
 const DueManagement: React.FC = () => {
   const [dues, setDues] = useState<any[]>([]);
@@ -43,8 +44,7 @@ const DueManagement: React.FC = () => {
   const [collectOpen, setCollectOpen] = useState(false);
   const [selectedDue, setSelectedDue] = useState<any>(null);
   const [collectAmount, setCollectAmount] = useState('');
-  const [collectMethod, setCollectMethod] = useState('cash');
-  const [collectTxnId, setCollectTxnId] = useState('');
+  const [collectSplits, setCollectSplits] = useState<PaymentSplit[]>([]);
   const [collectNotes, setCollectNotes] = useState('');
   const [collecting, setCollecting] = useState(false);
 
@@ -131,9 +131,9 @@ const DueManagement: React.FC = () => {
   const openCollect = (due: any) => {
     setSelectedDue(due);
     const remaining = Number(due.due_amount) - Number(due.paid_amount);
-    setCollectAmount(String(remaining > 0 ? remaining : 0));
-    setCollectMethod('cash');
-    setCollectTxnId('');
+    const amt = remaining > 0 ? remaining : 0;
+    setCollectAmount(String(amt));
+    setCollectSplits([createDefaultSplit(amt)]);
     setCollectNotes('');
     setCollectOpen(true);
   };
@@ -142,19 +142,37 @@ const DueManagement: React.FC = () => {
     if (!selectedDue || !collectAmount) return;
     const amt = parseFloat(collectAmount);
     if (amt <= 0) { toast({ title: 'Enter a valid amount', variant: 'destructive' }); return; }
-    if (collectMethod !== 'cash' && !collectTxnId.trim()) {
-      toast({ title: 'Transaction ID is required for non-cash payments', variant: 'destructive' });
+
+    const validationError = validateSplits(collectSplits, amt);
+    if (validationError) {
+      toast({ title: validationError, variant: 'destructive' });
       return;
     }
-    setCollecting(true);
-    const res = await vendorSeatsService.collectDuePayment(selectedDue.id, amt, collectMethod, collectTxnId, collectNotes);
-    if (res.success) {
-      toast({ title: 'Payment collected successfully' });
-      setCollectOpen(false);
-      fetchData();
-    } else {
-      toast({ title: 'Error', description: res.error, variant: 'destructive' });
+
+    // Duplicate txn ID check
+    for (const split of collectSplits) {
+      if (requiresTransactionId(split.method) && split.txnId.trim()) {
+        const { data: isDuplicate } = await supabase.rpc('check_duplicate_transaction_id', { p_txn_id: split.txnId.trim() });
+        if (isDuplicate) {
+          toast({ title: 'Duplicate Transaction ID', description: `"${split.txnId}" already used.`, variant: 'destructive' });
+          return;
+        }
+      }
     }
+
+    setCollecting(true);
+    for (const split of collectSplits) {
+      const splitAmt = parseFloat(split.amount);
+      const res = await vendorSeatsService.collectDuePayment(selectedDue.id, splitAmt, split.method, split.txnId, collectNotes, split.proofUrl);
+      if (!res.success) {
+        toast({ title: 'Error', description: res.error, variant: 'destructive' });
+        setCollecting(false);
+        return;
+      }
+    }
+    toast({ title: 'Payment collected successfully' });
+    setCollectOpen(false);
+    fetchData();
     setCollecting(false);
   };
 
@@ -384,23 +402,12 @@ const DueManagement: React.FC = () => {
                 <Input type="number" className="h-8 text-xs" value={collectAmount} onChange={e => setCollectAmount(e.target.value)} />
               </div>
 
-              <div>
-                <Label className="text-xs">Payment Method</Label>
-                <PaymentMethodSelector
-                  value={collectMethod}
-                  onValueChange={setCollectMethod}
-                  partnerId={partnerId}
-                  idPrefix="dc"
-                  columns={2}
-                />
-              </div>
-
-              {collectMethod !== 'cash' && (
-                <div>
-                  <Label className="text-xs">Transaction ID *</Label>
-                  <Input className="h-8 text-xs" value={collectTxnId} onChange={e => setCollectTxnId(e.target.value)} />
-                </div>
-              )}
+              <SplitPaymentCollector
+                totalAmount={parseFloat(collectAmount) || 0}
+                partnerId={partnerId}
+                splits={collectSplits}
+                onSplitsChange={setCollectSplits}
+              />
 
               <div>
                 <Label className="text-xs">Notes (optional)</Label>
