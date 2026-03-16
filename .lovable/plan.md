@@ -1,71 +1,30 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+## Add Split Payment to First-Time Bookings
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+Currently, split payment (via `SplitPaymentCollector`) is only used in due collection flows. The following first-time booking and renewal screens still use a single `PaymentMethodSelector` and need to be upgraded:
 
-## Changes
+### Files to Change
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+| # | File | Context |
+|---|------|---------|
+| 1 | `src/pages/vendor/VendorSeats.tsx` | Reading room new booking (payment step ~lines 1888-1931) |
+| 2 | `src/components/admin/RenewalSheet.tsx` | Reading room renewal (payment step ~lines 412-453) |
+| 3 | `src/pages/admin/HostelBedMap.tsx` | Hostel new booking (payment step ~lines 2054-2088) |
+| 4 | `src/pages/admin/MessBookings.tsx` | Mess new booking (payment step ~lines 908-939) |
+| 5 | `src/pages/admin/HostelDueManagement.tsx` | Hostel due collection (~lines 463-492) |
+| 6 | `src/pages/admin/MessDueManagement.tsx` | Mess due collection (~lines 400-416) |
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+### Pattern (same for each file)
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+**State change:** Replace `paymentMethod`, `transactionId`, `paymentProofUrl` states with a single `splits` state using `PaymentSplit[]` from `SplitPaymentCollector`.
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+**UI change:** Replace the `PaymentMethodSelector` + conditional `TransactionID` + `PaymentProofUpload` block with a single `<SplitPaymentCollector>` component, passing the total amount being collected.
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
+**Submission change:** For first-time bookings, use the **first split's** method/txnId/proofUrl as the primary booking record (since the API expects a single payment method per booking call). If there are multiple splits, call the existing due-payment/receipt API for additional splits after the booking is created. For due collections (#5, #6), loop through splits calling the collect API once per split (same pattern already used in CheckInFinancials and DueManagement).
 
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
+**Validation change:** Replace `paymentMethod !== 'cash' && !transactionId.trim()` checks with `validateSplits(splits, totalAmount) !== null`.
 
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
-
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
-
-**Reviews section**: Shown below the booking flow (not in a tab)
-
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
-
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
-
-| File | Change |
-|------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+### Reset logic
+On sheet open/close, reset splits to `[createDefaultSplit(totalAmount)]` instead of resetting individual method/txnId/proofUrl states.
 
