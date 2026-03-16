@@ -1,71 +1,35 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+## Fix: "Other Payment" Showing Instead of Actual Payment Method
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+### Root Cause
+`getMethodLabel()` returns "Other Payment" for any `custom_<uuid>` value when no `customLabels` map is passed. Two receipt pages (**MessReceipts**, **LaundryReceipts**) never resolve custom labels from the `partner_payment_modes` table, so all non-cash/non-UPI methods display as "Other Payment".
 
-## Changes
+The Reconciliation approve dialog also doesn't show which payment method was used, making it hard to know which bank to credit.
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+### Changes
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+**1. MessReceipts.tsx** — Add custom label resolution
+- Import `resolvePaymentMethodLabels`
+- Add `paymentLabels` state
+- After fetching receipts, call `resolvePaymentMethodLabels(methods)` to resolve `custom_<uuid>` → actual labels (e.g., "SBI UPI", "HDFC Bank")
+- Pass `paymentLabels` to `getMethodLabel(r.payment_method, paymentLabels)`
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+**2. LaundryReceipts.tsx** — Same fix as MessReceipts
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+**3. Reconciliation.tsx approve dialog** — Show payment method in approve dialog
+- Display the resolved payment method label (e.g., "SBI UPI") in the approve dialog so the user can see which method was used and select the correct bank
+- The auto-suggestion for linked banks already works for `custom_<uuid>` with `linked_bank_id`
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
+**4. bookingEmailService.ts** — Resolve custom labels before sending
+- Currently calls `getMethodLabel(payload.paymentMethod)` without custom labels
+- Add a resolution step to look up the label from `partner_payment_modes` if the method is `custom_<uuid>`
 
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
-
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
-
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
-
-**Reviews section**: Shown below the booking flow (not in a tab)
-
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
-
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
-
+### Files to Modify
 | File | Change |
 |------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+| `src/pages/admin/MessReceipts.tsx` | Add `resolvePaymentMethodLabels` + state + pass labels to `getMethodLabel` |
+| `src/pages/admin/LaundryReceipts.tsx` | Same as above |
+| `src/pages/admin/Reconciliation.tsx` | Show payment method in approve dialog |
+| `src/api/bookingEmailService.ts` | Resolve custom label before sending email |
 
