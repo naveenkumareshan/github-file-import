@@ -1035,7 +1035,7 @@ const HostelBedMap: React.FC = () => {
       duration_count: selectedDuration.count,
       payment_status: remaining <= 0 ? 'completed' : 'partial',
       status: 'confirmed',
-      payment_method: primarySplit.method,
+      payment_method: normalizePaymentMethod(primarySplit.method),
       transaction_id: primarySplit.txnId,
       collected_by: user?.id,
       collected_by_name: collectedByName,
