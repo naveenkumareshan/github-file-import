@@ -1,71 +1,27 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+## Plan: Check Seat Availability Before Renewal of Expired Bookings
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+### Problem
+When a booking has expired, the seat may have been reassigned to another student. Currently, clicking "Renew" opens the renewal sheet without checking if the seat is still available, which could lead to double-booking conflicts.
 
-## Changes
+### Solution
+Add a seat availability check in `ExpiringBookingsPage.tsx` before opening the RenewalSheet. Use the existing `check_seat_available` RPC function to verify the seat is free for the renewal period. If the seat is taken, show a toast error instead of opening the sheet.
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+### Changes
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+**`src/pages/admin/ExpiringBookingsPage.tsx`** — `handleRenew` function (line 86-105)
+- Before opening the renewal sheet, call `supabase.rpc('check_seat_available', { p_seat_id, p_start_date, p_end_date })` using the day after `end_date` as start and 1 month ahead as a default check window
+- If seat is NOT available, show a toast: "Seat #{number} is already booked. Cannot renew."
+- If seat IS available, proceed to open the RenewalSheet as before
+- Add a loading state to the Renew button while checking
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
-
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
-
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
-
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
-
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
-
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
-
-**Reviews section**: Shown below the booking flow (not in a tab)
-
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
-
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
+**`src/components/admin/RenewalSheet.tsx`** — `handleCreateBooking` function (line 141)
+- Add a secondary availability check right before creating the booking (in case dates were changed in the sheet), using `check_seat_available` with the actual selected start/end dates
+- If unavailable at submission time, show error and block creation
 
 | File | Change |
 |------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+| `src/pages/admin/ExpiringBookingsPage.tsx` | Pre-check seat availability on Renew click |
+| `src/components/admin/RenewalSheet.tsx` | Secondary availability check before booking creation |
 
