@@ -78,8 +78,8 @@ export const MobileBottomNav: React.FC = () => {
                 className="flex-1 flex flex-col items-center justify-center gap-0.5 min-h-[56px] relative transition-all duration-200 overflow-hidden text-muted-foreground/50 cursor-default"
               >
                 <div className="w-full flex flex-col items-center gap-0.5 px-0.5 py-1 rounded-xl">
-                  <tab.icon className="w-5 h-5" strokeWidth={1.75} />
-                  <span className="text-[8px] leading-tight whitespace-nowrap font-medium">Soon</span>
+                  <tab.icon className="w-6 h-6" strokeWidth={1.75} />
+                  <span className="text-[10px] leading-tight whitespace-nowrap font-medium">Soon</span>
                 </div>
               </button>
             );
