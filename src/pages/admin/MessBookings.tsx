@@ -426,14 +426,33 @@ export default function MessBookings() {
         subscription_id: (sub as any).id,
         user_id: selectedUserId,
         mess_id: selectedMess.id,
-        amount: advanceAmount,
-        payment_method: paymentMethod,
-        transaction_id: transactionId,
+        amount: parseFloat(primarySplit.amount),
+        payment_method: primarySplit.method,
+        transaction_id: primarySplit.txnId,
         collected_by: user?.id,
         collected_by_name: collectedByName || user?.name || '',
-        payment_proof_url: paymentProofUrl || null,
+        payment_proof_url: primarySplit.proofUrl || null,
         notes: '',
       });
+
+      // Process additional splits as separate receipts
+      if (bookingSplits.length > 1) {
+        for (let i = 1; i < bookingSplits.length; i++) {
+          const split = bookingSplits[i];
+          await createMessReceipt({
+            subscription_id: (sub as any).id,
+            user_id: selectedUserId,
+            mess_id: selectedMess.id,
+            amount: parseFloat(split.amount),
+            payment_method: split.method,
+            transaction_id: split.txnId,
+            collected_by: user?.id,
+            collected_by_name: collectedByName || user?.name || '',
+            payment_proof_url: split.proofUrl || null,
+            notes: 'Additional split payment',
+          });
+        }
+      }
 
       if (isPartial) {
         await supabase.from('mess_dues' as any).insert({
