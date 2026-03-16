@@ -234,7 +234,7 @@ export default function ExpiringBookingsPage() {
                             {profile?.phone && <div className="text-[10px] text-muted-foreground">{profile.phone}</div>}
                           </TableCell>
                           <TableCell>
-                            <div className="text-xs">{cabin?.name || 'N/A'}</div>
+                            <div className="text-xs"><Tooltip><TooltipTrigger asChild><span className="max-w-[100px] truncate inline-block align-bottom cursor-default">{cabin?.name || 'N/A'}</span></TooltipTrigger><TooltipContent>{cabin?.name || 'N/A'}</TooltipContent></Tooltip></div>
                             <div className="text-[10px] text-muted-foreground">{seat?.floor ? `F${seat.floor} · ` : ''}S{seat?.number || 'N/A'}</div>
                           </TableCell>
                           <TableCell>{booking.start_date ? format(new Date(booking.start_date), 'dd MMM yyyy') : '-'}</TableCell>

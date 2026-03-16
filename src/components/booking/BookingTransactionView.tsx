@@ -129,7 +129,7 @@ export const BookingTransactionView = ({ bookingId, bookingType, booking }: Book
                 {bookingType === 'cabin' ? 'Cabin & Seat' : 'Hostel & Bed'}
               </span>
               <span className="text-[12px] font-medium text-right">
-                {booking.cabinId?.name || booking.cabinName || booking.hostelId?.name || 'N/A'}
+                <Tooltip><TooltipTrigger asChild><span className="max-w-[100px] truncate inline-block align-bottom cursor-default">{booking.cabinId?.name || booking.cabinName || booking.hostelId?.name || 'N/A'}</span></TooltipTrigger><TooltipContent>{booking.cabinId?.name || booking.cabinName || booking.hostelId?.name || 'N/A'}</TooltipContent></Tooltip>
                 {' · '}
                 {bookingType === 'cabin'
                   ? `${(booking.seatId as any)?.floor ? `F${(booking.seatId as any).floor} · ` : ''}S${booking.seatId?.number || booking.seatNumber || 'N/A'}`

@@ -211,7 +211,7 @@ const AdminBookings = () => {
                         </TableCell>
                         <TableCell className="py-1 px-2"><Badge variant="outline" className="text-[10px] px-1.5 py-0 leading-none">{b.seatCategory || "—"}</Badge></TableCell>
                         <TableCell className="py-1 px-2 text-[10px] max-w-[140px]">
-                          {b.roomNumber || (b.cabinId?.name && b.seatId?.number ? `${b.cabinId.name} / ${b.seatId.floor ? `F${b.seatId.floor} · ` : ''}S${b.seatId.number}` : "-")}
+                          {b.roomNumber || (b.cabinId?.name && b.seatId?.number ? <><Tooltip><TooltipTrigger asChild><span className="max-w-[100px] truncate inline-block align-bottom cursor-default">{b.cabinId.name}</span></TooltipTrigger><TooltipContent>{b.cabinId.name}</TooltipContent></Tooltip>{` / ${b.seatId.floor ? `F${b.seatId.floor} · ` : ''}S${b.seatId.number}`}</> : "-")}
                         </TableCell>
                         <TableCell className="py-1 px-2 text-[11px] whitespace-nowrap">{b.slotName || "-"}</TableCell>
                         <TableCell className="py-1 px-2 text-[11px] whitespace-nowrap">

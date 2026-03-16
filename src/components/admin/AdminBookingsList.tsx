@@ -472,9 +472,7 @@ const AdminBookingsList = () => {
                     <TableCell>
                       <div>
                         <div className="font-medium">
-                          {booking.cabinId?.name ||
-                            booking.hostelId?.name ||
-                            "N/A"}
+                          <Tooltip><TooltipTrigger asChild><span className="max-w-[100px] truncate inline-block align-bottom cursor-default">{booking.cabinId?.name || booking.hostelId?.name || "N/A"}</span></TooltipTrigger><TooltipContent>{booking.cabinId?.name || booking.hostelId?.name || "N/A"}</TooltipContent></Tooltip>
                         </div>
 
                         <div className="text-sm text-muted-foreground">
