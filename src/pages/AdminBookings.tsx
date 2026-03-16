@@ -116,7 +116,7 @@ const AdminBookings = () => {
       <div className="grid grid-cols-2 gap-2 text-[11px]">
         <div>
           <span className="text-muted-foreground">Room/Seat: </span>
-          <span>{b.cabinId?.name && b.seatId?.number ? `${b.cabinId.name} / S${b.seatId.number}` : b.roomNumber || "-"}</span>
+          <span>{b.cabinId?.name && b.seatId?.number ? `${b.cabinId.name} / ${b.seatId?.floor ? `F${b.seatId.floor} · ` : ''}S${b.seatId.number}` : b.roomNumber || "-"}</span>
         </div>
         <div>
           <span className="text-muted-foreground">Category: </span>
