@@ -186,11 +186,17 @@ export const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
 };
 
 /** Check if a payment method value requires a transaction ID — all non-cash methods */
-export const requiresTransactionId = (method: string) =>
-  !!method && method !== 'cash';
+export const requiresTransactionId = (method: string) => {
+  if (!method) return false;
+  const isCash = method === 'cash' || method.includes('__default_cash__');
+  return !isCash;
+};
 
 /** Check if a payment method is not cash (for payment proof display) */
-export const isNonCashMethod = (method: string) => method !== 'cash';
+export const isNonCashMethod = (method: string) => {
+  const isCash = method === 'cash' || method.includes('__default_cash__');
+  return !isCash;
+};
 
 /** Get display label for a payment method */
 export const getPaymentMethodLabel = (method: string, customModes?: { value: string; label: string }[]) => {
