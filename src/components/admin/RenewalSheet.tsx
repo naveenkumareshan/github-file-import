@@ -203,7 +203,7 @@ export const RenewalSheet: React.FC<RenewalSheetProps> = ({
         lockerIncluded: false,
         lockerPrice: 0,
         totalAmount: computedTotal,
-        paymentMethod: primarySplit.method,
+        paymentMethod: getMethodLabel(primarySplit.method),
         transactionId: primarySplit.txnId,
         collectedByName,
       };
