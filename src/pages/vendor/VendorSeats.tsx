@@ -694,10 +694,23 @@ const VendorSeats: React.FC = () => {
   // Create booking
   const handleCreateBooking = async () => {
     if (!selectedSeat || !selectedStudent) return;
-    if (paymentMethod !== 'cash' && !transactionId.trim()) {
-      toast({ title: 'Transaction ID is required for non-cash payments', variant: 'destructive' });
+    const collectingAmount = isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : computedTotal;
+    const splitError = validateSplits(bookingSplits, collectingAmount);
+    if (splitError) {
+      toast({ title: splitError, variant: 'destructive' });
       return;
     }
+    // Duplicate txn ID check
+    for (const split of bookingSplits) {
+      if (requiresTransactionId(split.method) && split.txnId.trim()) {
+        const { data: isDuplicate } = await supabase.rpc('check_duplicate_transaction_id', { p_txn_id: split.txnId.trim() });
+        if (isDuplicate) {
+          toast({ title: 'Duplicate Transaction ID', description: `"${split.txnId}" already used.`, variant: 'destructive' });
+          return;
+        }
+      }
+    }
+    const primarySplit = bookingSplits[0];
     setCreatingBooking(true);
     const collectedByName = user?.name || user?.email || 'Partner';
     const data: PartnerBookingData = {
