@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Search, Receipt, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/utils/currency';
+import { getMethodLabel } from '@/utils/paymentMethodLabels';
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 import { DateFilterSelector } from '@/components/common/DateFilterSelector';
 import { getDateRangeFromFilter } from '@/utils/dateFilterUtils';
