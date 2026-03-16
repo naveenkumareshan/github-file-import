@@ -431,21 +431,39 @@ const VendorSeats: React.FC = () => {
     if (!dueCollectAmount) return;
     const amt = parseFloat(dueCollectAmount);
     if (amt <= 0) { toast({ title: 'Enter valid amount', variant: 'destructive' }); return; }
-    if (dueCollectMethod !== 'cash' && !dueCollectTxnId.trim()) {
-      toast({ title: 'Transaction ID is required for non-cash payments', variant: 'destructive' });
+
+    const validationError = validateSplits(dueSplits, amt);
+    if (validationError) {
+      toast({ title: validationError, variant: 'destructive' });
       return;
     }
-    setCollectingDue(true);
-    const res = await vendorSeatsService.collectDuePayment(dueId, amt, dueCollectMethod, dueCollectTxnId, dueCollectNotes, paymentProofUrl);
-    if (res.success) {
-      toast({ title: 'Payment collected' });
-      setExpandedDueBookingId('');
-      fetchSeats();
-      // Refresh dues
-      if (selectedSeat) handleSeatClick(selectedSeat);
-    } else {
-      toast({ title: 'Error', description: res.error, variant: 'destructive' });
+
+    // Duplicate txn ID check
+    for (const split of dueSplits) {
+      if (requiresTransactionId(split.method) && split.txnId.trim()) {
+        const { data: isDuplicate } = await supabase.rpc('check_duplicate_transaction_id', { p_txn_id: split.txnId.trim() });
+        if (isDuplicate) {
+          toast({ title: 'Duplicate Transaction ID', description: `"${split.txnId}" already used.`, variant: 'destructive' });
+          return;
+        }
+      }
     }
+
+    setCollectingDue(true);
+    for (const split of dueSplits) {
+      const splitAmt = parseFloat(split.amount);
+      const res = await vendorSeatsService.collectDuePayment(dueId, splitAmt, split.method, split.txnId, dueCollectNotes, split.proofUrl);
+      if (!res.success) {
+        toast({ title: 'Error', description: res.error, variant: 'destructive' });
+        setCollectingDue(false);
+        return;
+      }
+    }
+    toast({ title: 'Payment collected' });
+    setExpandedDueBookingId('');
+    fetchSeats();
+    // Refresh dues
+    if (selectedSeat) handleSeatClick(selectedSeat);
     setCollectingDue(false);
   };
 
