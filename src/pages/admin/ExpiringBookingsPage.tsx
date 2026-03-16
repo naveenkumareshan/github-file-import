@@ -76,10 +76,12 @@ export default function ExpiringBookingsPage() {
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
   const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  useEffect(() => { setCurrentPage(1); }, [search, daysThreshold, pageSize]);
+  useEffect(() => { setCurrentPage(1); }, [search, daysThreshold, pageSize, viewMode]);
 
   const getDaysRemaining = (endDate: string) => Math.max(0, differenceInDays(new Date(endDate), new Date()));
+  const getDaysExpired = (endDate: string) => Math.max(0, differenceInDays(new Date(), new Date(endDate)));
   const getStatusColor = (days: number) => { if (days <= 2) return 'destructive'; if (days <= 5) return 'warning'; return 'secondary'; };
+  const getExpiredColor = (days: number) => { if (days >= 14) return 'destructive'; if (days >= 7) return 'warning'; return 'secondary'; };
 
   const handleRenew = (booking: any) => {
     const seat = booking.seats as any;
