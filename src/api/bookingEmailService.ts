@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { getMethodLabel } from '@/utils/paymentMethodLabels';
+import { getMethodLabel, resolvePaymentMethodLabels } from '@/utils/paymentMethodLabels';
 
 interface ReceiptEmailPayload {
   to: string;
