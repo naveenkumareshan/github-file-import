@@ -57,6 +57,11 @@ export default function MessReceipts() {
       }));
 
       setReceipts(mapped);
+
+      // Resolve custom payment method labels
+      const methods = mapped.map((r: any) => r.payment_method).filter(Boolean);
+      const labels = await resolvePaymentMethodLabels(methods);
+      setPaymentLabels(labels);
     } catch {
       toast({ title: 'Error loading receipts', variant: 'destructive' });
     }
