@@ -17,10 +17,12 @@ import { useToast } from '@/hooks/use-toast';
 import { vendorSeatsService, VendorCabin } from '@/api/vendorSeatsService';
 import { Textarea } from '@/components/ui/textarea';
 import { DuePaymentHistory } from '@/components/booking/DuePaymentHistory';
-import { PaymentMethodSelector } from '@/components/vendor/PaymentMethodSelector';
+import { PaymentMethodSelector, requiresTransactionId } from '@/components/vendor/PaymentMethodSelector';
 import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
+import { SplitPaymentCollector, PaymentSplit, createDefaultSplit, validateSplits } from '@/components/payment/SplitPaymentCollector';
+import { supabase } from '@/integrations/supabase/client';
 
 const DueManagement: React.FC = () => {
   const [dues, setDues] = useState<any[]>([]);
