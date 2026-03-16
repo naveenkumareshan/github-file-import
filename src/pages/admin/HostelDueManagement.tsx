@@ -18,7 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Textarea } from '@/components/ui/textarea';
 import { HostelDuePaymentHistory } from '@/components/booking/HostelDuePaymentHistory';
 import { PaymentMethodSelector, requiresTransactionId } from '@/components/vendor/PaymentMethodSelector';
-import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
+import { resolvePaymentMethodLabels, getMethodLabel, normalizePaymentMethod } from '@/utils/paymentMethodLabels';
 import { SplitPaymentCollector, PaymentSplit, createDefaultSplit, validateSplits } from '@/components/payment/SplitPaymentCollector';
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 
