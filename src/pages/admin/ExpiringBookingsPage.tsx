@@ -116,7 +116,7 @@ export default function ExpiringBookingsPage() {
     const a = document.createElement('a'); a.href = url; a.download = `expiring-bookings-${daysThreshold}d.csv`; a.click();
   };
 
-  const clearFilters = () => { setSearch(''); setDaysThreshold('7'); setSortOrder('asc'); };
+  const clearFilters = () => { setSearch(''); setDaysThreshold('7'); setSortOrder('asc'); setViewMode('expiring'); };
 
   return (
     <div className="p-3 md:p-6 space-y-3">
