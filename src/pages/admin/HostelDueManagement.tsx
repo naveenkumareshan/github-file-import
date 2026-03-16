@@ -469,33 +469,21 @@ const HostelDueManagement: React.FC = () => {
               </div>
 
               <div>
-                <Label className="text-xs">Payment Method</Label>
-                <PaymentMethodSelector
-                  value={collectMethod}
-                  onValueChange={setCollectMethod}
+                <Label className="text-xs">Payment</Label>
+                <SplitPaymentCollector
+                  totalAmount={parseFloat(collectAmount) || 0}
                   partnerId={user?.vendorId || user?.id}
-                  idPrefix="hdc"
-                  columns={2}
+                  splits={collectSplits}
+                  onSplitsChange={setCollectSplits}
                 />
               </div>
-
-              {collectMethod !== 'cash' && (
-                <div>
-                  <Label className="text-xs">Transaction ID *</Label>
-                  <Input className="h-8 text-xs" value={collectTxnId} onChange={e => setCollectTxnId(e.target.value)} />
-                </div>
-              )}
-
-              {collectMethod !== 'cash' && (
-                <PaymentProofUpload value={collectProofUrl} onChange={setCollectProofUrl} />
-              )}
 
               <div>
                 <Label className="text-xs">Notes (optional)</Label>
                 <Textarea className="text-xs h-16" value={collectNotes} onChange={e => setCollectNotes(e.target.value)} />
               </div>
 
-              <Button className="w-full h-9 text-xs" onClick={handleCollect} disabled={collecting || !collectAmount}>
+              <Button className="w-full h-9 text-xs" onClick={handleCollect} disabled={collecting || !collectAmount || !!validateSplits(collectSplits, parseFloat(collectAmount) || 0)}>
                 {collecting ? 'Processing...' : `Confirm Collection · ₹${collectAmount}`}
               </Button>
 

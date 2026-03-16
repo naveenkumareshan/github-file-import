@@ -418,30 +418,17 @@ export const RenewalSheet: React.FC<RenewalSheetProps> = ({
                   )}
                 </div>
 
-                {/* Payment Method */}
+                {/* Split Payment */}
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] uppercase text-muted-foreground">Payment Method</Label>
-                  <PaymentMethodSelector
-                    value={paymentMethod}
-                    onValueChange={setPaymentMethod}
+                  <Label className="text-[10px] uppercase text-muted-foreground">Payment</Label>
+                  <SplitPaymentCollector
+                    totalAmount={isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : computedTotal}
                     partnerId={user?.vendorId || user?.id}
-                    idPrefix="renew-pm"
-                    columns={3}
+                    splits={bookingSplits}
+                    onSplitsChange={setBookingSplits}
+                    compact
                   />
                 </div>
-
-                {/* Transaction ID */}
-                {paymentMethod !== 'cash' && (
-                  <div>
-                    <Label className="text-[10px] uppercase text-muted-foreground">Transaction ID *</Label>
-                    <Input className="h-8 text-xs" placeholder="Enter transaction reference ID" value={transactionId} onChange={e => setTransactionId(e.target.value)} />
-                  </div>
-                )}
-
-                {/* Payment Proof */}
-                {paymentMethod !== 'cash' && (
-                  <PaymentProofUpload value={paymentProofUrl} onChange={setPaymentProofUrl} />
-                )}
 
                 {/* Collected by */}
                 <div className="text-muted-foreground text-[10px] px-1">
@@ -454,7 +441,7 @@ export const RenewalSheet: React.FC<RenewalSheetProps> = ({
                   </Button>
                   <Button
                     className="flex-1 h-9 text-xs"
-                    disabled={creating || (paymentMethod !== 'cash' && !transactionId.trim())}
+                    disabled={creating || !!validateSplits(bookingSplits, isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : computedTotal)}
                     onClick={handleCreateBooking}
                   >
                     {creating ? 'Creating...' : `Confirm · ₹${isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : computedTotal}`}

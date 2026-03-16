@@ -936,36 +936,31 @@ export default function MessBookings() {
                 </div>
               )}
 
-              {/* 7. Payment Method */}
+              {/* 7. Split Payment */}
               {selectedPackage && selectedUserId && endDate && (
                 <div>
-                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-primary">Payment Method</Label>
+                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-primary">Payment</Label>
                   <div className="mt-1">
-                    <PaymentMethodSelector value={paymentMethod} onValueChange={setPaymentMethod} partnerId={partnerId} columns={3} compact />
+                    <SplitPaymentCollector
+                      totalAmount={advanceAmount}
+                      partnerId={partnerId}
+                      splits={bookingSplits}
+                      onSplitsChange={setBookingSplits}
+                      compact
+                    />
                   </div>
                 </div>
               )}
 
-              {/* 8. Transaction ID & Proof */}
-              {paymentMethod && requiresTransactionId(paymentMethod) && (
-                <div className="space-y-2">
-                  <div>
-                    <Label className="text-[10px] text-muted-foreground">Transaction ID</Label>
-                    <Input value={transactionId} onChange={e => setTransactionId(e.target.value)} className="h-8 text-xs" placeholder="Enter txn ID" />
-                  </div>
-                  <PaymentProofUpload value={paymentProofUrl} onChange={setPaymentProofUrl} />
-                </div>
-              )}
-
-              {/* 9. Collected By (static) */}
+              {/* 8. Collected By (static) */}
               {selectedPackage && selectedUserId && endDate && (
                 <p className="text-[11px] text-muted-foreground">Collected by: <span className="font-semibold text-foreground">{user?.name || 'Partner'}</span></p>
               )}
 
-              {/* 10. Submit */}
-              {selectedUserId && selectedMess && selectedPackage && endDate && paymentMethod && (
+              {/* 9. Submit */}
+              {selectedUserId && selectedMess && selectedPackage && endDate && (
                 <Button className="w-full text-xs gap-1" onClick={handleBookingSubmit}
-                  disabled={submitting || (requiresTransactionId(paymentMethod) && !transactionId)}>
+                  disabled={submitting || !!validateSplits(bookingSplits, advanceAmount)}>
                   {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
                   Confirm Booking · {formatCurrency(advanceAmount)}
                 </Button>

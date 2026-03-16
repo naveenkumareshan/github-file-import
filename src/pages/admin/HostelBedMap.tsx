@@ -2082,28 +2082,17 @@ const HostelBedMap: React.FC = () => {
                         )}
                       </div>
 
-                      {/* Payment Method */}
+                      {/* Split Payment */}
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] uppercase text-muted-foreground">Payment Method</Label>
-                        <PaymentMethodSelector
-                          value={paymentMethod}
-                          onValueChange={setPaymentMethod}
+                        <Label className="text-[10px] uppercase text-muted-foreground">Payment</Label>
+                        <SplitPaymentCollector
+                          totalAmount={isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : (computedTotal + (collectSecurityDeposit ? (parseFloat(securityDepositAmount) || 0) : 0))}
                           partnerId={user?.vendorId || user?.id}
-                          idPrefix="hpm"
-                          columns={3}
+                          splits={bookingSplits}
+                          onSplitsChange={setBookingSplits}
+                          compact
                         />
                       </div>
-
-                      {paymentMethod !== 'cash' && (
-                        <div>
-                          <Label className="text-[10px] uppercase text-muted-foreground">Transaction ID *</Label>
-                          <Input className="h-8 text-xs" placeholder="Enter transaction reference ID" value={transactionId} onChange={e => setTransactionId(e.target.value)} />
-                        </div>
-                      )}
-
-                      {paymentMethod !== 'cash' && (
-                        <PaymentProofUpload value={paymentProofUrl} onChange={setPaymentProofUrl} />
-                      )}
 
                       <div className="text-muted-foreground text-[10px] px-1">Collected by: {user?.name || user?.email || 'Admin'}</div>
 
@@ -2112,7 +2101,7 @@ const HostelBedMap: React.FC = () => {
                           <ArrowLeft className="h-3 w-3 mr-1" /> Back
                         </Button>
                         <Button className="flex-1 h-9 text-xs"
-                          disabled={creatingBooking || (paymentMethod !== 'cash' && !transactionId.trim())}
+                          disabled={creatingBooking || !!validateSplits(bookingSplits, isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : (computedTotal + (collectSecurityDeposit ? (parseFloat(securityDepositAmount) || 0) : 0)))}
                           onClick={handleCreateBooking}>
                           {creatingBooking ? 'Creating...' : `Confirm · ₹${isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : (computedTotal + (collectSecurityDeposit ? (parseFloat(securityDepositAmount) || 0) : 0))}`}
                         </Button>

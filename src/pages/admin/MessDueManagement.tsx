@@ -418,16 +418,20 @@ const MessDueManagement: React.FC = () => {
                   <Label className="text-xs">Amount</Label>
                   <Input type="number" value={collectAmount} onChange={e => setCollectAmount(e.target.value)} className="h-8 text-xs" />
                 </div>
-                <PaymentMethodSelector value={collectMethod} onValueChange={setCollectMethod} partnerId={partnerId} />
                 <div>
-                  <Label className="text-xs">Transaction ID</Label>
-                  <Input value={collectTxnId} onChange={e => setCollectTxnId(e.target.value)} className="h-8 text-xs" placeholder="Optional" />
+                  <Label className="text-xs">Payment</Label>
+                  <SplitPaymentCollector
+                    totalAmount={parseFloat(collectAmount) || 0}
+                    partnerId={partnerId}
+                    splits={collectSplits}
+                    onSplitsChange={setCollectSplits}
+                  />
                 </div>
                 <div>
                   <Label className="text-xs">Notes</Label>
                   <Textarea value={collectNotes} onChange={e => setCollectNotes(e.target.value)} className="text-xs" rows={2} placeholder="Optional" />
                 </div>
-                <Button className="w-full" onClick={handleCollect} disabled={collecting || !collectAmount}>
+                <Button className="w-full" onClick={handleCollect} disabled={collecting || !collectAmount || !!validateSplits(collectSplits, parseFloat(collectAmount) || 0)}>
                   {collecting ? 'Collecting...' : `Collect ${formatCurrency(parseFloat(collectAmount) || 0)}`}
                 </Button>
               </div>
