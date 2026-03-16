@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { format, subDays, parseISO } from 'date-fns';
 import { Search, AlertTriangle, CheckCircle2, Eye, Upload, Receipt, IndianRupee } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import CheckInUploadDialog from './CheckInUploadDialog';
 import ReportedTodaySection from './ReportedTodaySection';
 import CheckInViewDetailsDialog from './CheckInViewDetailsDialog';

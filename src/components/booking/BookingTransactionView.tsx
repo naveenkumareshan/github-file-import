@@ -8,6 +8,7 @@ import { vendorSeatsService } from '@/api/vendorSeatsService';
 import { DuePaymentHistory } from '@/components/booking/DuePaymentHistory';
 import { format, differenceInDays } from 'date-fns';
 import { CreditCard, Calendar, RefreshCw, IndianRupee, Clock, TicketPercent, Wallet, Receipt, ImageIcon } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
 

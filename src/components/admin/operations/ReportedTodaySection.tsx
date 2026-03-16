@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { format, parseISO, startOfDay } from 'date-fns';
 import { CheckCircle2, ChevronDown, ChevronRight, Eye } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import CheckInViewDetailsDialog from './CheckInViewDetailsDialog';
 import { fmtAmt } from './CheckInFinancials';
 

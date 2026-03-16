@@ -10,6 +10,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { Search, Receipt, Download, RefreshCw } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/utils/currency';
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';

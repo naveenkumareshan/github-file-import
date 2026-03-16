@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CalendarRange, Eye, Search, X, Download, ArrowUpDown, RotateCcw, Clock, CalendarX } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { adminBookingsService } from '@/api/adminBookingsService';
 import { format, differenceInDays, addDays, addMonths, subDays } from 'date-fns';
 import { useNavigate, useLocation } from 'react-router-dom';
