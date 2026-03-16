@@ -409,16 +409,16 @@ export default function MessBookings() {
         start_date: format(startDate, 'yyyy-MM-dd'),
         end_date: endDate,
         price_paid: totalAfterDiscount,
-        payment_method: paymentMethod,
+        payment_method: primarySplit.method,
         payment_status: isPartial ? 'advance_paid' : 'completed',
         status: 'active',
-        transaction_id: transactionId,
+        transaction_id: primarySplit.txnId,
         advance_amount: advanceAmount,
         discount_amount: discountAmount,
         notes: '',
         created_by: user?.id,
         collected_by_name: collectedByName || user?.name || '',
-        payment_proof_url: paymentProofUrl || null,
+        payment_proof_url: primarySplit.proofUrl || null,
       }).select().single();
       if (subErr) throw subErr;
 
