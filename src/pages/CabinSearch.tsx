@@ -191,7 +191,7 @@ const CabinSearch = () => {
     <div className="min-h-screen bg-background">
       {/* Compact search header */}
       <div className="sticky top-0 z-10 bg-background border-b border-border px-3 py-2.5">
-        <div className="max-w-lg mx-auto">
+        <div className="max-w-lg lg:max-w-5xl mx-auto">
           <h1 className="text-[17px] font-semibold mb-2">Reading Rooms</h1>
           <div className="flex gap-2">
             {/* Search bar */}
