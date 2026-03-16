@@ -2031,8 +2031,7 @@ const VendorSeats: React.FC = () => {
                                   } else {
                                     setExpandedDueBookingId(b.bookingId);
                                     setDueCollectAmount(String(dueRemaining));
-                                    setDueCollectMethod('cash');
-                                    setDueCollectTxnId('');
+                                    setDueSplits([createDefaultSplit(dueRemaining)]);
                                     setDueCollectNotes('');
                                   }
                                 }}
@@ -2047,36 +2046,13 @@ const VendorSeats: React.FC = () => {
                                     <Label className="text-[10px]">Amount to Collect (₹)</Label>
                                     <Input type="number" className="h-7 text-xs" value={dueCollectAmount} onChange={e => setDueCollectAmount(e.target.value)} />
                                   </div>
-                                  <div>
-                                    <Label className="text-[10px]">Payment Method</Label>
-                                    <RadioGroup value={dueCollectMethod} onValueChange={setDueCollectMethod} className="grid grid-cols-2 gap-1 mt-1">
-                                      <div className="flex items-center gap-1 border rounded p-1">
-                                        <RadioGroupItem value="cash" id={`dc_cash_${b.bookingId}`} className="h-2.5 w-2.5" />
-                                        <Label htmlFor={`dc_cash_${b.bookingId}`} className="text-[9px] cursor-pointer"><Banknote className="h-2.5 w-2.5 inline mr-0.5" />Cash</Label>
-                                      </div>
-                                      <div className="flex items-center gap-1 border rounded p-1">
-                                        <RadioGroupItem value="upi" id={`dc_upi_${b.bookingId}`} className="h-2.5 w-2.5" />
-                                        <Label htmlFor={`dc_upi_${b.bookingId}`} className="text-[9px] cursor-pointer"><Smartphone className="h-2.5 w-2.5 inline mr-0.5" />UPI</Label>
-                                      </div>
-                                      <div className="flex items-center gap-1 border rounded p-1">
-                                        <RadioGroupItem value="bank_transfer" id={`dc_bank_${b.bookingId}`} className="h-2.5 w-2.5" />
-                                        <Label htmlFor={`dc_bank_${b.bookingId}`} className="text-[9px] cursor-pointer"><Building2 className="h-2.5 w-2.5 inline mr-0.5" />Bank</Label>
-                                      </div>
-                                      <div className="flex items-center gap-1 border rounded p-1">
-                                        <RadioGroupItem value="online" id={`dc_online_${b.bookingId}`} className="h-2.5 w-2.5" />
-                                        <Label htmlFor={`dc_online_${b.bookingId}`} className="text-[9px] cursor-pointer"><CreditCard className="h-2.5 w-2.5 inline mr-0.5" />Online</Label>
-                                      </div>
-                                    </RadioGroup>
-                                  </div>
-                                  {dueCollectMethod !== 'cash' && (
-                                    <div>
-                                      <Label className="text-[10px]">Transaction ID *</Label>
-                                      <Input className="h-7 text-xs" value={dueCollectTxnId} onChange={e => setDueCollectTxnId(e.target.value)} />
-                                    </div>
-                                  )}
-                                  {dueCollectMethod !== 'cash' && (
-                                    <PaymentProofUpload value={paymentProofUrl} onChange={setPaymentProofUrl} />
-                                  )}
+                                  <SplitPaymentCollector
+                                    totalAmount={parseFloat(dueCollectAmount) || 0}
+                                    partnerId={selectedSeat?.cabinId ? cabins.find(c => c._id === selectedSeat.cabinId)?.createdBy : undefined}
+                                    splits={dueSplits}
+                                    onSplitsChange={setDueSplits}
+                                    compact
+                                  />
                                   <Button
                                     size="sm"
                                     className="w-full h-7 text-[10px]"
