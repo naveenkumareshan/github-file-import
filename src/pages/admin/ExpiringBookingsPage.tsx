@@ -87,10 +87,36 @@ export default function ExpiringBookingsPage() {
   const getStatusColor = (days: number) => { if (days <= 2) return 'destructive'; if (days <= 5) return 'warning'; return 'secondary'; };
   const getExpiredColor = (days: number) => { if (days >= 14) return 'destructive'; if (days >= 7) return 'warning'; return 'secondary'; };
 
-  const handleRenew = (booking: any) => {
+  const handleRenew = async (booking: any) => {
     const seat = booking.seats as any;
     const cabin = booking.cabins as any;
     const profile = booking.profiles as any;
+    const seatId = booking.seat_id;
+    const seatNumber = seat?.number || 0;
+
+    // Check seat availability before opening renewal sheet
+    setCheckingAvailability(booking.id);
+    try {
+      const renewStart = addDays(new Date(booking.end_date), 1);
+      const renewEnd = subDays(addMonths(renewStart, 1), 1);
+      const { data: isAvailable, error } = await supabase.rpc('check_seat_available', {
+        p_seat_id: seatId,
+        p_start_date: format(renewStart, 'yyyy-MM-dd'),
+        p_end_date: format(renewEnd, 'yyyy-MM-dd'),
+      });
+      if (error) throw error;
+      if (!isAvailable) {
+        toast({ title: `Seat #${seatNumber} is already booked for this period. Cannot renew.`, variant: 'destructive' });
+        return;
+      }
+    } catch (err) {
+      console.error('Availability check failed:', err);
+      toast({ title: 'Failed to check seat availability. Please try again.', variant: 'destructive' });
+      return;
+    } finally {
+      setCheckingAvailability(null);
+    }
+
     setRenewBooking({
       bookingId: booking.id,
       endDate: booking.end_date,
@@ -98,8 +124,8 @@ export default function ExpiringBookingsPage() {
       studentEmail: profile?.email || '',
       studentPhone: profile?.phone || '',
       studentId: booking.user_id,
-      seatId: booking.seat_id,
-      seatNumber: seat?.number || 0,
+      seatId,
+      seatNumber,
       seatPrice: seat?.price || 0,
       cabinId: booking.cabin_id,
       cabinName: cabin?.name || '',
