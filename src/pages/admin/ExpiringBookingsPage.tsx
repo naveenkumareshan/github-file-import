@@ -251,8 +251,8 @@ export default function ExpiringBookingsPage() {
                               <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => navigate(`${routePrefix}/bookings/${booking.id}/cabin`)}>
                                 <Eye className="h-3.5 w-3.5" />
                               </Button>
-                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-primary hover:text-primary" onClick={() => handleRenew(booking)} title="Renew Booking">
-                                <RotateCcw className="h-3.5 w-3.5" />
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-primary hover:text-primary" onClick={() => handleRenew(booking)} title="Renew Booking" disabled={checkingAvailability === booking.id}>
+                                <RotateCcw className={`h-3.5 w-3.5 ${checkingAvailability === booking.id ? 'animate-spin' : ''}`} />
                               </Button>
                             </div>
                           </TableCell>
