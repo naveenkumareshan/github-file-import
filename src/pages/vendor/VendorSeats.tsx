@@ -787,7 +787,7 @@ const VendorSeats: React.FC = () => {
           discountAmount: parseFloat(discountAmount) || 0,
           lockerPrice: lockerIncluded && selectedCabinInfo ? selectedCabinInfo.lockerPrice : 0,
           totalAmount: computedTotal,
-          paymentMethod: primarySplit.method,
+          paymentMethod: getMethodLabel(primarySplit.method, customPaymentLabels),
           transactionId: primarySplit.txnId,
           collectedByName,
           advancePaid: isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : undefined,
