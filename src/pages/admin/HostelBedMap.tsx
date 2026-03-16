@@ -1035,11 +1035,11 @@ const HostelBedMap: React.FC = () => {
       duration_count: selectedDuration.count,
       payment_status: remaining <= 0 ? 'completed' : 'partial',
       status: 'confirmed',
-      payment_method: paymentMethod,
-      transaction_id: transactionId,
+      payment_method: primarySplit.method,
+      transaction_id: primarySplit.txnId,
       collected_by: user?.id,
       collected_by_name: collectedByName,
-      payment_proof_url: paymentProofUrl || null,
+      payment_proof_url: primarySplit.proofUrl || null,
     }).select('id, serial_number').single();
 
     if (!error && newBooking) {
