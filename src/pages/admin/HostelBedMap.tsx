@@ -2173,9 +2173,7 @@ const HostelBedMap: React.FC = () => {
                                   {dueCollectMethod !== 'cash' && (
                                     <div><Label className="text-[10px]">Transaction ID *</Label><Input className="h-7 text-xs" value={dueCollectTxnId} onChange={e => setDueCollectTxnId(e.target.value)} /></div>
                                   )}
-                                  {dueCollectMethod !== 'cash' && (
-                                    <PaymentProofUpload value={''} onChange={() => {}} />
-                                  )}
+                                  
                                   <Button size="sm" className="w-full h-7 text-[10px]" onClick={() => handleInlineDueCollect(b.bookingId)} disabled={collectingDue || !dueCollectAmount}>
                                     {collectingDue ? 'Processing...' : `Collect ₹${dueCollectAmount}`}
                                   </Button>
