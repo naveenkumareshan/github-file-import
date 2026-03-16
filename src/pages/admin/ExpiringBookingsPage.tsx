@@ -29,7 +29,9 @@ export default function ExpiringBookingsPage() {
   const [pageSize, setPageSize] = useState(25);
   const [renewBooking, setRenewBooking] = useState<any>(null);
   const [renewSheetOpen, setRenewSheetOpen] = useState(false);
+  const [checkingAvailability, setCheckingAvailability] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { toast } = useToast();
   const location = useLocation();
   const { user } = useAuth();
 
