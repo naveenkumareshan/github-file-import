@@ -83,9 +83,7 @@ export const RenewalSheet: React.FC<RenewalSheetProps> = ({
       setDiscountReason('');
       setIsAdvanceBooking(false);
       setManualAdvanceAmount('');
-      setPaymentMethod('cash');
-      setTransactionId('');
-      setPaymentProofUrl('');
+      setBookingSplits([createDefaultSplit(0)]);
       setBookingStep('details');
       setCreating(false);
       setSuccess(false);
