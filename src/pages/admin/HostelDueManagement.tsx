@@ -230,7 +230,7 @@ const HostelDueManagement: React.FC = () => {
       const { error: paymentError } = await supabase.from('hostel_due_payments').insert({
         due_id: selectedDue.id,
         amount: splitAmt,
-        payment_method: split.method,
+        payment_method: normalizePaymentMethod(split.method),
         transaction_id: split.txnId,
         collected_by: user?.id,
         collected_by_name: collectedByName,
