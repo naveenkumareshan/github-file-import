@@ -224,8 +224,8 @@ export const RenewalSheet: React.FC<RenewalSheetProps> = ({
           seatAmount: parseFloat(bookingPrice) || 0,
           discountAmount: parseFloat(discountAmount) || 0,
           totalAmount: computedTotal,
-          paymentMethod,
-          transactionId,
+          paymentMethod: primarySplit.method,
+          transactionId: primarySplit.txnId,
           collectedByName,
         }).catch(err => console.error('Renewal receipt email failed:', err));
       }
