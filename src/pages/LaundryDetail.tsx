@@ -337,7 +337,7 @@ export default function LaundryDetail() {
               </div>
             </div>
 
-            <div className="h-24" />
+            <div className="h-40" />
           </div>
 
           {/* Bottom Bar */}
