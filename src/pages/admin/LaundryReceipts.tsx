@@ -25,6 +25,7 @@ export default function LaundryReceipts() {
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [paymentLabels, setPaymentLabels] = useState<Record<string, string>>({});
   const { toast } = useToast();
 
   useEffect(() => { fetchReceipts(); }, [user]);
