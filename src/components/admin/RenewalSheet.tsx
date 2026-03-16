@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { vendorSeatsService, PartnerBookingData } from '@/api/vendorSeatsService';
 import { requiresTransactionId } from '@/components/vendor/PaymentMethodSelector';
+import { normalizePaymentMethod, getMethodLabel } from '@/utils/paymentMethodLabels';
 import { SplitPaymentCollector, PaymentSplit, createDefaultSplit, validateSplits } from '@/components/payment/SplitPaymentCollector';
 import { supabase } from '@/integrations/supabase/client';
 import { downloadInvoice, InvoiceData } from '@/utils/invoiceGenerator';
