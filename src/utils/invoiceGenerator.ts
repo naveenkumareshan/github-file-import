@@ -33,13 +33,7 @@ export interface InvoiceData {
 }
 
 const paymentMethodLabel = (method: string) => {
-  switch (method) {
-    case 'cash': return 'Cash';
-    case 'upi': return 'PhonePe / UPI';
-    case 'bank_transfer': return 'Bank Transfer';
-    case 'online': return 'Online';
-    default: return method;
-  }
+  return getMethodLabel(method);
 };
 
 export const generateInvoiceHTML = (data: InvoiceData): string => {
