@@ -122,12 +122,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     let isMounted = true;
+    let authResolved = false;
+
+    const markResolved = () => { authResolved = true; };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!isMounted) return;
       // setTimeout breaks out of Supabase's internal auth lock to avoid deadlock when querying DB
       setTimeout(async () => {
         if (!isMounted) return;
+        markResolved();
         if (session?.user) {
           const appUser = await buildUser(session.user);
           if (isMounted) {
@@ -144,13 +148,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session && isMounted) {
+      if (!isMounted) return;
+      if (!session) {
+        markResolved();
         setIsLoading(false);
         setAuthChecked(true);
       }
     });
 
-    return () => { isMounted = false; subscription.unsubscribe(); };
+    // Safety timeout: if auth hasn't resolved in 8s, force-resolve to prevent infinite loading
+    const safetyTimer = setTimeout(async () => {
+      if (!isMounted || authResolved) return;
+      console.warn('Auth safety timeout: force-resolving after 8s');
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!isMounted) return;
+        if (session?.user) {
+          const appUser = await buildUser(session.user);
+          if (isMounted) {
+            setUser(appUser);
+          }
+        } else {
+          setUser(null);
+        }
+      } catch {
+        if (isMounted) setUser(null);
+      }
+      if (isMounted) {
+        setIsLoading(false);
+        setAuthChecked(true);
+      }
+    }, 8000);
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+      clearTimeout(safetyTimer);
+    };
   }, []);
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {

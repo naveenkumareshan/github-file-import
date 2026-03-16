@@ -1,89 +1,71 @@
 
 
-## Why the Site "Doesn't Work at Night"
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-### Root Cause
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
-The issue is in `AuthContext.tsx` — the auth initialization flow has a critical gap that causes the app to get stuck on "Loading..." forever when the session token expires (typically after hours of inactivity, e.g., overnight):
+## Changes
 
-```text
-Flow when user opens the app with an expired session:
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-1. onAuthStateChange listener is set up
-2. getSession() is called → finds session in localStorage (expired tokens)
-3. Since session exists, getSession() does NOT set isLoading=false (line 147-150)
-4. It relies on onAuthStateChange to resolve loading state
-5. Supabase tries to refresh the token automatically
-6. If refresh fails (expired refresh token, network issue at night), 
-   onAuthStateChange may not fire reliably in all edge cases
-7. isLoading stays TRUE forever → ProtectedRoute shows "Loading..." forever
-8. The app appears completely broken / "not working"
-```
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-Partners and employees who close the app at night and reopen it hit this exact scenario — their access token expired, refresh fails silently, and the app hangs.
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
 
-### Fix
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
 
-**File: `src/contexts/AuthContext.tsx`**
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
 
-1. Add a **safety timeout** (8 seconds) — if auth state hasn't resolved by then, force-check the session and resolve loading state
-2. Make `getSession()` also handle the case where a session exists but might be expired — call `setIsLoading(false)` after a delay regardless
-3. Handle the `SIGNED_OUT` event from token refresh failure explicitly
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
 
-```typescript
-// In the useEffect, after setting up onAuthStateChange and getSession:
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
 
-// Safety timeout: if auth hasn't resolved in 8s, force resolve
-const safetyTimer = setTimeout(async () => {
-  if (isMounted && isLoading) {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      setUser(null);
-    }
-    setIsLoading(false);
-    setAuthChecked(true);
-  }
-}, 8000);
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
 
-// Clean up
-return () => { 
-  isMounted = false; 
-  subscription.unsubscribe(); 
-  clearTimeout(safetyTimer);
-};
-```
+**Reviews section**: Shown below the booking flow (not in a tab)
 
-Also update the `getSession()` call to set loading false regardless:
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
 
-```typescript
-supabase.auth.getSession().then(async ({ data: { session } }) => {
-  if (!isMounted) return;
-  if (!session) {
-    setIsLoading(false);
-    setAuthChecked(true);
-  }
-  // If session exists but no onAuthStateChange fires within 5s, force resolve
-});
-```
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
 
-**File: `src/components/ProtectedRoute.tsx`**
-
-Add a loading timeout so users see a retry option instead of infinite "Loading...":
-
-```typescript
-// If isLoading has been true for >10 seconds, show a retry button
-// instead of infinite "Loading..."
-```
-
-### Files to Modify
+## File Summary
 
 | File | Change |
 |------|--------|
-| `src/contexts/AuthContext.tsx` | Add safety timeout to force-resolve auth state; better error handling |
-| `src/components/ProtectedRoute.tsx` | Add loading timeout with retry/re-login option instead of infinite spinner |
-
-### What Users Will See After Fix
-- If session is valid: app loads normally (no change)
-- If session expired but refresh works: app loads normally after brief delay (no change)
-- If session expired and refresh fails: **instead of infinite "Loading..."**, users are redirected to the login page within 8 seconds, or shown a "Session expired, please log in again" message with a button
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
 
