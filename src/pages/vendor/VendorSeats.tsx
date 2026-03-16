@@ -761,10 +761,25 @@ const VendorSeats: React.FC = () => {
         lockerIncluded,
         lockerPrice: lockerIncluded && selectedCabinInfo ? selectedCabinInfo.lockerPrice : 0,
         totalAmount: computedTotal,
-        paymentMethod,
-        transactionId,
+        paymentMethod: primarySplit.method,
+        transactionId: primarySplit.txnId,
         collectedByName,
       };
+      // Process additional splits as separate receipts
+      if (bookingSplits.length > 1 && res.bookingId) {
+        for (let i = 1; i < bookingSplits.length; i++) {
+          const split = bookingSplits[i];
+          const splitAmt = parseFloat(split.amount);
+          await vendorSeatsService.collectDuePayment(
+            '', // no due id for direct receipt
+            splitAmt,
+            split.method,
+            split.txnId,
+            'Additional split payment for booking',
+            split.proofUrl
+          ).catch(err => console.error('Additional split failed:', err));
+        }
+      }
       setLastInvoiceData(invoiceData);
       setBookingSuccess(true);
       setBookingStep('details');
