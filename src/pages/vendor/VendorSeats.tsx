@@ -761,7 +761,7 @@ const VendorSeats: React.FC = () => {
         lockerIncluded,
         lockerPrice: lockerIncluded && selectedCabinInfo ? selectedCabinInfo.lockerPrice : 0,
         totalAmount: computedTotal,
-        paymentMethod: primarySplit.method,
+        paymentMethod: getMethodLabel(primarySplit.method, customPaymentLabels),
         transactionId: primarySplit.txnId,
         collectedByName,
       };
