@@ -90,7 +90,7 @@ export const MobileBottomNav: React.FC = () => {
               key={tab.label}
               to={href}
               className={cn(
-                'flex-1 flex flex-col items-center justify-center gap-0.5 min-h-[56px] relative transition-all duration-200 overflow-hidden',
+                'flex-1 flex flex-col items-center justify-center gap-0.5 min-h-[60px] relative transition-all duration-200 overflow-hidden',
                 active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
               )}
             >
