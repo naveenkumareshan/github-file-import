@@ -30,6 +30,11 @@ const sendReceiptEmail = async (payload: ReceiptEmailPayload): Promise<{ success
       return { success: false, error: 'No valid email' };
     }
 
+    // Resolve payment method to human-readable label before sending
+    if (payload.paymentMethod) {
+      payload.paymentMethod = getMethodLabel(payload.paymentMethod);
+    }
+
     const { data, error } = await supabase.functions.invoke('send-booking-receipt', {
       body: payload,
     });
