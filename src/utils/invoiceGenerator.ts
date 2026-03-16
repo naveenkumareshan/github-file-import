@@ -1,4 +1,5 @@
 import { formatCurrency, formatBookingPeriod } from '@/utils/currency';
+import { getMethodLabel } from '@/utils/paymentMethodLabels';
 
 export interface InvoiceData {
   serialNumber: string;
