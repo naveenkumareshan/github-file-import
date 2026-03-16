@@ -579,7 +579,7 @@ export const vendorSeatsService = {
           locker_price: data.lockerPrice || 0,
           discount_amount: data.discountAmount || 0,
           discount_reason: data.discountReason || '',
-          payment_method: data.paymentMethod || 'online',
+          payment_method: normalizePaymentMethod(data.paymentMethod || 'online'),
           collected_by: data.collectedBy || null,
           collected_by_name: data.collectedByName || '',
           transaction_id: data.transactionId || '',
