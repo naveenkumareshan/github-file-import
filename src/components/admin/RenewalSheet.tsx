@@ -202,8 +202,8 @@ export const RenewalSheet: React.FC<RenewalSheetProps> = ({
         lockerIncluded: false,
         lockerPrice: 0,
         totalAmount: computedTotal,
-        paymentMethod,
-        transactionId,
+        paymentMethod: primarySplit.method,
+        transactionId: primarySplit.txnId,
         collectedByName,
       };
       setLastInvoiceData(invoiceData);

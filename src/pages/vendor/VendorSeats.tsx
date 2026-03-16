@@ -770,7 +770,7 @@ const VendorSeats: React.FC = () => {
       setLastInvoiceData(invoiceData);
       setBookingSuccess(true);
       setBookingStep('details');
-      toast({ title: paymentMethod === 'send_link' ? 'Payment link sent' : 'Booking created successfully' });
+      toast({ title: primarySplit.method === 'send_link' ? 'Payment link sent' : 'Booking created successfully' });
 
       // Fire-and-forget receipt email
       if (selectedStudent.email) {
