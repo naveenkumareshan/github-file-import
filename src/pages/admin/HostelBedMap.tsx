@@ -152,9 +152,7 @@ const HostelBedMap: React.FC = () => {
   const [creatingBooking, setCreatingBooking] = useState(false);
   const [discountAmount, setDiscountAmount] = useState('');
   const [discountReason, setDiscountReason] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<string>('cash');
-  const [transactionId, setTransactionId] = useState('');
-  const [paymentProofUrl, setPaymentProofUrl] = useState('');
+  const [bookingSplits, setBookingSplits] = useState<PaymentSplit[]>([createDefaultSplit(0)]);
   const [collectSecurityDeposit, setCollectSecurityDeposit] = useState(true);
   const [securityDepositAmount, setSecurityDepositAmount] = useState('');
 
