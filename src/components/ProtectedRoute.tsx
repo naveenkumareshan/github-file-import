@@ -2,6 +2,8 @@
 import React from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/use-auth';
+import { useLoadingTimeout } from '../hooks/use-loading-timeout';
+import { Button } from './ui/button';
 
 interface ProtectedRouteProps {
   requiredRole?: string;
@@ -16,8 +18,24 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 }) => {
   const { user, isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
+  const timedOut = useLoadingTimeout(isLoading, 10000);
   
   if (isLoading) {
+    if (timedOut) {
+      return (
+        <div className="flex flex-col items-center justify-center h-screen gap-4">
+          <p className="text-muted-foreground">Taking too long to load? Your session may have expired.</p>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => window.location.reload()}>
+              Retry
+            </Button>
+            <Button onClick={() => { window.location.href = redirectPath; }}>
+              Go to Login
+            </Button>
+          </div>
+        </div>
+      );
+    }
     return <div className="flex items-center justify-center h-screen">Loading...</div>;
   }
   
