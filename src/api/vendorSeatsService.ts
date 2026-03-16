@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { normalizePaymentMethod } from '@/utils/paymentMethodLabels';
 
 export interface SeatBookingDetail {
   bookingId: string;
