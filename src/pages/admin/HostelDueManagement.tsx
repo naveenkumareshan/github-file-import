@@ -188,9 +188,9 @@ const HostelDueManagement: React.FC = () => {
   const openCollect = (due: any) => {
     setSelectedDue(due);
     const remaining = Number(due.due_amount) - Number(due.paid_amount);
-    setCollectAmount(String(remaining > 0 ? remaining : 0));
-    setCollectMethod('cash');
-    setCollectTxnId('');
+    const amt = remaining > 0 ? remaining : 0;
+    setCollectAmount(String(amt));
+    setCollectSplits([createDefaultSplit(amt)]);
     setCollectNotes('');
     setCollectOpen(true);
   };
