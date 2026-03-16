@@ -235,7 +235,7 @@ export default function ExpiringBookingsPage() {
                           </TableCell>
                           <TableCell>
                             <div className="text-xs">{cabin?.name || 'N/A'}</div>
-                            <div className="text-[10px] text-muted-foreground">Seat {seat?.number || 'N/A'}</div>
+                            <div className="text-[10px] text-muted-foreground">{seat?.floor ? `Floor ${seat.floor} · ` : ''}Seat {seat?.number || 'N/A'}</div>
                           </TableCell>
                           <TableCell>{booking.start_date ? format(new Date(booking.start_date), 'dd MMM yyyy') : '-'}</TableCell>
                           <TableCell>{format(new Date(booking.end_date), 'dd MMM yyyy')}</TableCell>

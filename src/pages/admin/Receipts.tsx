@@ -38,6 +38,7 @@ interface ReceiptRow {
   studentPhone?: string;
   cabinName?: string;
   seatNumber?: number;
+  seatFloor?: number;
   bookingSerial?: string;
 }
 
@@ -94,7 +95,7 @@ const Receipts: React.FC = () => {
       const [profilesRes, cabinsRes, seatsRes, bookingsRes] = await Promise.all([
         userIds.length > 0 ? supabase.from('profiles').select('id, name, phone, email').in('id', userIds) : { data: [] },
         cabinIds.length > 0 ? supabase.from('cabins').select('id, name').in('id', cabinIds) : { data: [] },
-        seatIds.length > 0 ? supabase.from('seats').select('id, number').in('id', seatIds) : { data: [] },
+        seatIds.length > 0 ? supabase.from('seats').select('id, number, floor').in('id', seatIds) : { data: [] },
         bookingIds.length > 0 ? supabase.from('bookings').select('id, serial_number').in('id', bookingIds) : { data: [] },
       ]);
 
@@ -111,6 +112,7 @@ const Receipts: React.FC = () => {
         studentEmail: profileMap[r.user_id]?.email || '',
         cabinName: r.cabin_id ? cabinMap[r.cabin_id]?.name || '' : '',
         seatNumber: r.seat_id ? seatMap[r.seat_id]?.number : undefined,
+        seatFloor: r.seat_id ? seatMap[r.seat_id]?.floor : undefined,
         bookingSerial: r.booking_id ? bookingMap[r.booking_id]?.serial_number || '' : '',
       }));
 
@@ -274,7 +276,7 @@ const Receipts: React.FC = () => {
                   <div><span className="text-muted-foreground">Method: </span>{methodLabel(r.payment_method)}</div>
                   <div><span className="text-muted-foreground">Date: </span>{new Date(r.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
                 </div>
-                {r.cabinName && <p className="text-[10px] text-muted-foreground">Room: {r.cabinName}{r.seatNumber !== undefined ? ` / #${r.seatNumber}` : ''}</p>}
+                {r.cabinName && <p className="text-[10px] text-muted-foreground">Room: {r.cabinName}{r.seatFloor ? ` / Floor ${r.seatFloor}` : ''}{r.seatNumber !== undefined ? ` · #${r.seatNumber}` : ''}</p>}
               </div>
             ))}
           </div>
@@ -306,7 +308,7 @@ const Receipts: React.FC = () => {
                     {(r as any).studentEmail && <div className="text-muted-foreground text-[10px]">{(r as any).studentEmail}</div>}
                   </TableCell>
                   <TableCell className="text-xs">
-                    {r.cabinName}{r.seatNumber !== undefined ? ` / #${r.seatNumber}` : ''}
+                    {r.cabinName}{r.seatFloor ? ` / Floor ${r.seatFloor}` : ''}{r.seatNumber !== undefined ? ` · #${r.seatNumber}` : ''}
                   </TableCell>
                   <TableCell className="text-xs font-semibold">{formatCurrency(r.amount)}</TableCell>
                   <TableCell className="text-xs">{methodLabel(r.payment_method)}</TableCell>

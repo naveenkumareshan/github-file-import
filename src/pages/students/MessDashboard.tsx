@@ -57,12 +57,18 @@ export default function MessDashboard() {
 
   const handlePause = async (subId: string) => {
     if (!pauseStart || !pauseEnd) return;
+    const sub = subscriptions.find(s => s.id === subId);
+    if (!sub) return;
+    const today = format(new Date(), 'yyyy-MM-dd');
+    if (pauseStart < today || pauseStart < sub.start_date || pauseEnd > sub.end_date || pauseEnd < pauseStart) {
+      toast({ title: 'Invalid dates', description: 'Pause dates must be within your subscription period and in the future.', variant: 'destructive' });
+      return;
+    }
     setPausing(true);
     try {
       const ps = new Date(pauseStart);
       const pe = new Date(pauseEnd);
       const pauseDays = Math.ceil((pe.getTime() - ps.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-      const sub = subscriptions.find(s => s.id === subId);
       const newEnd = new Date(sub.end_date);
       newEnd.setDate(newEnd.getDate() + pauseDays);
 
@@ -191,8 +197,18 @@ export default function MessDashboard() {
                 <CardContent className="p-4 space-y-3">
                   <p className="text-sm">Pause your meals for a date range. Your end date will be extended automatically.</p>
                   <div className="grid grid-cols-2 gap-3">
-                    <div><Label>From</Label><Input type="date" value={pauseStart} onChange={e => setPauseStart(e.target.value)} min={format(new Date(), 'yyyy-MM-dd')} /></div>
-                    <div><Label>To</Label><Input type="date" value={pauseEnd} onChange={e => setPauseEnd(e.target.value)} min={pauseStart || format(new Date(), 'yyyy-MM-dd')} /></div>
+                    {(() => {
+                      const today = format(new Date(), 'yyyy-MM-dd');
+                      const subStart = sub.start_date;
+                      const subEnd = sub.end_date;
+                      const minDate = today > subStart ? today : subStart;
+                      return (
+                        <>
+                          <div><Label>From</Label><Input type="date" value={pauseStart} onChange={e => { setPauseStart(e.target.value); if (pauseEnd && e.target.value > pauseEnd) setPauseEnd(''); }} min={minDate} max={subEnd} /></div>
+                          <div><Label>To</Label><Input type="date" value={pauseEnd} onChange={e => setPauseEnd(e.target.value)} min={pauseStart || minDate} max={subEnd} /></div>
+                        </>
+                      );
+                    })()}
                   </div>
                   <Button onClick={() => handlePause(sub.id)} disabled={!pauseStart || !pauseEnd || pausing}>
                     {pausing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
