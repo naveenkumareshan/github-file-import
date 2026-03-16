@@ -43,8 +43,7 @@ const DueManagement: React.FC = () => {
   const [collectOpen, setCollectOpen] = useState(false);
   const [selectedDue, setSelectedDue] = useState<any>(null);
   const [collectAmount, setCollectAmount] = useState('');
-  const [collectMethod, setCollectMethod] = useState('cash');
-  const [collectTxnId, setCollectTxnId] = useState('');
+  const [collectSplits, setCollectSplits] = useState<PaymentSplit[]>([]);
   const [collectNotes, setCollectNotes] = useState('');
   const [collecting, setCollecting] = useState(false);
 
