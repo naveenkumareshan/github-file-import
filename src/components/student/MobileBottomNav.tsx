@@ -75,7 +75,7 @@ export const MobileBottomNav: React.FC = () => {
                 key={tab.label}
                 type="button"
                 onClick={() => toast({ title: 'Launching Soon', description: `${tab.label} is coming soon. Stay tuned!` })}
-                className="flex-1 flex flex-col items-center justify-center gap-0.5 min-h-[56px] relative transition-all duration-200 overflow-hidden text-muted-foreground/50 cursor-default"
+                className="flex-1 flex flex-col items-center justify-center gap-0.5 min-h-[60px] relative transition-all duration-200 overflow-hidden text-muted-foreground/50 cursor-default"
               >
                 <div className="w-full flex flex-col items-center gap-0.5 px-0.5 py-1 rounded-xl">
                   <tab.icon className="w-6 h-6" strokeWidth={1.75} />

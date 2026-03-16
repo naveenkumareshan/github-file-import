@@ -347,9 +347,9 @@ function App() {
               <Route path="/book-shared-room/:roomId" element={<BookSharedRoom />} />
               <Route path="/hostel-booking/:hostelId/:roomId" element={<HostelBooking />} />
               <Route path="/booking-confirmation/:bookingId" element={<StudentSuspense><HostelBookConfirmation /></StudentSuspense>} />
-              <Route path="/laundry" element={<StudentSuspense><Laundry /></StudentSuspense>} />
-              <Route path="/laundry/:id" element={<StudentSuspense><LaundryDetail /></StudentSuspense>} />
-              <Route path="/laundry-request" element={<StudentSuspense><Laundry /></StudentSuspense>} />
+              <Route path="/laundry" element={<StudentSuspense><LaunchingSoonGuard moduleKey="laundry" moduleName="Laundry"><Laundry /></LaunchingSoonGuard></StudentSuspense>} />
+              <Route path="/laundry/:id" element={<StudentSuspense><LaunchingSoonGuard moduleKey="laundry" moduleName="Laundry"><LaundryDetail /></LaunchingSoonGuard></StudentSuspense>} />
+              <Route path="/laundry-request" element={<StudentSuspense><LaunchingSoonGuard moduleKey="laundry" moduleName="Laundry"><Laundry /></LaunchingSoonGuard></StudentSuspense>} />
               <Route path="/mess" element={<StudentSuspense><LaunchingSoonGuard moduleKey="mess" moduleName="Mess / Food"><MessMarketplace /></LaunchingSoonGuard></StudentSuspense>} />
               <Route path="/mess/:id" element={<StudentSuspense><LaunchingSoonGuard moduleKey="mess" moduleName="Mess / Food"><MessDetail /></LaunchingSoonGuard></StudentSuspense>} />
               <Route path="/privacy-policy" element={<StudentSuspense><PrivacyPolicy /></StudentSuspense>} />

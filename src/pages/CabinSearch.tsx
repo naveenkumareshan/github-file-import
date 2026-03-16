@@ -256,7 +256,7 @@ const CabinSearch = () => {
       </div>
 
       {/* Results */}
-      <div className="px-3 py-3 max-w-lg mx-auto">
+      <div className="px-3 py-3 max-w-lg lg:max-w-5xl mx-auto">
         <Suspense fallback={<div className="p-4 text-[13px] text-muted-foreground">Loading results...</div>}>
           <CabinSearchResults
             cabins={displayResults}
