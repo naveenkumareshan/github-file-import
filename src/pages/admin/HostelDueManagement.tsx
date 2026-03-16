@@ -17,9 +17,9 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Textarea } from '@/components/ui/textarea';
 import { HostelDuePaymentHistory } from '@/components/booking/HostelDuePaymentHistory';
-import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
-import { PaymentMethodSelector } from '@/components/vendor/PaymentMethodSelector';
+import { PaymentMethodSelector, requiresTransactionId } from '@/components/vendor/PaymentMethodSelector';
 import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
+import { SplitPaymentCollector, PaymentSplit, createDefaultSplit, validateSplits } from '@/components/payment/SplitPaymentCollector';
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 
 const HostelDueManagement: React.FC = () => {
@@ -43,11 +43,9 @@ const HostelDueManagement: React.FC = () => {
   const [collectOpen, setCollectOpen] = useState(false);
   const [selectedDue, setSelectedDue] = useState<any>(null);
   const [collectAmount, setCollectAmount] = useState('');
-  const [collectMethod, setCollectMethod] = useState('cash');
-  const [collectTxnId, setCollectTxnId] = useState('');
+  const [collectSplits, setCollectSplits] = useState<PaymentSplit[]>([createDefaultSplit(0)]);
   const [collectNotes, setCollectNotes] = useState('');
   const [collecting, setCollecting] = useState(false);
-  const [collectProofUrl, setCollectProofUrl] = useState('');
 
   // Date editing state
   const [editingField, setEditingField] = useState<'due_date' | null>(null);
@@ -190,9 +188,9 @@ const HostelDueManagement: React.FC = () => {
   const openCollect = (due: any) => {
     setSelectedDue(due);
     const remaining = Number(due.due_amount) - Number(due.paid_amount);
-    setCollectAmount(String(remaining > 0 ? remaining : 0));
-    setCollectMethod('cash');
-    setCollectTxnId('');
+    const amt = remaining > 0 ? remaining : 0;
+    setCollectAmount(String(amt));
+    setCollectSplits([createDefaultSplit(amt)]);
     setCollectNotes('');
     setCollectOpen(true);
   };
@@ -201,9 +199,20 @@ const HostelDueManagement: React.FC = () => {
     if (!selectedDue || !collectAmount) return;
     const amt = parseFloat(collectAmount);
     if (amt <= 0) { toast({ title: 'Enter a valid amount', variant: 'destructive' }); return; }
-    if (collectMethod !== 'cash' && !collectTxnId.trim()) {
-      toast({ title: 'Transaction ID is required for non-cash payments', variant: 'destructive' });
+    const splitError = validateSplits(collectSplits, amt);
+    if (splitError) {
+      toast({ title: splitError, variant: 'destructive' });
       return;
+    }
+    // Duplicate txn ID check
+    for (const split of collectSplits) {
+      if (requiresTransactionId(split.method) && split.txnId.trim()) {
+        const { data: isDuplicate } = await supabase.rpc('check_duplicate_transaction_id', { p_txn_id: split.txnId.trim() });
+        if (isDuplicate) {
+          toast({ title: 'Duplicate Transaction ID', description: `"${split.txnId}" already used.`, variant: 'destructive' });
+          return;
+        }
+      }
     }
     setCollecting(true);
 
@@ -212,26 +221,39 @@ const HostelDueManagement: React.FC = () => {
     const newPaid = currentPaid + amt;
     const dueAmount = Number(selectedDue.due_amount);
     const newStatus = newPaid >= dueAmount ? 'paid' : 'partially_paid';
-
-    // Validity always spans the full booking period
     const booking = selectedDue.hostel_bookings;
     const proportionalEndDate: string | null = booking?.end_date || null;
 
-    // Insert due payment
-    const { error: paymentError } = await supabase.from('hostel_due_payments').insert({
-      due_id: selectedDue.id,
-      amount: amt,
-      payment_method: collectMethod,
-      transaction_id: collectTxnId,
-      collected_by: user?.id,
-      collected_by_name: collectedByName,
-      notes: collectNotes,
-    });
-
-    if (paymentError) {
-      toast({ title: 'Error', description: paymentError.message, variant: 'destructive' });
-      setCollecting(false);
-      return;
+    // Process each split
+    for (const split of collectSplits) {
+      const splitAmt = parseFloat(split.amount);
+      const { error: paymentError } = await supabase.from('hostel_due_payments').insert({
+        due_id: selectedDue.id,
+        amount: splitAmt,
+        payment_method: split.method,
+        transaction_id: split.txnId,
+        collected_by: user?.id,
+        collected_by_name: collectedByName,
+        notes: collectNotes,
+      });
+      if (paymentError) {
+        toast({ title: 'Error', description: paymentError.message, variant: 'destructive' });
+        setCollecting(false);
+        return;
+      }
+      await supabase.from('hostel_receipts').insert({
+        hostel_id: selectedDue.hostel_id,
+        booking_id: selectedDue.booking_id,
+        user_id: selectedDue.user_id,
+        amount: splitAmt,
+        payment_method: split.method,
+        transaction_id: split.txnId,
+        receipt_type: 'due_collection',
+        collected_by: user?.id,
+        collected_by_name: collectedByName,
+        notes: collectNotes,
+        payment_proof_url: split.proofUrl || null,
+      });
     }
 
     // Update hostel_dues
@@ -240,20 +262,6 @@ const HostelDueManagement: React.FC = () => {
       status: newStatus,
       proportional_end_date: proportionalEndDate,
     }).eq('id', selectedDue.id);
-
-    // Create hostel receipt
-    await supabase.from('hostel_receipts').insert({
-      hostel_id: selectedDue.hostel_id,
-      booking_id: selectedDue.booking_id,
-      user_id: selectedDue.user_id,
-      amount: amt,
-      payment_method: collectMethod,
-      transaction_id: collectTxnId,
-      receipt_type: 'due_collection',
-      collected_by: user?.id,
-      collected_by_name: collectedByName,
-      notes: collectNotes,
-    });
 
     // Update hostel_bookings payment_status if fully paid
     if (newStatus === 'paid' && selectedDue.booking_id) {
@@ -461,33 +469,21 @@ const HostelDueManagement: React.FC = () => {
               </div>
 
               <div>
-                <Label className="text-xs">Payment Method</Label>
-                <PaymentMethodSelector
-                  value={collectMethod}
-                  onValueChange={setCollectMethod}
+                <Label className="text-xs">Payment</Label>
+                <SplitPaymentCollector
+                  totalAmount={parseFloat(collectAmount) || 0}
                   partnerId={user?.vendorId || user?.id}
-                  idPrefix="hdc"
-                  columns={2}
+                  splits={collectSplits}
+                  onSplitsChange={setCollectSplits}
                 />
               </div>
-
-              {collectMethod !== 'cash' && (
-                <div>
-                  <Label className="text-xs">Transaction ID *</Label>
-                  <Input className="h-8 text-xs" value={collectTxnId} onChange={e => setCollectTxnId(e.target.value)} />
-                </div>
-              )}
-
-              {collectMethod !== 'cash' && (
-                <PaymentProofUpload value={collectProofUrl} onChange={setCollectProofUrl} />
-              )}
 
               <div>
                 <Label className="text-xs">Notes (optional)</Label>
                 <Textarea className="text-xs h-16" value={collectNotes} onChange={e => setCollectNotes(e.target.value)} />
               </div>
 
-              <Button className="w-full h-9 text-xs" onClick={handleCollect} disabled={collecting || !collectAmount}>
+              <Button className="w-full h-9 text-xs" onClick={handleCollect} disabled={collecting || !collectAmount || !!validateSplits(collectSplits, parseFloat(collectAmount) || 0)}>
                 {collecting ? 'Processing...' : `Confirm Collection · ₹${collectAmount}`}
               </Button>
 

@@ -13,8 +13,9 @@ import { CalendarIcon, CheckCircle, ArrowLeft, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { vendorSeatsService, PartnerBookingData } from '@/api/vendorSeatsService';
-import { PaymentMethodSelector } from '@/components/vendor/PaymentMethodSelector';
-import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
+import { requiresTransactionId } from '@/components/vendor/PaymentMethodSelector';
+import { SplitPaymentCollector, PaymentSplit, createDefaultSplit, validateSplits } from '@/components/payment/SplitPaymentCollector';
+import { supabase } from '@/integrations/supabase/client';
 import { downloadInvoice, InvoiceData } from '@/utils/invoiceGenerator';
 import { cn } from '@/lib/utils';
 import { bookingEmailService } from '@/api/bookingEmailService';
@@ -64,9 +65,7 @@ export const RenewalSheet: React.FC<RenewalSheetProps> = ({
   const [manualAdvanceAmount, setManualAdvanceAmount] = useState('');
 
   // Payment
-  const [paymentMethod, setPaymentMethod] = useState('cash');
-  const [transactionId, setTransactionId] = useState('');
-  const [paymentProofUrl, setPaymentProofUrl] = useState('');
+  const [bookingSplits, setBookingSplits] = useState<PaymentSplit[]>([createDefaultSplit(0)]);
 
   // Flow
   const [bookingStep, setBookingStep] = useState<'details' | 'confirm'>('details');
@@ -84,9 +83,7 @@ export const RenewalSheet: React.FC<RenewalSheetProps> = ({
       setDiscountReason('');
       setIsAdvanceBooking(false);
       setManualAdvanceAmount('');
-      setPaymentMethod('cash');
-      setTransactionId('');
-      setPaymentProofUrl('');
+      setBookingSplits([createDefaultSplit(0)]);
       setBookingStep('details');
       setCreating(false);
       setSuccess(false);
@@ -142,10 +139,22 @@ export const RenewalSheet: React.FC<RenewalSheetProps> = ({
 
   const handleCreateBooking = async () => {
     if (!booking) return;
-    if (paymentMethod !== 'cash' && !transactionId.trim()) {
-      toast({ title: 'Transaction ID is required for non-cash payments', variant: 'destructive' });
+    const collectingAmount = isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : computedTotal;
+    const splitError = validateSplits(bookingSplits, collectingAmount);
+    if (splitError) {
+      toast({ title: splitError, variant: 'destructive' });
       return;
     }
+    for (const split of bookingSplits) {
+      if (requiresTransactionId(split.method) && split.txnId.trim()) {
+        const { data: isDuplicate } = await supabase.rpc('check_duplicate_transaction_id', { p_txn_id: split.txnId.trim() });
+        if (isDuplicate) {
+          toast({ title: 'Duplicate Transaction ID', description: `"${split.txnId}" already used.`, variant: 'destructive' });
+          return;
+        }
+      }
+    }
+    const primarySplit = bookingSplits[0];
     setCreating(true);
     const collectedByName = user?.name || user?.email || 'Partner';
     const data: PartnerBookingData = {
@@ -162,11 +171,11 @@ export const RenewalSheet: React.FC<RenewalSheetProps> = ({
       lockerPrice: 0,
       discountAmount: parseFloat(discountAmount) || 0,
       discountReason,
-      paymentMethod,
+      paymentMethod: primarySplit.method,
       collectedBy: user?.id,
       collectedByName,
-      transactionId,
-      paymentProofUrl,
+      transactionId: primarySplit.txnId,
+      paymentProofUrl: primarySplit.proofUrl,
       isAdvanceBooking: isAdvanceBooking && !!advanceComputed,
       advancePaid: isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : undefined,
       dueDate: isAdvanceBooking && advanceComputed ? format(advanceComputed.proportionalEndDate, 'yyyy-MM-dd') : undefined,
@@ -193,8 +202,8 @@ export const RenewalSheet: React.FC<RenewalSheetProps> = ({
         lockerIncluded: false,
         lockerPrice: 0,
         totalAmount: computedTotal,
-        paymentMethod,
-        transactionId,
+        paymentMethod: primarySplit.method,
+        transactionId: primarySplit.txnId,
         collectedByName,
       };
       setLastInvoiceData(invoiceData);
@@ -215,8 +224,8 @@ export const RenewalSheet: React.FC<RenewalSheetProps> = ({
           seatAmount: parseFloat(bookingPrice) || 0,
           discountAmount: parseFloat(discountAmount) || 0,
           totalAmount: computedTotal,
-          paymentMethod,
-          transactionId,
+          paymentMethod: primarySplit.method,
+          transactionId: primarySplit.txnId,
           collectedByName,
         }).catch(err => console.error('Renewal receipt email failed:', err));
       }
@@ -409,30 +418,17 @@ export const RenewalSheet: React.FC<RenewalSheetProps> = ({
                   )}
                 </div>
 
-                {/* Payment Method */}
+                {/* Split Payment */}
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] uppercase text-muted-foreground">Payment Method</Label>
-                  <PaymentMethodSelector
-                    value={paymentMethod}
-                    onValueChange={setPaymentMethod}
+                  <Label className="text-[10px] uppercase text-muted-foreground">Payment</Label>
+                  <SplitPaymentCollector
+                    totalAmount={isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : computedTotal}
                     partnerId={user?.vendorId || user?.id}
-                    idPrefix="renew-pm"
-                    columns={3}
+                    splits={bookingSplits}
+                    onSplitsChange={setBookingSplits}
+                    compact
                   />
                 </div>
-
-                {/* Transaction ID */}
-                {paymentMethod !== 'cash' && (
-                  <div>
-                    <Label className="text-[10px] uppercase text-muted-foreground">Transaction ID *</Label>
-                    <Input className="h-8 text-xs" placeholder="Enter transaction reference ID" value={transactionId} onChange={e => setTransactionId(e.target.value)} />
-                  </div>
-                )}
-
-                {/* Payment Proof */}
-                {paymentMethod !== 'cash' && (
-                  <PaymentProofUpload value={paymentProofUrl} onChange={setPaymentProofUrl} />
-                )}
 
                 {/* Collected by */}
                 <div className="text-muted-foreground text-[10px] px-1">
@@ -445,7 +441,7 @@ export const RenewalSheet: React.FC<RenewalSheetProps> = ({
                   </Button>
                   <Button
                     className="flex-1 h-9 text-xs"
-                    disabled={creating || (paymentMethod !== 'cash' && !transactionId.trim())}
+                    disabled={creating || !!validateSplits(bookingSplits, isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : computedTotal)}
                     onClick={handleCreateBooking}
                   >
                     {creating ? 'Creating...' : `Confirm · ₹${isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : computedTotal}`}

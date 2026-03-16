@@ -111,9 +111,7 @@ const VendorSeats: React.FC = () => {
   const [lockerIncluded, setLockerIncluded] = useState(false);
   const [discountAmount, setDiscountAmount] = useState('');
   const [discountReason, setDiscountReason] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<string>('cash');
-  const [transactionId, setTransactionId] = useState('');
-  const [paymentProofUrl, setPaymentProofUrl] = useState('');
+  const [bookingSplits, setBookingSplits] = useState<PaymentSplit[]>([createDefaultSplit(0)]);
 
   // Slot selection state
   const [selectedSlot, setSelectedSlot] = useState<CabinSlot | null>(null);
@@ -346,9 +344,7 @@ const VendorSeats: React.FC = () => {
     setBlockHistory([]);
     setDiscountAmount('');
     setDiscountReason('');
-    setPaymentMethod('cash');
-    setTransactionId('');
-    setPaymentProofUrl('');
+    setBookingSplits([createDefaultSplit(0)]);
     setBookingSuccess(false);
     setLastInvoiceData(null);
     setShowFutureBooking(false);
@@ -698,10 +694,23 @@ const VendorSeats: React.FC = () => {
   // Create booking
   const handleCreateBooking = async () => {
     if (!selectedSeat || !selectedStudent) return;
-    if (paymentMethod !== 'cash' && !transactionId.trim()) {
-      toast({ title: 'Transaction ID is required for non-cash payments', variant: 'destructive' });
+    const collectingAmount = isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : computedTotal;
+    const splitError = validateSplits(bookingSplits, collectingAmount);
+    if (splitError) {
+      toast({ title: splitError, variant: 'destructive' });
       return;
     }
+    // Duplicate txn ID check
+    for (const split of bookingSplits) {
+      if (requiresTransactionId(split.method) && split.txnId.trim()) {
+        const { data: isDuplicate } = await supabase.rpc('check_duplicate_transaction_id', { p_txn_id: split.txnId.trim() });
+        if (isDuplicate) {
+          toast({ title: 'Duplicate Transaction ID', description: `"${split.txnId}" already used.`, variant: 'destructive' });
+          return;
+        }
+      }
+    }
+    const primarySplit = bookingSplits[0];
     setCreatingBooking(true);
     const collectedByName = user?.name || user?.email || 'Partner';
     const data: PartnerBookingData = {
@@ -718,11 +727,11 @@ const VendorSeats: React.FC = () => {
       lockerPrice: lockerIncluded && selectedCabinInfo ? selectedCabinInfo.lockerPrice : 0,
       discountAmount: parseFloat(discountAmount) || 0,
       discountReason: discountReason,
-      paymentMethod: paymentMethod,
+      paymentMethod: primarySplit.method,
       collectedBy: user?.id,
       collectedByName: collectedByName,
-      transactionId: transactionId,
-      paymentProofUrl: paymentProofUrl,
+      transactionId: primarySplit.txnId,
+      paymentProofUrl: primarySplit.proofUrl,
       isAdvanceBooking: isAdvanceBooking && !!advanceComputed,
       advancePaid: isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : undefined,
       dueDate: isAdvanceBooking && advanceComputed ? format(advanceComputed.proportionalEndDate, 'yyyy-MM-dd') : undefined,
@@ -752,14 +761,16 @@ const VendorSeats: React.FC = () => {
         lockerIncluded,
         lockerPrice: lockerIncluded && selectedCabinInfo ? selectedCabinInfo.lockerPrice : 0,
         totalAmount: computedTotal,
-        paymentMethod,
-        transactionId,
+        paymentMethod: primarySplit.method,
+        transactionId: primarySplit.txnId,
         collectedByName,
       };
+      // Note: Additional splits for first-time bookings would need a due record.
+      // For now, the primary split covers the booking. Multi-split is most useful for due collection.
       setLastInvoiceData(invoiceData);
       setBookingSuccess(true);
       setBookingStep('details');
-      toast({ title: paymentMethod === 'send_link' ? 'Payment link sent' : 'Booking created successfully' });
+      toast({ title: primarySplit.method === 'send_link' ? 'Payment link sent' : 'Booking created successfully' });
 
       // Fire-and-forget receipt email
       if (selectedStudent.email) {
@@ -776,8 +787,8 @@ const VendorSeats: React.FC = () => {
           discountAmount: parseFloat(discountAmount) || 0,
           lockerPrice: lockerIncluded && selectedCabinInfo ? selectedCabinInfo.lockerPrice : 0,
           totalAmount: computedTotal,
-          paymentMethod,
-          transactionId,
+          paymentMethod: primarySplit.method,
+          transactionId: primarySplit.txnId,
           collectedByName,
           advancePaid: isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : undefined,
           remainingDue: isAdvanceBooking && advanceComputed ? (computedTotal - advanceComputed.advanceAmount) : undefined,
@@ -1885,30 +1896,17 @@ const VendorSeats: React.FC = () => {
                         )}
                       </div>
 
-                      {/* Payment Method */}
+                      {/* Split Payment */}
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] uppercase text-muted-foreground">Payment Method</Label>
-                        <PaymentMethodSelector
-                          value={paymentMethod}
-                          onValueChange={setPaymentMethod}
+                        <Label className="text-[10px] uppercase text-muted-foreground">Payment</Label>
+                        <SplitPaymentCollector
+                          totalAmount={isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : computedTotal}
                           partnerId={user?.vendorId || user?.id}
-                          idPrefix="pm"
-                          columns={3}
+                          splits={bookingSplits}
+                          onSplitsChange={setBookingSplits}
+                          compact
                         />
                       </div>
-
-                      {/* Transaction ID (required for all non-cash) */}
-                      {paymentMethod !== 'cash' && (
-                        <div>
-                          <Label className="text-[10px] uppercase text-muted-foreground">Transaction ID *</Label>
-                          <Input className="h-8 text-xs" placeholder="Enter transaction reference ID" value={transactionId} onChange={e => setTransactionId(e.target.value)} />
-                        </div>
-                      )}
-
-                      {/* Payment Proof Upload for non-cash */}
-                      {paymentMethod !== 'cash' && (
-                        <PaymentProofUpload value={paymentProofUrl} onChange={setPaymentProofUrl} />
-                      )}
 
                       {/* Collected by */}
                       <div className="text-muted-foreground text-[10px] px-1">
@@ -1925,7 +1923,7 @@ const VendorSeats: React.FC = () => {
                         </Button>
                         <Button
                           className="flex-1 h-9 text-xs"
-                          disabled={creatingBooking || (paymentMethod !== 'cash' && !transactionId.trim())}
+                          disabled={creatingBooking || !!validateSplits(bookingSplits, isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : computedTotal)}
                           onClick={handleCreateBooking}
                         >
                           {creatingBooking ? 'Creating...' : `Confirm · ₹${isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : computedTotal}`}

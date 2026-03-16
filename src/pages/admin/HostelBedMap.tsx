@@ -32,8 +32,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { attendanceService } from '@/api/attendanceService';
 import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
-import { PaymentMethodSelector } from '@/components/vendor/PaymentMethodSelector';
+import { PaymentMethodSelector, requiresTransactionId } from '@/components/vendor/PaymentMethodSelector';
 import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
+import { SplitPaymentCollector, PaymentSplit, createDefaultSplit, validateSplits } from '@/components/payment/SplitPaymentCollector';
 import { BookingUpdateDatesDialog } from '@/components/admin/BookingUpdateDatesDialog';
 import { Textarea } from '@/components/ui/textarea';
 import { bookingEmailService } from '@/api/bookingEmailService';
@@ -151,9 +152,7 @@ const HostelBedMap: React.FC = () => {
   const [creatingBooking, setCreatingBooking] = useState(false);
   const [discountAmount, setDiscountAmount] = useState('');
   const [discountReason, setDiscountReason] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<string>('cash');
-  const [transactionId, setTransactionId] = useState('');
-  const [paymentProofUrl, setPaymentProofUrl] = useState('');
+  const [bookingSplits, setBookingSplits] = useState<PaymentSplit[]>([createDefaultSplit(0)]);
   const [collectSecurityDeposit, setCollectSecurityDeposit] = useState(true);
   const [securityDepositAmount, setSecurityDepositAmount] = useState('');
 
@@ -587,8 +586,8 @@ const HostelBedMap: React.FC = () => {
     setNewStudentPhone('');
     setDiscountAmount('');
     setDiscountReason('');
-    setPaymentMethod('cash');
-    setTransactionId('');
+    setBookingSplits([createDefaultSplit(0)]);
+    // transactionId removed - handled by splits
     setCollectSecurityDeposit(true);
     const hostelInfo = hostels.find(h => h.id === bed.hostelId);
     setSecurityDepositAmount(String(hostelInfo?.security_deposit || 0));
@@ -694,7 +693,7 @@ const HostelBedMap: React.FC = () => {
       receipt_type: 'due_collection',
       collected_by: user?.id,
       collected_by_name: collectedByName,
-      payment_proof_url: paymentProofUrl || null,
+      payment_proof_url: null,
     });
     if (!receiptError) {
       // Update booking remaining_amount
@@ -994,10 +993,22 @@ const HostelBedMap: React.FC = () => {
   // Create booking
   const handleCreateBooking = async () => {
     if (!selectedBed || !selectedStudent) return;
-    if (paymentMethod !== 'cash' && !transactionId.trim()) {
-      toast({ title: 'Transaction ID is required for non-cash payments', variant: 'destructive' });
+    const collectingNow = isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : (computedTotal + (collectSecurityDeposit ? (parseFloat(securityDepositAmount) || 0) : 0));
+    const splitError = validateSplits(bookingSplits, collectingNow);
+    if (splitError) {
+      toast({ title: splitError, variant: 'destructive' });
       return;
     }
+    for (const split of bookingSplits) {
+      if (requiresTransactionId(split.method) && split.txnId.trim()) {
+        const { data: isDuplicate } = await supabase.rpc('check_duplicate_transaction_id', { p_txn_id: split.txnId.trim() });
+        if (isDuplicate) {
+          toast({ title: 'Duplicate Transaction ID', description: `"${split.txnId}" already used.`, variant: 'destructive' });
+          return;
+        }
+      }
+    }
+    const primarySplit = bookingSplits[0];
     setCreatingBooking(true);
     const collectedByName = user?.name || user?.email || 'Admin';
     const total = computedTotal;
@@ -1024,11 +1035,11 @@ const HostelBedMap: React.FC = () => {
       duration_count: selectedDuration.count,
       payment_status: remaining <= 0 ? 'completed' : 'partial',
       status: 'confirmed',
-      payment_method: paymentMethod,
-      transaction_id: transactionId,
+      payment_method: primarySplit.method,
+      transaction_id: primarySplit.txnId,
       collected_by: user?.id,
       collected_by_name: collectedByName,
-      payment_proof_url: paymentProofUrl || null,
+      payment_proof_url: primarySplit.proofUrl || null,
     }).select('id, serial_number').single();
 
     if (!error && newBooking) {
@@ -1055,13 +1066,33 @@ const HostelBedMap: React.FC = () => {
         booking_id: newBooking.id,
         user_id: selectedStudent.id,
         amount: receiptAmount,
-        payment_method: paymentMethod,
-        transaction_id: transactionId,
+        payment_method: primarySplit.method,
+        transaction_id: primarySplit.txnId,
         receipt_type: 'booking_payment',
         collected_by: user?.id,
         collected_by_name: collectedByName,
-        payment_proof_url: paymentProofUrl || null,
+        payment_proof_url: primarySplit.proofUrl || null,
       });
+
+      // Process additional splits as separate receipts
+      if (bookingSplits.length > 1) {
+        for (let i = 1; i < bookingSplits.length; i++) {
+          const split = bookingSplits[i];
+          const splitAmt = parseFloat(split.amount);
+          await supabase.from('hostel_receipts').insert({
+            hostel_id: selectedBed.hostelId,
+            booking_id: newBooking.id,
+            user_id: selectedStudent.id,
+            amount: splitAmt,
+            payment_method: split.method,
+            transaction_id: split.txnId,
+            receipt_type: 'booking_payment',
+            collected_by: user?.id,
+            collected_by_name: collectedByName,
+            payment_proof_url: split.proofUrl || null,
+          });
+        }
+      }
 
       // Create hostel_dues entry if advance booking (partial payment)
       if (remaining > 0 && isAdvanceBooking && advanceComputed) {
@@ -1097,8 +1128,8 @@ const HostelBedMap: React.FC = () => {
         discountReason,
         totalAmount: total,
         securityDeposit: secDepAmt,
-        paymentMethod,
-        transactionId,
+        paymentMethod: primarySplit.method,
+        transactionId: primarySplit.txnId,
         collectedByName,
         advanceAmount: advanceAmt,
         remainingDue: remaining,
@@ -1123,8 +1154,8 @@ const HostelBedMap: React.FC = () => {
           discountAmount: parseFloat(discountAmount) || 0,
           securityDeposit: secDepAmt,
           totalAmount: total,
-          paymentMethod,
-          transactionId,
+          paymentMethod: primarySplit.method,
+          transactionId: primarySplit.txnId,
           collectedByName,
           advancePaid: remaining > 0 ? advanceAmt : undefined,
           remainingDue: remaining > 0 ? remaining : undefined,
@@ -1783,7 +1814,7 @@ const HostelBedMap: React.FC = () => {
                     <Separator />
                     <div className="grid grid-cols-2 gap-y-1">
                       <div><span className="text-muted-foreground">Payment:</span></div>
-                      <div>{paymentMethod === 'cash' ? 'Cash' : paymentMethod === 'upi' ? 'UPI' : 'Bank Transfer'}</div>
+                      <div>{lastBookingInfo.paymentMethod === 'cash' ? 'Cash' : lastBookingInfo.paymentMethod === 'upi' ? 'UPI' : 'Bank Transfer'}</div>
                       {lastBookingInfo.transactionId && (
                         <><div><span className="text-muted-foreground">Txn ID:</span></div><div className="break-all">{lastBookingInfo.transactionId}</div></>
                       )}
@@ -2051,28 +2082,17 @@ const HostelBedMap: React.FC = () => {
                         )}
                       </div>
 
-                      {/* Payment Method */}
+                      {/* Split Payment */}
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] uppercase text-muted-foreground">Payment Method</Label>
-                        <PaymentMethodSelector
-                          value={paymentMethod}
-                          onValueChange={setPaymentMethod}
+                        <Label className="text-[10px] uppercase text-muted-foreground">Payment</Label>
+                        <SplitPaymentCollector
+                          totalAmount={isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : (computedTotal + (collectSecurityDeposit ? (parseFloat(securityDepositAmount) || 0) : 0))}
                           partnerId={user?.vendorId || user?.id}
-                          idPrefix="hpm"
-                          columns={3}
+                          splits={bookingSplits}
+                          onSplitsChange={setBookingSplits}
+                          compact
                         />
                       </div>
-
-                      {paymentMethod !== 'cash' && (
-                        <div>
-                          <Label className="text-[10px] uppercase text-muted-foreground">Transaction ID *</Label>
-                          <Input className="h-8 text-xs" placeholder="Enter transaction reference ID" value={transactionId} onChange={e => setTransactionId(e.target.value)} />
-                        </div>
-                      )}
-
-                      {paymentMethod !== 'cash' && (
-                        <PaymentProofUpload value={paymentProofUrl} onChange={setPaymentProofUrl} />
-                      )}
 
                       <div className="text-muted-foreground text-[10px] px-1">Collected by: {user?.name || user?.email || 'Admin'}</div>
 
@@ -2081,7 +2101,7 @@ const HostelBedMap: React.FC = () => {
                           <ArrowLeft className="h-3 w-3 mr-1" /> Back
                         </Button>
                         <Button className="flex-1 h-9 text-xs"
-                          disabled={creatingBooking || (paymentMethod !== 'cash' && !transactionId.trim())}
+                          disabled={creatingBooking || !!validateSplits(bookingSplits, isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : (computedTotal + (collectSecurityDeposit ? (parseFloat(securityDepositAmount) || 0) : 0)))}
                           onClick={handleCreateBooking}>
                           {creatingBooking ? 'Creating...' : `Confirm · ₹${isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : (computedTotal + (collectSecurityDeposit ? (parseFloat(securityDepositAmount) || 0) : 0))}`}
                         </Button>
@@ -2153,9 +2173,7 @@ const HostelBedMap: React.FC = () => {
                                   {dueCollectMethod !== 'cash' && (
                                     <div><Label className="text-[10px]">Transaction ID *</Label><Input className="h-7 text-xs" value={dueCollectTxnId} onChange={e => setDueCollectTxnId(e.target.value)} /></div>
                                   )}
-                                  {dueCollectMethod !== 'cash' && (
-                                    <PaymentProofUpload value={paymentProofUrl} onChange={setPaymentProofUrl} />
-                                  )}
+                                  
                                   <Button size="sm" className="w-full h-7 text-[10px]" onClick={() => handleInlineDueCollect(b.bookingId)} disabled={collectingDue || !dueCollectAmount}>
                                     {collectingDue ? 'Processing...' : `Collect ₹${dueCollectAmount}`}
                                   </Button>

@@ -24,6 +24,7 @@ import { addDays, addMonths, subDays, format } from 'date-fns';
 import { updateMessSubscription, createMessReceipt, getMessPackages } from '@/api/messService';
 import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
 import { PaymentMethodSelector, requiresTransactionId } from '@/components/vendor/PaymentMethodSelector';
+import { SplitPaymentCollector, PaymentSplit, createDefaultSplit, validateSplits } from '@/components/payment/SplitPaymentCollector';
 import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 import { vendorSeatsService } from '@/api/vendorSeatsService';
 import { cn } from '@/lib/utils';
@@ -107,12 +108,10 @@ export default function MessBookings() {
   const [startDateOpen, setStartDateOpen] = useState(false);
 
   // Payment
-  const [paymentMethod, setPaymentMethod] = useState('');
-  const [transactionId, setTransactionId] = useState('');
+  const [bookingSplits, setBookingSplits] = useState<PaymentSplit[]>([createDefaultSplit(0)]);
   const [pricePaid, setPricePaid] = useState(0);
   const [discountAmount, setDiscountAmount] = useState(0);
   const [advanceAmount, setAdvanceAmount] = useState(0);
-  const [paymentProofUrl, setPaymentProofUrl] = useState('');
   const [collectedByName, setCollectedByName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [partnerId, setPartnerId] = useState('');
@@ -303,9 +302,9 @@ export default function MessBookings() {
     setSelectedMess(null); setPackages([]); setSelectedPackage(null);
     setDurationType('monthly'); setDurationCount(1);
     setStartDate(new Date()); setEndDate('');
-    setPaymentMethod(''); setTransactionId('');
+    setBookingSplits([createDefaultSplit(0)]);
     setPricePaid(0); setDiscountAmount(0); setAdvanceAmount(0);
-    setPaymentProofUrl(''); setCollectedByName(user?.name || '');
+    setCollectedByName(user?.name || '');
   };
 
   const openBookingSheet = () => {
@@ -386,6 +385,21 @@ export default function MessBookings() {
 
   const handleBookingSubmit = async () => {
     if (!selectedUserId || !selectedMess || !selectedPackage) return;
+    const splitError = validateSplits(bookingSplits, advanceAmount);
+    if (splitError) {
+      toast({ title: splitError, variant: 'destructive' });
+      return;
+    }
+    for (const split of bookingSplits) {
+      if (requiresTransactionId(split.method) && split.txnId.trim()) {
+        const { data: isDuplicate } = await supabase.rpc('check_duplicate_transaction_id', { p_txn_id: split.txnId.trim() });
+        if (isDuplicate) {
+          toast({ title: 'Duplicate Transaction ID', description: `"${split.txnId}" already used.`, variant: 'destructive' });
+          return;
+        }
+      }
+    }
+    const primarySplit = bookingSplits[0];
     setSubmitting(true);
     try {
       const isPartial = dueAmount > 0;
@@ -396,16 +410,16 @@ export default function MessBookings() {
         start_date: format(startDate, 'yyyy-MM-dd'),
         end_date: endDate,
         price_paid: totalAfterDiscount,
-        payment_method: paymentMethod,
+        payment_method: primarySplit.method,
         payment_status: isPartial ? 'advance_paid' : 'completed',
         status: 'active',
-        transaction_id: transactionId,
+        transaction_id: primarySplit.txnId,
         advance_amount: advanceAmount,
         discount_amount: discountAmount,
         notes: '',
         created_by: user?.id,
         collected_by_name: collectedByName || user?.name || '',
-        payment_proof_url: paymentProofUrl || null,
+        payment_proof_url: primarySplit.proofUrl || null,
       }).select().single();
       if (subErr) throw subErr;
 
@@ -413,14 +427,33 @@ export default function MessBookings() {
         subscription_id: (sub as any).id,
         user_id: selectedUserId,
         mess_id: selectedMess.id,
-        amount: advanceAmount,
-        payment_method: paymentMethod,
-        transaction_id: transactionId,
+        amount: parseFloat(primarySplit.amount),
+        payment_method: primarySplit.method,
+        transaction_id: primarySplit.txnId,
         collected_by: user?.id,
         collected_by_name: collectedByName || user?.name || '',
-        payment_proof_url: paymentProofUrl || null,
+        payment_proof_url: primarySplit.proofUrl || null,
         notes: '',
       });
+
+      // Process additional splits as separate receipts
+      if (bookingSplits.length > 1) {
+        for (let i = 1; i < bookingSplits.length; i++) {
+          const split = bookingSplits[i];
+          await createMessReceipt({
+            subscription_id: (sub as any).id,
+            user_id: selectedUserId,
+            mess_id: selectedMess.id,
+            amount: parseFloat(split.amount),
+            payment_method: split.method,
+            transaction_id: split.txnId,
+            collected_by: user?.id,
+            collected_by_name: collectedByName || user?.name || '',
+            payment_proof_url: split.proofUrl || null,
+            notes: 'Additional split payment',
+          });
+        }
+      }
 
       if (isPartial) {
         await supabase.from('mess_dues' as any).insert({
@@ -904,36 +937,31 @@ export default function MessBookings() {
                 </div>
               )}
 
-              {/* 7. Payment Method */}
+              {/* 7. Split Payment */}
               {selectedPackage && selectedUserId && endDate && (
                 <div>
-                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-primary">Payment Method</Label>
+                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-primary">Payment</Label>
                   <div className="mt-1">
-                    <PaymentMethodSelector value={paymentMethod} onValueChange={setPaymentMethod} partnerId={partnerId} columns={3} compact />
+                    <SplitPaymentCollector
+                      totalAmount={advanceAmount}
+                      partnerId={partnerId}
+                      splits={bookingSplits}
+                      onSplitsChange={setBookingSplits}
+                      compact
+                    />
                   </div>
                 </div>
               )}
 
-              {/* 8. Transaction ID & Proof */}
-              {paymentMethod && requiresTransactionId(paymentMethod) && (
-                <div className="space-y-2">
-                  <div>
-                    <Label className="text-[10px] text-muted-foreground">Transaction ID</Label>
-                    <Input value={transactionId} onChange={e => setTransactionId(e.target.value)} className="h-8 text-xs" placeholder="Enter txn ID" />
-                  </div>
-                  <PaymentProofUpload value={paymentProofUrl} onChange={setPaymentProofUrl} />
-                </div>
-              )}
-
-              {/* 9. Collected By (static) */}
+              {/* 8. Collected By (static) */}
               {selectedPackage && selectedUserId && endDate && (
                 <p className="text-[11px] text-muted-foreground">Collected by: <span className="font-semibold text-foreground">{user?.name || 'Partner'}</span></p>
               )}
 
-              {/* 10. Submit */}
-              {selectedUserId && selectedMess && selectedPackage && endDate && paymentMethod && (
+              {/* 9. Submit */}
+              {selectedUserId && selectedMess && selectedPackage && endDate && (
                 <Button className="w-full text-xs gap-1" onClick={handleBookingSubmit}
-                  disabled={submitting || (requiresTransactionId(paymentMethod) && !transactionId)}>
+                  disabled={submitting || !!validateSplits(bookingSplits, advanceAmount)}>
                   {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
                   Confirm Booking · {formatCurrency(advanceAmount)}
                 </Button>

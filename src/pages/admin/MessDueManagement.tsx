@@ -16,9 +16,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Textarea } from '@/components/ui/textarea';
-import { PaymentMethodSelector } from '@/components/vendor/PaymentMethodSelector';
+import { requiresTransactionId } from '@/components/vendor/PaymentMethodSelector';
 import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
+import { SplitPaymentCollector, PaymentSplit, createDefaultSplit, validateSplits } from '@/components/payment/SplitPaymentCollector';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { formatCurrency } from '@/utils/currency';
 
@@ -43,8 +44,7 @@ const MessDueManagement: React.FC = () => {
   const [collectOpen, setCollectOpen] = useState(false);
   const [selectedDue, setSelectedDue] = useState<any>(null);
   const [collectAmount, setCollectAmount] = useState('');
-  const [collectMethod, setCollectMethod] = useState('cash');
-  const [collectTxnId, setCollectTxnId] = useState('');
+  const [collectSplits, setCollectSplits] = useState<PaymentSplit[]>([createDefaultSplit(0)]);
   const [collectNotes, setCollectNotes] = useState('');
   const [collecting, setCollecting] = useState(false);
   const [partnerId, setPartnerId] = useState<string>('');
@@ -163,33 +163,49 @@ const MessDueManagement: React.FC = () => {
   const openCollect = (due: any) => {
     setSelectedDue(due);
     const remaining = (due.due_amount || 0) - (due.paid_amount || 0);
-    setCollectAmount(remaining > 0 ? remaining.toString() : '');
-    setCollectMethod('cash');
-    setCollectTxnId('');
+    const amt = remaining > 0 ? remaining : 0;
+    setCollectAmount(amt.toString());
+    setCollectSplits([createDefaultSplit(amt)]);
     setCollectNotes('');
     setCollectOpen(true);
   };
 
   const handleCollect = async () => {
     if (!selectedDue || !collectAmount) return;
+    const totalAmt = parseFloat(collectAmount);
+    if (totalAmt <= 0) { toast({ title: 'Enter a valid amount', variant: 'destructive' }); return; }
+    const splitError = validateSplits(collectSplits, totalAmt);
+    if (splitError) {
+      toast({ title: splitError, variant: 'destructive' });
+      return;
+    }
+    for (const split of collectSplits) {
+      if (requiresTransactionId(split.method) && split.txnId.trim()) {
+        const { data: isDuplicate } = await supabase.rpc('check_duplicate_transaction_id', { p_txn_id: split.txnId.trim() });
+        if (isDuplicate) {
+          toast({ title: 'Duplicate Transaction ID', description: `"${split.txnId}" already used.`, variant: 'destructive' });
+          return;
+        }
+      }
+    }
     setCollecting(true);
     try {
-      const amount = parseFloat(collectAmount);
       const collectorName = user?.name || user?.email || 'Partner';
 
-      // Insert payment record
-      await supabase.from('mess_due_payments' as any).insert({
-        due_id: selectedDue.id,
-        amount,
-        payment_method: collectMethod,
-        transaction_id: collectTxnId || `MESS-${Date.now()}`,
-        notes: collectNotes,
-        collected_by: user?.id,
-        collected_by_name: collectorName,
-      });
+      for (const split of collectSplits) {
+        const splitAmt = parseFloat(split.amount);
+        await supabase.from('mess_due_payments' as any).insert({
+          due_id: selectedDue.id,
+          amount: splitAmt,
+          payment_method: split.method,
+          transaction_id: split.txnId || `MESS-${Date.now()}`,
+          notes: collectNotes,
+          collected_by: user?.id,
+          collected_by_name: collectorName,
+        });
+      }
 
-      // Update due
-      const newPaid = (selectedDue.paid_amount || 0) + amount;
+      const newPaid = (selectedDue.paid_amount || 0) + totalAmt;
       const remaining = Math.max(0, (selectedDue.due_amount || 0) - newPaid);
       await supabase.from('mess_dues' as any).update({
         paid_amount: newPaid,
@@ -197,7 +213,7 @@ const MessDueManagement: React.FC = () => {
         updated_at: new Date().toISOString(),
       }).eq('id', selectedDue.id);
 
-      toast({ title: 'Payment collected', description: `₹${amount} collected successfully` });
+      toast({ title: 'Payment collected', description: `₹${totalAmt} collected successfully` });
       setCollectOpen(false);
       fetchData();
     } catch (e: any) {
@@ -402,16 +418,20 @@ const MessDueManagement: React.FC = () => {
                   <Label className="text-xs">Amount</Label>
                   <Input type="number" value={collectAmount} onChange={e => setCollectAmount(e.target.value)} className="h-8 text-xs" />
                 </div>
-                <PaymentMethodSelector value={collectMethod} onValueChange={setCollectMethod} partnerId={partnerId} />
                 <div>
-                  <Label className="text-xs">Transaction ID</Label>
-                  <Input value={collectTxnId} onChange={e => setCollectTxnId(e.target.value)} className="h-8 text-xs" placeholder="Optional" />
+                  <Label className="text-xs">Payment</Label>
+                  <SplitPaymentCollector
+                    totalAmount={parseFloat(collectAmount) || 0}
+                    partnerId={partnerId}
+                    splits={collectSplits}
+                    onSplitsChange={setCollectSplits}
+                  />
                 </div>
                 <div>
                   <Label className="text-xs">Notes</Label>
                   <Textarea value={collectNotes} onChange={e => setCollectNotes(e.target.value)} className="text-xs" rows={2} placeholder="Optional" />
                 </div>
-                <Button className="w-full" onClick={handleCollect} disabled={collecting || !collectAmount}>
+                <Button className="w-full" onClick={handleCollect} disabled={collecting || !collectAmount || !!validateSplits(collectSplits, parseFloat(collectAmount) || 0)}>
                   {collecting ? 'Collecting...' : `Collect ${formatCurrency(parseFloat(collectAmount) || 0)}`}
                 </Button>
               </div>
