@@ -270,7 +270,7 @@ const DueManagement: React.FC = () => {
                           {getStatusBadge(due)}
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-[11px]">
-                          <div><span className="text-muted-foreground">Room: </span>{(due.cabins as any)?.name || ''} {(due.seats as any)?.floor ? `Floor ${(due.seats as any).floor} · ` : ''}#{(due.seats as any)?.number || ''}</div>
+                          <div><span className="text-muted-foreground">Room: </span>{(due.cabins as any)?.name || ''} {(due.seats as any)?.floor ? `F${(due.seats as any).floor} · ` : ''}S{(due.seats as any)?.number || ''}</div>
                           <div><span className="text-muted-foreground">Total: </span>₹{Number(due.total_fee).toLocaleString()}</div>
                           <div className="text-emerald-600">Paid: ₹{(Number(due.advance_paid) + Number(due.paid_amount)).toLocaleString()}</div>
                           <div className="text-red-600 font-medium">Due: ₹{Math.max(0, remaining).toLocaleString()}</div>
