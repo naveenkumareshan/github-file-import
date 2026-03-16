@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Banknote, Smartphone, Building2, CreditCard, Receipt } from 'lucide-react';
 import { requiresTransactionId, isNonCashMethod } from '@/components/vendor/PaymentMethodSelector';
 import { supabase } from '@/integrations/supabase/client';
+import { normalizePaymentMethod } from '@/utils/paymentMethodLabels';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { vendorSeatsService } from '@/api/vendorSeatsService';
