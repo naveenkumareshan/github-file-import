@@ -403,23 +403,12 @@ const DueManagement: React.FC = () => {
                 <Input type="number" className="h-8 text-xs" value={collectAmount} onChange={e => setCollectAmount(e.target.value)} />
               </div>
 
-              <div>
-                <Label className="text-xs">Payment Method</Label>
-                <PaymentMethodSelector
-                  value={collectMethod}
-                  onValueChange={setCollectMethod}
-                  partnerId={partnerId}
-                  idPrefix="dc"
-                  columns={2}
-                />
-              </div>
-
-              {collectMethod !== 'cash' && (
-                <div>
-                  <Label className="text-xs">Transaction ID *</Label>
-                  <Input className="h-8 text-xs" value={collectTxnId} onChange={e => setCollectTxnId(e.target.value)} />
-                </div>
-              )}
+              <SplitPaymentCollector
+                totalAmount={parseFloat(collectAmount) || 0}
+                partnerId={partnerId}
+                splits={collectSplits}
+                onSplitsChange={setCollectSplits}
+              />
 
               <div>
                 <Label className="text-xs">Notes (optional)</Label>

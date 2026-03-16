@@ -207,27 +207,12 @@ export const CollectDrawer: React.FC<CollectDrawerProps> = ({ open, onOpenChange
             <Input type="number" className="h-8 text-xs" value={amount} onChange={e => setAmount(e.target.value)} />
           </div>
 
-          <div>
-            <Label className="text-xs">Payment Method</Label>
-            <PaymentMethodSelector
-              value={method}
-              onValueChange={setMethod}
-              partnerId={partnerId}
-              idPrefix="ci"
-              columns={2}
-            />
-          </div>
-
-          {requiresTransactionId(method) && (
-            <div>
-              <Label className="text-xs">Transaction ID</Label>
-              <Input className="h-8 text-xs" value={txnId} onChange={e => setTxnId(e.target.value)} />
-            </div>
-          )}
-
-          {method !== 'cash' && (
-            <PaymentProofUpload value={proofUrl} onChange={setProofUrl} />
-          )}
+          <SplitPaymentCollector
+            totalAmount={totalAmount}
+            partnerId={partnerId}
+            splits={splits}
+            onSplitsChange={setSplits}
+          />
 
           <div>
             <Label className="text-xs">Notes (optional)</Label>
