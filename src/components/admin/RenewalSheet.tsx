@@ -65,9 +65,7 @@ export const RenewalSheet: React.FC<RenewalSheetProps> = ({
   const [manualAdvanceAmount, setManualAdvanceAmount] = useState('');
 
   // Payment
-  const [paymentMethod, setPaymentMethod] = useState('cash');
-  const [transactionId, setTransactionId] = useState('');
-  const [paymentProofUrl, setPaymentProofUrl] = useState('');
+  const [bookingSplits, setBookingSplits] = useState<PaymentSplit[]>([createDefaultSplit(0)]);
 
   // Flow
   const [bookingStep, setBookingStep] = useState<'details' | 'confirm'>('details');
