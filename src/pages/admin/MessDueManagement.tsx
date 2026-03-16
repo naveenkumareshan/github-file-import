@@ -163,9 +163,9 @@ const MessDueManagement: React.FC = () => {
   const openCollect = (due: any) => {
     setSelectedDue(due);
     const remaining = (due.due_amount || 0) - (due.paid_amount || 0);
-    setCollectAmount(remaining > 0 ? remaining.toString() : '');
-    setCollectMethod('cash');
-    setCollectTxnId('');
+    const amt = remaining > 0 ? remaining : 0;
+    setCollectAmount(amt.toString());
+    setCollectSplits([createDefaultSplit(amt)]);
     setCollectNotes('');
     setCollectOpen(true);
   };
