@@ -112,6 +112,7 @@ const Receipts: React.FC = () => {
         studentEmail: profileMap[r.user_id]?.email || '',
         cabinName: r.cabin_id ? cabinMap[r.cabin_id]?.name || '' : '',
         seatNumber: r.seat_id ? seatMap[r.seat_id]?.number : undefined,
+        seatFloor: r.seat_id ? seatMap[r.seat_id]?.floor : undefined,
         bookingSerial: r.booking_id ? bookingMap[r.booking_id]?.serial_number || '' : '',
       }));
 
