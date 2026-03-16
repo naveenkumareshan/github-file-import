@@ -124,6 +124,7 @@ export interface PartnerBookingData {
   dueDate?: string;
   slotId?: string;
   paymentProofUrl?: string;
+  bookingSplits?: { method: string; amount: string; txnId: string; proofUrl: string }[];
 }
 
 export interface BlockHistoryEntry {
