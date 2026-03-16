@@ -587,7 +587,7 @@ const HostelBedMap: React.FC = () => {
     setDiscountAmount('');
     setDiscountReason('');
     setBookingSplits([createDefaultSplit(0)]);
-    setTransactionId('');
+    // transactionId removed - handled by splits
     setCollectSecurityDeposit(true);
     const hostelInfo = hostels.find(h => h.id === bed.hostelId);
     setSecurityDepositAmount(String(hostelInfo?.security_deposit || 0));
