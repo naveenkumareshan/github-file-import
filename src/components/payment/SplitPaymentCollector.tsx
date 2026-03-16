@@ -134,7 +134,7 @@ export const SplitPaymentCollector: React.FC<SplitPaymentCollectorProps> = ({
             </div>
           )}
 
-          {split.method !== 'cash' && (
+          {isNonCashMethod(split.method) && (
             <PaymentProofUpload
               value={split.proofUrl}
               onChange={v => updateSplit(split.id, 'proofUrl', v)}
