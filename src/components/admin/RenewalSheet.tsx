@@ -172,7 +172,7 @@ export const RenewalSheet: React.FC<RenewalSheetProps> = ({
       lockerPrice: 0,
       discountAmount: parseFloat(discountAmount) || 0,
       discountReason,
-      paymentMethod: primarySplit.method,
+      paymentMethod: normalizePaymentMethod(primarySplit.method),
       collectedBy: user?.id,
       collectedByName,
       transactionId: primarySplit.txnId,
