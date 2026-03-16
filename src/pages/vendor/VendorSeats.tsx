@@ -144,8 +144,7 @@ const VendorSeats: React.FC = () => {
   const [expandedDueBookingId, setExpandedDueBookingId] = useState<string>('');
   const [bookingDues, setBookingDues] = useState<Record<string, any>>({});
   const [dueCollectAmount, setDueCollectAmount] = useState('');
-  const [dueCollectMethod, setDueCollectMethod] = useState('cash');
-  const [dueCollectTxnId, setDueCollectTxnId] = useState('');
+  const [dueSplits, setDueSplits] = useState<PaymentSplit[]>([]);
   const [dueCollectNotes, setDueCollectNotes] = useState('');
   const [collectingDue, setCollectingDue] = useState(false);
 
