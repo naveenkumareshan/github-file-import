@@ -586,7 +586,7 @@ const HostelBedMap: React.FC = () => {
     setNewStudentPhone('');
     setDiscountAmount('');
     setDiscountReason('');
-    setPaymentMethod('cash');
+    setBookingSplits([createDefaultSplit(0)]);
     setTransactionId('');
     setCollectSecurityDeposit(true);
     const hostelInfo = hostels.find(h => h.id === bed.hostelId);
