@@ -344,9 +344,7 @@ const VendorSeats: React.FC = () => {
     setBlockHistory([]);
     setDiscountAmount('');
     setDiscountReason('');
-    setPaymentMethod('cash');
-    setTransactionId('');
-    setPaymentProofUrl('');
+    setBookingSplits([createDefaultSplit(0)]);
     setBookingSuccess(false);
     setLastInvoiceData(null);
     setShowFutureBooking(false);
