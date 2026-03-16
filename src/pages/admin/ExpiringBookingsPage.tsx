@@ -184,7 +184,7 @@ export default function ExpiringBookingsPage() {
                       <TableHead className="text-[11px] font-medium uppercase tracking-wider">Room / Seat</TableHead>
                       <TableHead className="text-[11px] font-medium uppercase tracking-wider">Start Date</TableHead>
                       <TableHead className="text-[11px] font-medium uppercase tracking-wider">End Date</TableHead>
-                      <TableHead className="text-[11px] font-medium uppercase tracking-wider">Expires In</TableHead>
+                      <TableHead className="text-[11px] font-medium uppercase tracking-wider">{viewMode === 'expiring' ? 'Expires In' : 'Expired'}</TableHead>
                       <TableHead className="text-[11px] font-medium uppercase tracking-wider w-24">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -193,7 +193,7 @@ export default function ExpiringBookingsPage() {
                       const profile = booking.profiles as any;
                       const cabin = booking.cabins as any;
                       const seat = booking.seats as any;
-                      const days = getDaysRemaining(booking.end_date);
+                      const days = viewMode === 'expiring' ? getDaysRemaining(booking.end_date) : getDaysExpired(booking.end_date);
                       return (
                         <TableRow key={booking.id} className="text-xs">
                           <TableCell className="text-muted-foreground">{getSerialNumber(idx, currentPage, pageSize)}</TableCell>
