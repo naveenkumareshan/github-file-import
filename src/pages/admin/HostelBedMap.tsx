@@ -1814,7 +1814,7 @@ const HostelBedMap: React.FC = () => {
                     <Separator />
                     <div className="grid grid-cols-2 gap-y-1">
                       <div><span className="text-muted-foreground">Payment:</span></div>
-                      <div>{paymentMethod === 'cash' ? 'Cash' : paymentMethod === 'upi' ? 'UPI' : 'Bank Transfer'}</div>
+                      <div>{lastBookingInfo.paymentMethod === 'cash' ? 'Cash' : lastBookingInfo.paymentMethod === 'upi' ? 'UPI' : 'Bank Transfer'}</div>
                       {lastBookingInfo.transactionId && (
                         <><div><span className="text-muted-foreground">Txn ID:</span></div><div className="break-all">{lastBookingInfo.transactionId}</div></>
                       )}
