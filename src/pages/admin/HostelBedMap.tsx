@@ -993,10 +993,22 @@ const HostelBedMap: React.FC = () => {
   // Create booking
   const handleCreateBooking = async () => {
     if (!selectedBed || !selectedStudent) return;
-    if (paymentMethod !== 'cash' && !transactionId.trim()) {
-      toast({ title: 'Transaction ID is required for non-cash payments', variant: 'destructive' });
+    const collectingNow = isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : (computedTotal + (collectSecurityDeposit ? (parseFloat(securityDepositAmount) || 0) : 0));
+    const splitError = validateSplits(bookingSplits, collectingNow);
+    if (splitError) {
+      toast({ title: splitError, variant: 'destructive' });
       return;
     }
+    for (const split of bookingSplits) {
+      if (requiresTransactionId(split.method) && split.txnId.trim()) {
+        const { data: isDuplicate } = await supabase.rpc('check_duplicate_transaction_id', { p_txn_id: split.txnId.trim() });
+        if (isDuplicate) {
+          toast({ title: 'Duplicate Transaction ID', description: `"${split.txnId}" already used.`, variant: 'destructive' });
+          return;
+        }
+      }
+    }
+    const primarySplit = bookingSplits[0];
     setCreatingBooking(true);
     const collectedByName = user?.name || user?.email || 'Admin';
     const total = computedTotal;
