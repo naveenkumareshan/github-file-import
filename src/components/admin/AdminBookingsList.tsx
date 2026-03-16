@@ -237,7 +237,7 @@ const AdminBookingsList = () => {
             booking.userId?.name || "",
             booking.userId?.email || "",
             (booking.cabinId?.name || "") +
-              (booking.seatId ? ` - ${booking.seatId.floor ? `Floor ${booking.seatId.floor} · ` : ''}Seat ${booking.seatId.number}` : ""),
+              (booking.seatId ? ` - ${booking.seatId.floor ? `F${booking.seatId.floor} · ` : ''}S${booking.seatId.number}` : ""),
             new Date(booking.startDate).toLocaleDateString(),
             new Date(booking.endDate).toLocaleDateString(),
             booking.originalPrice || booking.totalPrice,
@@ -481,7 +481,7 @@ const AdminBookingsList = () => {
                           {booking.cabinId?.cabinCode &&
                             `cabinCode #${booking.cabinId?.cabinCode || "N/A"}`}
                           {booking.cabinId
-                            ? `${booking.seatId?.floor ? `Floor ${booking.seatId.floor} · ` : ''}Seat #${booking.seatId?.number || "N/A"}`
+                            ? `${booking.seatId?.floor ? `F${booking.seatId.floor} · ` : ''}S${booking.seatId?.number || "N/A"}`
                             : `Bed #${booking.bedId?.number || "N/A"}`}
                         </div>
                       </div>

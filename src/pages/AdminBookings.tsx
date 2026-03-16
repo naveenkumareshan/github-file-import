@@ -116,7 +116,7 @@ const AdminBookings = () => {
       <div className="grid grid-cols-2 gap-2 text-[11px]">
         <div>
           <span className="text-muted-foreground">Room/Seat: </span>
-          <span>{b.cabinId?.name && b.seatId?.number ? `${b.cabinId.name} / S${b.seatId.number}` : b.roomNumber || "-"}</span>
+          <span>{b.cabinId?.name && b.seatId?.number ? `${b.cabinId.name} / ${b.seatId?.floor ? `F${b.seatId.floor} · ` : ''}S${b.seatId.number}` : b.roomNumber || "-"}</span>
         </div>
         <div>
           <span className="text-muted-foreground">Category: </span>
@@ -210,8 +210,8 @@ const AdminBookings = () => {
                           {b.userId?.phone && <div className="text-[10px] text-muted-foreground">{b.userId.phone}</div>}
                         </TableCell>
                         <TableCell className="py-1 px-2"><Badge variant="outline" className="text-[10px] px-1.5 py-0 leading-none">{b.seatCategory || "—"}</Badge></TableCell>
-                        <TableCell className="py-1 px-2 text-[10px] whitespace-nowrap">
-                          {b.roomNumber || (b.cabinId?.name && b.seatId?.number ? `${b.cabinId.name} / ${b.seatId.floor ? `Floor ${b.seatId.floor} · ` : ''}S${b.seatId.number}` : "-")}
+                        <TableCell className="py-1 px-2 text-[10px] max-w-[140px]">
+                          {b.roomNumber || (b.cabinId?.name && b.seatId?.number ? `${b.cabinId.name} / ${b.seatId.floor ? `F${b.seatId.floor} · ` : ''}S${b.seatId.number}` : "-")}
                         </TableCell>
                         <TableCell className="py-1 px-2 text-[11px] whitespace-nowrap">{b.slotName || "-"}</TableCell>
                         <TableCell className="py-1 px-2 text-[11px] whitespace-nowrap">
