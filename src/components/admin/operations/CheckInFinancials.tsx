@@ -136,7 +136,7 @@ export const CollectDrawer: React.FC<CollectDrawerProps> = ({ open, onOpenChange
           booking_id: due.booking_id,
           user_id: due.user_id,
           amount: splitAmt,
-          payment_method: split.method,
+          payment_method: normalizePaymentMethod(split.method),
           transaction_id: split.txnId,
           receipt_type: 'due_collection',
           collected_by: user?.id,

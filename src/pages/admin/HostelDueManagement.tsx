@@ -246,7 +246,7 @@ const HostelDueManagement: React.FC = () => {
         booking_id: selectedDue.booking_id,
         user_id: selectedDue.user_id,
         amount: splitAmt,
-        payment_method: split.method,
+        payment_method: normalizePaymentMethod(split.method),
         transaction_id: split.txnId,
         receipt_type: 'due_collection',
         collected_by: user?.id,
