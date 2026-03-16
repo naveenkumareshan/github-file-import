@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CalendarRange, Eye, Search, X, Download, ArrowUpDown, RotateCcw } from 'lucide-react';
+import { CalendarRange, Eye, Search, X, Download, ArrowUpDown, RotateCcw, Clock, CalendarX } from 'lucide-react';
 import { adminBookingsService } from '@/api/adminBookingsService';
 import { format, differenceInDays } from 'date-fns';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -20,6 +20,7 @@ export default function ExpiringBookingsPage() {
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [daysThreshold, setDaysThreshold] = useState('7');
+  const [viewMode, setViewMode] = useState<'expiring' | 'expired'>('expiring');
   const [search, setSearch] = useState('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
@@ -32,7 +33,7 @@ export default function ExpiringBookingsPage() {
 
   const routePrefix = location.pathname.startsWith('/partner') ? '/partner' : '/admin';
 
-  useEffect(() => { fetchData(); }, [daysThreshold]);
+  useEffect(() => { fetchData(); }, [daysThreshold, viewMode]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -42,7 +43,9 @@ export default function ExpiringBookingsPage() {
         const { ownerId } = await getEffectiveOwnerId();
         partnerUserId = ownerId;
       }
-      const response = await adminBookingsService.getExpiringBookings(parseInt(daysThreshold), partnerUserId);
+      const response = viewMode === 'expired'
+        ? await adminBookingsService.getExpiredBookings(parseInt(daysThreshold), partnerUserId)
+        : await adminBookingsService.getExpiringBookings(parseInt(daysThreshold), partnerUserId);
       setBookings(response.success && Array.isArray(response.data) ? response.data : []);
     } catch { setBookings([]); }
     finally { setLoading(false); }
@@ -73,10 +76,12 @@ export default function ExpiringBookingsPage() {
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
   const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  useEffect(() => { setCurrentPage(1); }, [search, daysThreshold, pageSize]);
+  useEffect(() => { setCurrentPage(1); }, [search, daysThreshold, pageSize, viewMode]);
 
   const getDaysRemaining = (endDate: string) => Math.max(0, differenceInDays(new Date(endDate), new Date()));
+  const getDaysExpired = (endDate: string) => Math.max(0, differenceInDays(new Date(), new Date(endDate)));
   const getStatusColor = (days: number) => { if (days <= 2) return 'destructive'; if (days <= 5) return 'warning'; return 'secondary'; };
+  const getExpiredColor = (days: number) => { if (days >= 14) return 'destructive'; if (days >= 7) return 'warning'; return 'secondary'; };
 
   const handleRenew = (booking: any) => {
     const seat = booking.seats as any;
@@ -111,15 +116,35 @@ export default function ExpiringBookingsPage() {
     const a = document.createElement('a'); a.href = url; a.download = `expiring-bookings-${daysThreshold}d.csv`; a.click();
   };
 
-  const clearFilters = () => { setSearch(''); setDaysThreshold('7'); setSortOrder('asc'); };
+  const clearFilters = () => { setSearch(''); setDaysThreshold('7'); setSortOrder('asc'); setViewMode('expiring'); };
 
   return (
     <div className="p-3 md:p-6 space-y-3">
       <Card className="border-border/50 shadow-sm">
         <CardHeader className="py-3 px-4 bg-muted/30 border-b">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <CalendarRange className="h-4 w-4 text-primary" />
-            <CardTitle className="text-sm font-semibold text-foreground/90">Expiring Reading Room Bookings</CardTitle>
+            <CardTitle className="text-sm font-semibold text-foreground/90">
+              {viewMode === 'expiring' ? 'Expiring' : 'Expired'} Reading Room Bookings
+            </CardTitle>
+            <div className="flex items-center gap-1 ml-4">
+              <Button
+                variant={viewMode === 'expiring' ? 'default' : 'outline'}
+                size="sm"
+                className="h-7 text-[11px] gap-1"
+                onClick={() => setViewMode('expiring')}
+              >
+                <Clock className="h-3 w-3" /> Expiring
+              </Button>
+              <Button
+                variant={viewMode === 'expired' ? 'default' : 'outline'}
+                size="sm"
+                className="h-7 text-[11px] gap-1"
+                onClick={() => setViewMode('expired')}
+              >
+                <CalendarX className="h-3 w-3" /> Expired
+              </Button>
+            </div>
             <Badge variant="outline" className="ml-auto text-[10px]">{filtered.length} records</Badge>
           </div>
         </CardHeader>
@@ -159,7 +184,7 @@ export default function ExpiringBookingsPage() {
                       <TableHead className="text-[11px] font-medium uppercase tracking-wider">Room / Seat</TableHead>
                       <TableHead className="text-[11px] font-medium uppercase tracking-wider">Start Date</TableHead>
                       <TableHead className="text-[11px] font-medium uppercase tracking-wider">End Date</TableHead>
-                      <TableHead className="text-[11px] font-medium uppercase tracking-wider">Expires In</TableHead>
+                      <TableHead className="text-[11px] font-medium uppercase tracking-wider">{viewMode === 'expiring' ? 'Expires In' : 'Expired'}</TableHead>
                       <TableHead className="text-[11px] font-medium uppercase tracking-wider w-24">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -168,7 +193,7 @@ export default function ExpiringBookingsPage() {
                       const profile = booking.profiles as any;
                       const cabin = booking.cabins as any;
                       const seat = booking.seats as any;
-                      const days = getDaysRemaining(booking.end_date);
+                      const days = viewMode === 'expiring' ? getDaysRemaining(booking.end_date) : getDaysExpired(booking.end_date);
                       return (
                         <TableRow key={booking.id} className="text-xs">
                           <TableCell className="text-muted-foreground">{getSerialNumber(idx, currentPage, pageSize)}</TableCell>
@@ -185,8 +210,10 @@ export default function ExpiringBookingsPage() {
                           <TableCell>{booking.start_date ? format(new Date(booking.start_date), 'dd MMM yyyy') : '-'}</TableCell>
                           <TableCell>{format(new Date(booking.end_date), 'dd MMM yyyy')}</TableCell>
                           <TableCell>
-                            <Badge variant={getStatusColor(days) as any} className="text-[10px]">
-                              {days} {days === 1 ? 'day' : 'days'}
+                            <Badge variant={(viewMode === 'expiring' ? getStatusColor(days) : getExpiredColor(days)) as any} className="text-[10px]">
+                              {viewMode === 'expiring' 
+                                ? `${days} ${days === 1 ? 'day' : 'days'}`
+                                : `${days} ${days === 1 ? 'day' : 'days'} ago`}
                             </Badge>
                           </TableCell>
                           <TableCell>

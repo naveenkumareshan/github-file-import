@@ -180,6 +180,7 @@ export const RenewalSheet: React.FC<RenewalSheetProps> = ({
       isAdvanceBooking: isAdvanceBooking && !!advanceComputed,
       advancePaid: isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : undefined,
       dueDate: isAdvanceBooking && advanceComputed ? format(advanceComputed.proportionalEndDate, 'yyyy-MM-dd') : undefined,
+      bookingSplits: bookingSplits.map(s => ({ method: s.method, amount: s.amount, txnId: s.txnId, proofUrl: s.proofUrl })),
     };
     const res = await vendorSeatsService.createPartnerBooking(data);
     if (res.success) {

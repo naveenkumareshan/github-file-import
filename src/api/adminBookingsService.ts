@@ -539,6 +539,39 @@ export const adminBookingsService = {
     }
   },
 
+  getExpiredBookings: async (daysBack: number = 30, partnerUserId?: string) => {
+    try {
+      const today = new Date();
+      const pastDate = new Date();
+      pastDate.setDate(today.getDate() - daysBack);
+
+      let partnerCabinIds: string[] | null = null;
+      if (partnerUserId) {
+        const { data: pCabins } = await supabase.from('cabins').select('id').eq('created_by', partnerUserId);
+        partnerCabinIds = (pCabins || []).map(c => c.id);
+        if (partnerCabinIds.length === 0) return { success: true, data: [] };
+      }
+
+      let query = supabase
+        .from('bookings')
+        .select('*, profiles!bookings_user_id_fkey(name, email, phone, serial_number), cabins:cabin_id(name, allowed_durations), seats:seat_id(number, floor, price)')
+        .eq('payment_status', 'completed')
+        .lt('end_date', today.toISOString().split('T')[0])
+        .gte('end_date', pastDate.toISOString().split('T')[0])
+        .order('end_date', { ascending: false });
+
+      if (partnerCabinIds) {
+        query = query.in('cabin_id', partnerCabinIds);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return { success: true, data: data || [] };
+    } catch (error) {
+      return { success: false, data: [] };
+    }
+  },
+
   getExpiringHostelBookings: async (daysThreshold: number = 7, partnerUserId?: string) => {
     try {
       const today = new Date();
