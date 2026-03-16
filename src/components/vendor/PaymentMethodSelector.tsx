@@ -64,7 +64,10 @@ export const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({
       if (data) {
         // Filter cash modes based on current user
         const filtered = await filterCashModes(data);
-        setModes(filtered.map(m => ({
+        // Ensure a default Cash option is always present
+        const hasCash = filtered.some(m => m.mode_type === 'cash');
+        const modesWithCash = hasCash ? filtered : [{ id: '__default_cash__', label: 'Cash', mode_type: 'cash', assigned_employee_id: null, details_image_url: null }, ...filtered];
+        setModes(modesWithCash.map(m => ({
           value: `custom_${m.id}`,
           label: m.label,
           icon: TYPE_ICONS[m.mode_type] || <Building2 className="h-3 w-3" />,
