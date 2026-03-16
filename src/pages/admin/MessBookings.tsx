@@ -384,6 +384,21 @@ export default function MessBookings() {
 
   const handleBookingSubmit = async () => {
     if (!selectedUserId || !selectedMess || !selectedPackage) return;
+    const splitError = validateSplits(bookingSplits, advanceAmount);
+    if (splitError) {
+      toast({ title: splitError, variant: 'destructive' });
+      return;
+    }
+    for (const split of bookingSplits) {
+      if (requiresTransactionId(split.method) && split.txnId.trim()) {
+        const { data: isDuplicate } = await supabase.rpc('check_duplicate_transaction_id', { p_txn_id: split.txnId.trim() });
+        if (isDuplicate) {
+          toast({ title: 'Duplicate Transaction ID', description: `"${split.txnId}" already used.`, variant: 'destructive' });
+          return;
+        }
+      }
+    }
+    const primarySplit = bookingSplits[0];
     setSubmitting(true);
     try {
       const isPartial = dueAmount > 0;
