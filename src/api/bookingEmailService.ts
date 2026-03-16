@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { getMethodLabel } from '@/utils/paymentMethodLabels';
 
 interface ReceiptEmailPayload {
   to: string;
@@ -27,6 +28,11 @@ const sendReceiptEmail = async (payload: ReceiptEmailPayload): Promise<{ success
     if (!payload.to || !payload.to.includes('@')) {
       console.log('No valid email for receipt, skipping:', payload.studentName);
       return { success: false, error: 'No valid email' };
+    }
+
+    // Resolve payment method to human-readable label before sending
+    if (payload.paymentMethod) {
+      payload.paymentMethod = getMethodLabel(payload.paymentMethod);
     }
 
     const { data, error } = await supabase.functions.invoke('send-booking-receipt', {

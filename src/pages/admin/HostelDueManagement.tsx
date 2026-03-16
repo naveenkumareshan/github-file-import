@@ -18,7 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Textarea } from '@/components/ui/textarea';
 import { HostelDuePaymentHistory } from '@/components/booking/HostelDuePaymentHistory';
 import { PaymentMethodSelector, requiresTransactionId } from '@/components/vendor/PaymentMethodSelector';
-import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
+import { resolvePaymentMethodLabels, getMethodLabel, normalizePaymentMethod } from '@/utils/paymentMethodLabels';
 import { SplitPaymentCollector, PaymentSplit, createDefaultSplit, validateSplits } from '@/components/payment/SplitPaymentCollector';
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 
@@ -230,7 +230,7 @@ const HostelDueManagement: React.FC = () => {
       const { error: paymentError } = await supabase.from('hostel_due_payments').insert({
         due_id: selectedDue.id,
         amount: splitAmt,
-        payment_method: split.method,
+        payment_method: normalizePaymentMethod(split.method),
         transaction_id: split.txnId,
         collected_by: user?.id,
         collected_by_name: collectedByName,
@@ -246,7 +246,7 @@ const HostelDueManagement: React.FC = () => {
         booking_id: selectedDue.booking_id,
         user_id: selectedDue.user_id,
         amount: splitAmt,
-        payment_method: split.method,
+        payment_method: normalizePaymentMethod(split.method),
         transaction_id: split.txnId,
         receipt_type: 'due_collection',
         collected_by: user?.id,

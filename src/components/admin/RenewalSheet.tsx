@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { vendorSeatsService, PartnerBookingData } from '@/api/vendorSeatsService';
 import { requiresTransactionId } from '@/components/vendor/PaymentMethodSelector';
+import { normalizePaymentMethod, getMethodLabel } from '@/utils/paymentMethodLabels';
 import { SplitPaymentCollector, PaymentSplit, createDefaultSplit, validateSplits } from '@/components/payment/SplitPaymentCollector';
 import { supabase } from '@/integrations/supabase/client';
 import { downloadInvoice, InvoiceData } from '@/utils/invoiceGenerator';
@@ -171,7 +172,7 @@ export const RenewalSheet: React.FC<RenewalSheetProps> = ({
       lockerPrice: 0,
       discountAmount: parseFloat(discountAmount) || 0,
       discountReason,
-      paymentMethod: primarySplit.method,
+      paymentMethod: normalizePaymentMethod(primarySplit.method),
       collectedBy: user?.id,
       collectedByName,
       transactionId: primarySplit.txnId,
@@ -202,7 +203,7 @@ export const RenewalSheet: React.FC<RenewalSheetProps> = ({
         lockerIncluded: false,
         lockerPrice: 0,
         totalAmount: computedTotal,
-        paymentMethod: primarySplit.method,
+        paymentMethod: getMethodLabel(primarySplit.method),
         transactionId: primarySplit.txnId,
         collectedByName,
       };
@@ -224,7 +225,7 @@ export const RenewalSheet: React.FC<RenewalSheetProps> = ({
           seatAmount: parseFloat(bookingPrice) || 0,
           discountAmount: parseFloat(discountAmount) || 0,
           totalAmount: computedTotal,
-          paymentMethod: primarySplit.method,
+          paymentMethod: getMethodLabel(primarySplit.method),
           transactionId: primarySplit.txnId,
           collectedByName,
         }).catch(err => console.error('Renewal receipt email failed:', err));

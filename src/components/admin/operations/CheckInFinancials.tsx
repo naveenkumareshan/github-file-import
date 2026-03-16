@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Banknote, Smartphone, Building2, CreditCard, Receipt } from 'lucide-react';
 import { requiresTransactionId, isNonCashMethod } from '@/components/vendor/PaymentMethodSelector';
 import { supabase } from '@/integrations/supabase/client';
+import { normalizePaymentMethod } from '@/utils/paymentMethodLabels';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { vendorSeatsService } from '@/api/vendorSeatsService';
@@ -116,7 +117,7 @@ export const CollectDrawer: React.FC<CollectDrawerProps> = ({ open, onOpenChange
         const { error: paymentError } = await supabase.from('hostel_due_payments').insert({
           due_id: due.id,
           amount: splitAmt,
-          payment_method: split.method,
+          payment_method: normalizePaymentMethod(split.method),
           transaction_id: split.txnId,
           collected_by: user?.id,
           collected_by_name: collectedByName,
@@ -135,7 +136,7 @@ export const CollectDrawer: React.FC<CollectDrawerProps> = ({ open, onOpenChange
           booking_id: due.booking_id,
           user_id: due.user_id,
           amount: splitAmt,
-          payment_method: split.method,
+          payment_method: normalizePaymentMethod(split.method),
           transaction_id: split.txnId,
           receipt_type: 'due_collection',
           collected_by: user?.id,

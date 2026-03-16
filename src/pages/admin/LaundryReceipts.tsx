@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Search, Receipt, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/utils/currency';
+import { getMethodLabel } from '@/utils/paymentMethodLabels';
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 import { DateFilterSelector } from '@/components/common/DateFilterSelector';
 import { getDateRangeFromFilter } from '@/utils/dateFilterUtils';
@@ -172,7 +173,7 @@ export default function LaundryReceipts() {
                   </TableCell>
                   <TableCell className="text-xs">{r.partnerName || '-'}</TableCell>
                   <TableCell className="text-xs font-semibold">{formatCurrency(r.amount)}</TableCell>
-                  <TableCell className="text-xs capitalize">{r.payment_method || '-'}</TableCell>
+                  <TableCell className="text-xs">{getMethodLabel(r.payment_method || '')}</TableCell>
                   <TableCell className="text-xs font-mono max-w-[120px] truncate">{r.transaction_id || '-'}</TableCell>
                   <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{new Date(r.created_at).toLocaleString('en-IN')}</TableCell>
                 </TableRow>

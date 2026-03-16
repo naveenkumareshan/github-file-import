@@ -17,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Textarea } from '@/components/ui/textarea';
 import { requiresTransactionId } from '@/components/vendor/PaymentMethodSelector';
-import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
+import { resolvePartnerPaymentLabels, getMethodLabel, normalizePaymentMethod } from '@/utils/paymentMethodLabels';
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 import { SplitPaymentCollector, PaymentSplit, createDefaultSplit, validateSplits } from '@/components/payment/SplitPaymentCollector';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -147,7 +147,7 @@ const MessDueManagement: React.FC = () => {
       try {
         const res = await getEffectiveOwnerId();
         setPartnerId(res.ownerId);
-        const labels = await resolvePaymentMethodLabels(res.ownerId as any);
+        const labels = await resolvePartnerPaymentLabels(res.ownerId);
         setCustomLabels(labels);
       } catch {}
     };
@@ -197,7 +197,7 @@ const MessDueManagement: React.FC = () => {
         await supabase.from('mess_due_payments' as any).insert({
           due_id: selectedDue.id,
           amount: splitAmt,
-          payment_method: split.method,
+          payment_method: normalizePaymentMethod(split.method),
           transaction_id: split.txnId || `MESS-${Date.now()}`,
           notes: collectNotes,
           collected_by: user?.id,

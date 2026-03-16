@@ -26,6 +26,7 @@ import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
 import { PaymentMethodSelector, requiresTransactionId } from '@/components/vendor/PaymentMethodSelector';
 import { SplitPaymentCollector, PaymentSplit, createDefaultSplit, validateSplits } from '@/components/payment/SplitPaymentCollector';
 import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
+import { normalizePaymentMethod } from '@/utils/paymentMethodLabels';
 import { vendorSeatsService } from '@/api/vendorSeatsService';
 import { cn } from '@/lib/utils';
 
@@ -410,7 +411,7 @@ export default function MessBookings() {
         start_date: format(startDate, 'yyyy-MM-dd'),
         end_date: endDate,
         price_paid: totalAfterDiscount,
-        payment_method: primarySplit.method,
+        payment_method: normalizePaymentMethod(primarySplit.method),
         payment_status: isPartial ? 'advance_paid' : 'completed',
         status: 'active',
         transaction_id: primarySplit.txnId,
@@ -428,7 +429,7 @@ export default function MessBookings() {
         user_id: selectedUserId,
         mess_id: selectedMess.id,
         amount: parseFloat(primarySplit.amount),
-        payment_method: primarySplit.method,
+        payment_method: normalizePaymentMethod(primarySplit.method),
         transaction_id: primarySplit.txnId,
         collected_by: user?.id,
         collected_by_name: collectedByName || user?.name || '',
@@ -445,7 +446,7 @@ export default function MessBookings() {
             user_id: selectedUserId,
             mess_id: selectedMess.id,
             amount: parseFloat(split.amount),
-            payment_method: split.method,
+            payment_method: normalizePaymentMethod(split.method),
             transaction_id: split.txnId,
             collected_by: user?.id,
             collected_by_name: collectedByName || user?.name || '',

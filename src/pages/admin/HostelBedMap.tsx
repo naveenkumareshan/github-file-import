@@ -33,7 +33,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { attendanceService } from '@/api/attendanceService';
 import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
 import { PaymentMethodSelector, requiresTransactionId } from '@/components/vendor/PaymentMethodSelector';
-import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
+import { resolvePaymentMethodLabels, getMethodLabel, normalizePaymentMethod } from '@/utils/paymentMethodLabels';
 import { SplitPaymentCollector, PaymentSplit, createDefaultSplit, validateSplits } from '@/components/payment/SplitPaymentCollector';
 import { BookingUpdateDatesDialog } from '@/components/admin/BookingUpdateDatesDialog';
 import { Textarea } from '@/components/ui/textarea';
@@ -1035,7 +1035,7 @@ const HostelBedMap: React.FC = () => {
       duration_count: selectedDuration.count,
       payment_status: remaining <= 0 ? 'completed' : 'partial',
       status: 'confirmed',
-      payment_method: primarySplit.method,
+      payment_method: normalizePaymentMethod(primarySplit.method),
       transaction_id: primarySplit.txnId,
       collected_by: user?.id,
       collected_by_name: collectedByName,
@@ -1066,7 +1066,7 @@ const HostelBedMap: React.FC = () => {
         booking_id: newBooking.id,
         user_id: selectedStudent.id,
         amount: receiptAmount,
-        payment_method: primarySplit.method,
+        payment_method: normalizePaymentMethod(primarySplit.method),
         transaction_id: primarySplit.txnId,
         receipt_type: 'booking_payment',
         collected_by: user?.id,
@@ -1084,7 +1084,7 @@ const HostelBedMap: React.FC = () => {
             booking_id: newBooking.id,
             user_id: selectedStudent.id,
             amount: splitAmt,
-            payment_method: split.method,
+            payment_method: normalizePaymentMethod(split.method),
             transaction_id: split.txnId,
             receipt_type: 'booking_payment',
             collected_by: user?.id,
@@ -1128,7 +1128,7 @@ const HostelBedMap: React.FC = () => {
         discountReason,
         totalAmount: total,
         securityDeposit: secDepAmt,
-        paymentMethod: primarySplit.method,
+        paymentMethod: getMethodLabel(primarySplit.method),
         transactionId: primarySplit.txnId,
         collectedByName,
         advanceAmount: advanceAmt,
@@ -1154,7 +1154,7 @@ const HostelBedMap: React.FC = () => {
           discountAmount: parseFloat(discountAmount) || 0,
           securityDeposit: secDepAmt,
           totalAmount: total,
-          paymentMethod: primarySplit.method,
+          paymentMethod: getMethodLabel(primarySplit.method),
           transactionId: primarySplit.txnId,
           collectedByName,
           advancePaid: remaining > 0 ? advanceAmt : undefined,

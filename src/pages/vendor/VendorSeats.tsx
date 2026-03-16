@@ -41,7 +41,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
 import { attendanceService } from '@/api/attendanceService';
 import { PaymentMethodSelector, requiresTransactionId } from '@/components/vendor/PaymentMethodSelector';
-import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
+import { resolvePaymentMethodLabels, getMethodLabel, normalizePaymentMethod } from '@/utils/paymentMethodLabels';
 import { SplitPaymentCollector, PaymentSplit, createDefaultSplit, validateSplits } from '@/components/payment/SplitPaymentCollector';
 import { BookingUpdateDatesDialog } from '@/components/admin/BookingUpdateDatesDialog';
 import { bookingEmailService } from '@/api/bookingEmailService';
@@ -727,7 +727,7 @@ const VendorSeats: React.FC = () => {
       lockerPrice: lockerIncluded && selectedCabinInfo ? selectedCabinInfo.lockerPrice : 0,
       discountAmount: parseFloat(discountAmount) || 0,
       discountReason: discountReason,
-      paymentMethod: primarySplit.method,
+      paymentMethod: normalizePaymentMethod(primarySplit.method),
       collectedBy: user?.id,
       collectedByName: collectedByName,
       transactionId: primarySplit.txnId,
@@ -761,7 +761,7 @@ const VendorSeats: React.FC = () => {
         lockerIncluded,
         lockerPrice: lockerIncluded && selectedCabinInfo ? selectedCabinInfo.lockerPrice : 0,
         totalAmount: computedTotal,
-        paymentMethod: primarySplit.method,
+        paymentMethod: getMethodLabel(primarySplit.method, customPaymentLabels),
         transactionId: primarySplit.txnId,
         collectedByName,
       };
@@ -787,7 +787,7 @@ const VendorSeats: React.FC = () => {
           discountAmount: parseFloat(discountAmount) || 0,
           lockerPrice: lockerIncluded && selectedCabinInfo ? selectedCabinInfo.lockerPrice : 0,
           totalAmount: computedTotal,
-          paymentMethod: primarySplit.method,
+          paymentMethod: getMethodLabel(primarySplit.method, customPaymentLabels),
           transactionId: primarySplit.txnId,
           collectedByName,
           advancePaid: isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : undefined,
