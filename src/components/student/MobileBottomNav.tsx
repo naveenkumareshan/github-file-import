@@ -75,11 +75,11 @@ export const MobileBottomNav: React.FC = () => {
                 key={tab.label}
                 type="button"
                 onClick={() => toast({ title: 'Launching Soon', description: `${tab.label} is coming soon. Stay tuned!` })}
-                className="flex-1 flex flex-col items-center justify-center gap-0.5 min-h-[56px] relative transition-all duration-200 overflow-hidden text-muted-foreground/50 cursor-default"
+                className="flex-1 flex flex-col items-center justify-center gap-0.5 min-h-[60px] relative transition-all duration-200 overflow-hidden text-muted-foreground/50 cursor-default"
               >
                 <div className="w-full flex flex-col items-center gap-0.5 px-0.5 py-1 rounded-xl">
-                  <tab.icon className="w-5 h-5" strokeWidth={1.75} />
-                  <span className="text-[8px] leading-tight whitespace-nowrap font-medium">Soon</span>
+                  <tab.icon className="w-6 h-6" strokeWidth={1.75} />
+                  <span className="text-[10px] leading-tight whitespace-nowrap font-medium">Soon</span>
                 </div>
               </button>
             );
@@ -90,7 +90,7 @@ export const MobileBottomNav: React.FC = () => {
               key={tab.label}
               to={href}
               className={cn(
-                'flex-1 flex flex-col items-center justify-center gap-0.5 min-h-[56px] relative transition-all duration-200 overflow-hidden',
+                'flex-1 flex flex-col items-center justify-center gap-0.5 min-h-[60px] relative transition-all duration-200 overflow-hidden',
                 active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
               )}
             >
@@ -102,10 +102,10 @@ export const MobileBottomNav: React.FC = () => {
                 active && 'bg-primary/10'
               )}>
                 <tab.icon
-                  className="w-5 h-5"
+                  className="w-6 h-6"
                   strokeWidth={active ? 2.5 : 1.75}
                 />
-                <span className={cn('text-[9px] leading-tight whitespace-nowrap', active ? 'font-semibold' : 'font-medium')}>
+                <span className={cn('text-[10px] leading-tight whitespace-nowrap', active ? 'font-semibold' : 'font-medium')}>
                   {tab.label}
                 </span>
               </div>

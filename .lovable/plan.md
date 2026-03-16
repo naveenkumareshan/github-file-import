@@ -1,43 +1,71 @@
 
 
-## Student Layout Audit — Issues Found & Fix Plan
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-### Issues Identified
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
-**1. CabinSearch (Reading Rooms) — Desktop/Tablet Layout Too Narrow**
-- `CabinSearch.tsx` line 194 header uses `max-w-lg mx-auto` (no `lg:max-w-5xl`)
-- Line 259 results section also uses `max-w-lg mx-auto` (no `lg:max-w-5xl`)
-- All other marketplace pages (Hostels, Mess, Laundry) correctly use `max-w-lg lg:max-w-5xl mx-auto`
-- **Fix:** Add `lg:max-w-5xl` to both sections in CabinSearch
+## Changes
 
-**2. Laundry Route Missing LaunchingSoonGuard**
-- `/laundry` and `/laundry/:id` routes in App.tsx (lines 350-351) have NO `LaunchingSoonGuard` wrapping
-- But the bottom nav tab for laundry is missing entirely — there's no "Laundry" tab in `MobileBottomNav.tsx`
-- The Navigation.tsx desktop nav also doesn't include a Laundry link
-- **Fix:** Add `LaunchingSoonGuard` with `moduleKey="laundry"` to both laundry routes
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-**3. Bottom Nav Missing Laundry Tab**
-- `MobileBottomNav.tsx` has 5 tabs: Home, Study Rooms, Hostels, Mess, Profile
-- No Laundry tab — users can only reach laundry via Quick Actions on home page
-- This is likely intentional (5 tabs is max), but Profile tab could be replaced or a "More" menu added
-- **Decision:** Keep current 5-tab layout (Home, Study Rooms, Hostels, Mess, Profile) — Laundry is accessible via Quick Actions and this is a standard mobile pattern
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-**4. Navigation.tsx Desktop Nav Missing Laundry Link**
-- Desktop nav links: Home, Reading Rooms, Hostels, Food/Mess, About
-- No Laundry link on desktop
-- **Fix:** Add Laundry link to desktop navigation between Mess and About
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
 
-**5. MobileBottomNav Icon/Label Size**
-- Bottom nav icons are `w-5 h-5` and labels are `text-[9px]` — these are quite small
-- Per the memory note about scaled-up navigation, the bottom nav should also be slightly larger
-- **Fix:** Increase icons to `w-6 h-6`, labels to `text-[10px]`, and min-height to `60px`
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
 
-### Files to Change
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
 
-| File | Changes |
-|------|---------|
-| `src/pages/CabinSearch.tsx` | Add `lg:max-w-5xl` to header and results containers |
-| `src/App.tsx` | Wrap `/laundry` and `/laundry/:id` routes with `LaunchingSoonGuard moduleKey="laundry"` |
-| `src/components/Navigation.tsx` | Add Laundry nav link |
-| `src/components/student/MobileBottomNav.tsx` | Increase icon/label sizes for better readability |
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
+
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
+
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
+
+**Reviews section**: Shown below the booking flow (not in a tab)
+
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
+
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
+
+## File Summary
+
+| File | Change |
+|------|--------|
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
 

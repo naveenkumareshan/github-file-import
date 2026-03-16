@@ -81,6 +81,7 @@ export function Navigation() {
     { href: "/cabins", label: "Reading Rooms", show: true, enabled: settings.enabledMenus.bookings, matchPaths: ["/cabins", "/book-seat"] },
     { href: "/hostels", label: "Hostels", show: true, enabled: settings.enabledMenus.hostel, matchPaths: ["/hostels"] },
     { href: "/mess", label: "Food / Mess", show: true, enabled: settings.enabledMenus.mess, matchPaths: ["/mess"] },
+    { href: "/laundry", label: "Laundry", show: true, enabled: settings.enabledMenus.laundry, matchPaths: ["/laundry"] },
     { href: "/about", label: "About", show: true, enabled: settings.enabledMenus.about },
   ];
 
