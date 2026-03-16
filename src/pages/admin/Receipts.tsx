@@ -94,7 +94,7 @@ const Receipts: React.FC = () => {
       const [profilesRes, cabinsRes, seatsRes, bookingsRes] = await Promise.all([
         userIds.length > 0 ? supabase.from('profiles').select('id, name, phone, email').in('id', userIds) : { data: [] },
         cabinIds.length > 0 ? supabase.from('cabins').select('id, name').in('id', cabinIds) : { data: [] },
-        seatIds.length > 0 ? supabase.from('seats').select('id, number').in('id', seatIds) : { data: [] },
+        seatIds.length > 0 ? supabase.from('seats').select('id, number, floor').in('id', seatIds) : { data: [] },
         bookingIds.length > 0 ? supabase.from('bookings').select('id, serial_number').in('id', bookingIds) : { data: [] },
       ]);
 
