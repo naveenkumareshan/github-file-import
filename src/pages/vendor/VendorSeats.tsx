@@ -111,9 +111,7 @@ const VendorSeats: React.FC = () => {
   const [lockerIncluded, setLockerIncluded] = useState(false);
   const [discountAmount, setDiscountAmount] = useState('');
   const [discountReason, setDiscountReason] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<string>('cash');
-  const [transactionId, setTransactionId] = useState('');
-  const [paymentProofUrl, setPaymentProofUrl] = useState('');
+  const [bookingSplits, setBookingSplits] = useState<PaymentSplit[]>([createDefaultSplit(0)]);
 
   // Slot selection state
   const [selectedSlot, setSelectedSlot] = useState<CabinSlot | null>(null);
