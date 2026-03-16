@@ -102,10 +102,10 @@ export const MobileBottomNav: React.FC = () => {
                 active && 'bg-primary/10'
               )}>
                 <tab.icon
-                  className="w-5 h-5"
+                  className="w-6 h-6"
                   strokeWidth={active ? 2.5 : 1.75}
                 />
-                <span className={cn('text-[9px] leading-tight whitespace-nowrap', active ? 'font-semibold' : 'font-medium')}>
+                <span className={cn('text-[10px] leading-tight whitespace-nowrap', active ? 'font-semibold' : 'font-medium')}>
                   {tab.label}
                 </span>
               </div>
