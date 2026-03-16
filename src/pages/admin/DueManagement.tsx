@@ -132,9 +132,9 @@ const DueManagement: React.FC = () => {
   const openCollect = (due: any) => {
     setSelectedDue(due);
     const remaining = Number(due.due_amount) - Number(due.paid_amount);
-    setCollectAmount(String(remaining > 0 ? remaining : 0));
-    setCollectMethod('cash');
-    setCollectTxnId('');
+    const amt = remaining > 0 ? remaining : 0;
+    setCollectAmount(String(amt));
+    setCollectSplits([createDefaultSplit(amt)]);
     setCollectNotes('');
     setCollectOpen(true);
   };
@@ -143,19 +143,37 @@ const DueManagement: React.FC = () => {
     if (!selectedDue || !collectAmount) return;
     const amt = parseFloat(collectAmount);
     if (amt <= 0) { toast({ title: 'Enter a valid amount', variant: 'destructive' }); return; }
-    if (collectMethod !== 'cash' && !collectTxnId.trim()) {
-      toast({ title: 'Transaction ID is required for non-cash payments', variant: 'destructive' });
+
+    const validationError = validateSplits(collectSplits, amt);
+    if (validationError) {
+      toast({ title: validationError, variant: 'destructive' });
       return;
     }
-    setCollecting(true);
-    const res = await vendorSeatsService.collectDuePayment(selectedDue.id, amt, collectMethod, collectTxnId, collectNotes);
-    if (res.success) {
-      toast({ title: 'Payment collected successfully' });
-      setCollectOpen(false);
-      fetchData();
-    } else {
-      toast({ title: 'Error', description: res.error, variant: 'destructive' });
+
+    // Duplicate txn ID check
+    for (const split of collectSplits) {
+      if (requiresTransactionId(split.method) && split.txnId.trim()) {
+        const { data: isDuplicate } = await supabase.rpc('check_duplicate_transaction_id', { p_txn_id: split.txnId.trim() });
+        if (isDuplicate) {
+          toast({ title: 'Duplicate Transaction ID', description: `"${split.txnId}" already used.`, variant: 'destructive' });
+          return;
+        }
+      }
     }
+
+    setCollecting(true);
+    for (const split of collectSplits) {
+      const splitAmt = parseFloat(split.amount);
+      const res = await vendorSeatsService.collectDuePayment(selectedDue.id, splitAmt, split.method, split.txnId, collectNotes, split.proofUrl);
+      if (!res.success) {
+        toast({ title: 'Error', description: res.error, variant: 'destructive' });
+        setCollecting(false);
+        return;
+      }
+    }
+    toast({ title: 'Payment collected successfully' });
+    setCollectOpen(false);
+    fetchData();
     setCollecting(false);
   };
 
