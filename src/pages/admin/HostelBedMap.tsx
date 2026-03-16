@@ -693,7 +693,7 @@ const HostelBedMap: React.FC = () => {
       receipt_type: 'due_collection',
       collected_by: user?.id,
       collected_by_name: collectedByName,
-      payment_proof_url: paymentProofUrl || null,
+      payment_proof_url: null,
     });
     if (!receiptError) {
       // Update booking remaining_amount
