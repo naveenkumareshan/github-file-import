@@ -57,12 +57,18 @@ export default function MessDashboard() {
 
   const handlePause = async (subId: string) => {
     if (!pauseStart || !pauseEnd) return;
+    const sub = subscriptions.find(s => s.id === subId);
+    if (!sub) return;
+    const today = format(new Date(), 'yyyy-MM-dd');
+    if (pauseStart < today || pauseStart < sub.start_date || pauseEnd > sub.end_date || pauseEnd < pauseStart) {
+      toast({ title: 'Invalid dates', description: 'Pause dates must be within your subscription period and in the future.', variant: 'destructive' });
+      return;
+    }
     setPausing(true);
     try {
       const ps = new Date(pauseStart);
       const pe = new Date(pauseEnd);
       const pauseDays = Math.ceil((pe.getTime() - ps.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-      const sub = subscriptions.find(s => s.id === subId);
       const newEnd = new Date(sub.end_date);
       newEnd.setDate(newEnd.getDate() + pauseDays);
 
