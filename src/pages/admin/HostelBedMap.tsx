@@ -1066,13 +1066,33 @@ const HostelBedMap: React.FC = () => {
         booking_id: newBooking.id,
         user_id: selectedStudent.id,
         amount: receiptAmount,
-        payment_method: paymentMethod,
-        transaction_id: transactionId,
+        payment_method: primarySplit.method,
+        transaction_id: primarySplit.txnId,
         receipt_type: 'booking_payment',
         collected_by: user?.id,
         collected_by_name: collectedByName,
-        payment_proof_url: paymentProofUrl || null,
+        payment_proof_url: primarySplit.proofUrl || null,
       });
+
+      // Process additional splits as separate receipts
+      if (bookingSplits.length > 1) {
+        for (let i = 1; i < bookingSplits.length; i++) {
+          const split = bookingSplits[i];
+          const splitAmt = parseFloat(split.amount);
+          await supabase.from('hostel_receipts').insert({
+            hostel_id: selectedBed.hostelId,
+            booking_id: newBooking.id,
+            user_id: selectedStudent.id,
+            amount: splitAmt,
+            payment_method: split.method,
+            transaction_id: split.txnId,
+            receipt_type: 'booking_payment',
+            collected_by: user?.id,
+            collected_by_name: collectedByName,
+            payment_proof_url: split.proofUrl || null,
+          });
+        }
+      }
 
       // Create hostel_dues entry if advance booking (partial payment)
       if (remaining > 0 && isAdvanceBooking && advanceComputed) {
