@@ -132,7 +132,7 @@ export const BookingTransactionView = ({ bookingId, bookingType, booking }: Book
                 {booking.cabinId?.name || booking.cabinName || booking.hostelId?.name || 'N/A'}
                 {' · '}
                 {bookingType === 'cabin'
-                  ? `${(booking.seatId as any)?.floor ? `Floor ${(booking.seatId as any).floor} · ` : ''}Seat #${booking.seatId?.number || booking.seatNumber || 'N/A'}`
+                  ? `${(booking.seatId as any)?.floor ? `F${(booking.seatId as any).floor} · ` : ''}S${booking.seatId?.number || booking.seatNumber || 'N/A'}`
                   : `Bed #${booking.bedId?.number || 'N/A'}`}
               </span>
             </div>

@@ -136,7 +136,7 @@ const ReportedTodaySection = ({ module }: { module: Module }) => {
                     </td>
                     <td className="py-1.5 px-3">
                       {module === 'reading_room' ? (
-                        <span>{b.cabins?.name || '—'} / {b.seats?.floor ? `Floor ${b.seats.floor} · ` : ''}Seat #{b.seats?.number || '—'}</span>
+                        <span>{b.cabins?.name || '—'} / {b.seats?.floor ? `F${b.seats.floor} · ` : ''}S{b.seats?.number || '—'}</span>
                       ) : (
                         <span>{b.hostels?.name || '—'} / Room {b.hostel_rooms?.room_number || '—'} · Bed #{b.hostel_beds?.bed_number || '—'}</span>
                       )}

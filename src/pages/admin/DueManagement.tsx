@@ -324,7 +324,7 @@ const DueManagement: React.FC = () => {
                         </TableCell>
                         <TableCell className="py-2">
                           <div className="text-[11px]">{(due.cabins as any)?.name || ''}</div>
-                          <div className="text-[10px] text-muted-foreground">{(due.seats as any)?.floor ? `Floor ${(due.seats as any).floor} · ` : ''}Seat #{(due.seats as any)?.number || ''}</div>
+                          <div className="text-[10px] text-muted-foreground">{(due.seats as any)?.floor ? `F${(due.seats as any).floor} · ` : ''}S{(due.seats as any)?.number || ''}</div>
                         </TableCell>
                         <TableCell className="py-2">
                           <div className="text-[10px] text-muted-foreground">{(due.bookings as any)?.serial_number || '-'}</div>

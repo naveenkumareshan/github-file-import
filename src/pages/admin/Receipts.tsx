@@ -308,7 +308,7 @@ const Receipts: React.FC = () => {
                     {(r as any).studentEmail && <div className="text-muted-foreground text-[10px]">{(r as any).studentEmail}</div>}
                   </TableCell>
                   <TableCell className="text-xs">
-                    {r.cabinName}{r.seatFloor ? ` / Floor ${r.seatFloor}` : ''}{r.seatNumber !== undefined ? ` · #${r.seatNumber}` : ''}
+                    {r.cabinName}{r.seatFloor ? ` / F${r.seatFloor}` : ''}{r.seatNumber !== undefined ? ` · S${r.seatNumber}` : ''}
                   </TableCell>
                   <TableCell className="text-xs font-semibold">{formatCurrency(r.amount)}</TableCell>
                   <TableCell className="text-xs">{methodLabel(r.payment_method)}</TableCell>
