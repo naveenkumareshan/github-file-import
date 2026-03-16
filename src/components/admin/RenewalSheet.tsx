@@ -146,6 +146,24 @@ export const RenewalSheet: React.FC<RenewalSheetProps> = ({
       toast({ title: splitError, variant: 'destructive' });
       return;
     }
+
+    // Secondary seat availability check with actual selected dates
+    try {
+      const { data: isAvailable, error } = await supabase.rpc('check_seat_available', {
+        p_seat_id: booking.seatId,
+        p_start_date: format(startDate, 'yyyy-MM-dd'),
+        p_end_date: format(endDate, 'yyyy-MM-dd'),
+      });
+      if (error) throw error;
+      if (!isAvailable) {
+        toast({ title: `Seat #${booking.seatNumber} is already booked for this period. Cannot renew.`, variant: 'destructive' });
+        return;
+      }
+    } catch (err) {
+      console.error('Availability check failed:', err);
+      toast({ title: 'Failed to verify seat availability. Please try again.', variant: 'destructive' });
+      return;
+    }
     for (const split of bookingSplits) {
       if (requiresTransactionId(split.method) && split.txnId.trim()) {
         const { data: isDuplicate } = await supabase.rpc('check_duplicate_transaction_id', { p_txn_id: split.txnId.trim() });
