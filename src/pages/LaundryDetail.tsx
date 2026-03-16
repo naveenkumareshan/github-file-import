@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,7 @@ import { isUUID } from '@/utils/idUtils';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
+import { formatCurrency } from '@/utils/currency';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import {
   ArrowLeft, CalendarIcon, Clock, Loader2, MapPin,
@@ -29,6 +30,17 @@ const CATEGORY_STYLES: Record<string, { bg: string; border: string; badge: strin
   clothing: { bg: 'bg-primary/5', border: 'border-primary/20', badge: 'bg-primary', text: 'text-primary' },
   bedding: { bg: 'bg-secondary/10', border: 'border-secondary/30', badge: 'bg-secondary', text: 'text-secondary' },
   special: { bg: 'bg-accent/10', border: 'border-accent/30', badge: 'bg-accent', text: 'text-accent-foreground' },
+};
+
+const loadRazorpayScript = (): Promise<boolean> => {
+  return new Promise((resolve) => {
+    if ((window as any).Razorpay) { resolve(true); return; }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
 };
 
 const DetailSkeleton = () => (
@@ -60,6 +72,7 @@ export default function LaundryDetail() {
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [createdOrder, setCreatedOrder] = useState<any>(null);
+  const [step, setStep] = useState<'select' | 'review'>('select');
 
   useEffect(() => {
     if (id) loadDetail();
@@ -102,14 +115,26 @@ export default function LaundryDetail() {
 
   const canSubmit = totalItems > 0 && address.room && address.block && address.floor && pickupDate && selectedSlot;
 
-  const handleSubmit = async () => {
+  const selectedSlotObj = slots.find(s => s.slot_name === selectedSlot);
+
+  const handleConfirmAndPay = async () => {
     if (!user || !partner) return;
     if (!isAuthenticated) {
       navigate('/student/login', { state: { from: location.pathname } });
       return;
     }
     setSubmitting(true);
+    let orderId: string | null = null;
     try {
+      // Load Razorpay SDK
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        toast({ title: 'Payment Failed', description: 'Unable to load payment SDK. Please try again.', variant: 'destructive' });
+        setSubmitting(false);
+        return;
+      }
+
+      // Create pending order
       const order = await laundryCloudService.createOrder({
         user_id: user.id,
         pickup_address: address,
@@ -123,7 +148,9 @@ export default function LaundryDetail() {
           item_id: i.id, item_name: i.name, item_price: i.price, quantity: i.quantity, subtotal: i.price * i.quantity,
         })),
       });
+      orderId = order.id;
 
+      // Create Razorpay order
       const res = await supabase.functions.invoke('razorpay-create-order', {
         body: { amount: total, bookingId: order.id, bookingType: 'laundry' },
       });
@@ -143,27 +170,53 @@ export default function LaundryDetail() {
           name: 'InhaleStays Laundry',
           description: 'Laundry Order',
           order_id: res.data.id,
-          handler: async (response: any) => {
-            await supabase.functions.invoke('razorpay-verify-payment', {
-              body: {
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_signature: response.razorpay_signature,
-                bookingId: order.id,
-                bookingType: 'laundry',
-              },
-            });
-            const updated = await laundryCloudService.getOrderById(order.id);
-            setCreatedOrder(updated || order);
-            toast({ title: 'Payment successful!', description: 'Your laundry order has been placed.' });
-          },
           prefill: { name: user.name || '', email: user.email || '' },
+          theme: { color: '#1fa763' },
+          handler: async (response: any) => {
+            try {
+              await supabase.functions.invoke('razorpay-verify-payment', {
+                body: {
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_signature: response.razorpay_signature,
+                  bookingId: order.id,
+                  bookingType: 'laundry',
+                },
+              });
+              const updated = await laundryCloudService.getOrderById(order.id);
+              setCreatedOrder(updated || order);
+              toast({ title: 'Payment successful!', description: 'Your laundry order has been placed.' });
+            } catch (err: any) {
+              toast({ title: 'Verification failed', description: 'Payment received but verification failed. Contact support.', variant: 'destructive' });
+            } finally {
+              setSubmitting(false);
+            }
+          },
+          modal: {
+            ondismiss: async () => {
+              setSubmitting(false);
+              toast({ title: 'Payment Cancelled', description: 'You cancelled the payment. Your order was not placed.', variant: 'destructive' });
+              // Cancel the pending order
+              try {
+                await laundryCloudService.adminUpdateOrder(order.id, { status: 'cancelled', payment_status: 'cancelled' });
+              } catch {}
+            },
+            animation: false,
+            backdropclose: false,
+          },
         };
         const rzp = new (window as any).Razorpay(options);
         rzp.open();
+        return; // Don't setSubmitting(false) — handler/ondismiss will do it
+      } else {
+        throw new Error('Failed to create payment order');
       }
     } catch (e: any) {
       toast({ title: 'Error', description: e.message, variant: 'destructive' });
+      // Cancel pending order on error
+      if (orderId) {
+        try { await laundryCloudService.adminUpdateOrder(orderId, { status: 'cancelled', payment_status: 'cancelled' }); } catch {}
+      }
     } finally { setSubmitting(false); }
   };
 
@@ -190,7 +243,7 @@ export default function LaundryDetail() {
             </div>
             <Separator />
             <p className="text-sm text-muted-foreground">Order: {createdOrder.serial_number || createdOrder.id?.slice(0, 8)}</p>
-            <p className="text-sm font-semibold text-secondary">Total: ₹{total}</p>
+            <p className="text-sm font-semibold text-secondary">Total: {formatCurrency(total)}</p>
           </div>
           <Button className="w-full" onClick={() => navigate('/student/bookings')}>
             View My Bookings
@@ -200,6 +253,114 @@ export default function LaundryDetail() {
     );
   }
 
+  // ── Review Step ──
+  if (step === 'review') {
+    return (
+      <ErrorBoundary>
+        <div className="min-h-screen bg-background pb-24">
+          <div className="max-w-lg mx-auto">
+            {/* Header */}
+            <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border px-3 py-2 flex items-center gap-2">
+              <Button variant="ghost" size="icon" onClick={() => setStep('select')} className="h-8 w-8 rounded-full">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-sm font-semibold text-foreground">Review Your Order</span>
+            </div>
+
+            <div className="px-3 pt-3 space-y-4">
+              {/* Items Summary */}
+              <div className="bg-card rounded-xl border border-border p-4 space-y-3">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <ShoppingBag className="h-4 w-4 text-primary" /> Order Items
+                </h3>
+                <div className="space-y-2">
+                  {cartItems.map(item => (
+                    <div key={item.id} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-base">{item.icon}</span>
+                        <span className="text-foreground truncate">{item.name}</span>
+                        <span className="text-muted-foreground">×{item.quantity}</span>
+                      </div>
+                      <span className="font-medium text-foreground whitespace-nowrap">{formatCurrency(item.price * item.quantity)}</span>
+                    </div>
+                  ))}
+                </div>
+                <Separator />
+                <div className="flex justify-between text-sm font-bold">
+                  <span className="text-foreground">Total ({totalItems} items)</span>
+                  <span className="text-primary">{formatCurrency(total)}</span>
+                </div>
+              </div>
+
+              {/* Pickup Details */}
+              <div className="bg-card rounded-xl border border-border p-4 space-y-3">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Truck className="h-4 w-4 text-primary" /> Pickup Details
+                </h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Date</span>
+                    <span className="text-foreground font-medium">{pickupDate ? format(pickupDate, 'PPP') : '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Time Slot</span>
+                    <span className="text-foreground font-medium">
+                      {selectedSlotObj ? `${selectedSlotObj.slot_name} (${selectedSlotObj.start_time?.slice(0, 5)}-${selectedSlotObj.end_time?.slice(0, 5)})` : selectedSlot}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Address */}
+              <div className="bg-card rounded-xl border border-border p-4 space-y-3">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-primary" /> Pickup Address
+                </h3>
+                <div className="text-sm text-foreground">
+                  <p>Room {address.room}, {address.block}, {address.floor}</p>
+                  {address.landmark && <p className="text-muted-foreground mt-0.5">{address.landmark}</p>}
+                </div>
+              </div>
+
+              {/* Notes */}
+              {notes && (
+                <div className="bg-card rounded-xl border border-border p-4">
+                  <h3 className="text-sm font-semibold text-foreground mb-1">Notes</h3>
+                  <p className="text-sm text-muted-foreground">{notes}</p>
+                </div>
+              )}
+
+              {/* Partner */}
+              <div className="bg-muted/30 rounded-xl border border-border/50 p-3 flex items-center gap-2">
+                <Shirt className="h-5 w-5 text-primary" />
+                <span className="text-sm text-foreground font-medium">{partner.business_name}</span>
+              </div>
+            </div>
+
+            <div className="h-24" />
+          </div>
+
+          {/* Bottom Bar */}
+          <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-3 flex items-center gap-3 max-w-lg mx-auto z-10 shadow-lg">
+            <div className="flex-1">
+              <p className="text-xs text-muted-foreground">{totalItems} item{totalItems !== 1 ? 's' : ''}</p>
+              <p className="text-base font-bold text-foreground">{formatCurrency(total)}</p>
+            </div>
+            <Button
+              disabled={submitting}
+              onClick={handleConfirmAndPay}
+              className="px-6"
+            >
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CreditCard className="h-4 w-4 mr-2" />}
+              Confirm & Pay {formatCurrency(total)}
+            </Button>
+          </div>
+        </div>
+      </ErrorBoundary>
+    );
+  }
+
+  // ── Select Step ──
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-background pb-24">
@@ -380,15 +541,15 @@ export default function LaundryDetail() {
           <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-3 flex items-center gap-3 max-w-lg mx-auto z-10 shadow-lg">
             <div className="flex-1">
               <p className="text-xs text-muted-foreground">{totalItems} item{totalItems !== 1 ? 's' : ''}</p>
-              <p className="text-base font-bold text-foreground">₹{total}</p>
+              <p className="text-base font-bold text-foreground">{formatCurrency(total)}</p>
             </div>
             <Button
-              disabled={!canSubmit || submitting}
-              onClick={handleSubmit}
+              disabled={!canSubmit}
+              onClick={() => setStep('review')}
               className="px-6"
             >
-              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CreditCard className="h-4 w-4 mr-2" />}
-              Pay ₹{total}
+              <ShoppingBag className="h-4 w-4 mr-2" />
+              Review Order →
             </Button>
           </div>
         )}
