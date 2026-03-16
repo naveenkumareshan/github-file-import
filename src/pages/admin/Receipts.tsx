@@ -276,7 +276,7 @@ const Receipts: React.FC = () => {
                   <div><span className="text-muted-foreground">Method: </span>{methodLabel(r.payment_method)}</div>
                   <div><span className="text-muted-foreground">Date: </span>{new Date(r.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
                 </div>
-                {r.cabinName && <p className="text-[10px] text-muted-foreground">Room: {r.cabinName}{r.seatFloor ? ` / Floor ${r.seatFloor}` : ''}{r.seatNumber !== undefined ? ` · #${r.seatNumber}` : ''}</p>}
+                {r.cabinName && <p className="text-[10px] text-muted-foreground">{r.cabinName}{r.seatFloor ? ` / F${r.seatFloor}` : ''}{r.seatNumber !== undefined ? ` · S${r.seatNumber}` : ''}</p>}
               </div>
             ))}
           </div>
