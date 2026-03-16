@@ -38,6 +38,7 @@ interface ReceiptRow {
   studentPhone?: string;
   cabinName?: string;
   seatNumber?: number;
+  seatFloor?: number;
   bookingSerial?: string;
 }
 
