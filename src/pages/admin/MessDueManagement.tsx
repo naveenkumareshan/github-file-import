@@ -194,14 +194,30 @@ const MessDueManagement: React.FC = () => {
 
       for (const split of collectSplits) {
         const splitAmt = parseFloat(split.amount);
+        const normalizedMethod = normalizePaymentMethod(split.method);
         await supabase.from('mess_due_payments' as any).insert({
           due_id: selectedDue.id,
           amount: splitAmt,
-          payment_method: normalizePaymentMethod(split.method),
+          payment_method: normalizedMethod,
           transaction_id: split.txnId || `MESS-${Date.now()}`,
           notes: collectNotes,
           collected_by: user?.id,
           collected_by_name: collectorName,
+        });
+
+        // Also create a mess_receipt for each split so it appears in Receipts & Reconciliation
+        await supabase.from('mess_receipts' as any).insert({
+          mess_id: selectedDue.mess_id,
+          subscription_id: selectedDue.subscription_id || selectedDue.booking_id || null,
+          user_id: selectedDue.user_id,
+          amount: splitAmt,
+          payment_method: normalizedMethod,
+          transaction_id: split.txnId || '',
+          collected_by: user?.id,
+          collected_by_name: collectorName,
+          receipt_type: 'due_payment',
+          notes: collectNotes,
+          payment_proof_url: split.proofUrl || null,
         });
       }
 

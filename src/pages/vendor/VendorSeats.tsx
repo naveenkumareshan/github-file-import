@@ -734,6 +734,7 @@ const VendorSeats: React.FC = () => {
       paymentProofUrl: primarySplit.proofUrl,
       isAdvanceBooking: isAdvanceBooking && !!advanceComputed,
       advancePaid: isAdvanceBooking && advanceComputed ? advanceComputed.advanceAmount : undefined,
+      bookingSplits: bookingSplits.map(s => ({ method: s.method, amount: s.amount, txnId: s.txnId, proofUrl: s.proofUrl })),
       dueDate: isAdvanceBooking && advanceComputed ? format(advanceComputed.proportionalEndDate, 'yyyy-MM-dd') : undefined,
       slotId: selectedSlot ? selectedSlot.id : undefined,
     };
