@@ -727,7 +727,7 @@ const VendorSeats: React.FC = () => {
       lockerPrice: lockerIncluded && selectedCabinInfo ? selectedCabinInfo.lockerPrice : 0,
       discountAmount: parseFloat(discountAmount) || 0,
       discountReason: discountReason,
-      paymentMethod: primarySplit.method,
+      paymentMethod: normalizePaymentMethod(primarySplit.method),
       collectedBy: user?.id,
       collectedByName: collectedByName,
       transactionId: primarySplit.txnId,
