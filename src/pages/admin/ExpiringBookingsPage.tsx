@@ -20,6 +20,7 @@ export default function ExpiringBookingsPage() {
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [daysThreshold, setDaysThreshold] = useState('7');
+  const [viewMode, setViewMode] = useState<'expiring' | 'expired'>('expiring');
   const [search, setSearch] = useState('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
@@ -32,7 +33,7 @@ export default function ExpiringBookingsPage() {
 
   const routePrefix = location.pathname.startsWith('/partner') ? '/partner' : '/admin';
 
-  useEffect(() => { fetchData(); }, [daysThreshold]);
+  useEffect(() => { fetchData(); }, [daysThreshold, viewMode]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -42,7 +43,9 @@ export default function ExpiringBookingsPage() {
         const { ownerId } = await getEffectiveOwnerId();
         partnerUserId = ownerId;
       }
-      const response = await adminBookingsService.getExpiringBookings(parseInt(daysThreshold), partnerUserId);
+      const response = viewMode === 'expired'
+        ? await adminBookingsService.getExpiredBookings(parseInt(daysThreshold), partnerUserId)
+        : await adminBookingsService.getExpiringBookings(parseInt(daysThreshold), partnerUserId);
       setBookings(response.success && Array.isArray(response.data) ? response.data : []);
     } catch { setBookings([]); }
     finally { setLoading(false); }
