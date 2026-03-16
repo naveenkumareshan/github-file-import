@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Search, Receipt, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/utils/currency';
-import { getMethodLabel } from '@/utils/paymentMethodLabels';
+import { getMethodLabel, resolvePaymentMethodLabels } from '@/utils/paymentMethodLabels';
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 import { DateFilterSelector } from '@/components/common/DateFilterSelector';
 import { getDateRangeFromFilter } from '@/utils/dateFilterUtils';
@@ -25,6 +25,7 @@ export default function LaundryReceipts() {
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [paymentLabels, setPaymentLabels] = useState<Record<string, string>>({});
   const { toast } = useToast();
 
   useEffect(() => { fetchReceipts(); }, [user]);
@@ -76,6 +77,11 @@ export default function LaundryReceipts() {
       }));
 
       setReceipts(mapped);
+
+      // Resolve custom payment method labels
+      const methods = mapped.map((r: any) => r.payment_method).filter(Boolean);
+      const labels = await resolvePaymentMethodLabels(methods);
+      setPaymentLabels(labels);
     } catch {
       toast({ title: 'Error loading receipts', variant: 'destructive' });
     }
@@ -173,7 +179,7 @@ export default function LaundryReceipts() {
                   </TableCell>
                   <TableCell className="text-xs">{r.partnerName || '-'}</TableCell>
                   <TableCell className="text-xs font-semibold">{formatCurrency(r.amount)}</TableCell>
-                  <TableCell className="text-xs">{getMethodLabel(r.payment_method || '')}</TableCell>
+                  <TableCell className="text-xs">{getMethodLabel(r.payment_method || '', paymentLabels)}</TableCell>
                   <TableCell className="text-xs font-mono max-w-[120px] truncate">{r.transaction_id || '-'}</TableCell>
                   <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{new Date(r.created_at).toLocaleString('en-IN')}</TableCell>
                 </TableRow>

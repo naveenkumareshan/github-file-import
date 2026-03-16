@@ -641,9 +641,11 @@ const Reconciliation: React.FC = () => {
             <DialogTitle className="text-sm">Approve Receipt</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <p className="text-xs text-muted-foreground">
-              Approving receipt <span className="font-mono font-medium">{approveTarget?.serial_number}</span> — {formatCurrency(approveTarget?.amount || 0)}
-            </p>
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p>Approving receipt <span className="font-mono font-medium">{approveTarget?.serial_number}</span> — {formatCurrency(approveTarget?.amount || 0)}</p>
+              <p>Payment Method: <span className="font-medium text-foreground">{approveTarget?.payment_method}</span></p>
+              {approveTarget?.transaction_id && <p>Txn ID: <span className="font-mono font-medium text-foreground">{approveTarget.transaction_id}</span></p>}
+            </div>
 
             <div className="space-y-2">
               <Label className="text-xs">Credit Date <span className="text-destructive">*</span></Label>

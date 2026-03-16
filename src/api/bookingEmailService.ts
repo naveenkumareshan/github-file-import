@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { getMethodLabel } from '@/utils/paymentMethodLabels';
+import { getMethodLabel, resolvePaymentMethodLabels } from '@/utils/paymentMethodLabels';
 
 interface ReceiptEmailPayload {
   to: string;
@@ -32,7 +32,8 @@ const sendReceiptEmail = async (payload: ReceiptEmailPayload): Promise<{ success
 
     // Resolve payment method to human-readable label before sending
     if (payload.paymentMethod) {
-      payload.paymentMethod = getMethodLabel(payload.paymentMethod);
+      const customLabels = await resolvePaymentMethodLabels([payload.paymentMethod]);
+      payload.paymentMethod = getMethodLabel(payload.paymentMethod, customLabels);
     }
 
     const { data, error } = await supabase.functions.invoke('send-booking-receipt', {
