@@ -26,6 +26,7 @@ import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
 import { PaymentMethodSelector, requiresTransactionId } from '@/components/vendor/PaymentMethodSelector';
 import { SplitPaymentCollector, PaymentSplit, createDefaultSplit, validateSplits } from '@/components/payment/SplitPaymentCollector';
 import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
+import { normalizePaymentMethod } from '@/utils/paymentMethodLabels';
 import { vendorSeatsService } from '@/api/vendorSeatsService';
 import { cn } from '@/lib/utils';
 
