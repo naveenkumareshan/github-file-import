@@ -1066,7 +1066,7 @@ const HostelBedMap: React.FC = () => {
         booking_id: newBooking.id,
         user_id: selectedStudent.id,
         amount: receiptAmount,
-        payment_method: primarySplit.method,
+        payment_method: normalizePaymentMethod(primarySplit.method),
         transaction_id: primarySplit.txnId,
         receipt_type: 'booking_payment',
         collected_by: user?.id,
