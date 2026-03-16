@@ -9,12 +9,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { CalendarRange, Eye, Search, X, Download, ArrowUpDown, RotateCcw, Clock, CalendarX } from 'lucide-react';
 import { adminBookingsService } from '@/api/adminBookingsService';
-import { format, differenceInDays } from 'date-fns';
+import { format, differenceInDays, addDays, addMonths, subDays } from 'date-fns';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 import { useAuth } from '@/contexts/AuthContext';
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 import { RenewalSheet } from '@/components/admin/RenewalSheet';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 export default function ExpiringBookingsPage() {
   const [bookings, setBookings] = useState<any[]>([]);
