@@ -43,11 +43,9 @@ const HostelDueManagement: React.FC = () => {
   const [collectOpen, setCollectOpen] = useState(false);
   const [selectedDue, setSelectedDue] = useState<any>(null);
   const [collectAmount, setCollectAmount] = useState('');
-  const [collectMethod, setCollectMethod] = useState('cash');
-  const [collectTxnId, setCollectTxnId] = useState('');
+  const [collectSplits, setCollectSplits] = useState<PaymentSplit[]>([createDefaultSplit(0)]);
   const [collectNotes, setCollectNotes] = useState('');
   const [collecting, setCollecting] = useState(false);
-  const [collectProofUrl, setCollectProofUrl] = useState('');
 
   // Date editing state
   const [editingField, setEditingField] = useState<'due_date' | null>(null);
