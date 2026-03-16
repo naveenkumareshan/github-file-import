@@ -197,7 +197,7 @@ const MessDueManagement: React.FC = () => {
         await supabase.from('mess_due_payments' as any).insert({
           due_id: selectedDue.id,
           amount: splitAmt,
-          payment_method: split.method,
+          payment_method: normalizePaymentMethod(split.method),
           transaction_id: split.txnId || `MESS-${Date.now()}`,
           notes: collectNotes,
           collected_by: user?.id,
