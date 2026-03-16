@@ -61,12 +61,7 @@ const SOURCE_COLORS: Record<string, string> = {
   laundry: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300',
 };
 
-const DEFAULT_METHOD_LABELS: Record<string, string> = {
-  cash: 'Cash',
-  upi: 'UPI',
-  bank_transfer: 'Bank Transfer',
-  online: 'Online',
-};
+import { getMethodLabel } from '@/utils/paymentMethodLabels';
 
 const Reconciliation: React.FC = () => {
   const [rows, setRows] = useState<ReconciliationRow[]>([]);
@@ -166,7 +161,7 @@ const Reconciliation: React.FC = () => {
           source: r._source,
           serial_number: r.serial_number || '',
           amount: Number(r.amount),
-          payment_method: methodLabels[rawMethod] || DEFAULT_METHOD_LABELS[rawMethod] || rawMethod,
+          payment_method: getMethodLabel(rawMethod, methodLabels),
           raw_payment_method: rawMethod,
           transaction_id: r.transaction_id || '',
           payment_proof_url: (r as any).payment_proof_url || undefined,

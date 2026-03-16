@@ -1,39 +1,71 @@
 
 
-## Fix: Reconciliation Approval for Old Records + Split Payment Receipts
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-### Issue 1: Cannot approve old transactions + payment method shows raw values
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
-**Root cause**: The reconciliation page resolves custom payment labels by looking up `custom_<uuid>` IDs in `partner_payment_modes`. But old records stored as `custom___default_cash__` don't match any real UUID, so they display the raw string. The `DEFAULT_METHOD_LABELS` map also doesn't cover this pattern.
+## Changes
 
-Additionally, the `getMethodLabel` utility already handles this, but the Reconciliation page uses its own inline label resolution that doesn't account for the `__default_cash__` pattern.
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-**Fix**:
-- Update `Reconciliation.tsx` label resolution (line 169) to use the centralized `getMethodLabel` from `paymentMethodLabels.ts` which already handles `__default_cash__` → "Cash"
-- Fix old data: normalize existing `custom___default_cash__` values in all receipt tables to canonical `cash` via a data migration
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-**Files**: `src/pages/admin/Reconciliation.tsx`
-**Migration**: UPDATE receipts, hostel_receipts, mess_receipts, laundry_receipts to set `payment_method = 'cash'` WHERE `payment_method LIKE '%__default_cash__%'`
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
 
----
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
 
-### Issue 2: Split payments generate only one receipt instead of multiple
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
 
-**Root causes found in 2 flows**:
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
 
-1. **Reading Room new bookings** (`vendorSeatsService.createPartnerBooking`): Only creates ONE receipt for the primary split. Additional splits are ignored (line 768 has a comment acknowledging this gap).
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
 
-2. **Mess due collection** (`MessDueManagement.tsx`): Creates `mess_due_payments` per split but does NOT create corresponding `mess_receipts`. So these splits don't appear in receipts or reconciliation.
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
 
-**Fix**:
-- **RR bookings**: After the primary receipt insert in `vendorSeatsService.createPartnerBooking`, loop through remaining splits and create additional receipts (matching the pattern already used in Hostel bookings)
-- **Mess due collection**: After inserting each `mess_due_payment` split, also insert a corresponding `mess_receipt` (matching the pattern in Hostel due collection)
+**Reviews section**: Shown below the booking flow (not in a tab)
 
-**Files**:
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
+
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
+
+## File Summary
+
 | File | Change |
 |------|--------|
-| `src/pages/admin/Reconciliation.tsx` | Use `getMethodLabel` for label resolution to handle `__default_cash__` and other edge cases |
-| `src/api/vendorSeatsService.ts` | Add split receipt creation loop after primary receipt in `createPartnerBooking` |
-| `src/pages/admin/MessDueManagement.tsx` | Add `mess_receipts` insert for each split in `handleCollect` |
-| DB migration | Normalize old `custom___default_cash__` → `cash` across all receipt tables |
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
 

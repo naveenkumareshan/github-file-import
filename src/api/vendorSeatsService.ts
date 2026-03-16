@@ -124,6 +124,7 @@ export interface PartnerBookingData {
   dueDate?: string;
   slotId?: string;
   paymentProofUrl?: string;
+  bookingSplits?: { method: string; amount: string; txnId: string; proofUrl: string }[];
 }
 
 export interface BlockHistoryEntry {
@@ -634,22 +635,28 @@ export const vendorSeatsService = {
         } as any);
       }
 
-      // Create receipt for this booking payment
+      // Create receipts for this booking payment (one per split)
       try {
-        await supabase.from('receipts').insert({
-          booking_id: insertedData?.id,
-          user_id: data.userId,
-          cabin_id: data.cabinId,
-          seat_id: data.seatId,
-          amount: data.isAdvanceBooking && data.advancePaid ? data.advancePaid : data.totalPrice,
-          payment_method: data.paymentMethod || 'cash',
-          transaction_id: data.transactionId || '',
-          collected_by: data.collectedBy || null,
-          collected_by_name: data.collectedByName || '',
-          receipt_type: 'booking_payment',
-          notes: data.isAdvanceBooking ? 'Advance payment' : '',
-          payment_proof_url: data.paymentProofUrl || null,
-        } as any);
+        const splits = data.bookingSplits && data.bookingSplits.length > 0
+          ? data.bookingSplits
+          : [{ method: data.paymentMethod || 'cash', amount: String(data.isAdvanceBooking && data.advancePaid ? data.advancePaid : data.totalPrice), txnId: data.transactionId || '', proofUrl: data.paymentProofUrl || '' }];
+
+        for (const split of splits) {
+          await supabase.from('receipts').insert({
+            booking_id: insertedData?.id,
+            user_id: data.userId,
+            cabin_id: data.cabinId,
+            seat_id: data.seatId,
+            amount: parseFloat(split.amount) || 0,
+            payment_method: normalizePaymentMethod(split.method),
+            transaction_id: split.txnId || '',
+            collected_by: data.collectedBy || null,
+            collected_by_name: data.collectedByName || '',
+            receipt_type: 'booking_payment',
+            notes: data.isAdvanceBooking ? 'Advance payment' : '',
+            payment_proof_url: split.proofUrl || null,
+          } as any);
+        }
       } catch (e) {
         console.error('Receipt creation failed:', e);
       }
