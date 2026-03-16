@@ -61,12 +61,7 @@ const SOURCE_COLORS: Record<string, string> = {
   laundry: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300',
 };
 
-const DEFAULT_METHOD_LABELS: Record<string, string> = {
-  cash: 'Cash',
-  upi: 'UPI',
-  bank_transfer: 'Bank Transfer',
-  online: 'Online',
-};
+import { getMethodLabel } from '@/utils/paymentMethodLabels';
 
 const Reconciliation: React.FC = () => {
   const [rows, setRows] = useState<ReconciliationRow[]>([]);
