@@ -2048,7 +2048,7 @@ const VendorSeats: React.FC = () => {
                                   </div>
                                   <SplitPaymentCollector
                                     totalAmount={parseFloat(dueCollectAmount) || 0}
-                                    partnerId={selectedSeat?.cabinId ? cabins.find(c => c._id === selectedSeat.cabinId)?.createdBy : undefined}
+                                    partnerId={user?.vendorId || user?.id}
                                     splits={dueSplits}
                                     onSplitsChange={setDueSplits}
                                     compact
