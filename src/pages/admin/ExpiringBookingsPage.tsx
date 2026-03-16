@@ -122,9 +122,29 @@ export default function ExpiringBookingsPage() {
     <div className="p-3 md:p-6 space-y-3">
       <Card className="border-border/50 shadow-sm">
         <CardHeader className="py-3 px-4 bg-muted/30 border-b">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <CalendarRange className="h-4 w-4 text-primary" />
-            <CardTitle className="text-sm font-semibold text-foreground/90">Expiring Reading Room Bookings</CardTitle>
+            <CardTitle className="text-sm font-semibold text-foreground/90">
+              {viewMode === 'expiring' ? 'Expiring' : 'Expired'} Reading Room Bookings
+            </CardTitle>
+            <div className="flex items-center gap-1 ml-4">
+              <Button
+                variant={viewMode === 'expiring' ? 'default' : 'outline'}
+                size="sm"
+                className="h-7 text-[11px] gap-1"
+                onClick={() => setViewMode('expiring')}
+              >
+                <Clock className="h-3 w-3" /> Expiring
+              </Button>
+              <Button
+                variant={viewMode === 'expired' ? 'default' : 'outline'}
+                size="sm"
+                className="h-7 text-[11px] gap-1"
+                onClick={() => setViewMode('expired')}
+              >
+                <CalendarX className="h-3 w-3" /> Expired
+              </Button>
+            </div>
             <Badge variant="outline" className="ml-auto text-[10px]">{filtered.length} records</Badge>
           </div>
         </CardHeader>
