@@ -199,9 +199,20 @@ const HostelDueManagement: React.FC = () => {
     if (!selectedDue || !collectAmount) return;
     const amt = parseFloat(collectAmount);
     if (amt <= 0) { toast({ title: 'Enter a valid amount', variant: 'destructive' }); return; }
-    if (collectMethod !== 'cash' && !collectTxnId.trim()) {
-      toast({ title: 'Transaction ID is required for non-cash payments', variant: 'destructive' });
+    const splitError = validateSplits(collectSplits, amt);
+    if (splitError) {
+      toast({ title: splitError, variant: 'destructive' });
       return;
+    }
+    // Duplicate txn ID check
+    for (const split of collectSplits) {
+      if (requiresTransactionId(split.method) && split.txnId.trim()) {
+        const { data: isDuplicate } = await supabase.rpc('check_duplicate_transaction_id', { p_txn_id: split.txnId.trim() });
+        if (isDuplicate) {
+          toast({ title: 'Duplicate Transaction ID', description: `"${split.txnId}" already used.`, variant: 'destructive' });
+          return;
+        }
+      }
     }
     setCollecting(true);
 
@@ -210,26 +221,39 @@ const HostelDueManagement: React.FC = () => {
     const newPaid = currentPaid + amt;
     const dueAmount = Number(selectedDue.due_amount);
     const newStatus = newPaid >= dueAmount ? 'paid' : 'partially_paid';
-
-    // Validity always spans the full booking period
     const booking = selectedDue.hostel_bookings;
     const proportionalEndDate: string | null = booking?.end_date || null;
 
-    // Insert due payment
-    const { error: paymentError } = await supabase.from('hostel_due_payments').insert({
-      due_id: selectedDue.id,
-      amount: amt,
-      payment_method: collectMethod,
-      transaction_id: collectTxnId,
-      collected_by: user?.id,
-      collected_by_name: collectedByName,
-      notes: collectNotes,
-    });
-
-    if (paymentError) {
-      toast({ title: 'Error', description: paymentError.message, variant: 'destructive' });
-      setCollecting(false);
-      return;
+    // Process each split
+    for (const split of collectSplits) {
+      const splitAmt = parseFloat(split.amount);
+      const { error: paymentError } = await supabase.from('hostel_due_payments').insert({
+        due_id: selectedDue.id,
+        amount: splitAmt,
+        payment_method: split.method,
+        transaction_id: split.txnId,
+        collected_by: user?.id,
+        collected_by_name: collectedByName,
+        notes: collectNotes,
+      });
+      if (paymentError) {
+        toast({ title: 'Error', description: paymentError.message, variant: 'destructive' });
+        setCollecting(false);
+        return;
+      }
+      await supabase.from('hostel_receipts').insert({
+        hostel_id: selectedDue.hostel_id,
+        booking_id: selectedDue.booking_id,
+        user_id: selectedDue.user_id,
+        amount: splitAmt,
+        payment_method: split.method,
+        transaction_id: split.txnId,
+        receipt_type: 'due_collection',
+        collected_by: user?.id,
+        collected_by_name: collectedByName,
+        notes: collectNotes,
+        payment_proof_url: split.proofUrl || null,
+      });
     }
 
     // Update hostel_dues
@@ -238,20 +262,6 @@ const HostelDueManagement: React.FC = () => {
       status: newStatus,
       proportional_end_date: proportionalEndDate,
     }).eq('id', selectedDue.id);
-
-    // Create hostel receipt
-    await supabase.from('hostel_receipts').insert({
-      hostel_id: selectedDue.hostel_id,
-      booking_id: selectedDue.booking_id,
-      user_id: selectedDue.user_id,
-      amount: amt,
-      payment_method: collectMethod,
-      transaction_id: collectTxnId,
-      receipt_type: 'due_collection',
-      collected_by: user?.id,
-      collected_by_name: collectedByName,
-      notes: collectNotes,
-    });
 
     // Update hostel_bookings payment_status if fully paid
     if (newStatus === 'paid' && selectedDue.booking_id) {
