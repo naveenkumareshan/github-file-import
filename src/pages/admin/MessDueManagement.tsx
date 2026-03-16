@@ -172,24 +172,40 @@ const MessDueManagement: React.FC = () => {
 
   const handleCollect = async () => {
     if (!selectedDue || !collectAmount) return;
+    const totalAmt = parseFloat(collectAmount);
+    if (totalAmt <= 0) { toast({ title: 'Enter a valid amount', variant: 'destructive' }); return; }
+    const splitError = validateSplits(collectSplits, totalAmt);
+    if (splitError) {
+      toast({ title: splitError, variant: 'destructive' });
+      return;
+    }
+    for (const split of collectSplits) {
+      if (requiresTransactionId(split.method) && split.txnId.trim()) {
+        const { data: isDuplicate } = await supabase.rpc('check_duplicate_transaction_id', { p_txn_id: split.txnId.trim() });
+        if (isDuplicate) {
+          toast({ title: 'Duplicate Transaction ID', description: `"${split.txnId}" already used.`, variant: 'destructive' });
+          return;
+        }
+      }
+    }
     setCollecting(true);
     try {
-      const amount = parseFloat(collectAmount);
       const collectorName = user?.name || user?.email || 'Partner';
 
-      // Insert payment record
-      await supabase.from('mess_due_payments' as any).insert({
-        due_id: selectedDue.id,
-        amount,
-        payment_method: collectMethod,
-        transaction_id: collectTxnId || `MESS-${Date.now()}`,
-        notes: collectNotes,
-        collected_by: user?.id,
-        collected_by_name: collectorName,
-      });
+      for (const split of collectSplits) {
+        const splitAmt = parseFloat(split.amount);
+        await supabase.from('mess_due_payments' as any).insert({
+          due_id: selectedDue.id,
+          amount: splitAmt,
+          payment_method: split.method,
+          transaction_id: split.txnId || `MESS-${Date.now()}`,
+          notes: collectNotes,
+          collected_by: user?.id,
+          collected_by_name: collectorName,
+        });
+      }
 
-      // Update due
-      const newPaid = (selectedDue.paid_amount || 0) + amount;
+      const newPaid = (selectedDue.paid_amount || 0) + totalAmt;
       const remaining = Math.max(0, (selectedDue.due_amount || 0) - newPaid);
       await supabase.from('mess_dues' as any).update({
         paid_amount: newPaid,
@@ -197,7 +213,7 @@ const MessDueManagement: React.FC = () => {
         updated_at: new Date().toISOString(),
       }).eq('id', selectedDue.id);
 
-      toast({ title: 'Payment collected', description: `₹${amount} collected successfully` });
+      toast({ title: 'Payment collected', description: `₹${totalAmt} collected successfully` });
       setCollectOpen(false);
       fetchData();
     } catch (e: any) {
