@@ -429,7 +429,7 @@ export default function MessBookings() {
         user_id: selectedUserId,
         mess_id: selectedMess.id,
         amount: parseFloat(primarySplit.amount),
-        payment_method: primarySplit.method,
+        payment_method: normalizePaymentMethod(primarySplit.method),
         transaction_id: primarySplit.txnId,
         collected_by: user?.id,
         collected_by_name: collectedByName || user?.name || '',
