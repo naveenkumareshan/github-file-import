@@ -411,7 +411,7 @@ export default function MessBookings() {
         start_date: format(startDate, 'yyyy-MM-dd'),
         end_date: endDate,
         price_paid: totalAfterDiscount,
-        payment_method: primarySplit.method,
+        payment_method: normalizePaymentMethod(primarySplit.method),
         payment_status: isPartial ? 'advance_paid' : 'completed',
         status: 'active',
         transaction_id: primarySplit.txnId,
