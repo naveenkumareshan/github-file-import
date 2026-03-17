@@ -17,6 +17,7 @@ import { Upload, Download, FileSpreadsheet, User, Bed, CreditCard, AlertCircle, 
 import ExcelJS from 'exceljs';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { formatCurrency } from '@/utils/currency';
 import {
   PropertyType,
   validateStudentRows,

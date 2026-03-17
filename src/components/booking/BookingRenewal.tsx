@@ -18,6 +18,7 @@ import { Clock, CreditCard, Tag, CheckCircle, XCircle } from 'lucide-react';
 import { transactionService } from '@/api/transactionService';
 import { razorpayService } from '@/api/razorpayService';
 import { couponService } from '@/api/couponService';
+import { formatCurrency } from '@/utils/currency';
 import { seatsService } from '@/api/seatsService';
 import { bookingsService } from '@/api/bookingsService';
 import { supabase } from '@/integrations/supabase/client';

@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { hostelBookingService } from '@/api/hostelBookingService';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, isWithinInterval, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { formatCurrency } from '@/utils/currency';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 interface HostelOption {
