@@ -2155,7 +2155,7 @@ const HostelBedMap: React.FC = () => {
                             <>
                               <Button size="sm" variant="outline" className="w-full h-7 text-[10px] mt-1 bg-red-50 border-red-200 text-red-600 hover:bg-red-100 dark:bg-red-950/30 dark:border-red-800 dark:text-red-400"
                                 onClick={() => { if (expandedDueBookingId === b.bookingId) { setExpandedDueBookingId(''); } else { setExpandedDueBookingId(b.bookingId); setDueCollectAmount(String(dueRemaining)); setDueCollectMethod('cash'); setDueCollectTxnId(''); } }}>
-                                <Wallet className="h-3 w-3 mr-1" /> Due: ₹{dueRemaining.toLocaleString()}
+                                <Wallet className="h-3 w-3 mr-1" /> Due: {formatCurrency(dueRemaining)}
                               </Button>
                               {expandedDueBookingId === b.bookingId && (
                                 <div className="border rounded p-2 space-y-2 bg-muted/30 mt-1">
