@@ -194,6 +194,7 @@ function HostelDepositList() {
 
 // ── Refund Management Tab ──
 function HostelRefundManagement({ status }: { status: 'pending' | 'refunded' }) {
+  const { user: authUser } = useAuth();
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
