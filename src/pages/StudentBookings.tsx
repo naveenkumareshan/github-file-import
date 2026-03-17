@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { BookingsList } from '@/components/booking/BookingsList';
 import { useToast } from '@/hooks/use-toast';
 import { bookingsService } from '@/api/bookingsService';
+import { formatCurrency } from '@/utils/currency';
 import { hostelBookingService } from '@/api/hostelBookingService';
 import { getMyMessSubscriptions } from '@/api/messService';
 import { format } from 'date-fns';
