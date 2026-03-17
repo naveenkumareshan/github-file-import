@@ -556,7 +556,7 @@ export default function StudentBookingView() {
               {receipts.map((r) => (
                 <div key={r.id} className="border rounded-xl p-2.5 bg-muted/30">
                   <div className="flex justify-between items-center">
-                    <span className="text-[12px] font-semibold text-foreground">₹{Number(r.amount).toFixed(2)}</span>
+                    <span className="text-[12px] font-semibold text-foreground">{formatCurrency(Number(r.amount))}</span>
                     <span className="text-[10px] text-muted-foreground">{safeFmt(r.created_at, "dd MMM yyyy")}</span>
                   </div>
                   <div className="flex gap-2 mt-1">
