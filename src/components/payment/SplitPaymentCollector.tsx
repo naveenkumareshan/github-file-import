@@ -60,6 +60,15 @@ export const SplitPaymentCollector: React.FC<SplitPaymentCollectorProps> = ({
   onSplitsChange,
   compact = false,
 }) => {
+  useEffect(() => {
+    if (splits.length === 1 && totalAmount > 0) {
+      const currentAmt = parseFloat(splits[0].amount || '0');
+      if (Math.abs(currentAmt - totalAmount) > 0.01) {
+        onSplitsChange([{ ...splits[0], amount: String(totalAmount) }]);
+      }
+    }
+  }, [totalAmount, splits.length]);
+
   const updateSplit = (id: string, field: keyof PaymentSplit, value: string) => {
     onSplitsChange(splits.map(s => s.id === id ? { ...s, [field]: value } : s));
   };
