@@ -618,7 +618,7 @@ export const BookingRenewal = React.forwardRef<HTMLDivElement, BookingRenewalPro
                     <div className="flex items-center gap-2">
                       <Tag className="h-4 w-4 text-green-600" />
                       <span className="text-green-700 font-medium">{appliedCoupon.code}</span>
-                      <span className="text-green-600 text-sm">(-₹{getDiscountAmount().toLocaleString()})</span>
+                      <span className="text-green-600 text-sm">(-{formatCurrency(getDiscountAmount())})</span>
                     </div>
                     <Button variant="ghost" size="sm" onClick={removeCoupon}>
                       Remove
