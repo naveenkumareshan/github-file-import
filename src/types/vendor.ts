@@ -15,9 +15,6 @@ export interface PartnerEmployee {
   updatedAt: string;
 }
 
-/** @deprecated Use PartnerEmployee instead */
-export type VendorEmployee = PartnerEmployee;
-
 export interface PartnerBooking {
   id: string;
   vendorId: string;
