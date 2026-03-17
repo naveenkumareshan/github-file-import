@@ -73,8 +73,8 @@ const ComplaintsPage = () => {
       supabase.from('complaints').select('*, cabins:cabin_id(name), hostels:hostel_id(name), mess_partners:mess_id(name)').eq('user_id', authUser.id).order('created_at', { ascending: false }),
       bookingsService.getCurrentBookings(),
       hostelBookingService.getUserBookings(),
-      getMyMessSubscriptions(user.id).catch(() => []),
-      supabase.from('laundry_orders').select('*, laundry_partners:partner_id(id, business_name)').eq('user_id', user.id).order('created_at', { ascending: false }),
+      getMyMessSubscriptions(authUser.id).catch(() => []),
+      supabase.from('laundry_orders').select('*, laundry_partners:partner_id(id, business_name)').eq('user_id', authUser.id).order('created_at', { ascending: false }),
     ]);
 
     const now = new Date();
