@@ -199,6 +199,7 @@ export const BookingTransactions: React.FC<BookingTransactionsProps> = ({ dateRa
       const response = await adminBookingsService.getAllBookings(filters, partnerUserId);
       if (!response.success || !response.data) throw new Error('Failed to fetch data');
 
+      const ExcelJS = (await import('exceljs')).default;
       const workbook = new ExcelJS.Workbook();
       const sheet = workbook.addWorksheet('Transactions');
 

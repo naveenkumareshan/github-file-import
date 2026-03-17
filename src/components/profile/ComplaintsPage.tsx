@@ -260,7 +260,7 @@ const ComplaintsPage = () => {
             ticketCreatedAt={selectedComplaint.created_at}
             ticketStatus={selectedComplaint.status}
             senderRole="student"
-            currentUserId={currentUserId}
+            currentUserId={authUser?.id || ''}
             creatorName="You"
             whatsappNumber={partnerWhatsapp}
             whatsappLabel="Chat with Property Owner"

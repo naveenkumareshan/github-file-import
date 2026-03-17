@@ -107,7 +107,7 @@ const SupportPage = () => {
             ticketCreatedAt={selectedTicket.created_at}
             ticketStatus={selectedTicket.status}
             senderRole="student"
-            currentUserId={currentUserId}
+            currentUserId={authUser?.id || ''}
             creatorName="You"
             whatsappNumber={adminWhatsapp}
             whatsappLabel="Chat with Support"

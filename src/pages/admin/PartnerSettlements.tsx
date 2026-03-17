@@ -107,6 +107,7 @@ const PartnerSettlements: React.FC = () => {
       toast({ title: 'No Data', description: 'No approved/locked settlements to export', variant: 'destructive' });
       return;
     }
+    const ExcelJS = (await import('exceljs')).default;
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('Bank Upload');
     ws.columns = [

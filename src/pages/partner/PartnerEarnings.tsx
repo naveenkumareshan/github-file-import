@@ -60,6 +60,7 @@ const PartnerEarnings: React.FC = () => {
     const s = statementData.settlement;
     const items = statementData.items || [];
 
+    const ExcelJS = (await import('exceljs')).default;
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('Settlement Statement');
 

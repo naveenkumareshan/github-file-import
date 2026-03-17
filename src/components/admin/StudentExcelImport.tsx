@@ -239,6 +239,7 @@ const StudentExcelImport = () => {
   // ── Export results ──────────────────────────────────────
 
   const exportResults = async () => {
+    const ExcelJS = (await import('exceljs')).default;
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('Results');
     const cols = ['name', 'email', 'phone', 'status', 'bookingId', 'error'];
