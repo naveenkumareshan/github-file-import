@@ -263,7 +263,7 @@ const VendorPayouts: React.FC = () => {
                   <div>
                     <Label>Available Balance</Label>
                     <p className="text-2xl font-bold text-green-600">
-                      ₹{income?.payoutSummary.availableBalance.toLocaleString() || 0}
+                      {formatCurrency(income?.payoutSummary.availableBalance || 0)}
                     </p>
                   </div>
                   <div>
