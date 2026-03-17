@@ -47,7 +47,7 @@ export const validateSplits = (splits: PaymentSplit[], totalAmount: number): str
 
   const totalSplit = splits.reduce((sum, s) => sum + parseFloat(s.amount || '0'), 0);
   if (Math.abs(totalSplit - totalAmount) > 0.01) {
-    return `Split total (₹${totalSplit.toLocaleString()}) doesn't match collection amount (₹${totalAmount.toLocaleString()})`;
+    return `Split total (${formatCurrency(totalSplit)}) doesn't match collection amount (${formatCurrency(totalAmount)})`;
   }
 
   return null;
