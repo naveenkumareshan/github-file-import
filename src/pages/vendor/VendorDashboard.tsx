@@ -81,7 +81,7 @@ const VendorDashboard: React.FC = () => {
             <div className="p-3 flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Revenue</p>
-                <p className="text-xl font-bold mt-0.5">₹{dashboardData.totalRevenue.toLocaleString()}</p>
+                <p className="text-xl font-bold mt-0.5">{formatCurrency(dashboardData.totalRevenue)}</p>
                 <p className="text-[10px] text-muted-foreground">All time earnings</p>
               </div>
               <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
