@@ -213,13 +213,12 @@ const StudentDashboard: React.FC = () => {
   }, [user?.id]);
 
   const fetchStudentDues = async () => {
+    if (!user?.id) return;
     try {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) return;
       const { data } = await supabase
         .from('dues')
         .select('*, cabins:cabin_id(name), seats:seat_id(number)')
-        .eq('user_id', authUser.id)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
       setStudentDues(data || []);
     } catch (e) {
