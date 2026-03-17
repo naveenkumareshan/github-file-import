@@ -165,7 +165,7 @@ const VendorSeats: React.FC = () => {
   const [attendanceSet, setAttendanceSet] = useState<Set<string>>(new Set());
 
   const { toast } = useToast();
-  const { hasPermission } = useVendorEmployeePermissions();
+  const { hasPermission } = usePartnerEmployeePermissions();
   const { user } = useAuth();
 
   const canEdit = user?.role === 'admin' || user?.role === 'vendor' || hasPermission('seats_available_edit');

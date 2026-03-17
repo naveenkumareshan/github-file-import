@@ -71,7 +71,7 @@ interface MenuItem {
 export function AdminSidebar() {
   const { pathname } = useLocation();
   const { user, logout } = useAuth();
-  const { hasPermission, hasAnyPermission, loading } = useVendorEmployeePermissions();
+  const { hasPermission, hasAnyPermission, loading } = usePartnerEmployeePermissions();
   const propertyTypes = usePartnerPropertyTypes();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 

@@ -24,7 +24,7 @@ const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'sessions'>(
     tabFromUrl || 'dashboard'
   );
-  const { hasPermission } = useVendorEmployeePermissions();
+  const { hasPermission } = usePartnerEmployeePermissions();
   
   const { user } = useAuth();
 
