@@ -682,9 +682,9 @@ export function AdminSidebar() {
         <Collapsible key={item.title} defaultOpen={isActiveItem(item.url, item.subItems)}>
           <SidebarMenuItem>
             <CollapsibleTrigger asChild>
-              <SidebarMenuButton className="w-full justify-between hover:bg-muted/60 transition-colors">
+              <SidebarMenuButton className={`w-full justify-between transition-all duration-200 ${isActiveItem(item.url, item.subItems) ? "bg-primary/10 text-primary font-semibold" : "hover:bg-muted/60"}`}>
                 <div className="flex items-center gap-2.5">
-                  <item.icon className="h-4 w-4 text-muted-foreground" />
+                  <item.icon className={`h-4 w-4 ${isActiveItem(item.url, item.subItems) ? "text-primary" : "text-muted-foreground"}`} />
                   <span className="text-sm font-medium">{item.title}</span>
                 </div>
                 <ChevronRight className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[state=open]/collapsible:rotate-90" />
