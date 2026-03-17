@@ -85,7 +85,7 @@ export const BookingTransactions: React.FC<BookingTransactionsProps> = ({ dateRa
       accessorKey: 'totalPrice',
       header: 'Amount',
       cell: ({ row }: any) => (
-        <div className="font-medium">₹{(row.original.totalPrice || 0).toLocaleString('en-IN')}</div>
+        <div className="font-medium">{formatCurrency(row.original.totalPrice || 0)}</div>
       ),
     },
     {

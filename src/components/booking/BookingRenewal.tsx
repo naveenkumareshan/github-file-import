@@ -724,7 +724,7 @@ export const BookingRenewal = React.forwardRef<HTMLDivElement, BookingRenewalPro
                     </div>
                     <div className="flex justify-between font-bold text-base">
                       <span>Total Amount:</span>
-                      <span>₹{calculateAdditionalAmount().toLocaleString()}</span>
+                      <span>{formatCurrency(calculateAdditionalAmount())}</span>
                     </div>
                   </div>
                 </CardContent>

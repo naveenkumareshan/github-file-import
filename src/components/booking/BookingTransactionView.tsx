@@ -267,13 +267,13 @@ export const BookingTransactionView = ({ bookingId, bookingType, booking }: Book
               <span className="text-muted-foreground">
                 {r.receipt_type === 'booking_payment' ? 'Initial Payment' : `Due Collection ${index}`}
               </span>
-              <span className="font-medium">₹{Number(r.amount).toLocaleString()}</span>
+              <span className="font-medium">{formatCurrency(Number(r.amount))}</span>
             </div>
           ))}
           <Separator className="my-1" />
           <div className="flex justify-between items-center text-[13px] font-semibold">
             <span>Total Paid</span>
-            <span>₹{totalPaid.toLocaleString()}</span>
+            <span>{formatCurrency(totalPaid)}</span>
           </div>
         </div>
       </div>

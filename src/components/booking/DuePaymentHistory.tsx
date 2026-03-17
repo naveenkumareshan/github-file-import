@@ -114,7 +114,7 @@ export const DuePaymentHistory: React.FC<DuePaymentHistoryProps> = ({
           return (
             <div key={p.id} className="border rounded p-2 text-[11px] space-y-0.5 bg-muted/30">
               <div className="flex items-center justify-between">
-                <span className="font-medium">₹{Number(p.amount).toLocaleString()}</span>
+                <span className="font-medium">{formatCurrency(Number(p.amount))}</span>
                 <span className="text-[10px] text-muted-foreground">{format(new Date(p.created_at), 'dd MMM yyyy, HH:mm')}</span>
               </div>
               {receipt?.serial_number && (
