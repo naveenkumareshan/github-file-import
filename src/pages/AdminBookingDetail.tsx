@@ -543,7 +543,7 @@ const AdminBookingDetail = () => {
                           </Badge>
                         </TableCell>
                         <TableCell className="py-1.5">
-                          <span className="text-[11px] font-medium">₹{Number(r.amount).toLocaleString()}</span>
+                          <span className="text-[11px] font-medium">{formatCurrency(Number(r.amount))}</span>
                         </TableCell>
                         <TableCell className="text-[11px] py-1.5 capitalize">{getMethodLabel(r.payment_method, customLabels)}</TableCell>
                         <TableCell className="text-[11px] py-1.5">{r.transaction_id || '-'}</TableCell>
