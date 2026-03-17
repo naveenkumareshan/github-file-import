@@ -1,6 +1,6 @@
 
 import axios from './axiosConfig';
-import { VendorEmployee } from '../types/vendor';
+import { PartnerEmployee } from '../types/vendor';
 
 export interface BookingDetail {
   id: string;
