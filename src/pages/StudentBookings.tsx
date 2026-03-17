@@ -370,7 +370,7 @@ const StudentBookings = () => {
                     <p className="text-white/70 text-[10px]">Due Amount</p>
                     {totalDueAmount > 0 ? (
                       <>
-                        <p className="text-white font-bold text-[13px]">₹{totalDueAmount.toLocaleString()}</p>
+                        <p className="text-white font-bold text-[13px]">{formatCurrency(totalDueAmount)}</p>
                         {dueDate && <p className="text-white/60 text-[9px]">Due: {dueDate}</p>}
                       </>
                     ) : (

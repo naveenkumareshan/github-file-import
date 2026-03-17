@@ -293,7 +293,7 @@ const VendorEmployees: React.FC = () => {
                 <div className="p-3 border rounded-lg space-y-1">
                   <p className="font-medium text-xs mb-1">Work Info</p>
                   <p><span className="text-muted-foreground">Role:</span> <Badge variant="secondary" className="text-[9px] capitalize">{viewingEmployee.role}</Badge></p>
-                  <p><span className="text-muted-foreground">Salary:</span> ₹{viewingEmployee.salary?.toLocaleString() || 0}/mo</p>
+                  <p><span className="text-muted-foreground">Salary:</span> {formatCurrency(Number(viewingEmployee.salary) || 0)}/mo</p>
                   <p><span className="text-muted-foreground">Status:</span> <Badge variant={viewingEmployee.status === 'active' ? 'success' : 'destructive'} className="text-[9px]">{viewingEmployee.status}</Badge></p>
                 </div>
               </div>

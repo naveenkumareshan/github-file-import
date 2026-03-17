@@ -562,7 +562,7 @@ const AdminBookingDetail = () => {
                     <TableRow className="bg-muted/30 font-semibold">
                       <TableCell colSpan={2} className="text-right text-[11px] py-1.5">Total Collected</TableCell>
                       <TableCell className="py-1.5">
-                        <span className="text-[11px] text-green-600 font-semibold">₹{grandTotal.toLocaleString()}</span>
+                        <span className="text-[11px] text-green-600 font-semibold">{formatCurrency(grandTotal)}</span>
                       </TableCell>
                       <TableCell colSpan={6}></TableCell>
                     </TableRow>

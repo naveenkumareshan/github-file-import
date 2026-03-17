@@ -291,13 +291,13 @@ export const BookingsList = ({
             {(booking.seatPrice > 0 || booking.lockerPrice > 0 || booking.keyDeposit > 0) && (
               <div className="flex gap-2 mb-1.5 px-1 flex-wrap">
                 {booking.seatPrice > 0 && (
-                  <span className="text-[10px] text-muted-foreground">Price: ₹{booking.seatPrice?.toLocaleString()}</span>
+                  <span className="text-[10px] text-muted-foreground">Price: {formatCurrency(booking.seatPrice)}</span>
                 )}
                 {booking.lockerPrice > 0 && (
-                  <span className="text-[10px] text-muted-foreground">Locker: ₹{booking.lockerPrice?.toLocaleString()}</span>
+                  <span className="text-[10px] text-muted-foreground">Locker: {formatCurrency(booking.lockerPrice)}</span>
                 )}
                 {booking.keyDeposit > 0 && (
-                  <span className="text-[10px] text-muted-foreground">Deposit: ₹{booking.keyDeposit?.toLocaleString()}</span>
+                  <span className="text-[10px] text-muted-foreground">Deposit: {formatCurrency(booking.keyDeposit)}</span>
                 )}
               </div>
             )}

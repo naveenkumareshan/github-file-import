@@ -135,8 +135,8 @@ const AdminBookings = () => {
       </div>
       <div className="flex items-center justify-between pt-1 border-t">
         <div className="text-[11px]">
-          <span className="font-semibold">₹{(b.seatPrice || 0).toLocaleString()}</span>
-          <span className="text-muted-foreground ml-2">Paid: ₹{(b.totalPaid || 0).toLocaleString()}</span>
+          <span className="font-semibold">{formatCurrency(b.seatPrice || 0)}</span>
+          <span className="text-muted-foreground ml-2">Paid: {formatCurrency(b.totalPaid || 0)}</span>
         </div>
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(`${routePrefix}/bookings/${b.bookingId || b._id}/cabin`)}>
           <Eye className="h-3.5 w-3.5" />

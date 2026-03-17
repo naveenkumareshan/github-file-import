@@ -186,9 +186,9 @@ const AdminPayouts: React.FC = () => {
                 <TableCell className="px-2 py-1.5 font-mono text-[10px]">{s.serial_number || s.id.slice(0, 8)}</TableCell>
                 <TableCell className="px-2 py-1.5">{s.partners?.business_name || '-'}</TableCell>
                 <TableCell className="px-2 py-1.5 whitespace-nowrap">{s.period_start} → {s.period_end}</TableCell>
-                <TableCell className="px-2 py-1.5 text-right">₹{s.total_collected?.toLocaleString()}</TableCell>
-                <TableCell className="px-2 py-1.5 text-right">₹{s.commission_amount?.toLocaleString()}</TableCell>
-                <TableCell className="px-2 py-1.5 text-right font-medium">₹{s.net_payable?.toLocaleString()}</TableCell>
+                <TableCell className="px-2 py-1.5 text-right">{formatCurrency(Number(s.total_collected) || 0)}</TableCell>
+                <TableCell className="px-2 py-1.5 text-right">{formatCurrency(Number(s.commission_amount) || 0)}</TableCell>
+                <TableCell className="px-2 py-1.5 text-right font-medium">{formatCurrency(Number(s.net_payable) || 0)}</TableCell>
                 <TableCell className="px-2 py-1.5">{getStatusBadge(s.status)}</TableCell>
                 <TableCell className="px-2 py-1.5 whitespace-nowrap">{s.payment_date || '-'}</TableCell>
                 <TableCell className="px-2 py-1.5 font-mono text-[10px]">{s.utr_number || '-'}</TableCell>
