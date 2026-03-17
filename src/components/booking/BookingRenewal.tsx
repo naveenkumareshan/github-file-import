@@ -699,7 +699,7 @@ export const BookingRenewal = React.forwardRef<HTMLDivElement, BookingRenewalPro
             <DialogHeader>
               <DialogTitle>Complete Payment</DialogTitle>
               <DialogDescription>
-                Pay ₹{calculateAdditionalAmount().toLocaleString()} to extend your booking
+                Pay {formatCurrency(calculateAdditionalAmount())} to extend your booking
               </DialogDescription>
             </DialogHeader>
             
