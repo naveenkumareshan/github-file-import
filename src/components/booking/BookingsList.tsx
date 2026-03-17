@@ -8,6 +8,7 @@ import { bookingsService } from '@/api/bookingsService';
 import { format } from 'date-fns';
 import { Calendar, X, Eye, TicketPercent } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { formatCurrency, formatBookingPeriod } from '@/utils/currency';
 import { BookingRenewal } from './BookingRenewal';
 
 const PaymentTimer = lazy(() =>
