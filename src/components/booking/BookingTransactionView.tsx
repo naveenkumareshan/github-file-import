@@ -140,11 +140,11 @@ export const BookingTransactionView = ({ bookingId, bookingType, booking }: Book
             </div>
             <div className="flex justify-between items-center">
               <span className="text-[11px] text-muted-foreground">Total Price</span>
-              <span className="text-[12px] font-medium">₹{(booking.totalPrice || 0).toLocaleString()}</span>
+              <span className="text-[12px] font-medium">{formatCurrency(booking.totalPrice || 0)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-[11px] text-muted-foreground">Total Paid</span>
-              <span className="text-[12px] font-medium text-green-600">₹{totalPaid.toLocaleString()}</span>
+              <span className="text-[12px] font-medium text-green-600">{formatCurrency(totalPaid)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-[11px] text-muted-foreground">Payment Status</span>
