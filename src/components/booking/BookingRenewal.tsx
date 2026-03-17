@@ -656,12 +656,12 @@ export const BookingRenewal = React.forwardRef<HTMLDivElement, BookingRenewalPro
                     {outstandingDue > 0 && (
                       <div className="flex justify-between mt-1">
                         <span className="text-muted-foreground">Previous Due Carried Forward:</span>
-                        <span className="text-destructive font-medium">+₹{outstandingDue.toLocaleString()}</span>
+                        <span className="text-destructive font-medium">+{formatCurrency(outstandingDue)}</span>
                       </div>
                     )}
                     <div className="flex justify-between mt-2 text-base">
                       <span className="font-medium">Final Amount:</span>
-                      <span className="font-bold">₹{calculateAdditionalAmount().toLocaleString()}</span>
+                      <span className="font-bold">{formatCurrency(calculateAdditionalAmount())}</span>
                     </div>
                     {appliedCoupon && (
                       <div className="flex justify-between text-sm">
