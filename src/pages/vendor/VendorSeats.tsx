@@ -2036,7 +2036,7 @@ const VendorSeats: React.FC = () => {
                                   }
                                 }}
                               >
-                                <Wallet className="h-3 w-3 mr-1" /> Due: ₹{dueRemaining.toLocaleString()}
+                                <Wallet className="h-3 w-3 mr-1" /> Due: {formatCurrency(dueRemaining)}
                               </Button>
 
                               {/* Inline Collect Form */}
