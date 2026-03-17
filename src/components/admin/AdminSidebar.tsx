@@ -486,6 +486,7 @@ export function AdminSidebar() {
       icon: UserCheck,
       roles: ['admin'],
       subItems: [
+        { title: 'Enquiries', url: '/admin/partner-enquiries', icon: Phone, roles: ['admin'] },
         { title: 'All Partners', url: '/admin/vendors', icon: UserCheck, roles: ['admin'] },
         { title: 'Property Approvals', url: '/admin/property-approvals', icon: ClipboardCheck, roles: ['admin'] },
         { title: 'Settlements', url: '/admin/settlements', icon: Wallet, roles: ['admin'] },

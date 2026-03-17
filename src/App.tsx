@@ -355,6 +355,7 @@ function App() {
               <Route path="/laundry-request" element={<StudentSuspense><LaunchingSoonGuard moduleKey="laundry" moduleName="Laundry"><Laundry /></LaunchingSoonGuard></StudentSuspense>} />
               <Route path="/mess" element={<StudentSuspense><LaunchingSoonGuard moduleKey="mess" moduleName="Mess / Food"><MessMarketplace /></LaunchingSoonGuard></StudentSuspense>} />
               <Route path="/mess/:id" element={<StudentSuspense><LaunchingSoonGuard moduleKey="mess" moduleName="Mess / Food"><MessDetail /></LaunchingSoonGuard></StudentSuspense>} />
+              <Route path="/partner-with-us" element={<StudentSuspense><PartnerWithUs /></StudentSuspense>} />
               <Route path="/privacy-policy" element={<StudentSuspense><PrivacyPolicy /></StudentSuspense>} />
               <Route path="/terms" element={<StudentSuspense><TermsAndConditions /></StudentSuspense>} />
               
