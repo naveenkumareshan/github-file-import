@@ -645,11 +645,11 @@ export const BookingRenewal = React.forwardRef<HTMLDivElement, BookingRenewalPro
                       <>
                         <div className="flex justify-between mt-2">
                           <span className="text-muted-foreground">Original Amount:</span>
-                          <span>₹{getOriginalAmount().toLocaleString()}</span>
+                          <span>{formatCurrency(getOriginalAmount())}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Discount ({appliedCoupon.code}):</span>
-                          <span className="text-green-600">-₹{getDiscountAmount().toLocaleString()}</span>
+                          <span className="text-green-600">-{formatCurrency(getDiscountAmount())}</span>
                         </div>
                       </>
                     )}
