@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, Receipt, IndianRupee } from 'lucide-react';
+import { formatCurrency } from '@/utils/currency';
 import { vendorSeatsService } from '@/api/vendorSeatsService';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
