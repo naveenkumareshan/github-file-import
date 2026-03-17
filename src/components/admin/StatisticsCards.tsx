@@ -1,6 +1,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp, Users, UserPlus, AlertCircle } from 'lucide-react';
+import { formatCurrency } from '@/utils/currency';
 
 interface FinancialSummary {
   totalRevenue: number;
