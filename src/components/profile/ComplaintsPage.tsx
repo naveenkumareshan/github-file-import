@@ -14,6 +14,7 @@ import { hostelBookingService } from '@/api/hostelBookingService';
 import { getMyMessSubscriptions } from '@/api/messService';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import TicketChat from '@/components/shared/TicketChat';
