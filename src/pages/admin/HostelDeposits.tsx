@@ -265,7 +265,6 @@ function HostelRefundManagement({ status }: { status: 'pending' | 'refunded' }) 
     if (!selectedBooking) return;
     setProcessing(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
       const { error } = await supabase.from('hostel_receipts').insert({
         booking_id: selectedBooking.id,
         user_id: selectedBooking.user_id,
@@ -273,8 +272,8 @@ function HostelRefundManagement({ status }: { status: 'pending' | 'refunded' }) 
         amount: parseFloat(refundAmount),
         payment_method: refundMethod || 'cash',
         receipt_type: 'deposit_refund',
-        collected_by: user?.id,
-        collected_by_name: user?.user_metadata?.name || '',
+        collected_by: authUser?.id,
+        collected_by_name: authUser?.name || '',
         notes: refundReason || `Security deposit refund for booking ${selectedBooking.serial_number || selectedBooking.id}`,
         transaction_id: transactionId || '',
       });
