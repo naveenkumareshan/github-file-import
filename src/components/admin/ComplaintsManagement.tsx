@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { MessageSquareWarning, Search, Send, Clock } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -49,6 +50,7 @@ const getLocation = (c: any) => {
 };
 
 const ComplaintsManagement = () => {
+  const { user: authUser } = useAuth();
   const [complaints, setComplaints] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewTab, setViewTab] = useState<'pending' | 'resolved'>('pending');
@@ -130,11 +132,10 @@ const ComplaintsManagement = () => {
   const handleRespond = async () => {
     if (!selected) return;
     setSaving(true);
-    const { data: { user } } = await supabase.auth.getUser();
     const updates: any = {};
     if (response.trim()) {
       updates.response = response.trim();
-      updates.responded_by = user?.id;
+      updates.responded_by = authUser?.id;
       updates.responded_at = new Date().toISOString();
     }
     if (newStatus) updates.status = newStatus;

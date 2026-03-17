@@ -10,7 +10,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from '@/hooks/use-toast';
 import { adminBookingsService } from '@/api/adminBookingsService';
-import ExcelJS from 'exceljs';
 import { format } from 'date-fns';
 
 interface ExportReportButtonProps {
@@ -38,6 +37,7 @@ export const ExportReportButton: React.FC<ExportReportButtonProps> = ({
     setIsLoading(true);
     
     try {
+      const ExcelJS = (await import('exceljs')).default;
       const workbook = new ExcelJS.Workbook();
 
       if (reportType === 'bookings') {

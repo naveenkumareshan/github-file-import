@@ -13,6 +13,7 @@ import {
 import { Wallet, Search, RefreshCw, DollarSign } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { formatCurrency } from '@/utils/currency';
@@ -193,6 +194,7 @@ function HostelDepositList() {
 
 // ── Refund Management Tab ──
 function HostelRefundManagement({ status }: { status: 'pending' | 'refunded' }) {
+  const { user: authUser } = useAuth();
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -264,7 +266,6 @@ function HostelRefundManagement({ status }: { status: 'pending' | 'refunded' }) 
     if (!selectedBooking) return;
     setProcessing(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
       const { error } = await supabase.from('hostel_receipts').insert({
         booking_id: selectedBooking.id,
         user_id: selectedBooking.user_id,
@@ -272,8 +273,8 @@ function HostelRefundManagement({ status }: { status: 'pending' | 'refunded' }) 
         amount: parseFloat(refundAmount),
         payment_method: refundMethod || 'cash',
         receipt_type: 'deposit_refund',
-        collected_by: user?.id,
-        collected_by_name: user?.user_metadata?.name || '',
+        collected_by: authUser?.id,
+        collected_by_name: authUser?.name || '',
         notes: refundReason || `Security deposit refund for booking ${selectedBooking.serial_number || selectedBooking.id}`,
         transaction_id: transactionId || '',
       });

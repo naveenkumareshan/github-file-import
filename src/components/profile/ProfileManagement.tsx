@@ -65,7 +65,7 @@ const SECTIONS = [
 ];
 
 export const ProfileManagement = () => {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const [profile, setProfile] = useState<ProfileData>(defaultProfile);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -124,9 +124,9 @@ export const ProfileManagement = () => {
   }, []);
 
   const checkEmailVerification = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      setEmailVerified(!!user.email_confirmed_at);
+    const { data: { user: freshUser } } = await supabase.auth.getUser();
+    if (freshUser) {
+      setEmailVerified(!!freshUser.email_confirmed_at);
     }
   };
 
@@ -168,8 +168,7 @@ export const ProfileManagement = () => {
 
   const loadBookings = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user?.id) return;
 
       // Fetch both reading room and hostel bookings in parallel
       const [readingRes, hostelRes] = await Promise.all([

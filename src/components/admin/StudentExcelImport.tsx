@@ -14,7 +14,6 @@ import {
 } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { Upload, Download, FileSpreadsheet, User, Bed, CreditCard, AlertCircle, CheckCircle, Building2, BookOpen } from 'lucide-react';
-import ExcelJS from 'exceljs';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency } from '@/utils/currency';
@@ -106,6 +105,7 @@ const StudentExcelImport = () => {
   // ── Download template ───────────────────────────────────
 
   const downloadTemplate = async () => {
+    const ExcelJS = (await import('exceljs')).default;
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('Students');
 
@@ -142,6 +142,7 @@ const StudentExcelImport = () => {
 
     try {
       const data = await file.arrayBuffer();
+      const ExcelJS = (await import('exceljs')).default;
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.load(data);
       const worksheet = workbook.worksheets[0];
@@ -238,6 +239,7 @@ const StudentExcelImport = () => {
   // ── Export results ──────────────────────────────────────
 
   const exportResults = async () => {
+    const ExcelJS = (await import('exceljs')).default;
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('Results');
     const cols = ['name', 'email', 'phone', 'status', 'bookingId', 'error'];

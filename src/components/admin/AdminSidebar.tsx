@@ -76,18 +76,17 @@ export function AdminSidebar() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!user?.id) return;
     const fetchAvatar = async () => {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) return;
       const { data } = await supabase
         .from('profiles')
         .select('profile_picture')
-        .eq('id', authUser.id)
+        .eq('id', user.id)
         .single();
       if (data?.profile_picture) setAvatarUrl(data.profile_picture);
     };
     fetchAvatar();
-  }, []);
+  }, [user?.id]);
 
   if (loading || propertyTypes.loading) {
     return (

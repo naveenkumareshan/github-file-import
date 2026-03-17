@@ -14,6 +14,7 @@ import { hostelBookingService } from '@/api/hostelBookingService';
 import { getMyMessSubscriptions } from '@/api/messService';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import TicketChat from '@/components/shared/TicketChat';
@@ -30,13 +31,13 @@ const statusBadge: Record<string, string> = {
 
 const ComplaintsPage = () => {
   const navigate = useNavigate();
+  const { user: authUser } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [complaints, setComplaints] = useState<any[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [selectedComplaint, setSelectedComplaint] = useState<any>(null);
-  const [currentUserId, setCurrentUserId] = useState('');
   const [partnerWhatsapp, setPartnerWhatsapp] = useState('');
   const [viewTab, setViewTab] = useState<'pending' | 'resolved'>('pending');
   const [, setTick] = useState(0);
@@ -66,16 +67,14 @@ const ComplaintsPage = () => {
 
   const loadData = async () => {
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    setCurrentUserId(user.id);
+    if (!authUser?.id) return;
 
     const [complaintsRes, cabinBookingsRes, hostelBookingsRes, messSubsRes, laundryOrdersRes] = await Promise.all([
-      supabase.from('complaints').select('*, cabins:cabin_id(name), hostels:hostel_id(name), mess_partners:mess_id(name)').eq('user_id', user.id).order('created_at', { ascending: false }),
+      supabase.from('complaints').select('*, cabins:cabin_id(name), hostels:hostel_id(name), mess_partners:mess_id(name)').eq('user_id', authUser.id).order('created_at', { ascending: false }),
       bookingsService.getCurrentBookings(),
       hostelBookingService.getUserBookings(),
-      getMyMessSubscriptions(user.id).catch(() => []),
-      supabase.from('laundry_orders').select('*, laundry_partners:partner_id(id, business_name)').eq('user_id', user.id).order('created_at', { ascending: false }),
+      getMyMessSubscriptions(authUser.id).catch(() => []),
+      supabase.from('laundry_orders').select('*, laundry_partners:partner_id(id, business_name)').eq('user_id', authUser.id).order('created_at', { ascending: false }),
     ]);
 
     const now = new Date();
@@ -140,12 +139,11 @@ const ComplaintsPage = () => {
       return;
     }
     setSubmitting(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!authUser?.id) return;
 
     const selectedBooking = bookings.find((b: any) => b.id === formData.booking_id);
     const insertData: any = {
-      user_id: user.id,
+      user_id: authUser.id,
       subject: formData.subject.trim(),
       description: formData.description.trim(),
       category: formData.category,
@@ -262,7 +260,7 @@ const ComplaintsPage = () => {
             ticketCreatedAt={selectedComplaint.created_at}
             ticketStatus={selectedComplaint.status}
             senderRole="student"
-            currentUserId={currentUserId}
+            currentUserId={authUser?.id || ''}
             creatorName="You"
             whatsappNumber={partnerWhatsapp}
             whatsappLabel="Chat with Property Owner"

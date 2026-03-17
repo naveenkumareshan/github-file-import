@@ -10,6 +10,7 @@ import { ArrowLeft, Plus, Headphones, ChevronRight, MessageCircle } from 'lucide
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import TicketChat from '@/components/shared/TicketChat';
@@ -25,12 +26,12 @@ const statusBadge: Record<string, string> = {
 
 const SupportPage = () => {
   const navigate = useNavigate();
+  const { user: authUser } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
-  const [currentUserId, setCurrentUserId] = useState('');
   const [adminWhatsapp, setAdminWhatsapp] = useState('');
 
   const [formData, setFormData] = useState({
@@ -50,10 +51,8 @@ const SupportPage = () => {
 
   const loadTickets = async () => {
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    setCurrentUserId(user.id);
-    const { data } = await supabase.from('support_tickets').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
+    if (!authUser?.id) return;
+    const { data } = await supabase.from('support_tickets').select('*').eq('user_id', authUser.id).order('created_at', { ascending: false });
     setTickets((data as any[]) || []);
     setLoading(false);
   };
@@ -64,11 +63,10 @@ const SupportPage = () => {
       return;
     }
     setSubmitting(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!authUser?.id) return;
 
     const { error } = await supabase.from('support_tickets').insert({
-      user_id: user.id,
+      user_id: authUser.id,
       subject: formData.subject.trim(),
       description: formData.description.trim(),
       category: formData.category,
@@ -109,7 +107,7 @@ const SupportPage = () => {
             ticketCreatedAt={selectedTicket.created_at}
             ticketStatus={selectedTicket.status}
             senderRole="student"
-            currentUserId={currentUserId}
+            currentUserId={authUser?.id || ''}
             creatorName="You"
             whatsappNumber={adminWhatsapp}
             whatsappLabel="Chat with Support"

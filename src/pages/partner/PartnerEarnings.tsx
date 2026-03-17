@@ -10,7 +10,6 @@ import { partnerEarningsService } from '@/api/partnerEarningsService';
 import { Loader2, Wallet, TrendingDown, CheckCircle, Clock, Eye, IndianRupee, Download } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { formatCurrency } from '@/utils/currency';
-import ExcelJS from 'exceljs';
 import { AdminTablePagination, getSerialNumber } from '@/components/admin/AdminTablePagination';
 
 const PartnerEarnings: React.FC = () => {
@@ -61,6 +60,7 @@ const PartnerEarnings: React.FC = () => {
     const s = statementData.settlement;
     const items = statementData.items || [];
 
+    const ExcelJS = (await import('exceljs')).default;
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('Settlement Statement');
 

@@ -18,7 +18,7 @@ import { PartnerLedgerView } from '@/components/admin/PartnerLedgerView';
 import { Loader2, Eye, CheckCircle, Lock, CreditCard, Plus, BookOpen, Wallet, Clock, IndianRupee, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { formatCurrency } from '@/utils/currency';
-import ExcelJS from 'exceljs';
+
 
 const PartnerSettlements: React.FC = () => {
   const [settlements, setSettlements] = useState<any[]>([]);
@@ -107,6 +107,7 @@ const PartnerSettlements: React.FC = () => {
       toast({ title: 'No Data', description: 'No approved/locked settlements to export', variant: 'destructive' });
       return;
     }
+    const ExcelJS = (await import('exceljs')).default;
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('Bank Upload');
     ws.columns = [
