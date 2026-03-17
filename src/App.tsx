@@ -95,6 +95,8 @@ const BankManagement = lazy(() => import("./pages/admin/BankManagement"));
 const LaundryPartnerDashboard = lazy(() => import("./pages/LaundryPartnerDashboard"));
 const ExpiringBookingsPage = lazy(() => import("./pages/admin/ExpiringBookingsPage"));
 const HostelExpiringBookingsPage = lazy(() => import("./pages/admin/HostelExpiringBookingsPage"));
+const PartnerEnquiries = lazy(() => import("./pages/admin/PartnerEnquiries"));
+const PartnerWithUs = lazy(() => import("./pages/partner/PartnerWithUs"));
 // Student / public pages
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const TermsAndConditions = lazy(() => import("./pages/TermsAndConditions"));
@@ -244,6 +246,7 @@ function App() {
               <Route path="hostel-expiring-bookings" element={<HostelExpiringBookingsPage />} />
               <Route path="banks" element={<BankManagement />} />
               <Route path="property-attendance" element={<PropertyAttendance />} />
+              <Route path="partner-enquiries" element={<PartnerEnquiries />} />
             </Route>
 
             {/* ── Partner routes (alias for vendor/host admin panel) ── */}
@@ -352,6 +355,7 @@ function App() {
               <Route path="/laundry-request" element={<StudentSuspense><LaunchingSoonGuard moduleKey="laundry" moduleName="Laundry"><Laundry /></LaunchingSoonGuard></StudentSuspense>} />
               <Route path="/mess" element={<StudentSuspense><LaunchingSoonGuard moduleKey="mess" moduleName="Mess / Food"><MessMarketplace /></LaunchingSoonGuard></StudentSuspense>} />
               <Route path="/mess/:id" element={<StudentSuspense><LaunchingSoonGuard moduleKey="mess" moduleName="Mess / Food"><MessDetail /></LaunchingSoonGuard></StudentSuspense>} />
+              <Route path="/partner-with-us" element={<StudentSuspense><PartnerWithUs /></StudentSuspense>} />
               <Route path="/privacy-policy" element={<StudentSuspense><PrivacyPolicy /></StudentSuspense>} />
               <Route path="/terms" element={<StudentSuspense><TermsAndConditions /></StudentSuspense>} />
               
