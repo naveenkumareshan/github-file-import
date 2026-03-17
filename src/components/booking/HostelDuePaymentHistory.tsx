@@ -98,10 +98,10 @@ export const HostelDuePaymentHistory: React.FC<HostelDuePaymentHistoryProps> = (
     <div className="space-y-1.5">
       {dueInfo && (
         <div className="space-y-1 text-[11px]">
-          <div className="flex justify-between"><span className="text-muted-foreground">Total Fee</span><span>₹{dueInfo.totalFee.toLocaleString()}</span></div>
-          <div className="flex justify-between"><span className="text-muted-foreground">Advance Paid</span><span>₹{dueInfo.advancePaid.toLocaleString()}</span></div>
-          <div className="flex justify-between"><span className="text-muted-foreground">Collected</span><span className="text-emerald-600">₹{(dueInfo.paidAmount).toLocaleString()}</span></div>
-          <div className="flex justify-between font-medium text-red-600"><span>Remaining</span><span>₹{Math.max(0, dueInfo.dueAmount - dueInfo.paidAmount).toLocaleString()}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">Total Fee</span><span>{formatCurrency(dueInfo.totalFee)}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">Advance Paid</span><span>{formatCurrency(dueInfo.advancePaid)}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">Collected</span><span className="text-emerald-600">{formatCurrency(dueInfo.paidAmount)}</span></div>
+          <div className="flex justify-between font-medium text-red-600"><span>Remaining</span><span>{formatCurrency(Math.max(0, dueInfo.dueAmount - dueInfo.paidAmount))}</span></div>
           <Separator className="my-1" />
         </div>
       )}
