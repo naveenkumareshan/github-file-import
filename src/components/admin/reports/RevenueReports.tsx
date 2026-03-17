@@ -87,7 +87,7 @@ const RevenueReportsComponent: React.FC<RevenueReportsProps> = ({ dateRange, par
             </div>
           </CardHeader>
           <CardContent className="pt-4">
-            <div className="text-2xl font-bold">₹{totalRevenue.toLocaleString('en-IN')}</div>
+            <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
           </CardContent>
         </Card>
         

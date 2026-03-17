@@ -925,14 +925,14 @@ export const SeatBookingForm: React.FC<SeatBookingFormProps> = ({
                       <Separator className="opacity-30" />
                       <div className="flex justify-between text-sm text-green-600">
                         <span>Coupon ({appliedCoupon.coupon.code}):</span>
-                        <span>- ₹{(Math.round(Number(appliedCoupon.discountAmount) * 100) / 100).toFixed(2)}</span>
+                        <span>- {formatCurrency(Math.round(Number(appliedCoupon.discountAmount)))}</span>
                       </div>
                     </>
                   )}
                   <Separator />
                   <div className="flex justify-between items-center pt-0.5">
                     <span className="font-semibold text-base">Total Amount:</span>
-                    <span className="font-bold text-lg text-primary">₹{totalPrice.toFixed(2)}</span>
+                    <span className="font-bold text-lg text-primary">{formatCurrency(totalPrice)}</span>
                   </div>
 
                   {/* Inline coupon */}

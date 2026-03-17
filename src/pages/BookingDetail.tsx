@@ -190,24 +190,24 @@ const BookingDetail = () => {
                 <div className="space-y-1">
                   <div className="flex justify-between text-sm">
                     <span>Seat Price ({formatDuration(booking)})</span>
-                    <span>₹{((booking.totalPrice || 0) + (booking.discountAmount || 0) - (booking.lockerPrice || 0)).toFixed(2)}</span>
+                    <span>{formatCurrency((booking.totalPrice || 0) + (booking.discountAmount || 0) - (booking.lockerPrice || 0))}</span>
                   </div>
                   {booking.lockerIncluded && (
                     <div className="flex justify-between text-sm">
                       <span>Locker</span>
-                      <span>₹{(booking.lockerPrice || 0).toFixed(2)}</span>
+                      <span>{formatCurrency(booking.lockerPrice || 0)}</span>
                     </div>
                   )}
                   {(booking.discountAmount || 0) > 0 && (
                     <div className="flex justify-between text-sm text-green-600">
                       <span>Discount{booking.discountReason ? ` (${booking.discountReason})` : ''}</span>
-                      <span>-₹{(booking.discountAmount || 0).toFixed(2)}</span>
+                      <span>-{formatCurrency(booking.discountAmount || 0)}</span>
                     </div>
                   )}
                   <Separator className="my-1" />
                   <div className="flex justify-between text-sm font-semibold">
                     <span>Total</span>
-                    <span>₹{(booking.totalPrice || 0).toFixed(2)}</span>
+                    <span>{formatCurrency(booking.totalPrice || 0)}</span>
                   </div>
                 </div>
                 {booking.paymentMethod && (
