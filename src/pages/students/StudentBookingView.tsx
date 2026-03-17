@@ -354,7 +354,7 @@ export default function StudentBookingView() {
           .eq("id", dueRecord.id);
       }
 
-      toast({ title: "Payment Successful", description: `₹${dueRemaining.toFixed(2)} paid successfully` });
+      toast({ title: "Payment Successful", description: `${formatCurrency(dueRemaining)} paid successfully` });
       await fetchData();
     } catch (error: any) {
       console.error("Payment processing error:", error);
