@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { KeyRound } from 'lucide-react';
+import { KeyRound, RefreshCw } from 'lucide-react';
 import { attendanceService } from '@/api/attendanceService';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,6 +15,7 @@ const AttendancePinDisplay: React.FC = () => {
   const [secondsRemaining, setSecondsRemaining] = useState(60);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [hasPermission, setHasPermission] = useState(true);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -27,14 +28,12 @@ const AttendancePinDisplay: React.FC = () => {
       let resolvedOwnerId: string;
 
       if (isAdmin) {
-        // Admins don't need PIN display typically, but allow it
         resolvedOwnerId = user.id;
       } else {
         try {
           const res = await getEffectiveOwnerId();
           resolvedOwnerId = res.ownerId;
 
-          // Check employee permissions
           if (res.userId !== res.ownerId) {
             const { data: emp } = await supabase
               .from('vendor_employees')
@@ -60,19 +59,14 @@ const AttendancePinDisplay: React.FC = () => {
 
       // Fetch property names for display
       const names: string[] = [];
-      const { data: cabins } = await supabase
-        .from('cabins')
-        .select('name')
-        .eq('created_by', resolvedOwnerId)
-        .eq('is_active', true);
-      (cabins || []).forEach((c: any) => names.push(c.name));
-
-      const { data: hostels } = await supabase
-        .from('hostels')
-        .select('name')
-        .eq('created_by', resolvedOwnerId)
-        .eq('is_active', true);
-      (hostels || []).forEach((h: any) => names.push(h.name));
+      const [cabinsRes, hostelsRes, messRes] = await Promise.all([
+        supabase.from('cabins').select('name').eq('created_by', resolvedOwnerId).eq('is_active', true),
+        supabase.from('hostels').select('name').eq('created_by', resolvedOwnerId).eq('is_active', true),
+        supabase.from('mess_partners').select('name').eq('user_id', resolvedOwnerId).eq('is_active', true),
+      ]);
+      (cabinsRes.data || []).forEach((c: any) => names.push(c.name));
+      (hostelsRes.data || []).forEach((h: any) => names.push(h.name));
+      (messRes.data || []).forEach((m: any) => names.push(m.name));
 
       setPropertyNames(names);
     };
@@ -82,10 +76,17 @@ const AttendancePinDisplay: React.FC = () => {
   const fetchPin = useCallback(async () => {
     if (!ownerId) return;
     setLoading(true);
-    const result = await attendanceService.getAttendancePin(ownerId);
-    if (result) {
-      setPin(result.pin);
-      setSecondsRemaining(result.seconds_remaining);
+    setError(null);
+    try {
+      const result = await attendanceService.getAttendancePin(ownerId);
+      if (result) {
+        setPin(result.pin);
+        setSecondsRemaining(result.seconds_remaining);
+      } else {
+        setError('Could not load PIN');
+      }
+    } catch {
+      setError('Could not load PIN');
     }
     setLoading(false);
   }, [ownerId]);
@@ -93,6 +94,8 @@ const AttendancePinDisplay: React.FC = () => {
   useEffect(() => {
     if (!open || !ownerId) {
       if (intervalRef.current) clearInterval(intervalRef.current);
+      setPin(null);
+      setError(null);
       return;
     }
     fetchPin();
@@ -110,7 +113,7 @@ const AttendancePinDisplay: React.FC = () => {
     };
   }, [open, ownerId, fetchPin]);
 
-  if (!hasPermission || propertyNames.length === 0) return null;
+  if (!hasPermission) return null;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -131,16 +134,25 @@ const AttendancePinDisplay: React.FC = () => {
           </div>
         </div>
 
-        <div className="text-[10px] text-muted-foreground bg-muted/50 rounded px-2 py-1.5">
-          <span className="font-medium">Applies to:</span>{' '}
-          {propertyNames.length <= 3
-            ? propertyNames.join(', ')
-            : `${propertyNames.slice(0, 2).join(', ')} +${propertyNames.length - 2} more`}
-        </div>
+        {propertyNames.length > 0 && (
+          <div className="text-[10px] text-muted-foreground bg-muted/50 rounded px-2 py-1.5">
+            <span className="font-medium">Applies to:</span>{' '}
+            {propertyNames.length <= 3
+              ? propertyNames.join(', ')
+              : `${propertyNames.slice(0, 2).join(', ')} +${propertyNames.length - 2} more`}
+          </div>
+        )}
 
         <div className="text-center space-y-2">
           {loading && !pin ? (
             <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full mx-auto" />
+          ) : error ? (
+            <div className="space-y-2">
+              <p className="text-xs text-destructive">{error}</p>
+              <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={fetchPin}>
+                <RefreshCw className="h-3 w-3" /> Retry
+              </Button>
+            </div>
           ) : pin ? (
             <>
               <div className="flex justify-center gap-1.5">
