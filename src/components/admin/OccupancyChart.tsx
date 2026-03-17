@@ -1,53 +1,19 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
-import { adminBookingsService } from '@/api/adminBookingsService';
 import { EmptyState } from '@/components/ui/empty-state';
 import { TrendingUp } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
+import { OccupancyDataPoint } from '@/hooks/use-admin-dashboard-data';
 
-export function OccupancyChart() {
-  const { user } = useAuth();
-  const [data, setData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const fetched = useRef(false);
+interface Props {
+  data: OccupancyDataPoint[];
+  loading: boolean;
+}
 
-  useEffect(() => {
-    if (fetched.current) return;
-    fetched.current = true;
-    const fetchMonthlyOccupancy = async () => {
-      try {
-        setLoading(true);
-        let partnerUserId: string | undefined;
-        if (user?.role === 'vendor') partnerUserId = user.id;
-        else if (user?.role === 'vendor_employee') {
-          const { ownerId } = await getEffectiveOwnerId();
-          partnerUserId = ownerId;
-        }
-        const response = await adminBookingsService.getMonthlyOccupancy(new Date().getFullYear(), partnerUserId);
-        
-        if (response.success && response.data) {
-          const chartData = response.data.map((month: any) => ({
-            name: month.monthName.slice(0, 3),
-            occupancy: month.occupancyRate
-          }));
-          setData(chartData);
-        }
-      } catch (err) {
-        console.error('Error fetching monthly occupancy:', err);
-        setError(true);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchMonthlyOccupancy();
-  }, []);
+export function OccupancyChart({ data, loading }: Props) {
   const config = {
     occupancy: {
       label: 'Occupancy',
@@ -69,12 +35,9 @@ export function OccupancyChart() {
               <Skeleton className="h-4 w-full" />
               <Skeleton className="h-[240px] w-full" />
             </div>
+          ) : data.length === 0 ? (
+            <EmptyState icon={TrendingUp} title="No occupancy data available" />
           ) : (
-            error ? (
-              <EmptyState icon={TrendingUp} title="No occupancy data" description="Unable to fetch data. Please refresh." />
-            ) : data.length === 0 ? (
-              <EmptyState icon={TrendingUp} title="No occupancy data available" />
-            ) : (
             <ChartContainer config={config}>
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={data}>
@@ -95,7 +58,6 @@ export function OccupancyChart() {
                 </LineChart>
               </ResponsiveContainer>
             </ChartContainer>
-            )
           )}
         </div>
       </CardContent>

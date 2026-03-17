@@ -194,29 +194,30 @@ interface LaundryOrder {
 const StudentDashboard: React.FC = () => {
   const [currentBookings, setCurrentBookings] = useState<BookingData[]>([]);
   const [bookingHistory, setBookingHistory] = useState<BookingData[]>([]);
-  const [laundryOrders, setLaundryOrders] = useState<LaundryOrder[]>([]);
+  const [laundryOrders] = useState<LaundryOrder[]>([]);
   const [studentDues, setStudentDues] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [loadingLaundry, setLoadingLaundry] = useState<boolean>(true);
   const [reviewedBookingIds, setReviewedBookingIds] = useState<Set<string>>(new Set());
   const [reviewDialogBooking, setReviewDialogBooking] = useState<BookingData | null>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchBookingData();
-    fetchLaundryOrders();
-    fetchStudentDues();
-  }, []);
+    if (!user?.id) return;
+    // Run all fetches in parallel
+    Promise.all([
+      fetchBookingData(),
+      fetchStudentDues(),
+    ]);
+  }, [user?.id]);
 
   const fetchStudentDues = async () => {
+    if (!user?.id) return;
     try {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) return;
       const { data } = await supabase
         .from('dues')
         .select('*, cabins:cabin_id(name), seats:seat_id(number)')
-        .eq('user_id', authUser.id)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
       setStudentDues(data || []);
     } catch (e) {
@@ -228,14 +229,17 @@ const StudentDashboard: React.FC = () => {
     try {
       setLoading(true);
       
-      const currentResponse = await bookingsService.getCurrentBookings();
+      // Fetch current and history in parallel
+      const [currentResponse, historyResponse] = await Promise.all([
+        bookingsService.getCurrentBookings(),
+        bookingsService.getBookingHistory(),
+      ]);
+
       let allBookings: BookingData[] = [];
       if (currentResponse.success && Array.isArray(currentResponse.data)) {
         setCurrentBookings(currentResponse.data as any);
         allBookings = [...(currentResponse.data as any)];
       }
-      
-      const historyResponse = await bookingsService.getBookingHistory();
       if (historyResponse.success && Array.isArray(historyResponse.data)) {
         setBookingHistory(historyResponse.data as any);
         allBookings = [...allBookings, ...(historyResponse.data as any)];
@@ -260,42 +264,6 @@ const StudentDashboard: React.FC = () => {
     }
   };
 
-  const fetchLaundryOrders = async () => {
-    try {
-      setLoadingLaundry(true);
-      
-      // Using mock data since we don't have this endpoint yet
-      // In a real app, this would be laundryService.getUserOrders()
-      const mockLaundryOrders: LaundryOrder[] = [
-        {
-          _id: '1',
-          items: [
-            { name: 'T-Shirts', quantity: 3, price: 45 },
-            { name: 'Pants', quantity: 2, price: 60 }
-          ],
-          status: 'completed',
-          totalAmount: 255,
-          createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() // 2 days ago
-        },
-        {
-          _id: '2',
-          items: [
-            { name: 'Bed Sheets', quantity: 1, price: 90 },
-            { name: 'Towels', quantity: 2, price: 40 }
-          ],
-          status: 'processing',
-          totalAmount: 170,
-          createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString() // 12 hours ago
-        }
-      ];
-      
-      setLaundryOrders(mockLaundryOrders);
-    } catch (error) {
-      console.error('Error fetching laundry orders:', error);
-    } finally {
-      setLoadingLaundry(false);
-    }
-  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {

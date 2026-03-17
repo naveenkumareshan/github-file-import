@@ -1,67 +1,71 @@
 
 
-## Performance Optimization Plan
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-### Root Causes Identified
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
-**1. Admin Dashboard — Redundant API calls (biggest issue)**
-The admin dashboard makes the same `get_dashboard_stats` RPC call **3 times** on load:
-- `useDashboardStatistics` hook calls `getDashboardStats()`
-- `DynamicStatisticsCards` calls `getActiveResidents()` which internally calls `getDashboardStats()` again
-- Various wrappers like `getBookingStats()` and `getRevenueByTransaction()` also call `getDashboardStats()`
+## Changes
 
-Additionally, the dashboard loads **5 independent data sources** sequentially via separate `useRef(false)` guards:
-- Dashboard stats RPC (x2-3 duplicate)
-- Top filling rooms (3 sequential queries: cabins → seats → bookings)
-- Monthly revenue (full bookings table scan)
-- Monthly occupancy (full bookings table scan)
-- Expiring bookings
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-**2. Student Dashboard — Sequential waterfall**
-`fetchBookingData` runs `getCurrentBookings()` → `getBookingHistory()` → `getUserReviewsForBookings()` sequentially. Plus `fetchStudentDues` and `fetchLaundryOrders` fire separately. Each `getCurrentBookings` and `getBookingHistory` call `supabase.auth.getUser()` individually (extra round trip each).
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-**3. Auth double-resolution**
-Many service methods call `supabase.auth.getUser()` internally, even though the auth context already has the user. This adds an extra network call per service invocation.
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
 
----
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
 
-### Implementation Plan
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
 
-#### Task 1: Deduplicate admin dashboard stats calls
-- **`DynamicStatisticsCards.tsx`**: Remove the separate `getActiveResidents()` call. Instead, pass `statistics` from the parent `useDashboardStatistics` hook down as props. The RPC already returns `active_residents` and `total_capacity`.
-- **`DashboardStatistics.tsx`**: Compute `partnerUserId` and pass it to both `useDashboardStatistics(partnerUserId)` and child components. Pass the stats data down to `DynamicStatisticsCards` as props instead of letting it fetch independently.
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
 
-#### Task 2: Parallelize admin dashboard data fetching
-- **`DashboardStatistics.tsx`**: Fetch `topFillingRooms`, `monthlyRevenue`, `monthlyOccupancy`, and `expiringBookings` in a single `Promise.all()` instead of having 4 separate `useEffect` hooks in 4 separate components.
-- Create a single `useAdminDashboardData(partnerUserId)` hook that returns all dashboard data from one coordinated fetch, replacing the scattered `useRef(false)` pattern across `DashboardStatistics`, `RevenueChart`, `OccupancyChart`, and `DashboardExpiringBookings`.
-- Each child component receives data as props instead of fetching independently.
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
 
-#### Task 3: Parallelize student dashboard fetches
-- **`StudentDashboard.tsx`**: Run `getCurrentBookings()`, `getBookingHistory()`, and `fetchStudentDues()` in `Promise.all()` instead of sequentially.
-- Remove the mock `fetchLaundryOrders()` call (it uses fake data and adds unnecessary state/render cycles).
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
 
-#### Task 4: Eliminate redundant `supabase.auth.getUser()` calls
-- **`bookingsService.ts`**: Accept `userId` as a parameter in `getCurrentBookings(userId)` and `getBookingHistory(userId)` instead of calling `supabase.auth.getUser()` internally. The caller (StudentDashboard) already has the user from `useAuth()`.
-- This removes 2 extra network round trips per student dashboard load.
+**Reviews section**: Shown below the booking flow (not in a tab)
 
-#### Task 5: Cache admin service results
-- Add a simple in-memory cache to `getDashboardStats` so that multiple callers within the same render cycle share one RPC result (deduplication at the service layer as a safety net).
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
 
----
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
 
-### Expected Impact
-- Admin dashboard: ~6-8 network calls reduced to ~3 (1 RPC + top rooms + expiring bookings, with revenue/occupancy in parallel)
-- Student dashboard: ~5 sequential calls reduced to ~3 parallel calls, minus 2 `getUser()` round trips
-- Partner dashboard: Already lightweight (1 WhatsApp click count call), no major changes needed
+## File Summary
 
-### Files to Modify
-- `src/hooks/use-dashboard-statistics.ts` — expose raw stats for child components
-- `src/components/admin/DashboardStatistics.tsx` — single coordinated fetch, pass data down
-- `src/components/admin/DynamicStatisticsCards.tsx` — receive stats as props
-- `src/components/admin/RevenueChart.tsx` — receive data as props
-- `src/components/admin/OccupancyChart.tsx` — receive data as props
-- `src/components/admin/DashboardExpiringBookings.tsx` — receive data as props
-- `src/pages/StudentDashboard.tsx` — parallelize fetches
-- `src/api/bookingsService.ts` — accept userId param
-- `src/api/adminBookingsService.ts` — add dedup cache for getDashboardStats
+| File | Change |
+|------|--------|
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
 
