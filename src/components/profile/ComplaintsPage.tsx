@@ -67,12 +67,10 @@ const ComplaintsPage = () => {
 
   const loadData = async () => {
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    setCurrentUserId(user.id);
+    if (!authUser?.id) return;
 
     const [complaintsRes, cabinBookingsRes, hostelBookingsRes, messSubsRes, laundryOrdersRes] = await Promise.all([
-      supabase.from('complaints').select('*, cabins:cabin_id(name), hostels:hostel_id(name), mess_partners:mess_id(name)').eq('user_id', user.id).order('created_at', { ascending: false }),
+      supabase.from('complaints').select('*, cabins:cabin_id(name), hostels:hostel_id(name), mess_partners:mess_id(name)').eq('user_id', authUser.id).order('created_at', { ascending: false }),
       bookingsService.getCurrentBookings(),
       hostelBookingService.getUserBookings(),
       getMyMessSubscriptions(user.id).catch(() => []),
