@@ -2,11 +2,115 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, Camera, XCircle, AlertCircle, ArrowLeft, QrCode } from 'lucide-react';
+import { CheckCircle2, Camera, XCircle, ArrowLeft, QrCode, CalendarDays, Clock, UtensilsCrossed } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { attendanceService, MarkAttendanceResult } from '@/api/attendanceService';
 import { format } from 'date-fns';
 import jsQR from 'jsqr';
+
+const ScanSuccessCard: React.FC<{ result: MarkAttendanceResult; onScanAgain: () => void }> = ({ result, onScanAgain }) => {
+  const isMess = !!result.meal_type;
+
+  return (
+    <Card className="border-emerald-300 dark:border-emerald-700 bg-emerald-50/50 dark:bg-emerald-950/20">
+      <CardContent className="p-6 text-center space-y-4">
+        <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center mx-auto">
+          <CheckCircle2 className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+        </div>
+        <div>
+          <h2 className="text-xl font-bold text-emerald-700 dark:text-emerald-300">
+            {result.already_marked
+              ? isMess
+                ? `Already marked for ${result.meal_type}`
+                : 'Already Checked In'
+              : isMess
+                ? `${result.meal_type?.charAt(0).toUpperCase()}${result.meal_type?.slice(1)} Marked ✓`
+                : 'Entry Recorded'}
+          </h2>
+          {result.already_marked && !isMess && (
+            <p className="text-xs text-muted-foreground mt-1">You've already marked attendance today</p>
+          )}
+          {result.already_marked && isMess && (
+            <p className="text-xs text-muted-foreground mt-1">You've already marked {result.meal_type} today</p>
+          )}
+        </div>
+
+        {/* Meal type badge for mess */}
+        {isMess && (
+          <div className="flex justify-center">
+            <Badge className="gap-1 text-sm bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 border-amber-300">
+              <UtensilsCrossed className="h-3.5 w-3.5" />
+              {result.meal_type?.charAt(0).toUpperCase()}{result.meal_type?.slice(1)}
+            </Badge>
+          </div>
+        )}
+
+        <div className="space-y-2 text-sm">
+          {result.property_name && (
+            <div className="flex justify-between py-2 border-b">
+              <span className="text-muted-foreground">Property</span>
+              <span className="font-medium">{result.property_name}</span>
+            </div>
+          )}
+          <div className="flex justify-between py-2 border-b">
+            <span className="text-muted-foreground">Name</span>
+            <span className="font-medium">{result.student_name}</span>
+          </div>
+          {result.phone && (
+            <div className="flex justify-between py-2 border-b">
+              <span className="text-muted-foreground">Phone</span>
+              <span className="font-medium">{result.phone}</span>
+            </div>
+          )}
+          {result.seat_label && (
+            <div className="flex justify-between py-2 border-b">
+              <span className="text-muted-foreground">Seat / Bed</span>
+              <Badge variant="outline">{result.seat_label}</Badge>
+            </div>
+          )}
+
+          {/* Booking validity period */}
+          {result.booking_start_date && result.booking_end_date && (
+            <div className="flex justify-between py-2 border-b items-center">
+              <span className="text-muted-foreground flex items-center gap-1">
+                <CalendarDays className="h-3.5 w-3.5" /> Validity
+              </span>
+              <span className="font-medium text-xs">
+                {format(new Date(result.booking_start_date), 'dd MMM')} – {format(new Date(result.booking_end_date), 'dd MMM yyyy')}
+              </span>
+            </div>
+          )}
+
+          {/* Booking duration type */}
+          {result.booking_duration && (
+            <div className="flex justify-between py-2 border-b">
+              <span className="text-muted-foreground">Plan</span>
+              <Badge variant="secondary" className="text-xs capitalize">{result.booking_duration}</Badge>
+            </div>
+          )}
+
+          <div className="flex justify-between py-2">
+            <span className="text-muted-foreground flex items-center gap-1">
+              <Clock className="h-3.5 w-3.5" /> Check-in
+            </span>
+            <span className="font-medium">
+              {result.check_in_time ? format(new Date(result.check_in_time), 'hh:mm a') : '-'}
+            </span>
+          </div>
+
+          {/* Today's date */}
+          <div className="flex justify-between py-2 border-t">
+            <span className="text-muted-foreground">Date</span>
+            <span className="font-medium">{format(new Date(), 'dd MMM yyyy')}</span>
+          </div>
+        </div>
+        <Button variant="outline" className="w-full mt-4" onClick={onScanAgain}>
+          Scan Again
+        </Button>
+      </CardContent>
+    </Card>
+  );
+};
 
 const ScanAttendance: React.FC = () => {
   const navigate = useNavigate();
@@ -108,59 +212,8 @@ const ScanAttendance: React.FC = () => {
         </div>
       </div>
 
-      {/* Success Result */}
-      {result && (
-        <Card className="border-emerald-300 dark:border-emerald-700 bg-emerald-50/50 dark:bg-emerald-950/20">
-          <CardContent className="p-6 text-center space-y-4">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center mx-auto">
-              <CheckCircle2 className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-emerald-700 dark:text-emerald-300">
-                {result.already_marked ? 'Already Checked In' : 'Entry Recorded'}
-              </h2>
-              {result.already_marked && (
-                <p className="text-xs text-muted-foreground mt-1">You've already marked attendance today</p>
-              )}
-            </div>
-            <div className="space-y-2 text-sm">
-              {result.property_name && (
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">Property</span>
-                  <span className="font-medium">{result.property_name}</span>
-                </div>
-              )}
-              <div className="flex justify-between py-2 border-b">
-                <span className="text-muted-foreground">Name</span>
-                <span className="font-medium">{result.student_name}</span>
-              </div>
-              {result.phone && (
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">Phone</span>
-                  <span className="font-medium">{result.phone}</span>
-                </div>
-              )}
-              {result.seat_label && (
-                <div className="flex justify-between py-2 border-b">
-                  <span className="text-muted-foreground">Seat / Bed</span>
-                  <Badge variant="outline">{result.seat_label}</Badge>
-                </div>
-              )}
-              <div className="flex justify-between py-2">
-                <span className="text-muted-foreground">Check-in Time</span>
-                <span className="font-medium">
-                  {result.check_in_time ? format(new Date(result.check_in_time), 'hh:mm a') : '-'}
-                </span>
-              </div>
-            </div>
-            <Button variant="outline" className="w-full mt-4" onClick={() => { setResult(null); }}>
-              Scan Again
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+      {result && <ScanSuccessCard result={result} onScanAgain={() => setResult(null)} />}
 
-      {/* Error */}
       {error && !scanning && !result && (
         <Card className="border-red-300 dark:border-red-700">
           <CardContent className="p-6 text-center space-y-4">
@@ -178,13 +231,11 @@ const ScanAttendance: React.FC = () => {
         </Card>
       )}
 
-      {/* Scanner */}
       {scanning && (
         <div className="space-y-4">
           <div className="relative rounded-xl overflow-hidden border bg-black aspect-square">
             <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
             <canvas ref={canvasRef} className="hidden" />
-            {/* Scanning overlay */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="w-48 h-48 border-2 border-primary rounded-2xl relative">
                 <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-primary rounded-tl-lg" />
@@ -208,7 +259,6 @@ const ScanAttendance: React.FC = () => {
         </div>
       )}
 
-      {/* Initial state */}
       {!scanning && !result && !error && (
         <Card>
           <CardContent className="p-8 text-center space-y-6">

@@ -27,6 +27,10 @@ export interface MarkAttendanceResult {
   seat_label?: string;
   property_name?: string;
   check_in_time?: string;
+  meal_type?: string;
+  booking_start_date?: string;
+  booking_end_date?: string;
+  booking_duration?: string;
 }
 
 export const attendanceService = {
