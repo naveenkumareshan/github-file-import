@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { formatCurrency } from '@/utils/currency';
 
 // Mock data - in a real app, this would come from an API
 const mockBookings = [
