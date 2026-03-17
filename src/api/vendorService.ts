@@ -204,7 +204,7 @@ export const vendorService = {
     }
   },
 
-  createEmployee: async (employeeData: Partial<VendorEmployee>) => {
+  createEmployee: async (employeeData: Partial<PartnerEmployee>) => {
     try {
       const response = await axios.post('/vendor/employees', employeeData);
       return { success: true, data: response.data };
