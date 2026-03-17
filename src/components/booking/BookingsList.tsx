@@ -212,7 +212,7 @@ export const BookingsList = ({
                     {booking.paymentStatus === 'pending' ? (
                       <Badge variant="outline" className="border-amber-500 text-amber-500 text-[10px] px-1.5 py-0.5">Pending Payment</Badge>
                     ) : (booking.dueAmount ?? 0) > 0 ? (
-                      <Badge variant="outline" className="border-red-500 text-red-600 text-[10px] px-1.5 py-0.5">Due: ₹{booking.dueAmount?.toLocaleString()}</Badge>
+                      <Badge variant="outline" className="border-red-500 text-red-600 text-[10px] px-1.5 py-0.5">Due: {formatCurrency(Number(booking.dueAmount) || 0)}</Badge>
                     ) : booking.paymentStatus === 'completed' ? (
                       <Badge className="bg-green-100 text-green-700 border-green-200 text-[10px] px-1.5 py-0.5">Fully Paid</Badge>
                     ) : (booking.paymentStatus as string) === 'advance_paid' ? (
