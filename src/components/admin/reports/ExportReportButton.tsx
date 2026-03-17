@@ -10,7 +10,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from '@/hooks/use-toast';
 import { adminBookingsService } from '@/api/adminBookingsService';
-import ExcelJS from 'exceljs';
 import { format } from 'date-fns';
 
 interface ExportReportButtonProps {
