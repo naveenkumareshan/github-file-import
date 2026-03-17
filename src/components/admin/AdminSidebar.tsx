@@ -682,9 +682,9 @@ export function AdminSidebar() {
         <Collapsible key={item.title} defaultOpen={isActiveItem(item.url, item.subItems)}>
           <SidebarMenuItem>
             <CollapsibleTrigger asChild>
-              <SidebarMenuButton className="w-full justify-between hover:bg-muted/60 transition-colors">
+              <SidebarMenuButton className={`w-full justify-between transition-all duration-200 ${isActiveItem(item.url, item.subItems) ? "bg-primary/10 text-primary font-semibold" : "hover:bg-muted/60"}`}>
                 <div className="flex items-center gap-2.5">
-                  <item.icon className="h-4 w-4 text-muted-foreground" />
+                  <item.icon className={`h-4 w-4 ${isActiveItem(item.url, item.subItems) ? "text-primary" : "text-muted-foreground"}`} />
                   <span className="text-sm font-medium">{item.title}</span>
                 </div>
                 <ChevronRight className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[state=open]/collapsible:rotate-90" />
@@ -703,7 +703,7 @@ export function AdminSidebar() {
                       <SidebarMenuSubButton
                         asChild
                         isActive={isActive}
-                        className={isActive ? "border-l-2 border-primary bg-primary/8 text-primary font-medium" : "hover:bg-muted/60"}
+                        className={isActive ? "bg-primary text-primary-foreground font-medium rounded-md shadow-sm [&>a]:text-primary-foreground" : "hover:bg-muted/60 transition-all duration-200"}
                       >
                         <Link to={subItem.url || '#'} className="flex items-center gap-2.5 pl-2">
                           <subItem.icon className="h-3.5 w-3.5 flex-shrink-0" />
@@ -726,7 +726,7 @@ export function AdminSidebar() {
         <SidebarMenuButton
           asChild
           isActive={isActive}
-          className={isActive ? "border-l-2 border-primary bg-primary/8 text-primary font-medium" : "hover:bg-muted/60 transition-colors"}
+          className={isActive ? "bg-primary text-primary-foreground font-semibold rounded-lg shadow-sm [&>a]:text-primary-foreground" : "hover:bg-muted/60 transition-all duration-200"}
         >
           <Link to={item.url || '#'} className="flex items-center gap-2.5">
             <item.icon className="h-4 w-4 flex-shrink-0" />

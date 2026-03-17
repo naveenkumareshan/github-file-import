@@ -1,53 +1,71 @@
 
 
-## Plan: Modern Active Sidebar Styling
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-### Current State
-- Active top-level items: `border-l-2 border-primary bg-primary/8 text-primary font-medium`
-- Active sub-items: Same border-l + light bg
-- Hover: `hover:bg-muted/60`
-- Group headers: muted icon + text
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
-### Changes — Single file: `src/components/admin/AdminSidebar.tsx`
+## Changes
 
-#### 1. Active Top-Level Item (line 729)
-Replace the subtle border-l style with a full primary background:
-```tsx
-className={isActive 
-  ? "bg-primary text-primary-foreground font-semibold rounded-lg shadow-sm" 
-  : "hover:bg-muted/60 transition-all duration-200"}
-```
-Also force icon white when active via the Link className.
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-#### 2. Active Sub-Item (line 706)
-Same treatment for sub-menu items:
-```tsx
-className={isActive 
-  ? "bg-primary text-primary-foreground font-medium rounded-md shadow-sm" 
-  : "hover:bg-muted/60 transition-all duration-200"}
-```
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-#### 3. Inactive Hover Enhancement
-Add `transition-all duration-200` to all inactive states (already partially there, just ensure consistency).
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
 
-#### 4. Active Group Parent Header (line 685)
-When a collapsible group contains an active child, give the group trigger a subtle highlight:
-```tsx
-className={`w-full justify-between transition-all duration-200 ${
-  isActiveItem(item.url, item.subItems) 
-    ? "bg-primary/10 text-primary font-semibold" 
-    : "hover:bg-muted/60"
-}`}
-```
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
 
-#### 5. Icon Color
-- Active items: icon gets `text-primary-foreground` (white on primary bg)
-- Active group parent: icon gets `text-primary`
-- Inactive: keep `text-muted-foreground`
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
 
-#### 6. Left Indicator Bar (Optional Enhancement)
-Add a 3px left border-radius indicator on active items using a `before:` pseudo-element via Tailwind's `relative before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:bg-primary-foreground before:rounded-full` on active items.
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
 
-### Summary
-Single file change to `AdminSidebar.tsx` — updating 3 className expressions (top-level active, sub-item active, group header active) to use solid primary background with white text/icons, smooth transitions, and rounded corners.
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
+
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
+
+**Reviews section**: Shown below the booking flow (not in a tab)
+
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
+
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
+
+## File Summary
+
+| File | Change |
+|------|--------|
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
 
