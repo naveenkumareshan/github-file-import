@@ -65,7 +65,7 @@ const SECTIONS = [
 ];
 
 export const ProfileManagement = () => {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const [profile, setProfile] = useState<ProfileData>(defaultProfile);
   const [isLoading, setIsLoading] = useState(false);
 
