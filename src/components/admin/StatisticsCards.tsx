@@ -23,9 +23,9 @@ export function StatisticsCards({ data }: StatisticsCardsProps) {
         <div className="p-3 flex items-center justify-between">
           <div>
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Revenue</p>
-            <p className="text-xl font-bold mt-0.5">₹{data.totalRevenue.toLocaleString()}</p>
+            <p className="text-xl font-bold mt-0.5">{formatCurrency(data.totalRevenue)}</p>
             {data.revenueToday !== undefined && (
-              <p className="text-[10px] text-emerald-600">₹{data.revenueToday.toLocaleString()} today</p>
+              <p className="text-[10px] text-emerald-600">{formatCurrency(data.revenueToday)} today</p>
             )}
           </div>
           <TrendingUp className="h-3.5 w-3.5 text-emerald-600" />
