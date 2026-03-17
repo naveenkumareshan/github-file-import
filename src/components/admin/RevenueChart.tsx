@@ -9,6 +9,7 @@ import { adminBookingsService } from '@/api/adminBookingsService';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useAuth } from '@/contexts/AuthContext';
 import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
+import { formatCurrency } from '@/utils/currency';
 
 export function RevenueChart() {
   const { user } = useAuth();
