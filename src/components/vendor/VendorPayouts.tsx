@@ -317,7 +317,7 @@ const VendorPayouts: React.FC = () => {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">₹{income.payoutSummary.availableBalance.toLocaleString()}</div>
+              <div className="text-2xl font-bold text-green-600">{formatCurrency(income.payoutSummary.availableBalance)}</div>
               <p className="text-xs text-muted-foreground">
                 Ready for payout
               </p>
