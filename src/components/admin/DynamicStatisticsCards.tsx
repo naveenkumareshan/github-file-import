@@ -49,8 +49,8 @@ useEffect(() => {
             <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Total Revenue</p>
             {loading ? <Skeleton className="h-6 w-20 mt-1" /> : (
               <>
-                <p className="text-lg font-bold mt-0.5 text-primary">₹{statistics.totalRevenue.toLocaleString()}</p>
-                <p className="text-[10px] text-secondary">₹{statistics.revenueToday.toLocaleString()} today</p>
+                <p className="text-lg font-bold mt-0.5 text-primary">{formatCurrency(statistics.totalRevenue)}</p>
+                <p className="text-[10px] text-secondary">{formatCurrency(statistics.revenueToday)} today</p>
               </>
             )}
           </div>
