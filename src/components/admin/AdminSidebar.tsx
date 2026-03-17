@@ -726,7 +726,7 @@ export function AdminSidebar() {
         <SidebarMenuButton
           asChild
           isActive={isActive}
-          className={isActive ? "border-l-2 border-primary bg-primary/8 text-primary font-medium" : "hover:bg-muted/60 transition-colors"}
+          className={isActive ? "bg-primary text-primary-foreground font-semibold rounded-lg shadow-sm [&>a]:text-primary-foreground" : "hover:bg-muted/60 transition-all duration-200"}
         >
           <Link to={item.url || '#'} className="flex items-center gap-2.5">
             <item.icon className="h-4 w-4 flex-shrink-0" />
