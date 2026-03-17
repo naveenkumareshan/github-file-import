@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { ArrowLeft, Calendar, IndianRupee, Bed } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { bookingsService } from '@/api/bookingsService';
+import { formatCurrency } from '@/utils/currency';
 import { RazorpayCheckout } from '@/components/payment/RazorpayCheckout';
 import { PaymentTimer } from '@/components/booking/PaymentTimer';
 
