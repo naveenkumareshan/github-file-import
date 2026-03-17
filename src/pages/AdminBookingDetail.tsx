@@ -433,23 +433,23 @@ const AdminBookingDetail = () => {
             <div className="grid grid-cols-3 gap-3 mb-2">
               <div>
                 <p className="text-[11px] text-muted-foreground">{bookingType === 'hostel' ? `Room Rent${durationLabel}` : `Seat Price${durationLabel}`}</p>
-                <p className="text-sm font-semibold">₹{seatPrice.toLocaleString()}</p>
+                <p className="text-sm font-semibold">{formatCurrency(seatPrice)}</p>
               </div>
               {bookingType === 'hostel' && foodAmount > 0 && (
                 <div>
                   <p className="text-[11px] text-muted-foreground">Food Charges</p>
-                  <p className="text-sm font-semibold">₹{foodAmount.toLocaleString()}</p>
+                  <p className="text-sm font-semibold">{formatCurrency(foodAmount)}</p>
                 </div>
               )}
               {bookingType === 'hostel' ? (
                 <div>
                   <p className="text-[11px] text-muted-foreground">Security Deposit</p>
-                  <p className="text-sm font-semibold">₹{securityDeposit.toLocaleString()}</p>
+                  <p className="text-sm font-semibold">{formatCurrency(securityDeposit)}</p>
                 </div>
               ) : (
                 <div>
                   <p className="text-[11px] text-muted-foreground">Locker</p>
-                  <p className="text-sm font-semibold">₹{lockerAmount.toLocaleString()}</p>
+                  <p className="text-sm font-semibold">{formatCurrency(lockerAmount)}</p>
                 </div>
               )}
               <div>
