@@ -194,10 +194,9 @@ interface LaundryOrder {
 const StudentDashboard: React.FC = () => {
   const [currentBookings, setCurrentBookings] = useState<BookingData[]>([]);
   const [bookingHistory, setBookingHistory] = useState<BookingData[]>([]);
-  const [laundryOrders, setLaundryOrders] = useState<LaundryOrder[]>([]);
+  const [laundryOrders] = useState<LaundryOrder[]>([]);
   const [studentDues, setStudentDues] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [loadingLaundry, setLoadingLaundry] = useState<boolean>(true);
   const [reviewedBookingIds, setReviewedBookingIds] = useState<Set<string>>(new Set());
   const [reviewDialogBooking, setReviewDialogBooking] = useState<BookingData | null>(null);
   const { user } = useAuth();
