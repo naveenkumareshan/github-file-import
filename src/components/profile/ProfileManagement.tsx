@@ -168,8 +168,7 @@ export const ProfileManagement = () => {
 
   const loadBookings = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user?.id) return;
 
       // Fetch both reading room and hostel bookings in parallel
       const [readingRes, hostelRes] = await Promise.all([
