@@ -83,8 +83,8 @@ useEffect(() => {
                 <BarChart data={data}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
-                  <YAxis tickFormatter={(value) => `₹${value / 1000}K`} />
-                  <Tooltip content={<ChartTooltipContent />} formatter={(value) => [`₹${value}`, 'Revenue']} />
+                  <YAxis tickFormatter={(value) => `₹${Math.round(value / 1000)}K`} />
+                   <Tooltip content={<ChartTooltipContent />} formatter={(value) => [formatCurrency(Number(value) || 0), 'Revenue']} />
                   <Legend />
                   <Bar 
                     dataKey="revenue" 

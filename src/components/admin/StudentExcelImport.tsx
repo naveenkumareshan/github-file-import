@@ -460,7 +460,7 @@ const StudentExcelImport = () => {
                         <div className="text-sm text-muted-foreground">
                           {fmtDate(s.startDate)} → {fmtDate(s.endDate)}
                         </div>
-                        <div className="text-sm font-medium text-green-600">₹{Number(s.amount || 0).toLocaleString()}</div>
+                        <div className="text-sm font-medium text-green-600">{formatCurrency(Number(s.amount || 0))}</div>
                       </TableCell>
                       <TableCell>
                         {getStatusBadge(s.status)}

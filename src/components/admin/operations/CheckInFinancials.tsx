@@ -312,4 +312,4 @@ export const ReceiptsDialog: React.FC<ReceiptsDialogProps> = ({ open, onOpenChan
 };
 
 // Helper to format currency inline
-export const fmtAmt = (v: number) => `₹${v.toLocaleString()}`;
+export const fmtAmt = (v: number) => formatCurrency(Number(v) || 0);

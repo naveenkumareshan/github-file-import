@@ -346,7 +346,7 @@ const VendorPayouts: React.FC = () => {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">₹{income.payoutSummary.requestedPayouts.toLocaleString()}</div>
+              <div className="text-2xl font-bold">{formatCurrency(income.payoutSummary.requestedPayouts)}</div>
               <p className="text-xs text-muted-foreground">
                 Under processing
               </p>

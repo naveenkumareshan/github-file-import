@@ -548,7 +548,7 @@ export const ProfileManagement = () => {
                     </div>
                     {(b.dueAmount ?? 0) > 0 ? (
                       <Badge variant="outline" className="border-red-500 text-red-600 text-[10px] px-1.5 py-0.5 flex-shrink-0">
-                        Due: ₹{b.dueAmount?.toLocaleString()}
+                        Due: {formatCurrency(Number(b.dueAmount) || 0)}
                       </Badge>
                     ) : b.payment_status === 'completed' ? (
                       <Badge className="bg-green-100 text-green-700 border-green-200 text-[10px] px-1.5 py-0.5 flex-shrink-0">

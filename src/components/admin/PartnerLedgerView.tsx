@@ -88,8 +88,8 @@ export const PartnerLedgerView: React.FC<Props> = ({ partnerId, open, onClose })
                     </span>
                   </TableCell>
                   <TableCell className="px-2 py-1">{e.category}</TableCell>
-                  <TableCell className="px-2 py-1 text-right font-medium">{e.entry_type === 'credit' ? '+' : '-'}₹{e.amount?.toLocaleString()}</TableCell>
-                  <TableCell className="px-2 py-1 text-right">₹{e.running_balance?.toLocaleString()}</TableCell>
+                  <TableCell className="px-2 py-1 text-right font-medium">{e.entry_type === 'credit' ? '+' : '-'}{formatCurrency(Number(e.amount) || 0)}</TableCell>
+                  <TableCell className="px-2 py-1 text-right">{formatCurrency(Number(e.running_balance) || 0)}</TableCell>
                   <TableCell className="px-2 py-1 max-w-[200px] truncate">{e.description}</TableCell>
                 </TableRow>
               ))}

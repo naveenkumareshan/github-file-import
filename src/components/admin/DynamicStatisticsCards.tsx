@@ -96,7 +96,7 @@ useEffect(() => {
           <div>
             <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Pending Payments</p>
             {loading ? <Skeleton className="h-6 w-20 mt-1" /> : (
-              <p className="text-lg font-bold mt-0.5 text-destructive">₹{statistics.pendingPayments.toLocaleString()}</p>
+              <p className="text-lg font-bold mt-0.5 text-destructive">{formatCurrency(statistics.pendingPayments)}</p>
             )}
           </div>
           <div className="h-7 w-7 rounded-full bg-destructive/10 flex items-center justify-center">

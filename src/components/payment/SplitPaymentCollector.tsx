@@ -166,8 +166,8 @@ export const SplitPaymentCollector: React.FC<SplitPaymentCollectorProps> = ({
         <div className={`flex items-center gap-1.5 text-[11px] px-1 ${isMatched ? 'text-emerald-600' : 'text-destructive'}`}>
           {isMatched ? <CheckCircle className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
           <span>
-            Split Total: ₹{totalSplit.toLocaleString()}
-            {!isMatched && ` (need ₹${totalAmount.toLocaleString()})`}
+            Split Total: {formatCurrency(totalSplit)}
+            {!isMatched && ` (need ${formatCurrency(totalAmount)})`}
           </span>
         </div>
       )}

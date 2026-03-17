@@ -59,7 +59,7 @@ export function StatisticsCards({ data }: StatisticsCardsProps) {
         <div className="p-3 flex items-center justify-between">
           <div>
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Pending Payments</p>
-            <p className="text-xl font-bold mt-0.5">₹{data.pendingPayments.toLocaleString()}</p>
+            <p className="text-xl font-bold mt-0.5">{formatCurrency(data.pendingPayments)}</p>
           </div>
           <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
         </div>

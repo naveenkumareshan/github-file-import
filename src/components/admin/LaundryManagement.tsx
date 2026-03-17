@@ -122,7 +122,7 @@ export function LaundryManagement({ laundryRequests }: LaundryManagementProps) {
                       `${request.items.reduce((sum, item) => sum + item.quantity, 0)} items` : 
                       "N/A"}
                   </TableCell>
-                  <TableCell>{request.totalAmount ? `₹${request.totalAmount}` : "N/A"}</TableCell>
+                  <TableCell>{request.totalAmount ? formatCurrency(Number(request.totalAmount) || 0) : "N/A"}</TableCell>
                   <TableCell>
                     <span className={`px-2 py-1 text-xs rounded-full ${
                       request.status === 'pending' ? 'bg-amber-100 text-amber-800' :

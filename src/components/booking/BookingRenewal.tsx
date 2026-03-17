@@ -216,7 +216,7 @@ export const BookingRenewal = React.forwardRef<HTMLDivElement, BookingRenewalPro
         setAppliedCoupon(response.data.coupon);
         toast({
           title: "Coupon Applied",
-          description: `Saved ₹${response.data.savings.toLocaleString()}`,
+          description: `Saved ${formatCurrency(Number(response.data.savings) || 0)}`,
           variant: "default"
         });
       } else {

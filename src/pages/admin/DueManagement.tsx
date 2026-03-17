@@ -416,7 +416,7 @@ const DueManagement: React.FC = () => {
               </div>
 
               <Button className="w-full h-9 text-xs" onClick={handleCollect} disabled={collecting || !collectAmount}>
-                {collecting ? 'Processing...' : `Confirm Collection · ₹${collectAmount}`}
+                {collecting ? 'Processing...' : `Confirm Collection · ${formatCurrency(Number(collectAmount) || 0)}`}
               </Button>
 
               {/* Payment History */}

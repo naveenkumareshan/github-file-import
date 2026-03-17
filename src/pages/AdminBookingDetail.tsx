@@ -454,32 +454,32 @@ const AdminBookingDetail = () => {
               )}
               <div>
                 <p className="text-[11px] text-muted-foreground">Discount</p>
-                <p className="text-sm font-semibold text-destructive">{discountAmount > 0 ? '-' : ''}₹{discountAmount.toLocaleString()}</p>
+                <p className="text-sm font-semibold text-destructive">{discountAmount > 0 ? '-' : ''}{formatCurrency(discountAmount)}</p>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-3 mb-2">
               <div>
                 <p className="text-[11px] text-muted-foreground">Total Price</p>
-                <p className="text-sm font-semibold">₹{totalPrice.toLocaleString()}</p>
+                <p className="text-sm font-semibold">{formatCurrency(totalPrice)}</p>
               </div>
               <div>
                 <p className="text-[11px] text-muted-foreground">Advance Paid</p>
-                <p className="text-sm font-semibold">₹{advancePaid.toLocaleString()}</p>
+                <p className="text-sm font-semibold">{formatCurrency(advancePaid)}</p>
               </div>
               <div>
                 <p className="text-[11px] text-muted-foreground">Due Collected</p>
-                <p className="text-sm font-semibold">₹{dueCollected.toLocaleString()}</p>
+                <p className="text-sm font-semibold">{formatCurrency(dueCollected)}</p>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <p className="text-[11px] text-muted-foreground">Total Collected</p>
-                <p className="text-sm font-semibold text-green-600">₹{totalCollected.toLocaleString()}</p>
+                <p className="text-sm font-semibold text-green-600">{formatCurrency(totalCollected)}</p>
               </div>
               <div>
                 <p className="text-[11px] text-muted-foreground">Due Remaining</p>
                 <p className={`text-sm font-semibold ${dueRemaining > 0 ? 'text-destructive' : 'text-green-600'}`}>
-                  ₹{dueRemaining.toLocaleString()}
+                  {formatCurrency(dueRemaining)}
                 </p>
               </div>
               <div>

@@ -292,7 +292,7 @@ const VendorAutoPayoutSettings: React.FC = () => {
                         <Badge variant="outline">Disabled</Badge>
                       )}
                     </TableCell>
-                    <TableCell>₹{vendor.autoPayoutSettings.minimumPayoutAmount}</TableCell>
+                    <TableCell>{formatCurrency(Number(vendor.autoPayoutSettings.minimumPayoutAmount) || 0)}</TableCell>
                     <TableCell>
                       {vendor.autoPayoutSettings.nextAutoPayout ? (
                         <div className="text-sm">
