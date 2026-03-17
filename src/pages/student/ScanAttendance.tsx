@@ -2,11 +2,12 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, Camera, XCircle, ArrowLeft, QrCode, CalendarDays, Clock, UtensilsCrossed } from 'lucide-react';
+import { CheckCircle2, Camera, XCircle, ArrowLeft, QrCode, CalendarDays, Clock, UtensilsCrossed, KeyRound, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { attendanceService, MarkAttendanceResult } from '@/api/attendanceService';
 import { format } from 'date-fns';
 import jsQR from 'jsqr';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 
 const ScanSuccessCard: React.FC<{ result: MarkAttendanceResult; onScanAgain: () => void }> = ({ result, onScanAgain }) => {
   const isMess = !!result.meal_type;
@@ -35,7 +36,6 @@ const ScanSuccessCard: React.FC<{ result: MarkAttendanceResult; onScanAgain: () 
           )}
         </div>
 
-        {/* Meal type badge for mess */}
         {isMess && (
           <div className="flex justify-center">
             <Badge className="gap-1 text-sm bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 border-amber-300">
@@ -68,8 +68,6 @@ const ScanSuccessCard: React.FC<{ result: MarkAttendanceResult; onScanAgain: () 
               <Badge variant="outline">{result.seat_label}</Badge>
             </div>
           )}
-
-          {/* Booking validity period */}
           {result.booking_start_date && result.booking_end_date && (
             <div className="flex justify-between py-2 border-b items-center">
               <span className="text-muted-foreground flex items-center gap-1">
@@ -80,15 +78,12 @@ const ScanSuccessCard: React.FC<{ result: MarkAttendanceResult; onScanAgain: () 
               </span>
             </div>
           )}
-
-          {/* Booking duration type */}
           {result.booking_duration && (
             <div className="flex justify-between py-2 border-b">
               <span className="text-muted-foreground">Plan</span>
               <Badge variant="secondary" className="text-xs capitalize">{result.booking_duration}</Badge>
             </div>
           )}
-
           <div className="flex justify-between py-2">
             <span className="text-muted-foreground flex items-center gap-1">
               <Clock className="h-3.5 w-3.5" /> Check-in
@@ -97,8 +92,6 @@ const ScanSuccessCard: React.FC<{ result: MarkAttendanceResult; onScanAgain: () 
               {result.check_in_time ? format(new Date(result.check_in_time), 'hh:mm a') : '-'}
             </span>
           </div>
-
-          {/* Today's date */}
           <div className="flex justify-between py-2 border-t">
             <span className="text-muted-foreground">Date</span>
             <span className="font-medium">{format(new Date(), 'dd MMM yyyy')}</span>
@@ -107,6 +100,83 @@ const ScanSuccessCard: React.FC<{ result: MarkAttendanceResult; onScanAgain: () 
         <Button variant="outline" className="w-full mt-4" onClick={onScanAgain}>
           Scan Again
         </Button>
+      </CardContent>
+    </Card>
+  );
+};
+
+const PinEntryCard: React.FC<{
+  propertyId: string;
+  propertyType: string;
+  errorMsg: string;
+  onSuccess: (res: MarkAttendanceResult) => void;
+  onCancel: () => void;
+}> = ({ propertyId, propertyType, errorMsg, onSuccess, onCancel }) => {
+  const [pin, setPin] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [pinError, setPinError] = useState<string | null>(null);
+
+  const handleSubmit = async () => {
+    if (pin.length !== 4) return;
+    setSubmitting(true);
+    setPinError(null);
+    try {
+      const res = await attendanceService.markPinAttendance(propertyId, propertyType, pin);
+      if (res.success) {
+        onSuccess(res);
+      } else {
+        setPinError(res.error || 'Invalid PIN');
+        setPin('');
+      }
+    } catch (e: any) {
+      setPinError(e.message || 'Failed to verify PIN');
+      setPin('');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Card className="border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/20">
+      <CardContent className="p-6 text-center space-y-4">
+        <div className="w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-900 flex items-center justify-center mx-auto">
+          <AlertTriangle className="h-8 w-8 text-amber-600 dark:text-amber-400" />
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold text-amber-700 dark:text-amber-300">Fee Due</h2>
+          <p className="text-sm text-muted-foreground mt-1">{errorMsg}</p>
+        </div>
+
+        <div className="space-y-3">
+          <p className="text-sm font-medium">Enter the 4-digit PIN from staff</p>
+          <div className="flex justify-center">
+            <InputOTP maxLength={4} value={pin} onChange={setPin}>
+              <InputOTPGroup>
+                <InputOTPSlot index={0} />
+                <InputOTPSlot index={1} />
+                <InputOTPSlot index={2} />
+                <InputOTPSlot index={3} />
+              </InputOTPGroup>
+            </InputOTP>
+          </div>
+          {pinError && (
+            <p className="text-xs text-destructive">{pinError}</p>
+          )}
+        </div>
+
+        <div className="flex gap-2">
+          <Button variant="outline" className="flex-1" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button
+            className="flex-1 gap-1"
+            onClick={handleSubmit}
+            disabled={pin.length !== 4 || submitting}
+          >
+            <KeyRound className="h-3.5 w-3.5" />
+            {submitting ? 'Verifying...' : 'Submit PIN'}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
@@ -123,6 +193,7 @@ const ScanAttendance: React.FC = () => {
   const [result, setResult] = useState<MarkAttendanceResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [pinData, setPinData] = useState<{ propertyId: string; propertyType: string; errorMsg: string } | null>(null);
 
   const stopCamera = useCallback(() => {
     if (animationRef.current) cancelAnimationFrame(animationRef.current);
@@ -143,6 +214,15 @@ const ScanAttendance: React.FC = () => {
       const res = await attendanceService.markAttendance(propertyId, type);
       if (res.success) {
         setResult(res);
+        setError(null);
+        setPinData(null);
+      } else if (res.needs_pin) {
+        // Student has dues - show PIN entry
+        setPinData({
+          propertyId: res.property_id || propertyId,
+          propertyType: res.property_type || type,
+          errorMsg: res.error || 'Fee due pending.',
+        });
         setError(null);
       } else {
         setError(res.error || 'Failed to mark attendance');
@@ -178,6 +258,7 @@ const ScanAttendance: React.FC = () => {
   const startCamera = async () => {
     setError(null);
     setResult(null);
+    setPinData(null);
     setScanning(true);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -200,6 +281,17 @@ const ScanAttendance: React.FC = () => {
     return () => stopCamera();
   }, [stopCamera]);
 
+  const handlePinSuccess = (res: MarkAttendanceResult) => {
+    setPinData(null);
+    setResult(res);
+  };
+
+  const handleReset = () => {
+    setResult(null);
+    setError(null);
+    setPinData(null);
+  };
+
   return (
     <div className="container mx-auto px-4 py-6 max-w-md">
       <div className="flex items-center gap-2 mb-6">
@@ -212,9 +304,19 @@ const ScanAttendance: React.FC = () => {
         </div>
       </div>
 
-      {result && <ScanSuccessCard result={result} onScanAgain={() => setResult(null)} />}
+      {result && <ScanSuccessCard result={result} onScanAgain={handleReset} />}
 
-      {error && !scanning && !result && (
+      {pinData && !result && (
+        <PinEntryCard
+          propertyId={pinData.propertyId}
+          propertyType={pinData.propertyType}
+          errorMsg={pinData.errorMsg}
+          onSuccess={handlePinSuccess}
+          onCancel={handleReset}
+        />
+      )}
+
+      {error && !scanning && !result && !pinData && (
         <Card className="border-red-300 dark:border-red-700">
           <CardContent className="p-6 text-center space-y-4">
             <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center mx-auto">
@@ -259,7 +361,7 @@ const ScanAttendance: React.FC = () => {
         </div>
       )}
 
-      {!scanning && !result && !error && (
+      {!scanning && !result && !error && !pinData && (
         <Card>
           <CardContent className="p-8 text-center space-y-6">
             <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto">

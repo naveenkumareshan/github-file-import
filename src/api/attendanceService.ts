@@ -22,6 +22,9 @@ export interface MarkAttendanceResult {
   success: boolean;
   error?: string;
   already_marked?: boolean;
+  needs_pin?: boolean;
+  property_id?: string;
+  property_type?: string;
   student_name?: string;
   phone?: string;
   seat_label?: string;
