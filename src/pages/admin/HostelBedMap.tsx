@@ -38,6 +38,7 @@ import { SplitPaymentCollector, PaymentSplit, createDefaultSplit, validateSplits
 import { BookingUpdateDatesDialog } from '@/components/admin/BookingUpdateDatesDialog';
 import { Textarea } from '@/components/ui/textarea';
 import { bookingEmailService } from '@/api/bookingEmailService';
+import { formatCurrency } from '@/utils/currency';
 
 type ViewMode = 'grid' | 'table' | 'room';
 type StatusFilter = 'all' | 'available' | 'booked' | 'expiring_soon' | 'blocked' | 'future_booked' | 'present';
