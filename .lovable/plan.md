@@ -1,71 +1,45 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+## Plan: Remove Dead Code
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+After thorough analysis, here are the files and code that are confirmed dead (not imported or routed anywhere) and safe to delete.
 
-## Changes
+### Dead Files to Delete
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+**Unreachable Pages (not in App.tsx routes, not imported anywhere):**
+1. `src/pages/HostDashboard.tsx` — Legacy dashboard, not routed or imported
+2. `src/pages/Contact.tsx` — Not routed or imported
+3. `src/pages/StudentDashboard.tsx` — Not routed or imported (replaced by StudentBookings)
+4. `src/pages/BookingDetail.tsx` — Not routed or imported (AdminBookingDetail is used instead)
+5. `src/pages/vendor/VendorDashboard.tsx` — Not routed or imported
+6. `src/pages/hotelManager/CabinManagement.tsx` — Not routed (the component version in `components/admin/` IS used)
+7. `src/pages/hotelManager/CabinSeatsManagement.tsx` — Not routed or imported
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+**Dead Components:**
+8. `src/components/admin/CustomerComplaints.tsx` — Only imported by the dead `HostDashboard.tsx`. Real complaints use `ComplaintsManagement.tsx`
+9. `src/components/admin/reports/index.ts` — All exports are commented out, file is empty/useless
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+**Dead Type Declaration:**
+10. `src/gl-matrix.d.ts` — gl-matrix is never imported anywhere in the codebase
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+### Code to Clean (not full file deletions)
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
+**Deprecated aliases** — These `@deprecated` exports add dead weight but the primary exports they alias ARE used. I will remove only the deprecated aliases, not the main code:
+- `src/types/vendor.ts` — Remove `VendorEmployee` and `VendorBooking` deprecated aliases (verify no imports first)
+- `src/api/vendorRegistrationService.ts` — Remove `partnerRegistrationService` alias
+- `src/api/vendorService.ts` — Remove `partnerService` alias  
+- `src/hooks/useVendorEmployeePermissions.ts` — Remove `useVendorEmployeePermissions` and `VendorEmployeePermissions` aliases
 
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
+### What I will NOT touch
+- All axios-based API services (they're imported and used)
+- `src/components/admin/settings/` (used by AdminSettingsNew)
+- `src/components/forms/LocationSelector.tsx` (used in 5 files)
+- `src/components/Navigation.tsx` and `src/components/icons.tsx` (used)
+- `src/data/cabinsData.ts` (used for type definitions in Cabins.tsx and CabinsGrid.tsx)
+- `src/App.css` (used)
+- All components under `seats/`, `booking/`, `dashboard/`, `search/` (used)
 
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
-
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
-
-**Reviews section**: Shown below the booking flow (not in a tab)
-
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
-
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
-
-| File | Change |
-|------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+### Files to modify/delete
+- **Delete**: 10 files listed above
+- **Edit**: 4 files to remove deprecated aliases
 
