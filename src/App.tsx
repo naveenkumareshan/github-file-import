@@ -159,8 +159,8 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-    <SplashOverlay />
     <AuthProvider>
+      <SplashOverlay />
       <LazyWrapper>
         <Router>
           <ReferralCaptureWrapper />

@@ -1,34 +1,71 @@
 
 
-## Plan: Fix Splash Screen Timing
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-### Problem
-The splash screen disappears after a fixed 800ms (cached) or 1500ms (fresh), regardless of whether the app content has actually loaded. After the splash fades out, users see skeleton loaders and loading spinners while data is still being fetched — making the app feel slow because the "real" loading is exposed.
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
-### Solution
-Make the splash screen stay visible until the app is actually ready (auth resolved + initial route rendered), with a minimum display time for branding.
+## Changes
 
-### Implementation
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-**1. Add a global "app ready" signal**
-- Create a simple context/ref (`AppReadyContext`) that the splash listens to.
-- `AuthProvider` already resolves the user session — once auth is resolved (not loading), signal "ready".
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-**2. Update `SplashOverlay.tsx`**
-- Accept an `isReady` prop or consume the ready context.
-- Show splash for at least 800ms AND until `isReady` is true (whichever is later).
-- Cap maximum wait at 4 seconds (failsafe so splash never gets stuck).
-- Keep the same fade-out animation (0.4s).
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
 
-**3. Move `SplashOverlay` inside `AuthProvider` in `App.tsx`**
-- Currently it's outside `AuthProvider`, so it can't know when auth resolves.
-- Move it inside so it can consume auth loading state.
-- Pass `isLoading` from `useAuth()` to determine readiness.
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
 
-**4. Update `LazyWrapper` fallback**
-- While splash is visible, the `LazyWrapper` skeleton fallback is hidden behind it anyway, so no visual change needed.
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
 
-### Files to modify
-- `src/components/SplashOverlay.tsx` — accept ready signal, wait for it before fading
-- `src/App.tsx` — move SplashOverlay inside AuthProvider, pass auth loading state
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
+
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
+
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
+
+**Reviews section**: Shown below the booking flow (not in a tab)
+
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
+
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
+
+## File Summary
+
+| File | Change |
+|------|--------|
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
 
