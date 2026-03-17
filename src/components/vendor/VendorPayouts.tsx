@@ -419,7 +419,7 @@ const VendorPayouts: React.FC = () => {
                   <div className="text-center">
                     <p className="text-lg font-semibold">{income[period].bookingsCount} bookings</p>
                     <p className="text-sm text-muted-foreground">
-                      Average: ₹{income[period].bookingsCount > 0 ? Math.round(income[period].netIncome / income[period].bookingsCount).toLocaleString() : 0} per booking
+                      Average: {income[period].bookingsCount > 0 ? formatCurrency(Math.round(income[period].netIncome / income[period].bookingsCount)) : '₹0'} per booking
                     </p>
                   </div>
                 </TabsContent>
