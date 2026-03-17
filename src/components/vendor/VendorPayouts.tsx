@@ -404,15 +404,15 @@ const VendorPayouts: React.FC = () => {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="text-center p-4 border rounded-lg">
                       <p className="text-sm text-muted-foreground">Total Revenue</p>
-                      <p className="text-2xl font-bold">₹{income[period].totalRevenue.toLocaleString()}</p>
+                      <p className="text-2xl font-bold">{formatCurrency(income[period].totalRevenue)}</p>
                     </div>
                     <div className="text-center p-4 border rounded-lg">
                       <p className="text-sm text-muted-foreground">Commission</p>
-                      <p className="text-2xl font-bold text-red-600">-₹{income[period].commission.toLocaleString()}</p>
+                      <p className="text-2xl font-bold text-red-600">-{formatCurrency(income[period].commission)}</p>
                     </div>
                     <div className="text-center p-4 border rounded-lg">
                       <p className="text-sm text-muted-foreground">Net Income</p>
-                      <p className="text-2xl font-bold text-green-600">₹{income[period].netIncome.toLocaleString()}</p>
+                      <p className="text-2xl font-bold text-green-600">{formatCurrency(income[period].netIncome)}</p>
                     </div>
                   </div>
                   
