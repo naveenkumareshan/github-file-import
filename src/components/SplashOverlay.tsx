@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 const CACHE_KEY = 'splash_branding';
+const MIN_DISPLAY_MS = 800;
+const MAX_DISPLAY_MS = 4000;
 
 const getCached = () => {
   try {
@@ -11,13 +14,17 @@ const getCached = () => {
 };
 
 const SplashOverlay = () => {
+  const { isLoading: authLoading } = useAuth();
   const [visible, setVisible] = useState(true);
   const [fadeOut, setFadeOut] = useState(false);
+  const [minTimeElapsed, setMinTimeElapsed] = useState(false);
+  const [maxTimeElapsed, setMaxTimeElapsed] = useState(false);
   const cached = getCached();
   const [logo, setLogo] = useState(cached?.logo || '/splash-logo.png');
   const [name, setName] = useState(cached?.name || 'InhaleStays');
   const [tagline, setTagline] = useState(cached?.tagline || 'Reading Room Booking');
 
+  // Fetch branding
   useEffect(() => {
     (async () => {
       try {
@@ -39,12 +46,31 @@ const SplashOverlay = () => {
         }
       } catch { /* Use defaults/cached */ }
     })();
-
-    const delay = cached ? 800 : 1500;
-    const timer = setTimeout(() => setFadeOut(true), delay);
-    const removeTimer = setTimeout(() => setVisible(false), delay + 600);
-    return () => { clearTimeout(timer); clearTimeout(removeTimer); };
   }, []);
+
+  // Min display timer
+  useEffect(() => {
+    const t = setTimeout(() => setMinTimeElapsed(true), MIN_DISPLAY_MS);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Max display failsafe
+  useEffect(() => {
+    const t = setTimeout(() => setMaxTimeElapsed(true), MAX_DISPLAY_MS);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Fade out when ready (auth resolved + min time) OR max time reached
+  const isReady = !authLoading;
+  const shouldFade = (isReady && minTimeElapsed) || maxTimeElapsed;
+
+  useEffect(() => {
+    if (shouldFade && !fadeOut) {
+      setFadeOut(true);
+      const removeTimer = setTimeout(() => setVisible(false), 500);
+      return () => clearTimeout(removeTimer);
+    }
+  }, [shouldFade, fadeOut]);
 
   if (!visible) return null;
 
