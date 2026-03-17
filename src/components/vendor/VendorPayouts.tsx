@@ -199,7 +199,7 @@ const VendorPayouts: React.FC = () => {
               <div className="text-right text-sm">
                 {/* <p className="font-medium">₹{booking.amount.toLocaleString()}</p> */}
                 {/* <p className="text-red-600">-₹{booking.commission.toLocaleString()}</p> */}
-                <p className="font-semibold text-green-600">₹{booking.netAmount.toLocaleString()}</p>
+                <p className="font-semibold text-green-600">{formatCurrency(booking.netAmount)}</p>
                 <Badge className={`text-xs ${getPayoutStatusColor(booking.payoutStatus)}`}>
                   {booking.payoutStatus}
                 </Badge>
