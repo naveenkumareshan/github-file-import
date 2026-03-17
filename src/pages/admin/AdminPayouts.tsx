@@ -89,7 +89,7 @@ const AdminPayouts: React.FC = () => {
               <Wallet className="h-4 w-4 text-muted-foreground" />
               <div>
                 <p className="text-[10px] text-muted-foreground">Total Paid</p>
-                <p className="text-sm font-bold">₹{stats.totalPaid?.toLocaleString() || 0}</p>
+                <p className="text-sm font-bold">{formatCurrency(Number(stats.totalPaid) || 0)}</p>
               </div>
             </div>
           </Card>
@@ -98,7 +98,7 @@ const AdminPayouts: React.FC = () => {
               <Clock className="h-4 w-4 text-muted-foreground" />
               <div>
                 <p className="text-[10px] text-muted-foreground">Pending Payable</p>
-                <p className="text-sm font-bold">₹{stats.pendingAmount?.toLocaleString() || 0}</p>
+                <p className="text-sm font-bold">{formatCurrency(Number(stats.pendingAmount) || 0)}</p>
               </div>
             </div>
           </Card>
