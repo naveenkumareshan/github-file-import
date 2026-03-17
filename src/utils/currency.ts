@@ -12,7 +12,7 @@ const formatDate = (dateStr) => {
 };
 
 export const roundPrice = (amount: number): number => {
-  return Math.round((amount + Number.EPSILON) * 100) / 100;
+  return Math.round(amount);
 };
 
 export const formatCurrency = (amount: number, currency = 'INR'): string => {
@@ -20,8 +20,8 @@ export const formatCurrency = (amount: number, currency = 'INR'): string => {
     style: 'currency',
     currency,
     minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(amount);
+    maximumFractionDigits: 0,
+  }).format(Math.round(amount));
 };
 
 export const formatBookingPeriod = (startDate, endDate) => {
