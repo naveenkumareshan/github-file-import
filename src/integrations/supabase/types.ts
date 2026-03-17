@@ -155,26 +155,26 @@ export type Database = {
         Row: {
           created_at: string
           id: string
-          owner_id: string | null
+          owner_id: string
           pin_secret: string
-          property_id: string
-          property_type: string
+          property_id: string | null
+          property_type: string | null
         }
         Insert: {
           created_at?: string
           id?: string
-          owner_id?: string | null
+          owner_id: string
           pin_secret?: string
-          property_id: string
-          property_type: string
+          property_id?: string | null
+          property_type?: string | null
         }
         Update: {
           created_at?: string
           id?: string
-          owner_id?: string | null
+          owner_id?: string
           pin_secret?: string
-          property_id?: string
-          property_type?: string
+          property_id?: string | null
+          property_type?: string | null
         }
         Relationships: []
       }
