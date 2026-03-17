@@ -139,12 +139,11 @@ const ComplaintsPage = () => {
       return;
     }
     setSubmitting(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!authUser?.id) return;
 
     const selectedBooking = bookings.find((b: any) => b.id === formData.booking_id);
     const insertData: any = {
-      user_id: user.id,
+      user_id: authUser.id,
       subject: formData.subject.trim(),
       description: formData.description.trim(),
       category: formData.category,

@@ -63,11 +63,10 @@ const SupportPage = () => {
       return;
     }
     setSubmitting(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!authUser?.id) return;
 
     const { error } = await supabase.from('support_tickets').insert({
-      user_id: user.id,
+      user_id: authUser.id,
       subject: formData.subject.trim(),
       description: formData.description.trim(),
       category: formData.category,

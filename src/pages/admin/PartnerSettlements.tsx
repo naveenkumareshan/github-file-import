@@ -18,7 +18,7 @@ import { PartnerLedgerView } from '@/components/admin/PartnerLedgerView';
 import { Loader2, Eye, CheckCircle, Lock, CreditCard, Plus, BookOpen, Wallet, Clock, IndianRupee, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { formatCurrency } from '@/utils/currency';
-import ExcelJS from 'exceljs';
+
 
 const PartnerSettlements: React.FC = () => {
   const [settlements, setSettlements] = useState<any[]>([]);

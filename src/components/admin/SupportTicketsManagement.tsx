@@ -167,7 +167,7 @@ const SupportTicketsManagement = () => {
                   ticketCreatedAt={selected.created_at}
                   ticketStatus={selected.status}
                   senderRole="admin"
-                  currentUserId={currentUserId}
+                  currentUserId={user?.id || ''}
                   creatorName={(selected.profiles as any)?.name || 'Student'}
                 />
               </div>

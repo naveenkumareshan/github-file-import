@@ -14,7 +14,6 @@ import {
 } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { Upload, Download, FileSpreadsheet, User, Bed, CreditCard, AlertCircle, CheckCircle, Building2, BookOpen } from 'lucide-react';
-import ExcelJS from 'exceljs';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency } from '@/utils/currency';

@@ -37,6 +37,7 @@ export const ExportReportButton: React.FC<ExportReportButtonProps> = ({
     setIsLoading(true);
     
     try {
+      const ExcelJS = (await import('exceljs')).default;
       const workbook = new ExcelJS.Workbook();
 
       if (reportType === 'bookings') {
