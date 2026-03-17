@@ -324,7 +324,7 @@ const VendorSeats: React.FC = () => {
     const expiring = seats.filter(s => s.dateStatus === 'expiring_soon').length;
     const blocked = seats.filter(s => s.dateStatus === 'blocked').length;
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
-    const present = attendanceSet.size;
+    const present = seats.filter(s => attendanceSet.has(s._id)).length;
     return { total, booked, available, expiring, blocked, present };
   }, [seats, selectedDate]);
 
