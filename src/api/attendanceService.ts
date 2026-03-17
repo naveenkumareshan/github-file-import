@@ -22,6 +22,9 @@ export interface MarkAttendanceResult {
   success: boolean;
   error?: string;
   already_marked?: boolean;
+  needs_pin?: boolean;
+  property_id?: string;
+  property_type?: string;
   student_name?: string;
   phone?: string;
   seat_label?: string;
@@ -93,5 +96,27 @@ export const attendanceService = {
       .eq('property_id', propertyId)
       .eq('date', date);
     return { count: data?.length || 0, error };
+  },
+
+  async markPinAttendance(propertyId: string, propertyType: string, pin: string): Promise<MarkAttendanceResult> {
+    const { data, error } = await supabase.rpc('mark_pin_attendance', {
+      p_property_id: propertyId,
+      p_property_type: propertyType,
+      p_pin: pin,
+    });
+    if (error) return { success: false, error: error.message };
+    return data as unknown as MarkAttendanceResult;
+  },
+
+  async getAttendancePin(propertyId: string, propertyType: string): Promise<{ pin: string; seconds_remaining: number } | null> {
+    const { data, error } = await supabase.rpc('generate_attendance_pin', {
+      p_property_id: propertyId,
+      p_property_type: propertyType,
+    });
+    if (error) {
+      console.error('Error generating PIN:', error);
+      return null;
+    }
+    return data as unknown as { pin: string; seconds_remaining: number };
   },
 };
