@@ -221,7 +221,7 @@ export const CollectDrawer: React.FC<CollectDrawerProps> = ({ open, onOpenChange
           </div>
 
           <Button className="w-full h-9 text-xs" onClick={handleCollect} disabled={collecting || !amount}>
-            {collecting ? 'Processing...' : `Confirm Collection · ₹${amount}`}
+            {collecting ? 'Processing...' : `Confirm Collection · ${formatCurrency(Number(amount) || 0)}`}
           </Button>
 
           <Separator className="my-3" />
