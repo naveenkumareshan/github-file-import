@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
+import { formatCurrency } from '@/utils/currency';
 import { DollarSign, Calendar, TrendingUp, Clock, Plus, Eye, CreditCard, BookOpen, X } from 'lucide-react';
 import { vendorService, VendorIncome, EnhancedPayout, BookingDetail } from '@/api/vendorService';
 import { useToast } from '@/hooks/use-toast';

@@ -6,6 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { Plus, Trash2, CheckCircle, AlertTriangle } from 'lucide-react';
 import { PaymentMethodSelector, requiresTransactionId, isNonCashMethod } from '@/components/vendor/PaymentMethodSelector';
 import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
+import { formatCurrency } from '@/utils/currency';
 
 export interface PaymentSplit {
   id: string;

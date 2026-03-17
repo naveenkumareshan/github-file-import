@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { adminBookingsService } from '@/api/adminBookingsService';
 import { hostelService } from '@/api/hostelService';
 import { ChevronLeft, CreditCard, IndianRupee, RefreshCw, Receipt, FileDown, ImageIcon } from 'lucide-react';
+import { formatCurrency } from '@/utils/currency';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";

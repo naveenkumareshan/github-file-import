@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardTitle, CardHeader } from '@/components/ui/card';
 import { Building, Users, Home, DollarSign } from 'lucide-react';
+import { formatCurrency } from '@/utils/currency';
 import { hostelService } from '@/api/hostelService';
 import { useAuth } from '@/hooks/use-auth';
 

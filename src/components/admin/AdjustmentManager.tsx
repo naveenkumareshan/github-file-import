@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { formatCurrency } from '@/utils/currency';
 import { useToast } from '@/hooks/use-toast';
 import { settlementService } from '@/api/settlementService';
 import { Loader2, Plus, Undo2 } from 'lucide-react';

@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { settlementService } from '@/api/settlementService';
 import { Loader2 } from 'lucide-react';
+import { formatCurrency } from '@/utils/currency';
 
 interface Props {
   partnerId: string;

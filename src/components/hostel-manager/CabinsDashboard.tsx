@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { hostelManagerService } from '@/api/hostelManagerService';
 import { Input } from '@/components/ui/input';
+import { formatCurrency } from '@/utils/currency';
 import { Plus, Search, Star, BarChart3 } from 'lucide-react';
 
 interface Cabin {

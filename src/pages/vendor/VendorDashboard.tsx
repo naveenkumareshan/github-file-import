@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Navigation } from '@/components/Navigation';
 import { DollarSign, Users, Calendar, MapPin, Settings, Eye, Banknote, MessageCircle } from 'lucide-react';
+import { formatCurrency } from '@/utils/currency';
 import { whatsappLeadService } from '@/api/whatsappLeadService';
 import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 import { supabase } from '@/integrations/supabase/client';
