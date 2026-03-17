@@ -8,6 +8,7 @@ import { format } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FileText, Filter, Search, Download, FileSpreadsheet } from 'lucide-react';
 import { ReportSkeleton } from './ReportSkeleton';
+import { formatCurrency } from '@/utils/currency';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
