@@ -104,7 +104,7 @@ const RevenueReportsComponent: React.FC<RevenueReportsProps> = ({ dateRange, par
             </div>
           </CardHeader>
           <CardContent className="pt-4">
-            <div className="text-2xl font-bold">₹{averageBookingValue.toLocaleString('en-IN', {maximumFractionDigits: 2})}</div>
+            <div className="text-2xl font-bold">{formatCurrency(averageBookingValue)}</div>
           </CardContent>
         </Card>
         
