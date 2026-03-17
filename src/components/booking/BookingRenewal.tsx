@@ -666,7 +666,7 @@ export const BookingRenewal = React.forwardRef<HTMLDivElement, BookingRenewalPro
                     {appliedCoupon && (
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">You Save:</span>
-                        <span className="text-green-600 font-medium">₹{getDiscountAmount().toLocaleString()}</span>
+                        <span className="text-green-600 font-medium">{formatCurrency(getDiscountAmount())}</span>
                       </div>
                     )}
                     {(booking as any).lockerIncluded && (
