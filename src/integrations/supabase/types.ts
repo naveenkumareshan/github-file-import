@@ -151,6 +151,30 @@ export type Database = {
           },
         ]
       }
+      attendance_pins: {
+        Row: {
+          created_at: string
+          id: string
+          pin_secret: string
+          property_id: string
+          property_type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          pin_secret?: string
+          property_id: string
+          property_type: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          pin_secret?: string
+          property_id?: string
+          property_type?: string
+        }
+        Relationships: []
+      }
       banners: {
         Row: {
           created_at: string
@@ -4884,6 +4908,10 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      generate_attendance_pin: {
+        Args: { p_property_id: string; p_property_type: string }
+        Returns: Json
+      }
       generate_property_serial: {
         Args: {
           p_entity_code: string
@@ -4961,6 +4989,10 @@ export type Database = {
       is_partner_or_employee_of: {
         Args: { owner_id: string }
         Returns: boolean
+      }
+      mark_pin_attendance: {
+        Args: { p_pin: string; p_property_id: string; p_property_type: string }
+        Returns: Json
       }
       mark_qr_attendance: {
         Args: { p_property_id: string; p_property_type: string }
