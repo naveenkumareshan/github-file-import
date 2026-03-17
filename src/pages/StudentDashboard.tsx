@@ -204,10 +204,13 @@ const StudentDashboard: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchBookingData();
-    fetchLaundryOrders();
-    fetchStudentDues();
-  }, []);
+    if (!user?.id) return;
+    // Run all fetches in parallel
+    Promise.all([
+      fetchBookingData(),
+      fetchStudentDues(),
+    ]);
+  }, [user?.id]);
 
   const fetchStudentDues = async () => {
     try {
