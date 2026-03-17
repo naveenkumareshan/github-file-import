@@ -108,10 +108,9 @@ export const attendanceService = {
     return data as unknown as MarkAttendanceResult;
   },
 
-  async getAttendancePin(propertyId: string, propertyType: string): Promise<{ pin: string; seconds_remaining: number } | null> {
+  async getAttendancePin(ownerId: string): Promise<{ pin: string; seconds_remaining: number } | null> {
     const { data, error } = await supabase.rpc('generate_attendance_pin', {
-      p_property_id: propertyId,
-      p_property_type: propertyType,
+      p_owner_id: ownerId,
     });
     if (error) {
       console.error('Error generating PIN:', error);

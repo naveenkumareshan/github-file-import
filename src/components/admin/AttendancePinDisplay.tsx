@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { KeyRound } from 'lucide-react';
 import { attendanceService } from '@/api/attendanceService';
@@ -8,70 +7,91 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 
-interface PropertyOption {
-  id: string;
-  name: string;
-  type: 'reading_room' | 'hostel';
-}
-
 const AttendancePinDisplay: React.FC = () => {
   const { user } = useAuth();
-  const [properties, setProperties] = useState<PropertyOption[]>([]);
-  const [selectedPropertyId, setSelectedPropertyId] = useState('');
+  const [ownerId, setOwnerId] = useState<string | null>(null);
+  const [propertyNames, setPropertyNames] = useState<string[]>([]);
   const [pin, setPin] = useState<string | null>(null);
   const [secondsRemaining, setSecondsRemaining] = useState(60);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [hasPermission, setHasPermission] = useState(true);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const selectedProperty = properties.find(p => p.id === selectedPropertyId);
-
-  // Fetch properties on mount
+  // Resolve ownerId, check permissions, fetch property names
   useEffect(() => {
-    const fetchProperties = async () => {
-      const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
-      let ownerId: string | undefined;
-      if (!isAdmin && user?.id) {
+    const init = async () => {
+      if (!user?.id) return;
+
+      const isAdmin = user.role === 'admin' || user.role === 'super_admin';
+      let resolvedOwnerId: string;
+
+      if (isAdmin) {
+        // Admins don't need PIN display typically, but allow it
+        resolvedOwnerId = user.id;
+      } else {
         try {
           const res = await getEffectiveOwnerId();
-          ownerId = res.ownerId;
+          resolvedOwnerId = res.ownerId;
+
+          // Check employee permissions
+          if (res.userId !== res.ownerId) {
+            const { data: emp } = await supabase
+              .from('vendor_employees')
+              .select('permissions, allowed_properties')
+              .eq('employee_user_id', res.userId)
+              .eq('status', 'active')
+              .maybeSingle();
+
+            if (emp) {
+              const perms = emp.permissions as string[] || [];
+              if (!perms.includes('manage_attendance')) {
+                setHasPermission(false);
+                return;
+              }
+            }
+          }
         } catch {
-          ownerId = user.id;
+          resolvedOwnerId = user.id;
         }
       }
 
-      const props: PropertyOption[] = [];
+      setOwnerId(resolvedOwnerId);
 
-      let qCabins = supabase.from('cabins').select('id, name').eq('is_active', true);
-      if (ownerId) qCabins = qCabins.eq('created_by', ownerId);
-      const { data: cabins } = await qCabins;
-      (cabins || []).forEach((c: any) => props.push({ id: c.id, name: c.name, type: 'reading_room' }));
+      // Fetch property names for display
+      const names: string[] = [];
+      const { data: cabins } = await supabase
+        .from('cabins')
+        .select('name')
+        .eq('created_by', resolvedOwnerId)
+        .eq('is_active', true);
+      (cabins || []).forEach((c: any) => names.push(c.name));
 
-      let qHostels = supabase.from('hostels').select('id, name').eq('is_active', true);
-      if (ownerId) qHostels = qHostels.eq('created_by', ownerId);
-      const { data: hostels } = await qHostels;
-      (hostels || []).forEach((h: any) => props.push({ id: h.id, name: h.name, type: 'hostel' }));
+      const { data: hostels } = await supabase
+        .from('hostels')
+        .select('name')
+        .eq('created_by', resolvedOwnerId)
+        .eq('is_active', true);
+      (hostels || []).forEach((h: any) => names.push(h.name));
 
-      setProperties(props);
-      if (props.length > 0) setSelectedPropertyId(props[0].id);
+      setPropertyNames(names);
     };
-    fetchProperties();
+    init();
   }, [user]);
 
   const fetchPin = useCallback(async () => {
-    if (!selectedPropertyId || !selectedProperty) return;
+    if (!ownerId) return;
     setLoading(true);
-    const result = await attendanceService.getAttendancePin(selectedPropertyId, selectedProperty.type);
+    const result = await attendanceService.getAttendancePin(ownerId);
     if (result) {
       setPin(result.pin);
       setSecondsRemaining(result.seconds_remaining);
     }
     setLoading(false);
-  }, [selectedPropertyId, selectedProperty]);
+  }, [ownerId]);
 
-  // Start/stop PIN refresh when popover opens/closes
   useEffect(() => {
-    if (!open || !selectedPropertyId) {
+    if (!open || !ownerId) {
       if (intervalRef.current) clearInterval(intervalRef.current);
       return;
     }
@@ -88,9 +108,9 @@ const AttendancePinDisplay: React.FC = () => {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [open, selectedPropertyId, fetchPin]);
+  }, [open, ownerId, fetchPin]);
 
-  if (properties.length === 0) return null;
+  if (!hasPermission || propertyNames.length === 0) return null;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -106,23 +126,17 @@ const AttendancePinDisplay: React.FC = () => {
             <KeyRound className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
           </div>
           <div>
-            <p className="text-xs font-semibold">Attendance PIN</p>
+            <p className="text-xs font-semibold">Universal Attendance PIN</p>
             <p className="text-[10px] text-muted-foreground">For students with fee dues</p>
           </div>
         </div>
 
-        <Select value={selectedPropertyId} onValueChange={(v) => { setSelectedPropertyId(v); setPin(null); }}>
-          <SelectTrigger className="h-8 text-xs">
-            <SelectValue placeholder="Select Property" />
-          </SelectTrigger>
-          <SelectContent>
-            {properties.map(p => (
-              <SelectItem key={p.id} value={p.id} className="text-xs">
-                {p.name} ({p.type === 'reading_room' ? 'Room' : 'Hostel'})
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="text-[10px] text-muted-foreground bg-muted/50 rounded px-2 py-1.5">
+          <span className="font-medium">Applies to:</span>{' '}
+          {propertyNames.length <= 3
+            ? propertyNames.join(', ')
+            : `${propertyNames.slice(0, 2).join(', ')} +${propertyNames.length - 2} more`}
+        </div>
 
         <div className="text-center space-y-2">
           {loading && !pin ? (

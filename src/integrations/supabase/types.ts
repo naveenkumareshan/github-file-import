@@ -155,6 +155,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          owner_id: string | null
           pin_secret: string
           property_id: string
           property_type: string
@@ -162,6 +163,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          owner_id?: string | null
           pin_secret?: string
           property_id: string
           property_type: string
@@ -169,6 +171,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          owner_id?: string | null
           pin_secret?: string
           property_id?: string
           property_type?: string
@@ -4908,10 +4911,7 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
-      generate_attendance_pin: {
-        Args: { p_property_id: string; p_property_type: string }
-        Returns: Json
-      }
+      generate_attendance_pin: { Args: { p_owner_id: string }; Returns: Json }
       generate_property_serial: {
         Args: {
           p_entity_code: string
