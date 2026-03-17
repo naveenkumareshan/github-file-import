@@ -31,13 +31,13 @@ const statusBadge: Record<string, string> = {
 
 const ComplaintsPage = () => {
   const navigate = useNavigate();
+  const { user: authUser } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [complaints, setComplaints] = useState<any[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [selectedComplaint, setSelectedComplaint] = useState<any>(null);
-  const [currentUserId, setCurrentUserId] = useState('');
   const [partnerWhatsapp, setPartnerWhatsapp] = useState('');
   const [viewTab, setViewTab] = useState<'pending' | 'resolved'>('pending');
   const [, setTick] = useState(0);
