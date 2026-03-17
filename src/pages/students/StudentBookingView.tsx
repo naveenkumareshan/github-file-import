@@ -23,6 +23,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { razorpayService } from "@/api/razorpayService";
 import { getTimingDisplay, getClosedDaysDisplay, formatTime } from "@/utils/timingUtils";
 import { isUUID } from "@/utils/idUtils";
+import { formatCurrency } from "@/utils/currency";
 
 interface ReceiptItem {
   id: string;
