@@ -45,6 +45,7 @@ import { resolvePaymentMethodLabels, getMethodLabel, normalizePaymentMethod } fr
 import { SplitPaymentCollector, PaymentSplit, createDefaultSplit, validateSplits } from '@/components/payment/SplitPaymentCollector';
 import { BookingUpdateDatesDialog } from '@/components/admin/BookingUpdateDatesDialog';
 import { bookingEmailService } from '@/api/bookingEmailService';
+import { formatCurrency } from '@/utils/currency';
 
 type ViewMode = 'grid' | 'table' | 'room';
 type StatusFilter = 'all' | 'available' | 'booked' | 'expiring_soon' | 'blocked' | 'present';
