@@ -264,42 +264,6 @@ const StudentDashboard: React.FC = () => {
     }
   };
 
-  const fetchLaundryOrders = async () => {
-    try {
-      setLoadingLaundry(true);
-      
-      // Using mock data since we don't have this endpoint yet
-      // In a real app, this would be laundryService.getUserOrders()
-      const mockLaundryOrders: LaundryOrder[] = [
-        {
-          _id: '1',
-          items: [
-            { name: 'T-Shirts', quantity: 3, price: 45 },
-            { name: 'Pants', quantity: 2, price: 60 }
-          ],
-          status: 'completed',
-          totalAmount: 255,
-          createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() // 2 days ago
-        },
-        {
-          _id: '2',
-          items: [
-            { name: 'Bed Sheets', quantity: 1, price: 90 },
-            { name: 'Towels', quantity: 2, price: 40 }
-          ],
-          status: 'processing',
-          totalAmount: 170,
-          createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString() // 12 hours ago
-        }
-      ];
-      
-      setLaundryOrders(mockLaundryOrders);
-    } catch (error) {
-      console.error('Error fetching laundry orders:', error);
-    } finally {
-      setLoadingLaundry(false);
-    }
-  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
