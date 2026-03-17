@@ -17,7 +17,7 @@ const PaymentTimer = lazy(() =>
   }))
 );
 import { RazorpayCheckout } from '@/components/payment/RazorpayCheckout';
-import { formatBookingPeriod } from '@/utils/currency';
+
 
 interface BookingDisplay {
   id: string;
