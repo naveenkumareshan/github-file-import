@@ -8,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { UserCheck, CalendarIcon, Users, Building, Hotel, RefreshCw, Download } from 'lucide-react';
+import AttendancePinDisplay from '@/components/admin/AttendancePinDisplay';
 import { format } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
 import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
