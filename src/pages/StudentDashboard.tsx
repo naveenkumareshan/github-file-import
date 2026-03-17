@@ -13,6 +13,7 @@ import { vendorSeatsService } from '@/api/vendorSeatsService';
 import { reviewsService } from '@/api/reviewsService';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { formatCurrency } from '@/utils/currency';
 import { format, differenceInDays, isPast } from 'date-fns';
 import { Building, Calendar, Check, ArrowUp, ArrowDown, MapPin, Clock, Receipt, CheckCircle2, XCircle, AlertCircle, Wallet, Star, MessageSquare, QrCode, History } from 'lucide-react';
 import ErrorBoundary from '@/components/ErrorBoundary';
