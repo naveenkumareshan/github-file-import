@@ -172,8 +172,3 @@ export const usePartnerEmployeePermissions = () => {
   };
 };
 
-/** @deprecated Use usePartnerEmployeePermissions instead */
-export const useVendorEmployeePermissions = usePartnerEmployeePermissions;
-
-/** @deprecated Use PartnerEmployeePermissions instead */
-export type VendorEmployeePermissions = PartnerEmployeePermissions;

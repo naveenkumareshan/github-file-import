@@ -34,7 +34,7 @@ import {
   vendorSeatsService, VendorSeat, VendorCabin, StudentProfile, PartnerBookingData, BlockHistoryEntry,
 } from '@/api/vendorSeatsService';
 import { Textarea } from '@/components/ui/textarea';
-import { useVendorEmployeePermissions } from '@/hooks/useVendorEmployeePermissions';
+import { usePartnerEmployeePermissions } from '@/hooks/useVendorEmployeePermissions';
 import { DuePaymentHistory } from '@/components/booking/DuePaymentHistory';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -165,7 +165,7 @@ const VendorSeats: React.FC = () => {
   const [attendanceSet, setAttendanceSet] = useState<Set<string>>(new Set());
 
   const { toast } = useToast();
-  const { hasPermission } = useVendorEmployeePermissions();
+  const { hasPermission } = usePartnerEmployeePermissions();
   const { user } = useAuth();
 
   const canEdit = user?.role === 'admin' || user?.role === 'vendor' || hasPermission('seats_available_edit');

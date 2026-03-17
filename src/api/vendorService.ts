@@ -1,6 +1,6 @@
 
 import axios from './axiosConfig';
-import { VendorEmployee } from '../types/vendor';
+import { PartnerEmployee } from '../types/vendor';
 
 export interface BookingDetail {
   id: string;
@@ -204,7 +204,7 @@ export const vendorService = {
     }
   },
 
-  createEmployee: async (employeeData: Partial<VendorEmployee>) => {
+  createEmployee: async (employeeData: Partial<PartnerEmployee>) => {
     try {
       const response = await axios.post('/vendor/employees', employeeData);
       return { success: true, data: response.data };
@@ -213,7 +213,7 @@ export const vendorService = {
     }
   },
 
-  updateEmployee: async (employeeId: string, employeeData: Partial<VendorEmployee>) => {
+  updateEmployee: async (employeeId: string, employeeData: Partial<PartnerEmployee>) => {
     try {
       const response = await axios.put(`/vendor/employees/${employeeId}`, employeeData);
       return { success: true, data: response.data };
@@ -232,5 +232,3 @@ export const vendorService = {
   }
 };
 
-/** @deprecated Use partnerService instead */
-export const partnerService = vendorService;

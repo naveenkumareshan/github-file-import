@@ -20,9 +20,6 @@
       "@/*": [
         "./src/*"
       ],
-      "gl-matrix": [
-        "./src/gl-matrix.d.ts"
-      ]
     },
     "skipDefaultLibCheck": true,
     "skipLibCheck": true,

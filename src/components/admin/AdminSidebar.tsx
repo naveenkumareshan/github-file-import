@@ -16,7 +16,7 @@ import {
   SidebarFooter,
 } from '@/components/ui/sidebar';
 import { useAuth } from '@/contexts/AuthContext';
-import { useVendorEmployeePermissions } from '@/hooks/useVendorEmployeePermissions';
+import { usePartnerEmployeePermissions } from '@/hooks/useVendorEmployeePermissions';
 import { usePartnerPropertyTypes } from '@/hooks/usePartnerPropertyTypes';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -71,7 +71,7 @@ interface MenuItem {
 export function AdminSidebar() {
   const { pathname } = useLocation();
   const { user, logout } = useAuth();
-  const { hasPermission, hasAnyPermission, loading } = useVendorEmployeePermissions();
+  const { hasPermission, hasAnyPermission, loading } = usePartnerEmployeePermissions();
   const propertyTypes = usePartnerPropertyTypes();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
