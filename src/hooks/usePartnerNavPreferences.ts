@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
+import { usePartnerPropertyTypes } from '@/hooks/usePartnerPropertyTypes';
+import { usePartnerEmployeePermissions, type PartnerEmployeePermissions } from '@/hooks/useVendorEmployeePermissions';
 
 export interface NavItem {
   key: string;
@@ -52,9 +54,33 @@ export const ALL_NAV_OPTIONS: NavItem[] = [
   { key: 'activity-log', label: 'Activity Log', url: '/partner/booking-activity-log', icon: 'Activity', category: 'general', permission: 'view_bookings' },
 ];
 
+function isItemValidForPropertyTypes(
+  item: NavItem,
+  propertyTypes: { hasReadingRooms: boolean; hasHostels: boolean; hasLaundry: boolean; hasMess: boolean }
+): boolean {
+  if (!item.category || item.category === 'general' || item.category === 'vendor_only') return true;
+  if (item.category === 'reading_rooms') return propertyTypes.hasReadingRooms;
+  if (item.category === 'hostels') return propertyTypes.hasHostels;
+  if (item.category === 'laundry') return propertyTypes.hasLaundry;
+  if (item.category === 'mess') return propertyTypes.hasMess;
+  return true;
+}
+
+function isItemValidForPermissions(
+  item: NavItem,
+  hasPermission: (p: keyof PartnerEmployeePermissions) => boolean,
+  isVendor: boolean
+): boolean {
+  if (isVendor || !item.permission) return true;
+  return hasPermission(item.permission as keyof PartnerEmployeePermissions);
+}
+
 export function usePartnerNavPreferences() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const propertyTypes = usePartnerPropertyTypes();
+  const { hasPermission } = usePartnerEmployeePermissions();
+  const isVendor = user?.role === 'vendor';
 
   const { data: savedItems, isLoading } = useQuery({
     queryKey: ['partner-nav-preferences', user?.id],
@@ -88,7 +114,26 @@ export function usePartnerNavPreferences() {
     },
   });
 
-  const pinnedItems = savedItems && savedItems.length === 4 ? savedItems : DEFAULT_NAV_ITEMS;
+  const rawItems = savedItems && savedItems.length === 4 ? savedItems : DEFAULT_NAV_ITEMS;
+
+  // Filter by property types and permissions
+  const filtered = rawItems.filter(
+    (item) =>
+      isItemValidForPropertyTypes(item, propertyTypes) &&
+      isItemValidForPermissions(item, hasPermission, !!isVendor)
+  );
+
+  // Backfill from defaults if fewer than 4 valid items
+  let pinnedItems = filtered;
+  if (pinnedItems.length < 4) {
+    const backfillPool = DEFAULT_NAV_ITEMS.filter(
+      (d) =>
+        !pinnedItems.some((p) => p.key === d.key) &&
+        isItemValidForPropertyTypes(d, propertyTypes) &&
+        isItemValidForPermissions(d, hasPermission, !!isVendor)
+    );
+    pinnedItems = [...pinnedItems, ...backfillPool].slice(0, 4);
+  }
 
   return {
     pinnedItems,
