@@ -67,7 +67,7 @@ useEffect(() => {
             {residentsLoading ? <Skeleton className="h-6 w-14 mt-1" /> : (
               <>
                 <p className="text-lg font-bold mt-0.5 text-secondary">{activeResidents.activeResidents}</p>
-                <p className="text-[10px] text-muted-foreground">{activeResidents.occupancyPercentage}% occupancy</p>
+                <p className="text-[10px] text-muted-foreground">{Math.round(activeResidents.occupancyPercentage)}% occupancy</p>
               </>
             )}
           </div>
