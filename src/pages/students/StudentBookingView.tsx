@@ -540,7 +540,7 @@ export default function StudentBookingView() {
                     Processing...
                   </>
                 ) : (
-                  `Pay Due ₹${dueRemaining.toFixed(2)}`
+                  `Pay Due ${formatCurrency(dueRemaining)}`
                 )}
               </Button>
             </div>
