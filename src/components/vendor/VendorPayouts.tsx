@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
+import { formatCurrency } from '@/utils/currency';
 import { DollarSign, Calendar, TrendingUp, Clock, Plus, Eye, CreditCard, BookOpen, X } from 'lucide-react';
 import { vendorService, VendorIncome, EnhancedPayout, BookingDetail } from '@/api/vendorService';
 import { useToast } from '@/hooks/use-toast';
@@ -199,7 +200,7 @@ const VendorPayouts: React.FC = () => {
               <div className="text-right text-sm">
                 {/* <p className="font-medium">₹{booking.amount.toLocaleString()}</p> */}
                 {/* <p className="text-red-600">-₹{booking.commission.toLocaleString()}</p> */}
-                <p className="font-semibold text-green-600">₹{booking.netAmount.toLocaleString()}</p>
+                <p className="font-semibold text-green-600">{formatCurrency(booking.netAmount)}</p>
                 <Badge className={`text-xs ${getPayoutStatusColor(booking.payoutStatus)}`}>
                   {booking.payoutStatus}
                 </Badge>
@@ -263,7 +264,7 @@ const VendorPayouts: React.FC = () => {
                   <div>
                     <Label>Available Balance</Label>
                     <p className="text-2xl font-bold text-green-600">
-                      ₹{income?.payoutSummary.availableBalance.toLocaleString() || 0}
+                      {formatCurrency(income?.payoutSummary.availableBalance || 0)}
                     </p>
                   </div>
                   <div>
@@ -278,7 +279,7 @@ const VendorPayouts: React.FC = () => {
                   <div className="p-3 bg-blue-50 rounded-lg">
                     <p className="text-sm font-medium">Selected Bookings Amount</p>
                     <p className="text-xl font-bold text-blue-600">
-                      ₹{calculateSelectedAmount().toLocaleString()}
+                      {formatCurrency(calculateSelectedAmount())}
                     </p>
                   </div>
                 )}
@@ -317,7 +318,7 @@ const VendorPayouts: React.FC = () => {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">₹{income.payoutSummary.availableBalance.toLocaleString()}</div>
+              <div className="text-2xl font-bold text-green-600">{formatCurrency(income.payoutSummary.availableBalance)}</div>
               <p className="text-xs text-muted-foreground">
                 Ready for payout
               </p>
@@ -346,7 +347,7 @@ const VendorPayouts: React.FC = () => {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">₹{income.payoutSummary.requestedPayouts.toLocaleString()}</div>
+              <div className="text-2xl font-bold">{formatCurrency(income.payoutSummary.requestedPayouts)}</div>
               <p className="text-xs text-muted-foreground">
                 Under processing
               </p>
@@ -403,22 +404,22 @@ const VendorPayouts: React.FC = () => {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="text-center p-4 border rounded-lg">
                       <p className="text-sm text-muted-foreground">Total Revenue</p>
-                      <p className="text-2xl font-bold">₹{income[period].totalRevenue.toLocaleString()}</p>
+                      <p className="text-2xl font-bold">{formatCurrency(income[period].totalRevenue)}</p>
                     </div>
                     <div className="text-center p-4 border rounded-lg">
                       <p className="text-sm text-muted-foreground">Commission</p>
-                      <p className="text-2xl font-bold text-red-600">-₹{income[period].commission.toLocaleString()}</p>
+                      <p className="text-2xl font-bold text-red-600">-{formatCurrency(income[period].commission)}</p>
                     </div>
                     <div className="text-center p-4 border rounded-lg">
                       <p className="text-sm text-muted-foreground">Net Income</p>
-                      <p className="text-2xl font-bold text-green-600">₹{income[period].netIncome.toLocaleString()}</p>
+                      <p className="text-2xl font-bold text-green-600">{formatCurrency(income[period].netIncome)}</p>
                     </div>
                   </div>
                   
                   <div className="text-center">
                     <p className="text-lg font-semibold">{income[period].bookingsCount} bookings</p>
                     <p className="text-sm text-muted-foreground">
-                      Average: ₹{income[period].bookingsCount > 0 ? Math.round(income[period].netIncome / income[period].bookingsCount).toLocaleString() : 0} per booking
+                      Average: {income[period].bookingsCount > 0 ? formatCurrency(Math.round(income[period].netIncome / income[period].bookingsCount)) : '₹0'} per booking
                     </p>
                   </div>
                 </TabsContent>
@@ -496,7 +497,7 @@ const VendorPayouts: React.FC = () => {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-lg font-semibold">₹{payout.netAmount.toLocaleString()}</p>
+                    <p className="text-lg font-semibold">{formatCurrency(payout.netAmount)}</p>
                     {/* <p className="text-sm text-red-600">Commission: ₹{payout.commission.toLocaleString()}</p> */}
                     <p className="text-sm text-muted-foreground">
                       {payout.processedAt ? `Processed ${new Date(payout.processedAt).toLocaleDateString()}` : 'Pending'}

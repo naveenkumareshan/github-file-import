@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { adminBookingsService } from '@/api/adminBookingsService';
 import { hostelService } from '@/api/hostelService';
 import { ChevronLeft, CreditCard, IndianRupee, RefreshCw, Receipt, FileDown, ImageIcon } from 'lucide-react';
+import { formatCurrency } from '@/utils/currency';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -433,53 +434,53 @@ const AdminBookingDetail = () => {
             <div className="grid grid-cols-3 gap-3 mb-2">
               <div>
                 <p className="text-[11px] text-muted-foreground">{bookingType === 'hostel' ? `Room Rent${durationLabel}` : `Seat Price${durationLabel}`}</p>
-                <p className="text-sm font-semibold">₹{seatPrice.toLocaleString()}</p>
+                <p className="text-sm font-semibold">{formatCurrency(seatPrice)}</p>
               </div>
               {bookingType === 'hostel' && foodAmount > 0 && (
                 <div>
                   <p className="text-[11px] text-muted-foreground">Food Charges</p>
-                  <p className="text-sm font-semibold">₹{foodAmount.toLocaleString()}</p>
+                  <p className="text-sm font-semibold">{formatCurrency(foodAmount)}</p>
                 </div>
               )}
               {bookingType === 'hostel' ? (
                 <div>
                   <p className="text-[11px] text-muted-foreground">Security Deposit</p>
-                  <p className="text-sm font-semibold">₹{securityDeposit.toLocaleString()}</p>
+                  <p className="text-sm font-semibold">{formatCurrency(securityDeposit)}</p>
                 </div>
               ) : (
                 <div>
                   <p className="text-[11px] text-muted-foreground">Locker</p>
-                  <p className="text-sm font-semibold">₹{lockerAmount.toLocaleString()}</p>
+                  <p className="text-sm font-semibold">{formatCurrency(lockerAmount)}</p>
                 </div>
               )}
               <div>
                 <p className="text-[11px] text-muted-foreground">Discount</p>
-                <p className="text-sm font-semibold text-destructive">{discountAmount > 0 ? '-' : ''}₹{discountAmount.toLocaleString()}</p>
+                <p className="text-sm font-semibold text-destructive">{discountAmount > 0 ? '-' : ''}{formatCurrency(discountAmount)}</p>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-3 mb-2">
               <div>
                 <p className="text-[11px] text-muted-foreground">Total Price</p>
-                <p className="text-sm font-semibold">₹{totalPrice.toLocaleString()}</p>
+                <p className="text-sm font-semibold">{formatCurrency(totalPrice)}</p>
               </div>
               <div>
                 <p className="text-[11px] text-muted-foreground">Advance Paid</p>
-                <p className="text-sm font-semibold">₹{advancePaid.toLocaleString()}</p>
+                <p className="text-sm font-semibold">{formatCurrency(advancePaid)}</p>
               </div>
               <div>
                 <p className="text-[11px] text-muted-foreground">Due Collected</p>
-                <p className="text-sm font-semibold">₹{dueCollected.toLocaleString()}</p>
+                <p className="text-sm font-semibold">{formatCurrency(dueCollected)}</p>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <p className="text-[11px] text-muted-foreground">Total Collected</p>
-                <p className="text-sm font-semibold text-green-600">₹{totalCollected.toLocaleString()}</p>
+                <p className="text-sm font-semibold text-green-600">{formatCurrency(totalCollected)}</p>
               </div>
               <div>
                 <p className="text-[11px] text-muted-foreground">Due Remaining</p>
                 <p className={`text-sm font-semibold ${dueRemaining > 0 ? 'text-destructive' : 'text-green-600'}`}>
-                  ₹{dueRemaining.toLocaleString()}
+                  {formatCurrency(dueRemaining)}
                 </p>
               </div>
               <div>
@@ -542,7 +543,7 @@ const AdminBookingDetail = () => {
                           </Badge>
                         </TableCell>
                         <TableCell className="py-1.5">
-                          <span className="text-[11px] font-medium">₹{Number(r.amount).toLocaleString()}</span>
+                          <span className="text-[11px] font-medium">{formatCurrency(Number(r.amount))}</span>
                         </TableCell>
                         <TableCell className="text-[11px] py-1.5 capitalize">{getMethodLabel(r.payment_method, customLabels)}</TableCell>
                         <TableCell className="text-[11px] py-1.5">{r.transaction_id || '-'}</TableCell>
@@ -561,7 +562,7 @@ const AdminBookingDetail = () => {
                     <TableRow className="bg-muted/30 font-semibold">
                       <TableCell colSpan={2} className="text-right text-[11px] py-1.5">Total Collected</TableCell>
                       <TableCell className="py-1.5">
-                        <span className="text-[11px] text-green-600 font-semibold">₹{grandTotal.toLocaleString()}</span>
+                        <span className="text-[11px] text-green-600 font-semibold">{formatCurrency(grandTotal)}</span>
                       </TableCell>
                       <TableCell colSpan={6}></TableCell>
                     </TableRow>

@@ -9,6 +9,7 @@ import { adminBookingsService } from '@/api/adminBookingsService';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useAuth } from '@/contexts/AuthContext';
 import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
+import { formatCurrency } from '@/utils/currency';
 
 export function RevenueChart() {
   const { user } = useAuth();
@@ -82,8 +83,8 @@ useEffect(() => {
                 <BarChart data={data}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
-                  <YAxis tickFormatter={(value) => `₹${value / 1000}K`} />
-                  <Tooltip content={<ChartTooltipContent />} formatter={(value) => [`₹${value}`, 'Revenue']} />
+                  <YAxis tickFormatter={(value) => `₹${Math.round(value / 1000)}K`} />
+                   <Tooltip content={<ChartTooltipContent />} formatter={(value) => [formatCurrency(Number(value) || 0), 'Revenue']} />
                   <Legend />
                   <Bar 
                     dataKey="revenue" 

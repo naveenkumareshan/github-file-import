@@ -6,6 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { Plus, Trash2, CheckCircle, AlertTriangle } from 'lucide-react';
 import { PaymentMethodSelector, requiresTransactionId, isNonCashMethod } from '@/components/vendor/PaymentMethodSelector';
 import { PaymentProofUpload } from '@/components/payment/PaymentProofUpload';
+import { formatCurrency } from '@/utils/currency';
 
 export interface PaymentSplit {
   id: string;
@@ -47,7 +48,7 @@ export const validateSplits = (splits: PaymentSplit[], totalAmount: number): str
 
   const totalSplit = splits.reduce((sum, s) => sum + parseFloat(s.amount || '0'), 0);
   if (Math.abs(totalSplit - totalAmount) > 0.01) {
-    return `Split total (₹${totalSplit.toLocaleString()}) doesn't match collection amount (₹${totalAmount.toLocaleString()})`;
+    return `Split total (${formatCurrency(totalSplit)}) doesn't match collection amount (${formatCurrency(totalAmount)})`;
   }
 
   return null;
@@ -166,8 +167,8 @@ export const SplitPaymentCollector: React.FC<SplitPaymentCollectorProps> = ({
         <div className={`flex items-center gap-1.5 text-[11px] px-1 ${isMatched ? 'text-emerald-600' : 'text-destructive'}`}>
           {isMatched ? <CheckCircle className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
           <span>
-            Split Total: ₹{totalSplit.toLocaleString()}
-            {!isMatched && ` (need ₹${totalAmount.toLocaleString()})`}
+            Split Total: {formatCurrency(totalSplit)}
+            {!isMatched && ` (need ${formatCurrency(totalAmount)})`}
           </span>
         </div>
       )}

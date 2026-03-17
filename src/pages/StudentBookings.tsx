@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { BookingsList } from '@/components/booking/BookingsList';
 import { useToast } from '@/hooks/use-toast';
 import { bookingsService } from '@/api/bookingsService';
+import { formatCurrency } from '@/utils/currency';
 import { hostelBookingService } from '@/api/hostelBookingService';
 import { getMyMessSubscriptions } from '@/api/messService';
 import { format } from 'date-fns';
@@ -369,7 +370,7 @@ const StudentBookings = () => {
                     <p className="text-white/70 text-[10px]">Due Amount</p>
                     {totalDueAmount > 0 ? (
                       <>
-                        <p className="text-white font-bold text-[13px]">₹{totalDueAmount.toLocaleString()}</p>
+                        <p className="text-white font-bold text-[13px]">{formatCurrency(totalDueAmount)}</p>
                         {dueDate && <p className="text-white/60 text-[9px]">Due: {dueDate}</p>}
                       </>
                     ) : (

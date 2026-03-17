@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardTitle, CardHeader } from '@/components/ui/card';
 import { Building, Users, Home, DollarSign } from 'lucide-react';
+import { formatCurrency } from '@/utils/currency';
 import { hostelService } from '@/api/hostelService';
 import { useAuth } from '@/hooks/use-auth';
 
@@ -114,7 +115,7 @@ export const ManagerDashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Revenue</p>
-                  <h3 className="text-2xl font-bold">₹{stats.totalRevenue.toLocaleString()}</h3>
+                  <h3 className="text-2xl font-bold">{formatCurrency(stats.totalRevenue)}</h3>
                 </div>
                 <div className="p-2 bg-primary/10 rounded-full">
                   <DollarSign className="h-5 w-5 text-primary" />

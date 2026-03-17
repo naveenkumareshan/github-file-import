@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Navigation } from '@/components/Navigation';
 import { DollarSign, Users, Calendar, MapPin, Settings, Eye, Banknote, MessageCircle } from 'lucide-react';
+import { formatCurrency } from '@/utils/currency';
 import { whatsappLeadService } from '@/api/whatsappLeadService';
 import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 import { supabase } from '@/integrations/supabase/client';
@@ -81,7 +82,7 @@ const VendorDashboard: React.FC = () => {
             <div className="p-3 flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Revenue</p>
-                <p className="text-xl font-bold mt-0.5">₹{dashboardData.totalRevenue.toLocaleString()}</p>
+                <p className="text-xl font-bold mt-0.5">{formatCurrency(dashboardData.totalRevenue)}</p>
                 <p className="text-[10px] text-muted-foreground">All time earnings</p>
               </div>
               <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
@@ -92,7 +93,7 @@ const VendorDashboard: React.FC = () => {
             <div className="p-3 flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Pending Payout</p>
-                <p className="text-xl font-bold mt-0.5">₹{dashboardData.pendingPayout.toLocaleString()}</p>
+                <p className="text-xl font-bold mt-0.5">{formatCurrency(dashboardData.pendingPayout)}</p>
                 <p className="text-[10px] text-muted-foreground">Available for withdrawal</p>
               </div>
               <Calendar className="h-3.5 w-3.5 text-muted-foreground" />

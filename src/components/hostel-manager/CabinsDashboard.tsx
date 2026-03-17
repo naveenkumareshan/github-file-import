@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { hostelManagerService } from '@/api/hostelManagerService';
 import { Input } from '@/components/ui/input';
+import { formatCurrency } from '@/utils/currency';
 import { Plus, Search, Star, BarChart3 } from 'lucide-react';
 
 interface Cabin {
@@ -148,12 +149,12 @@ export function CabinsDashboard() {
               <div className="flex justify-between items-start">
                 <div>
                   <p className="text-sm text-muted-foreground">Total Revenue</p>
-                  <p className="text-2xl font-bold">₹{stats.totalRevenue?.toLocaleString()}</p>
+                  <p className="text-2xl font-bold">{formatCurrency(stats.totalRevenue || 0)}</p>
                 </div>
                 <BarChart3 className="h-8 w-8 text-primary opacity-75" />
               </div>
               <p className="text-xs text-muted-foreground mt-2">
-                ₹{stats.monthlyRevenue?.toLocaleString()} this month
+                {formatCurrency(stats.monthlyRevenue || 0)} this month
               </p>
             </CardContent>
           </Card>

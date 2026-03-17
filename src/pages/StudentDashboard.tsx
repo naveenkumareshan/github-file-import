@@ -13,6 +13,7 @@ import { vendorSeatsService } from '@/api/vendorSeatsService';
 import { reviewsService } from '@/api/reviewsService';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { formatCurrency } from '@/utils/currency';
 import { format, differenceInDays, isPast } from 'date-fns';
 import { Building, Calendar, Check, ArrowUp, ArrowDown, MapPin, Clock, Receipt, CheckCircle2, XCircle, AlertCircle, Wallet, Star, MessageSquare, QrCode, History } from 'lucide-react';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -118,9 +119,9 @@ const BookingReceiptCard: React.FC<ReceiptCardProps> = ({ booking, formatDate, i
         </div>
         <div className="px-4 py-3">
           <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Amount</p>
-          <p className="text-[12px] font-semibold text-foreground">Bed: ₹{(booking.total_price || 0).toLocaleString()}</p>
+          <p className="text-[12px] font-semibold text-foreground">Bed: {formatCurrency(booking.total_price || 0)}</p>
           {((booking as any).security_deposit || 0) > 0 && (
-            <p className="text-[10px] text-muted-foreground">Deposit: ₹{((booking as any).security_deposit || 0).toLocaleString()}</p>
+            <p className="text-[10px] text-muted-foreground">Deposit: {formatCurrency((booking as any).security_deposit || 0)}</p>
           )}
         </div>
       </div>
@@ -405,7 +406,7 @@ const StudentDashboard: React.FC = () => {
                           <div>
                             <p className="text-sm text-muted-foreground">Pending Dues</p>
                             <h3 className={`text-2xl font-bold mt-1 ${hasOverdue ? 'text-red-600' : ''}`}>
-                              ₹{totalDueAmount.toLocaleString()}
+                              {formatCurrency(totalDueAmount)}
                             </h3>
                           </div>
                           <div className={`h-12 w-12 rounded-full flex items-center justify-center ${hasOverdue ? 'bg-red-100 dark:bg-red-900' : 'bg-orange-100 dark:bg-orange-900'}`}>
@@ -495,12 +496,12 @@ const StudentDashboard: React.FC = () => {
 
                             <div className="flex justify-between items-center sm:block sm:space-y-1 text-sm">
                               <p className="text-xs text-muted-foreground uppercase tracking-wide">Price</p>
-                              <p className="font-medium text-green-700">Seat: ₹{((booking.total_price || 0) + ((booking as any).discount_amount || 0) - ((booking as any).locker_price || 0)).toLocaleString()}</p>
+                              <p className="font-medium text-green-700">Seat: {formatCurrency((booking.total_price || 0) + ((booking as any).discount_amount || 0) - ((booking as any).locker_price || 0))}</p>
                               {((booking as any).locker_price || 0) > 0 && (
-                                <p className="text-xs text-muted-foreground">Locker: ₹{((booking as any).locker_price || 0).toLocaleString()}</p>
+                                <p className="text-xs text-muted-foreground">Locker: {formatCurrency((booking as any).locker_price || 0)}</p>
                               )}
                               {((booking as any).discount_amount || 0) > 0 && (
-                                <p className="text-xs text-destructive">Discount: -₹{((booking as any).discount_amount || 0).toLocaleString()}</p>
+                                <p className="text-xs text-destructive">Discount: -{formatCurrency((booking as any).discount_amount || 0)}</p>
                               )}
                             </div>
                             
@@ -602,15 +603,15 @@ const StudentDashboard: React.FC = () => {
                                   <div className="grid grid-cols-3 gap-2 text-xs">
                                     <div>
                                       <p className="text-muted-foreground text-[10px]">Total Fee</p>
-                                      <p className="font-medium">₹{Number(due.total_fee).toLocaleString()}</p>
+                                      <p className="font-medium">{formatCurrency(Number(due.total_fee))}</p>
                                     </div>
                                     <div>
                                       <p className="text-muted-foreground text-[10px]">Paid</p>
-                                      <p className="font-medium text-emerald-600">₹{(Number(due.advance_paid) + Number(due.paid_amount)).toLocaleString()}</p>
+                                      <p className="font-medium text-emerald-600">{formatCurrency(Number(due.advance_paid) + Number(due.paid_amount))}</p>
                                     </div>
                                     <div>
                                       <p className="text-muted-foreground text-[10px]">Due Amount</p>
-                                      <p className="font-semibold text-red-600">₹{Math.max(0, remaining).toLocaleString()}</p>
+                                      <p className="font-semibold text-red-600">{formatCurrency(Math.max(0, remaining))}</p>
                                     </div>
                                   </div>
                                   <div className="flex justify-between text-xs text-muted-foreground">

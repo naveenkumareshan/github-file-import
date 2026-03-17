@@ -38,6 +38,7 @@ import { SplitPaymentCollector, PaymentSplit, createDefaultSplit, validateSplits
 import { BookingUpdateDatesDialog } from '@/components/admin/BookingUpdateDatesDialog';
 import { Textarea } from '@/components/ui/textarea';
 import { bookingEmailService } from '@/api/bookingEmailService';
+import { formatCurrency } from '@/utils/currency';
 
 type ViewMode = 'grid' | 'table' | 'room';
 type StatusFilter = 'all' | 'available' | 'booked' | 'expiring_soon' | 'blocked' | 'future_booked' | 'present';
@@ -2154,7 +2155,7 @@ const HostelBedMap: React.FC = () => {
                             <>
                               <Button size="sm" variant="outline" className="w-full h-7 text-[10px] mt-1 bg-red-50 border-red-200 text-red-600 hover:bg-red-100 dark:bg-red-950/30 dark:border-red-800 dark:text-red-400"
                                 onClick={() => { if (expandedDueBookingId === b.bookingId) { setExpandedDueBookingId(''); } else { setExpandedDueBookingId(b.bookingId); setDueCollectAmount(String(dueRemaining)); setDueCollectMethod('cash'); setDueCollectTxnId(''); } }}>
-                                <Wallet className="h-3 w-3 mr-1" /> Due: ₹{dueRemaining.toLocaleString()}
+                                <Wallet className="h-3 w-3 mr-1" /> Due: {formatCurrency(dueRemaining)}
                               </Button>
                               {expandedDueBookingId === b.bookingId && (
                                 <div className="border rounded p-2 space-y-2 bg-muted/30 mt-1">
@@ -2336,7 +2337,7 @@ const HostelBedMap: React.FC = () => {
               {receiptDialogData.map((r: any) => (
                 <div key={r.id} className="border rounded p-2 text-[11px] space-y-0.5">
                   <div className="flex justify-between items-center">
-                    <span className="font-medium">₹{Number(r.amount).toLocaleString()}</span>
+                    <span className="font-medium">{formatCurrency(Number(r.amount))}</span>
                     <Badge variant="outline" className="text-[9px] px-1">{r.receipt_type === 'due_collection' ? 'Due Collection' : 'Booking Payment'}</Badge>
                   </div>
                   {r.serial_number && <div className="text-[10px] font-medium text-primary">{r.serial_number}</div>}

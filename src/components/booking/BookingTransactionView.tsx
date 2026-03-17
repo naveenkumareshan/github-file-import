@@ -8,6 +8,7 @@ import { vendorSeatsService } from '@/api/vendorSeatsService';
 import { DuePaymentHistory } from '@/components/booking/DuePaymentHistory';
 import { format, differenceInDays } from 'date-fns';
 import { CreditCard, Calendar, RefreshCw, IndianRupee, Clock, TicketPercent, Wallet, Receipt, ImageIcon } from 'lucide-react';
+import { formatCurrency } from '@/utils/currency';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
@@ -139,11 +140,11 @@ export const BookingTransactionView = ({ bookingId, bookingType, booking }: Book
             </div>
             <div className="flex justify-between items-center">
               <span className="text-[11px] text-muted-foreground">Total Price</span>
-              <span className="text-[12px] font-medium">₹{(booking.totalPrice || 0).toLocaleString()}</span>
+              <span className="text-[12px] font-medium">{formatCurrency(booking.totalPrice || 0)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-[11px] text-muted-foreground">Total Paid</span>
-              <span className="text-[12px] font-medium text-green-600">₹{totalPaid.toLocaleString()}</span>
+              <span className="text-[12px] font-medium text-green-600">{formatCurrency(totalPaid)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-[11px] text-muted-foreground">Payment Status</span>
@@ -239,7 +240,7 @@ export const BookingTransactionView = ({ bookingId, bookingType, booking }: Book
                   </Badge>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-[12px] font-medium">₹{Number(r.amount).toLocaleString()}</span>
+                  <span className="text-[12px] font-medium">{formatCurrency(Number(r.amount))}</span>
                   <span className="text-[10px] text-muted-foreground capitalize">{getMethodLabel(r.payment_method, paymentLabels)}</span>
                 </div>
                 <div className="flex items-center justify-between text-[10px] text-muted-foreground">
@@ -266,13 +267,13 @@ export const BookingTransactionView = ({ bookingId, bookingType, booking }: Book
               <span className="text-muted-foreground">
                 {r.receipt_type === 'booking_payment' ? 'Initial Payment' : `Due Collection ${index}`}
               </span>
-              <span className="font-medium">₹{Number(r.amount).toLocaleString()}</span>
+              <span className="font-medium">{formatCurrency(Number(r.amount))}</span>
             </div>
           ))}
           <Separator className="my-1" />
           <div className="flex justify-between items-center text-[13px] font-semibold">
             <span>Total Paid</span>
-            <span>₹{totalPaid.toLocaleString()}</span>
+            <span>{formatCurrency(totalPaid)}</span>
           </div>
         </div>
       </div>

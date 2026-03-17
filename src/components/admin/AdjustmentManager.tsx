@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { formatCurrency } from '@/utils/currency';
 import { useToast } from '@/hooks/use-toast';
 import { settlementService } from '@/api/settlementService';
 import { Loader2, Plus, Undo2 } from 'lucide-react';
@@ -110,7 +111,7 @@ export const AdjustmentManager: React.FC<Props> = ({ partnerId, open, onClose })
                 <TableRow key={adj.id} className="text-[10px]">
                   <TableCell className="px-2 py-1">{new Date(adj.created_at).toLocaleDateString()}</TableCell>
                   <TableCell className="px-2 py-1">{adj.type}</TableCell>
-                  <TableCell className="px-2 py-1 text-right font-medium">₹{adj.amount?.toLocaleString()}</TableCell>
+                  <TableCell className="px-2 py-1 text-right font-medium">{formatCurrency(Number(adj.amount) || 0)}</TableCell>
                   <TableCell className="px-2 py-1 max-w-[200px] truncate">{adj.description}</TableCell>
                   <TableCell className="px-2 py-1"><Badge variant="outline" className="text-[9px]">{adj.status}</Badge></TableCell>
                   <TableCell className="px-2 py-1">

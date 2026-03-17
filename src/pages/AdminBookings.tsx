@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { BookingFilters } from "@/types/BookingTypes";
 import { Eye, Search, Filter, BookOpen } from "lucide-react";
 import { AdminTablePagination, getSerialNumber } from "@/components/admin/AdminTablePagination";
+import { formatCurrency } from '@/utils/currency';
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/AuthContext";
 import { getEffectiveOwnerId } from "@/utils/getEffectiveOwnerId";
@@ -134,8 +135,8 @@ const AdminBookings = () => {
       </div>
       <div className="flex items-center justify-between pt-1 border-t">
         <div className="text-[11px]">
-          <span className="font-semibold">₹{(b.seatPrice || 0).toLocaleString()}</span>
-          <span className="text-muted-foreground ml-2">Paid: ₹{(b.totalPaid || 0).toLocaleString()}</span>
+          <span className="font-semibold">{formatCurrency(b.seatPrice || 0)}</span>
+          <span className="text-muted-foreground ml-2">Paid: {formatCurrency(b.totalPaid || 0)}</span>
         </div>
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(`${routePrefix}/bookings/${b.bookingId || b._id}/cabin`)}>
           <Eye className="h-3.5 w-3.5" />
@@ -224,11 +225,11 @@ const AdminBookings = () => {
                         </TableCell>
                         <TableCell className="py-1 px-2 text-[11px]">
                           <div className="grid grid-cols-2 gap-x-4 gap-y-0 min-w-[140px]">
-                            <div className="font-semibold whitespace-nowrap">Seat: ₹{(b.seatPrice || 0).toLocaleString()}</div>
-                            <div className="text-[10px] text-muted-foreground whitespace-nowrap">Locker: {(b.lockerPrice || 0) > 0 ? `₹${(b.lockerPrice || 0).toLocaleString()}` : '-'}</div>
-                            {(b.discountAmount || 0) > 0 && <div className="text-[10px] text-destructive whitespace-nowrap">Discount: -₹{(b.discountAmount || 0).toLocaleString()}</div>}
-                            <div className="text-[10px] text-emerald-600 whitespace-nowrap">Paid: ₹{(b.totalPaid || 0).toLocaleString()}</div>
-                            <div className="text-[10px] text-amber-600 whitespace-nowrap">Due: ₹{(b.duePending || 0).toLocaleString()}</div>
+                            <div className="font-semibold whitespace-nowrap">Seat: {formatCurrency(b.seatPrice || 0)}</div>
+                            <div className="text-[10px] text-muted-foreground whitespace-nowrap">Locker: {(b.lockerPrice || 0) > 0 ? formatCurrency(b.lockerPrice || 0) : '-'}</div>
+                            {(b.discountAmount || 0) > 0 && <div className="text-[10px] text-destructive whitespace-nowrap">Discount: -{formatCurrency(b.discountAmount || 0)}</div>}
+                            <div className="text-[10px] text-emerald-600 whitespace-nowrap">Paid: {formatCurrency(b.totalPaid || 0)}</div>
+                            <div className="text-[10px] text-amber-600 whitespace-nowrap">Due: {formatCurrency(b.duePending || 0)}</div>
                           </div>
                         </TableCell>
                         <TableCell className="py-1 px-2">

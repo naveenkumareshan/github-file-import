@@ -8,6 +8,7 @@ import { bookingsService } from '@/api/bookingsService';
 import { format } from 'date-fns';
 import { Calendar, X, Eye, TicketPercent } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { formatCurrency, formatBookingPeriod } from '@/utils/currency';
 import { BookingRenewal } from './BookingRenewal';
 
 const PaymentTimer = lazy(() =>
@@ -16,7 +17,7 @@ const PaymentTimer = lazy(() =>
   }))
 );
 import { RazorpayCheckout } from '@/components/payment/RazorpayCheckout';
-import { formatBookingPeriod } from '@/utils/currency';
+
 
 interface BookingDisplay {
   id: string;
@@ -211,7 +212,7 @@ export const BookingsList = ({
                     {booking.paymentStatus === 'pending' ? (
                       <Badge variant="outline" className="border-amber-500 text-amber-500 text-[10px] px-1.5 py-0.5">Pending Payment</Badge>
                     ) : (booking.dueAmount ?? 0) > 0 ? (
-                      <Badge variant="outline" className="border-red-500 text-red-600 text-[10px] px-1.5 py-0.5">Due: ₹{booking.dueAmount?.toLocaleString()}</Badge>
+                      <Badge variant="outline" className="border-red-500 text-red-600 text-[10px] px-1.5 py-0.5">Due: {formatCurrency(Number(booking.dueAmount) || 0)}</Badge>
                     ) : booking.paymentStatus === 'completed' ? (
                       <Badge className="bg-green-100 text-green-700 border-green-200 text-[10px] px-1.5 py-0.5">Fully Paid</Badge>
                     ) : (booking.paymentStatus as string) === 'advance_paid' ? (
@@ -257,11 +258,11 @@ export const BookingsList = ({
               </p>
               <div className="text-right">
                 {booking.originalPrice && booking.appliedCoupon ? (
-                  <span className="text-[10px] text-muted-foreground line-through mr-1">₹{booking.originalPrice.toLocaleString()}</span>
+                  <span className="text-[10px] text-muted-foreground line-through mr-1">{formatCurrency(booking.originalPrice)}</span>
                 ) : null}
-                <div className="text-[12px] font-bold text-primary">Price: ₹{((booking.totalPrice || 0) - (booking.lockerPrice || 0)).toLocaleString()}</div>
+                <div className="text-[12px] font-bold text-primary">Price: {formatCurrency((booking.totalPrice || 0) - (booking.lockerPrice || 0))}</div>
                 {(booking.lockerPrice || 0) > 0 && (
-                  <div className="text-[10px] text-muted-foreground">Locker: ₹{booking.lockerPrice.toLocaleString()}</div>
+                  <div className="text-[10px] text-muted-foreground">Locker: {formatCurrency(booking.lockerPrice)}</div>
                 )}
               </div>
             </div>
@@ -290,13 +291,13 @@ export const BookingsList = ({
             {(booking.seatPrice > 0 || booking.lockerPrice > 0 || booking.keyDeposit > 0) && (
               <div className="flex gap-2 mb-1.5 px-1 flex-wrap">
                 {booking.seatPrice > 0 && (
-                  <span className="text-[10px] text-muted-foreground">Price: ₹{booking.seatPrice?.toLocaleString()}</span>
+                  <span className="text-[10px] text-muted-foreground">Price: {formatCurrency(booking.seatPrice)}</span>
                 )}
                 {booking.lockerPrice > 0 && (
-                  <span className="text-[10px] text-muted-foreground">Locker: ₹{booking.lockerPrice?.toLocaleString()}</span>
+                  <span className="text-[10px] text-muted-foreground">Locker: {formatCurrency(booking.lockerPrice)}</span>
                 )}
                 {booking.keyDeposit > 0 && (
-                  <span className="text-[10px] text-muted-foreground">Deposit: ₹{booking.keyDeposit?.toLocaleString()}</span>
+                  <span className="text-[10px] text-muted-foreground">Deposit: {formatCurrency(booking.keyDeposit)}</span>
                 )}
               </div>
             )}

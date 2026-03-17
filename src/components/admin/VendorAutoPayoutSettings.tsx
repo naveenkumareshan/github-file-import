@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { formatCurrency } from '@/utils/currency';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -284,7 +285,7 @@ const VendorAutoPayoutSettings: React.FC = () => {
                       {vendor.autoPayoutSettings.manualRequestCharges.enabled ? (
                         <div className="text-sm">
                           {vendor.autoPayoutSettings.manualRequestCharges.chargeType === 'fixed' 
-                            ? `₹${vendor.autoPayoutSettings.manualRequestCharges.chargeValue}`
+                            ? formatCurrency(Number(vendor.autoPayoutSettings.manualRequestCharges.chargeValue) || 0)
                             : `${vendor.autoPayoutSettings.manualRequestCharges.chargeValue}%`
                           }
                         </div>
@@ -292,7 +293,7 @@ const VendorAutoPayoutSettings: React.FC = () => {
                         <Badge variant="outline">Disabled</Badge>
                       )}
                     </TableCell>
-                    <TableCell>₹{vendor.autoPayoutSettings.minimumPayoutAmount}</TableCell>
+                    <TableCell>{formatCurrency(Number(vendor.autoPayoutSettings.minimumPayoutAmount) || 0)}</TableCell>
                     <TableCell>
                       {vendor.autoPayoutSettings.nextAutoPayout ? (
                         <div className="text-sm">

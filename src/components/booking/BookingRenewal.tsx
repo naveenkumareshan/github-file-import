@@ -18,6 +18,7 @@ import { Clock, CreditCard, Tag, CheckCircle, XCircle } from 'lucide-react';
 import { transactionService } from '@/api/transactionService';
 import { razorpayService } from '@/api/razorpayService';
 import { couponService } from '@/api/couponService';
+import { formatCurrency } from '@/utils/currency';
 import { seatsService } from '@/api/seatsService';
 import { bookingsService } from '@/api/bookingsService';
 import { supabase } from '@/integrations/supabase/client';
@@ -216,7 +217,7 @@ export const BookingRenewal = React.forwardRef<HTMLDivElement, BookingRenewalPro
         setAppliedCoupon(response.data.coupon);
         toast({
           title: "Coupon Applied",
-          description: `Saved ₹${response.data.savings.toLocaleString()}`,
+          description: `Saved ${formatCurrency(Number(response.data.savings) || 0)}`,
           variant: "default"
         });
       } else {
@@ -617,7 +618,7 @@ export const BookingRenewal = React.forwardRef<HTMLDivElement, BookingRenewalPro
                     <div className="flex items-center gap-2">
                       <Tag className="h-4 w-4 text-green-600" />
                       <span className="text-green-700 font-medium">{appliedCoupon.code}</span>
-                      <span className="text-green-600 text-sm">(-₹{getDiscountAmount().toLocaleString()})</span>
+                      <span className="text-green-600 text-sm">(-{formatCurrency(getDiscountAmount())})</span>
                     </div>
                     <Button variant="ghost" size="sm" onClick={removeCoupon}>
                       Remove
@@ -644,28 +645,28 @@ export const BookingRenewal = React.forwardRef<HTMLDivElement, BookingRenewalPro
                       <>
                         <div className="flex justify-between mt-2">
                           <span className="text-muted-foreground">Original Amount:</span>
-                          <span>₹{getOriginalAmount().toLocaleString()}</span>
+                          <span>{formatCurrency(getOriginalAmount())}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Discount ({appliedCoupon.code}):</span>
-                          <span className="text-green-600">-₹{getDiscountAmount().toLocaleString()}</span>
+                          <span className="text-green-600">-{formatCurrency(getDiscountAmount())}</span>
                         </div>
                       </>
                     )}
                     {outstandingDue > 0 && (
                       <div className="flex justify-between mt-1">
                         <span className="text-muted-foreground">Previous Due Carried Forward:</span>
-                        <span className="text-destructive font-medium">+₹{outstandingDue.toLocaleString()}</span>
+                        <span className="text-destructive font-medium">+{formatCurrency(outstandingDue)}</span>
                       </div>
                     )}
                     <div className="flex justify-between mt-2 text-base">
                       <span className="font-medium">Final Amount:</span>
-                      <span className="font-bold">₹{calculateAdditionalAmount().toLocaleString()}</span>
+                      <span className="font-bold">{formatCurrency(calculateAdditionalAmount())}</span>
                     </div>
                     {appliedCoupon && (
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">You Save:</span>
-                        <span className="text-green-600 font-medium">₹{getDiscountAmount().toLocaleString()}</span>
+                        <span className="text-green-600 font-medium">{formatCurrency(getDiscountAmount())}</span>
                       </div>
                     )}
                     {(booking as any).lockerIncluded && (
@@ -698,7 +699,7 @@ export const BookingRenewal = React.forwardRef<HTMLDivElement, BookingRenewalPro
             <DialogHeader>
               <DialogTitle>Complete Payment</DialogTitle>
               <DialogDescription>
-                Pay ₹{calculateAdditionalAmount().toLocaleString()} to extend your booking
+                Pay {formatCurrency(calculateAdditionalAmount())} to extend your booking
               </DialogDescription>
             </DialogHeader>
             
@@ -723,7 +724,7 @@ export const BookingRenewal = React.forwardRef<HTMLDivElement, BookingRenewalPro
                     </div>
                     <div className="flex justify-between font-bold text-base">
                       <span>Total Amount:</span>
-                      <span>₹{calculateAdditionalAmount().toLocaleString()}</span>
+                      <span>{formatCurrency(calculateAdditionalAmount())}</span>
                     </div>
                   </div>
                 </CardContent>

@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { vendorEmployeeService, VendorEmployeeData } from '@/api/vendorEmployeeService';
+import { formatCurrency } from '@/utils/currency';
 import { VendorEmployeeForm } from '@/components/vendor/VendorEmployeeForm';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -223,7 +224,7 @@ const VendorEmployees: React.FC = () => {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-[11px] py-1.5 px-3">
-                    ₹{emp.salary?.toLocaleString() || 0}
+                    {formatCurrency(Number(emp.salary) || 0)}
                   </TableCell>
                   <TableCell className="py-1.5 px-3">
                     <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium border ${emp.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
@@ -292,7 +293,7 @@ const VendorEmployees: React.FC = () => {
                 <div className="p-3 border rounded-lg space-y-1">
                   <p className="font-medium text-xs mb-1">Work Info</p>
                   <p><span className="text-muted-foreground">Role:</span> <Badge variant="secondary" className="text-[9px] capitalize">{viewingEmployee.role}</Badge></p>
-                  <p><span className="text-muted-foreground">Salary:</span> ₹{viewingEmployee.salary?.toLocaleString() || 0}/mo</p>
+                  <p><span className="text-muted-foreground">Salary:</span> {formatCurrency(Number(viewingEmployee.salary) || 0)}/mo</p>
                   <p><span className="text-muted-foreground">Status:</span> <Badge variant={viewingEmployee.status === 'active' ? 'success' : 'destructive'} className="text-[9px]">{viewingEmployee.status}</Badge></p>
                 </div>
               </div>

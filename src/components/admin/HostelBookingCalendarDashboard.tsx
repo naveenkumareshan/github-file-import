@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { hostelBookingService } from '@/api/hostelBookingService';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, isWithinInterval, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { formatCurrency } from '@/utils/currency';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 interface HostelOption {
@@ -204,7 +205,7 @@ export const HostelBookingCalendarDashboard: React.FC = () => {
             <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
               <IndianRupee className="h-3.5 w-3.5" /> Revenue
             </div>
-            <p className="text-2xl font-bold">₹{stats.revenue.toLocaleString('en-IN')}</p>
+            <p className="text-2xl font-bold">{formatCurrency(stats.revenue)}</p>
           </CardContent>
         </Card>
         <Card className="border-border/60">

@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Wallet, AlertTriangle, IndianRupee, Calendar as CalendarIcon, Search, Receipt, Pencil } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
+import { formatCurrency } from '@/utils/currency';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { Textarea } from '@/components/ui/textarea';
@@ -484,7 +485,7 @@ const HostelDueManagement: React.FC = () => {
               </div>
 
               <Button className="w-full h-9 text-xs" onClick={handleCollect} disabled={collecting || !collectAmount || !!validateSplits(collectSplits, parseFloat(collectAmount) || 0)}>
-                {collecting ? 'Processing...' : `Confirm Collection · ₹${collectAmount}`}
+                {collecting ? 'Processing...' : `Confirm Collection · ${formatCurrency(Number(collectAmount) || 0)}`}
               </Button>
 
               {/* Payment History */}

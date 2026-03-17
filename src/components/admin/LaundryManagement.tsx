@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Shirt } from 'lucide-react';
+import { formatCurrency } from '@/utils/currency';
 
 interface LaundryRequest {
   id: number;
@@ -122,7 +123,7 @@ export function LaundryManagement({ laundryRequests }: LaundryManagementProps) {
                       `${request.items.reduce((sum, item) => sum + item.quantity, 0)} items` : 
                       "N/A"}
                   </TableCell>
-                  <TableCell>{request.totalAmount ? `₹${request.totalAmount}` : "N/A"}</TableCell>
+                  <TableCell>{request.totalAmount ? formatCurrency(Number(request.totalAmount) || 0) : "N/A"}</TableCell>
                   <TableCell>
                     <span className={`px-2 py-1 text-xs rounded-full ${
                       request.status === 'pending' ? 'bg-amber-100 text-amber-800' :

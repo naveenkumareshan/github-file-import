@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { formatCurrency } from '@/utils/currency';
 
 // Mock data - in a real app, this would come from an API
 const mockBookings = [
@@ -148,7 +149,7 @@ export const HostelBookingsList = () => {
                     <TableCell>Room {booking.roomNumber}, Bed {booking.bedNumber}</TableCell>
                     <TableCell>{format(booking.checkInDate, 'dd MMM yyyy')}</TableCell>
                     <TableCell>{format(booking.checkOutDate, 'dd MMM yyyy')}</TableCell>
-                    <TableCell>₹{booking.amount.toLocaleString()}</TableCell>
+                    <TableCell>{formatCurrency(booking.amount)}</TableCell>
                     <TableCell>{getStatusBadge(booking.status)}</TableCell>
                     <TableCell>
                       <Button 

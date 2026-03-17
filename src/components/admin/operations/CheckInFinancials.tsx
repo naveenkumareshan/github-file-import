@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
+import { formatCurrency } from '@/utils/currency';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
 import { Banknote, Smartphone, Building2, CreditCard, Receipt } from 'lucide-react';
@@ -221,7 +222,7 @@ export const CollectDrawer: React.FC<CollectDrawerProps> = ({ open, onOpenChange
           </div>
 
           <Button className="w-full h-9 text-xs" onClick={handleCollect} disabled={collecting || !amount}>
-            {collecting ? 'Processing...' : `Confirm Collection · ₹${amount}`}
+            {collecting ? 'Processing...' : `Confirm Collection · ${formatCurrency(Number(amount) || 0)}`}
           </Button>
 
           <Separator className="my-3" />
@@ -312,4 +313,4 @@ export const ReceiptsDialog: React.FC<ReceiptsDialogProps> = ({ open, onOpenChan
 };
 
 // Helper to format currency inline
-export const fmtAmt = (v: number) => `₹${v.toLocaleString()}`;
+export const fmtAmt = (v: number) => formatCurrency(Number(v) || 0);

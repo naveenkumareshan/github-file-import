@@ -6,6 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, Receipt } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { formatCurrency } from '@/utils/currency';
 import { cn } from '@/lib/utils';
 import { resolvePaymentMethodLabels, getMethodLabel } from '@/utils/paymentMethodLabels';
 
@@ -97,10 +98,10 @@ export const HostelDuePaymentHistory: React.FC<HostelDuePaymentHistoryProps> = (
     <div className="space-y-1.5">
       {dueInfo && (
         <div className="space-y-1 text-[11px]">
-          <div className="flex justify-between"><span className="text-muted-foreground">Total Fee</span><span>₹{dueInfo.totalFee.toLocaleString()}</span></div>
-          <div className="flex justify-between"><span className="text-muted-foreground">Advance Paid</span><span>₹{dueInfo.advancePaid.toLocaleString()}</span></div>
-          <div className="flex justify-between"><span className="text-muted-foreground">Collected</span><span className="text-emerald-600">₹{(dueInfo.paidAmount).toLocaleString()}</span></div>
-          <div className="flex justify-between font-medium text-red-600"><span>Remaining</span><span>₹{Math.max(0, dueInfo.dueAmount - dueInfo.paidAmount).toLocaleString()}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">Total Fee</span><span>{formatCurrency(dueInfo.totalFee)}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">Advance Paid</span><span>{formatCurrency(dueInfo.advancePaid)}</span></div>
+          <div className="flex justify-between"><span className="text-muted-foreground">Collected</span><span className="text-emerald-600">{formatCurrency(dueInfo.paidAmount)}</span></div>
+          <div className="flex justify-between font-medium text-red-600"><span>Remaining</span><span>{formatCurrency(Math.max(0, dueInfo.dueAmount - dueInfo.paidAmount))}</span></div>
           <Separator className="my-1" />
         </div>
       )}
@@ -112,7 +113,7 @@ export const HostelDuePaymentHistory: React.FC<HostelDuePaymentHistoryProps> = (
           return (
             <div key={p.id} className="border rounded p-2 text-[11px] space-y-0.5 bg-muted/30">
               <div className="flex items-center justify-between">
-                <span className="font-medium">₹{Number(p.amount).toLocaleString()}</span>
+                <span className="font-medium">{formatCurrency(Number(p.amount))}</span>
                 <span className="text-[10px] text-muted-foreground">{format(new Date(p.created_at), 'dd MMM yyyy, HH:mm')}</span>
               </div>
               {receipt?.serial_number && (

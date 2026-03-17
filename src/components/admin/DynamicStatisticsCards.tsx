@@ -6,6 +6,7 @@ import { BarChart, TrendingUp, AlertCircle, UserCheck } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { adminBookingsService } from '@/api/adminBookingsService';
 import { useAuth } from '@/contexts/AuthContext';
+import { formatCurrency } from '@/utils/currency';
 
 export function DynamicStatisticsCards() {
   const { user } = useAuth();
@@ -48,8 +49,8 @@ useEffect(() => {
             <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Total Revenue</p>
             {loading ? <Skeleton className="h-6 w-20 mt-1" /> : (
               <>
-                <p className="text-lg font-bold mt-0.5 text-primary">₹{statistics.totalRevenue.toLocaleString()}</p>
-                <p className="text-[10px] text-secondary">₹{statistics.revenueToday.toLocaleString()} today</p>
+                <p className="text-lg font-bold mt-0.5 text-primary">{formatCurrency(statistics.totalRevenue)}</p>
+                <p className="text-[10px] text-secondary">{formatCurrency(statistics.revenueToday)} today</p>
               </>
             )}
           </div>
@@ -66,7 +67,7 @@ useEffect(() => {
             {residentsLoading ? <Skeleton className="h-6 w-14 mt-1" /> : (
               <>
                 <p className="text-lg font-bold mt-0.5 text-secondary">{activeResidents.activeResidents}</p>
-                <p className="text-[10px] text-muted-foreground">{activeResidents.occupancyPercentage}% occupancy</p>
+                <p className="text-[10px] text-muted-foreground">{Math.round(activeResidents.occupancyPercentage)}% occupancy</p>
               </>
             )}
           </div>
@@ -95,7 +96,7 @@ useEffect(() => {
           <div>
             <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Pending Payments</p>
             {loading ? <Skeleton className="h-6 w-20 mt-1" /> : (
-              <p className="text-lg font-bold mt-0.5 text-destructive">₹{statistics.pendingPayments.toLocaleString()}</p>
+              <p className="text-lg font-bold mt-0.5 text-destructive">{formatCurrency(statistics.pendingPayments)}</p>
             )}
           </div>
           <div className="h-7 w-7 rounded-full bg-destructive/10 flex items-center justify-center">

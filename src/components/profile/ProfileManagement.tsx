@@ -8,6 +8,7 @@ import { toast } from '@/hooks/use-toast';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { User, MailIcon, GraduationCap, Shield, AlertTriangle, Pencil, X, Check, LogOut, FileText, Lock, BookMarked, ChevronRight, ChevronDown, Info, MessageSquareWarning, Headphones, Phone, Camera, Loader2, BadgeCheck, Mail, QrCode, History } from 'lucide-react';
+import { formatCurrency } from '@/utils/currency';
 import { userProfileService } from '@/api/userProfileService';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
@@ -548,7 +549,7 @@ export const ProfileManagement = () => {
                     </div>
                     {(b.dueAmount ?? 0) > 0 ? (
                       <Badge variant="outline" className="border-red-500 text-red-600 text-[10px] px-1.5 py-0.5 flex-shrink-0">
-                        Due: ₹{b.dueAmount?.toLocaleString()}
+                        Due: {formatCurrency(Number(b.dueAmount) || 0)}
                       </Badge>
                     ) : b.payment_status === 'completed' ? (
                       <Badge className="bg-green-100 text-green-700 border-green-200 text-[10px] px-1.5 py-0.5 flex-shrink-0">
