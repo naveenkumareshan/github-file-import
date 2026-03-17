@@ -322,7 +322,7 @@ const StudentExcelImport = () => {
           <Card><CardContent className="p-4"><div className="flex items-center gap-2"><User className="h-4 w-4 text-blue-600" /><div><p className="text-sm text-muted-foreground">Total</p><p className="text-xl font-bold">{students.length}</p></div></div></CardContent></Card>
           <Card><CardContent className="p-4"><div className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-green-600" /><div><p className="text-sm text-muted-foreground">Completed</p><p className="text-xl font-bold">{completedCount}</p></div></div></CardContent></Card>
           <Card><CardContent className="p-4"><div className="flex items-center gap-2"><AlertCircle className="h-4 w-4 text-red-600" /><div><p className="text-sm text-muted-foreground">Failed</p><p className="text-xl font-bold">{failedCount}</p></div></div></CardContent></Card>
-          <Card><CardContent className="p-4"><div className="flex items-center gap-2"><CreditCard className="h-4 w-4 text-purple-600" /><div><p className="text-sm text-muted-foreground">Revenue</p><p className="text-xl font-bold">₹{totalRevenue.toLocaleString()}</p></div></div></CardContent></Card>
+          <Card><CardContent className="p-4"><div className="flex items-center gap-2"><CreditCard className="h-4 w-4 text-purple-600" /><div><p className="text-sm text-muted-foreground">Revenue</p><p className="text-xl font-bold">{formatCurrency(totalRevenue)}</p></div></div></CardContent></Card>
         </div>
       )}
 
