@@ -230,14 +230,17 @@ const StudentDashboard: React.FC = () => {
     try {
       setLoading(true);
       
-      const currentResponse = await bookingsService.getCurrentBookings();
+      // Fetch current and history in parallel
+      const [currentResponse, historyResponse] = await Promise.all([
+        bookingsService.getCurrentBookings(),
+        bookingsService.getBookingHistory(),
+      ]);
+
       let allBookings: BookingData[] = [];
       if (currentResponse.success && Array.isArray(currentResponse.data)) {
         setCurrentBookings(currentResponse.data as any);
         allBookings = [...(currentResponse.data as any)];
       }
-      
-      const historyResponse = await bookingsService.getBookingHistory();
       if (historyResponse.success && Array.isArray(historyResponse.data)) {
         setBookingHistory(historyResponse.data as any);
         allBookings = [...allBookings, ...(historyResponse.data as any)];

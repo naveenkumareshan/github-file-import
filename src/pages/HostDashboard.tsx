@@ -48,8 +48,8 @@ const HostDashboard = () => {
         <StatisticsCards data={mockFinancialSummary} />
         
         <div className="grid md:grid-cols-2 gap-6 mb-8">
-          <OccupancyChart />
-          <RevenueChart />
+          <OccupancyChart data={[]} loading={false} />
+          <RevenueChart data={[]} loading={false} />
         </div>
         
         <CustomerComplaints />
