@@ -1,71 +1,28 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+## Plan: Scope Attendance to Selected Property
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+### Problem
+Both the Seat Map (`VendorSeats.tsx`) and Bed Map (`HostelBedMap.tsx`) always fetch attendance for **all** properties and display `attendanceSet.size` as the "Present" count. When a single property is selected, the present count and green dots still reflect all properties combined.
 
-## Changes
+### Fix (2 changes per file)
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+**1. Scope attendance fetch to selected property**
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+- **VendorSeats.tsx**: When `selectedCabinId` is set, pass only `[selectedCabinId]` to `getAllPropertiesAttendanceToday`. When "All" is selected, pass all cabin IDs. Add `selectedCabinId` to the effect's dependency array.
+- **HostelBedMap.tsx**: Same pattern — when a specific hostel is selected, pass only that hostel's ID. Add the selected hostel to dependencies.
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+**2. Fix "Present" stat to count from visible data**
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+Instead of `attendanceSet.size` (which counts all attendance entries including ones for other properties), compute present as:
+```
+seats.filter(s => attendanceSet.has(s._id)).length   // VendorSeats
+beds.filter(b => attendanceSet.has(b.id)).length      // HostelBedMap
+```
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
+This ensures the count matches only the currently displayed seats/beds.
 
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
-
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
-
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
-
-**Reviews section**: Shown below the booking flow (not in a tab)
-
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
-
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
-
-| File | Change |
-|------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+### Files to modify
+- `src/pages/vendor/VendorSeats.tsx` — lines 221-231 (fetch scoping) and line 327 (present count)
+- `src/pages/admin/HostelBedMap.tsx` — lines 247-257 (fetch scoping) and line 514 (present count)
 
