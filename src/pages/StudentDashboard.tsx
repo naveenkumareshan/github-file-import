@@ -496,12 +496,12 @@ const StudentDashboard: React.FC = () => {
 
                             <div className="flex justify-between items-center sm:block sm:space-y-1 text-sm">
                               <p className="text-xs text-muted-foreground uppercase tracking-wide">Price</p>
-                              <p className="font-medium text-green-700">Seat: ₹{((booking.total_price || 0) + ((booking as any).discount_amount || 0) - ((booking as any).locker_price || 0)).toLocaleString()}</p>
+                              <p className="font-medium text-green-700">Seat: {formatCurrency((booking.total_price || 0) + ((booking as any).discount_amount || 0) - ((booking as any).locker_price || 0))}</p>
                               {((booking as any).locker_price || 0) > 0 && (
-                                <p className="text-xs text-muted-foreground">Locker: ₹{((booking as any).locker_price || 0).toLocaleString()}</p>
+                                <p className="text-xs text-muted-foreground">Locker: {formatCurrency((booking as any).locker_price || 0)}</p>
                               )}
                               {((booking as any).discount_amount || 0) > 0 && (
-                                <p className="text-xs text-destructive">Discount: -₹{((booking as any).discount_amount || 0).toLocaleString()}</p>
+                                <p className="text-xs text-destructive">Discount: -{formatCurrency((booking as any).discount_amount || 0)}</p>
                               )}
                             </div>
                             

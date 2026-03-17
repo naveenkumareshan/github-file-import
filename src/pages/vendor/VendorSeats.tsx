@@ -2307,7 +2307,7 @@ const VendorSeats: React.FC = () => {
               {receiptDialogData.map((r: any) => (
                 <div key={r.id} className="border rounded p-2 text-[11px] space-y-0.5">
                   <div className="flex justify-between items-center">
-                    <span className="font-medium">₹{Number(r.amount).toLocaleString()}</span>
+                    <span className="font-medium">{formatCurrency(Number(r.amount))}</span>
                     <Badge variant="outline" className="text-[9px] px-1">{r.receipt_type === 'due_collection' ? 'Due Collection' : 'Booking Payment'}</Badge>
                   </div>
                   {r.serial_number && <div className="text-[10px] font-medium text-primary">{r.serial_number}</div>}
