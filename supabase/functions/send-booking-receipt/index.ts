@@ -43,8 +43,8 @@ const formatCurrency = (amount: number) =>
     style: "currency",
     currency: "INR",
     minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(amount);
+    maximumFractionDigits: 0,
+  }).format(Math.round(amount));
 
 const getSubjectLine = (data: ReceiptEmailPayload) => {
   switch (data.bookingType) {
