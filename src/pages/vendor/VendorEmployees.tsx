@@ -224,7 +224,7 @@ const VendorEmployees: React.FC = () => {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-[11px] py-1.5 px-3">
-                    ₹{emp.salary?.toLocaleString() || 0}
+                    {formatCurrency(Number(emp.salary) || 0)}
                   </TableCell>
                   <TableCell className="py-1.5 px-3">
                     <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium border ${emp.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
