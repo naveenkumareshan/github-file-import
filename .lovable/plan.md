@@ -1,71 +1,54 @@
 
+Goal: make the PIN reliably appear in Partner app when the user clicks the “Attendance PIN” button.
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+What I found
+- The PIN popup opens, but PIN fetch fails.
+- Network error is the blocker: `generate_attendance_pin` returns 400 with `null value in column "property_id" of relation "attendance_pins" violates not-null constraint`.
+- Current universal PIN logic inserts by `owner_id`, but `attendance_pins.property_id/property_type` are still NOT NULL from the old schema.
+- So the button can open, but PIN remains empty.
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+Implementation plan
 
-## Changes
+1) Backend fix (highest priority)
+- Create a migration to complete the universal-PIN schema transition:
+  - Drop NOT NULL on `attendance_pins.property_id` and `attendance_pins.property_type` (or remove these legacy columns safely).
+  - Keep `owner_id` unique and enforce it as the canonical key for universal PIN.
+  - Keep `generate_attendance_pin(p_owner_id uuid)` aligned with `owner_id` insert/upsert only.
+- Add safety in function:
+  - Return clear error if `p_owner_id` is null.
+  - Keep PIN generation logic unchanged (60s rotation).
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+2) UI behavior: show PIN on click, with clear states
+- In `AttendancePinDisplay`:
+  - Keep fetch triggered only when popover is opened (click behavior).
+  - Add explicit error UI if fetch fails (`Couldn’t load PIN. Retry`), instead of blank content.
+  - Add retry action in popover.
+  - Keep countdown + auto-refresh only after successful PIN fetch.
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+3) Partner-app visibility robustness
+- Don’t hide the button just because property-name list is temporarily empty.
+- Show button if user has permission; inside popover show:
+  - loading state,
+  - error state,
+  - or “No attached properties” message.
+- Include mess properties in “Applies to” list so universal coverage is accurate for all attached property types.
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+4) Employee restriction checks (as requested earlier)
+- Keep/strengthen rule: PIN visible only if employee is active and has `manage_attendance`.
+- If `allowed_properties` is set, display only relevant attached properties in summary text.
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+5) Clean up React warning seen in console
+- Adjust Popover trigger structure in `AttendancePinDisplay` to avoid ref-warning path (remove fragile trigger composition).
+- This is secondary to PIN visibility but will reduce runtime noise and potential UI quirks.
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
-
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
-
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
-
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
-
-**Reviews section**: Shown below the booking flow (not in a tab)
-
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
-
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
-
-| File | Change |
-|------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
-
+Technical details
+- Files to update:
+  - `supabase/migrations/*` (new migration for `attendance_pins` nullability/canonical owner-based schema)
+  - `src/components/admin/AttendancePinDisplay.tsx` (click-to-fetch states, retry, property coverage text, safer trigger)
+  - (Optional) `src/api/attendanceService.ts` only if we add structured error propagation for UI messaging.
+- Verification checklist:
+  - Partner opens `/admin/operations` → clicks Attendance PIN → PIN appears.
+  - RPC `generate_attendance_pin` returns 200.
+  - PIN refreshes every minute with countdown.
+  - Employee without permission cannot see button.
+  - Employee with permission can see and open PIN.
