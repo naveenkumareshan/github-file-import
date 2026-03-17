@@ -6,6 +6,7 @@ import { adminBookingsService } from '@/api/adminBookingsService';
 import { format } from 'date-fns';
 import { IndianRupee, TrendingUp, Wallet, BarChart3 } from 'lucide-react';
 import { ReportSkeleton } from './ReportSkeleton';
+import { formatCurrency } from '@/utils/currency';
 
 interface RevenueReportsProps {
   dateRange?: DateRange;
