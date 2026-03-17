@@ -119,9 +119,9 @@ const BookingReceiptCard: React.FC<ReceiptCardProps> = ({ booking, formatDate, i
         </div>
         <div className="px-4 py-3">
           <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Amount</p>
-          <p className="text-[12px] font-semibold text-foreground">Bed: ₹{(booking.total_price || 0).toLocaleString()}</p>
+          <p className="text-[12px] font-semibold text-foreground">Bed: {formatCurrency(booking.total_price || 0)}</p>
           {((booking as any).security_deposit || 0) > 0 && (
-            <p className="text-[10px] text-muted-foreground">Deposit: ₹{((booking as any).security_deposit || 0).toLocaleString()}</p>
+            <p className="text-[10px] text-muted-foreground">Deposit: {formatCurrency((booking as any).security_deposit || 0)}</p>
           )}
         </div>
       </div>
