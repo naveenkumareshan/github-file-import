@@ -13,6 +13,7 @@ import {
 import { Wallet, Search, RefreshCw, DollarSign } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { formatCurrency } from '@/utils/currency';

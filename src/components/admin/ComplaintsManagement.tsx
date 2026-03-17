@@ -132,11 +132,10 @@ const ComplaintsManagement = () => {
   const handleRespond = async () => {
     if (!selected) return;
     setSaving(true);
-    const { data: { user } } = await supabase.auth.getUser();
     const updates: any = {};
     if (response.trim()) {
       updates.response = response.trim();
-      updates.responded_by = user?.id;
+      updates.responded_by = authUser?.id;
       updates.responded_at = new Date().toISOString();
     }
     if (newStatus) updates.status = newStatus;
