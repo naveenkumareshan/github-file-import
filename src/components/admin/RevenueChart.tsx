@@ -1,56 +1,20 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
 import { BarChart as BarChartIcon } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
-import { adminBookingsService } from '@/api/adminBookingsService';
 import { EmptyState } from '@/components/ui/empty-state';
-import { useAuth } from '@/contexts/AuthContext';
-import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 import { formatCurrency } from '@/utils/currency';
+import { RevenueDataPoint } from '@/hooks/use-admin-dashboard-data';
 
-export function RevenueChart() {
-  const { user } = useAuth();
-  const [data, setData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+interface Props {
+  data: RevenueDataPoint[];
+  loading: boolean;
+}
 
- const fetched = useRef(false);
-
-useEffect(() => {
-  if (fetched.current) return;
-
-  const fetchMonthlyRevenue = async () => {
-    try {
-      setLoading(true);
-      let partnerUserId: string | undefined;
-      if (user?.role === 'vendor') partnerUserId = user.id;
-      else if (user?.role === 'vendor_employee') {
-        const { ownerId } = await getEffectiveOwnerId();
-        partnerUserId = ownerId;
-      }
-      const response = await adminBookingsService.getMonthlyRevenue(new Date().getFullYear(), partnerUserId);
-      if (response.success && response.data) {
-        const chartData = response.data.map((month: any) => ({
-          name: month.monthName.slice(0, 3),
-          revenue: month.revenue
-        }));
-        setData(chartData);
-      }
-    } catch (err) {
-      console.error('Error fetching monthly revenue:', err);
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  fetchMonthlyRevenue();
-  fetched.current = true;
-}, []);
-
+export function RevenueChart({ data, loading }: Props) {
   const config = {
     revenue: {
       label: 'Revenue',
@@ -72,19 +36,16 @@ useEffect(() => {
               <Skeleton className="h-4 w-full" />
               <Skeleton className="h-[240px] w-full" />
             </div>
+          ) : data.length === 0 ? (
+            <EmptyState icon={BarChartIcon} title="No revenue data available" />
           ) : (
-            error ? (
-              <EmptyState icon={BarChartIcon} title="No revenue data" description="Unable to fetch data. Please refresh." />
-            ) : data.length === 0 ? (
-              <EmptyState icon={BarChartIcon} title="No revenue data available" />
-            ) : (
             <ChartContainer config={config}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={data}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
                   <YAxis tickFormatter={(value) => `₹${Math.round(value / 1000)}K`} />
-                   <Tooltip content={<ChartTooltipContent />} formatter={(value) => [formatCurrency(Number(value) || 0), 'Revenue']} />
+                  <Tooltip content={<ChartTooltipContent />} formatter={(value) => [formatCurrency(Number(value) || 0), 'Revenue']} />
                   <Legend />
                   <Bar 
                     dataKey="revenue" 
@@ -95,7 +56,6 @@ useEffect(() => {
                 </BarChart>
               </ResponsiveContainer>
             </ChartContainer>
-            )
           )}
         </div>
       </CardContent>

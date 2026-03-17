@@ -1,11 +1,10 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DynamicStatisticsCards } from './DynamicStatisticsCards';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { adminBookingsService } from '@/api/adminBookingsService';
 import { OccupancyChart } from './OccupancyChart';
 import { RevenueChart } from './RevenueChart';
 import { DashboardExpiringBookings } from './DashboardExpiringBookings';
@@ -14,22 +13,10 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import { EmptyState } from '@/components/ui/empty-state';
 import { useAuth } from '@/contexts/AuthContext';
 import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
-
-interface TopFillingRoom {
-  id: string;
-  name: string;
-  occupancyRate: number;
-  category: string;
-  totalSeats: number;
-  bookedSeats: number;
-}
+import { useAdminDashboardData } from '@/hooks/use-admin-dashboard-data';
 
 export function DashboardStatistics() {
   const { user } = useAuth();
-  const [topFillingRooms, setTopFillingRooms] = useState<TopFillingRoom[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState(false);
-  const hasFetchedRef = useRef(false);
   const [partnerUserId, setPartnerUserId] = useState<string | undefined>(
     user?.role === 'vendor' ? user.id : undefined
   );
@@ -40,30 +27,12 @@ export function DashboardStatistics() {
     }
   }, [user]);
 
-  const fetchDashboardData = async (pId?: string) => {
-    try {
-      setLoading(true);
-      setError(false);
-      const topRoomsResponse = await adminBookingsService.getTopFillingRooms(10, pId);
-      if (topRoomsResponse.success && topRoomsResponse.data) {
-        setTopFillingRooms(topRoomsResponse.data.slice(0, 10));
-      }
-    } catch (err) {
-      console.error('Error fetching dashboard data:', err);
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Wait for employee resolution
+  const shouldFetch = user?.role === 'vendor_employee' ? !!partnerUserId : true;
 
-  useEffect(() => {
-    if (hasFetchedRef.current) return;
-    // Wait for employee resolution
-    if (user?.role === 'vendor_employee' && !partnerUserId) return;
-    hasFetchedRef.current = true;
-    fetchDashboardData(partnerUserId);
-  }, [partnerUserId]);
-  
+  const { stats, topFillingRooms, revenueData, occupancyData, expiringBookings, loading, error } = 
+    useAdminDashboardData(shouldFetch ? partnerUserId : undefined);
+
   const getCategoryBadgeColor = (category: string) => {
     switch (category.toLowerCase()) {
       case 'luxury': return 'bg-purple-500 hover:bg-purple-600';
@@ -76,7 +45,7 @@ export function DashboardStatistics() {
   return (
     <div className="space-y-3">
       <ErrorBoundary>
-        <DynamicStatisticsCards />
+        <DynamicStatisticsCards stats={stats} loading={loading} />
       </ErrorBoundary>
 
       {/* Top Filling Reading Rooms */}
@@ -104,7 +73,6 @@ export function DashboardStatistics() {
               icon={TrendingUp}
               title="No data available"
               description="Unable to fetch data. Please refresh."
-              onRetry={() => { hasFetchedRef.current = false; fetchDashboardData(); }}
             />
           ) : topFillingRooms.length === 0 ? (
             <EmptyState icon={TrendingUp} title="No room data available" />
@@ -175,16 +143,16 @@ export function DashboardStatistics() {
       {/* Charts Row */}
       <div className="grid md:grid-cols-2 gap-3">
         <ErrorBoundary>
-          <RevenueChart />
+          <RevenueChart data={revenueData} loading={loading} />
         </ErrorBoundary>
         <ErrorBoundary>
-          <OccupancyChart />
+          <OccupancyChart data={occupancyData} loading={loading} />
         </ErrorBoundary>
       </div>
       
       {/* Expiring Bookings */}
       <ErrorBoundary>
-        <DashboardExpiringBookings />
+        <DashboardExpiringBookings bookings={expiringBookings} loading={loading} />
       </ErrorBoundary>
     </div>
   );

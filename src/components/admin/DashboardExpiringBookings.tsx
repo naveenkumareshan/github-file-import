@@ -1,44 +1,20 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { adminBookingsService } from '@/api/adminBookingsService';
 import { Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 
-export function DashboardExpiringBookings() {
-  const [expiringBookings, setExpiringBookings] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+interface Props {
+  bookings: any[];
+  loading: boolean;
+}
+
+export function DashboardExpiringBookings({ bookings, loading }: Props) {
   const navigate = useNavigate();
-  const hasFetchedRef = useRef(false);
-
- useEffect(() => {
-    if (hasFetchedRef.current) return;
-      hasFetchedRef.current = true;
-    const fetchExpiringBookings = async () => {
-      try {
-        setLoading(true);
-        const response = await adminBookingsService.getExpiringBookings(7);
-        
-        if (response.success && response.data) {
-          setExpiringBookings(response.data.slice(0, 5));
-        }
-      } catch (error) {
-        console.error('Error fetching expiring bookings:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchExpiringBookings();
-  }, []);
-
-  const handleViewAll = () => {
-    navigate('/admin/reports');
-  };
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'N/A';
@@ -57,7 +33,7 @@ export function DashboardExpiringBookings() {
             <Calendar className="h-4 w-4 text-primary" />
             Expiring Bookings
           </CardTitle>
-          <Button variant="ghost" size="sm" onClick={handleViewAll} className="text-primary hover:text-primary/80">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/admin/reports')} className="text-primary hover:text-primary/80">
             View All
           </Button>
         </div>
@@ -71,13 +47,13 @@ export function DashboardExpiringBookings() {
               </div>
             ))}
           </div>
-        ) : expiringBookings.length === 0 ? (
+        ) : bookings.length === 0 ? (
           <p className="text-center text-muted-foreground py-4">
             No bookings expiring soon
           </p>
         ) : (
           <div className="space-y-2">
-            {expiringBookings.map((booking) => {
+            {bookings.map((booking) => {
               const profile = booking.profiles as any;
               const cabin = booking.cabins as any;
               const seat = booking.seats as any;
