@@ -1,17 +1,22 @@
 
+
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import CheckInTracker from '@/components/admin/operations/CheckInTracker';
 import ComplaintTracker from '@/components/admin/operations/ComplaintTracker';
 import QrCodesTab from '@/components/admin/operations/QrCodesTab';
+import AttendancePinDisplay from '@/components/admin/AttendancePinDisplay';
 import { ClipboardCheck, MessageSquare, QrCode } from 'lucide-react';
 
 const OperationsHub = () => {
   return (
     <div className="p-4 md:p-6 space-y-4">
-      <div>
-        <h1 className="text-xl font-bold tracking-tight">Operations</h1>
-        <p className="text-sm text-muted-foreground">Check-in tracking & complaint management</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight">Operations</h1>
+          <p className="text-sm text-muted-foreground">Check-in tracking & complaint management</p>
+        </div>
+        <AttendancePinDisplay />
       </div>
 
       <Tabs defaultValue="checkin" className="w-full">

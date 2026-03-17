@@ -236,8 +236,6 @@ const PropertyAttendance: React.FC = () => {
         )}
       </div>
 
-      {/* PIN Display for employees */}
-      <AttendancePinDisplay properties={properties} />
 
       {/* Filters */}
       <div className="flex items-center gap-2 flex-wrap">
