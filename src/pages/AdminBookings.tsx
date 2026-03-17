@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { BookingFilters } from "@/types/BookingTypes";
 import { Eye, Search, Filter, BookOpen } from "lucide-react";
 import { AdminTablePagination, getSerialNumber } from "@/components/admin/AdminTablePagination";
+import { formatCurrency } from '@/utils/currency';
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/AuthContext";
 import { getEffectiveOwnerId } from "@/utils/getEffectiveOwnerId";
