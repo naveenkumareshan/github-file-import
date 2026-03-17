@@ -51,10 +51,8 @@ const SupportPage = () => {
 
   const loadTickets = async () => {
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    setCurrentUserId(user.id);
-    const { data } = await supabase.from('support_tickets').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
+    if (!authUser?.id) return;
+    const { data } = await supabase.from('support_tickets').select('*').eq('user_id', authUser.id).order('created_at', { ascending: false });
     setTickets((data as any[]) || []);
     setLoading(false);
   };
