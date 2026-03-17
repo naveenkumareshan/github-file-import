@@ -240,7 +240,7 @@ export const BookingTransactionView = ({ bookingId, bookingType, booking }: Book
                   </Badge>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-[12px] font-medium">₹{Number(r.amount).toLocaleString()}</span>
+                  <span className="text-[12px] font-medium">{formatCurrency(Number(r.amount))}</span>
                   <span className="text-[10px] text-muted-foreground capitalize">{getMethodLabel(r.payment_method, paymentLabels)}</span>
                 </div>
                 <div className="flex items-center justify-between text-[10px] text-muted-foreground">
