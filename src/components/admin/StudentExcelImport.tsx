@@ -142,6 +142,7 @@ const StudentExcelImport = () => {
 
     try {
       const data = await file.arrayBuffer();
+      const ExcelJS = (await import('exceljs')).default;
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.load(data);
       const worksheet = workbook.worksheets[0];
