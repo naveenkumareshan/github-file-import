@@ -6,6 +6,7 @@ import { adminBookingsService } from '@/api/adminBookingsService';
 import { format } from 'date-fns';
 import { IndianRupee, TrendingUp, Wallet, BarChart3 } from 'lucide-react';
 import { ReportSkeleton } from './ReportSkeleton';
+import { formatCurrency } from '@/utils/currency';
 
 interface RevenueReportsProps {
   dateRange?: DateRange;
@@ -86,7 +87,7 @@ const RevenueReportsComponent: React.FC<RevenueReportsProps> = ({ dateRange, par
             </div>
           </CardHeader>
           <CardContent className="pt-4">
-            <div className="text-2xl font-bold">₹{totalRevenue.toLocaleString('en-IN')}</div>
+            <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
           </CardContent>
         </Card>
         
@@ -104,7 +105,7 @@ const RevenueReportsComponent: React.FC<RevenueReportsProps> = ({ dateRange, par
             </div>
           </CardHeader>
           <CardContent className="pt-4">
-            <div className="text-2xl font-bold">₹{averageBookingValue.toLocaleString('en-IN', {maximumFractionDigits: 2})}</div>
+            <div className="text-2xl font-bold">{formatCurrency(averageBookingValue)}</div>
           </CardContent>
         </Card>
         

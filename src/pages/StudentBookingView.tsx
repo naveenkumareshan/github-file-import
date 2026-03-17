@@ -10,6 +10,7 @@ import { adminBookingsService } from '@/api/adminBookingsService';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { AlertCircle, ArrowLeft, Calendar, User, MapPin, CreditCard, AlertTriangle } from 'lucide-react';
+import { formatCurrency } from '@/utils/currency';
 
 export default function AdminBookingView() {
   const { bookingId } = useParams<{ bookingId: string }>();
@@ -230,7 +231,7 @@ export default function AdminBookingView() {
                   Payment Details
                 </h3>
                 <div className="text-sm space-y-1 ml-6">
-                  <div>Total Amount: ₹{booking.totalPrice?.toFixed(2) || '0.00'}</div>
+                  <div>Total Amount: {formatCurrency(booking.totalPrice || 0)}</div>
                   <div>Payment Method: {booking.paymentMethod || 'N/A'}</div>
                   <div>Payment Date: {booking.paymentDate ? format(new Date(booking.paymentDate), 'dd MMM yyyy') : 'N/A'}</div>
                 </div>

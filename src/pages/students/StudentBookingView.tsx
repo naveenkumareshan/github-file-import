@@ -23,6 +23,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { razorpayService } from "@/api/razorpayService";
 import { getTimingDisplay, getClosedDaysDisplay, formatTime } from "@/utils/timingUtils";
 import { isUUID } from "@/utils/idUtils";
+import { formatCurrency } from "@/utils/currency";
 
 interface ReceiptItem {
   id: string;
@@ -353,7 +354,7 @@ export default function StudentBookingView() {
           .eq("id", dueRecord.id);
       }
 
-      toast({ title: "Payment Successful", description: `₹${dueRemaining.toFixed(2)} paid successfully` });
+      toast({ title: "Payment Successful", description: `${formatCurrency(dueRemaining)} paid successfully` });
       await fetchData();
     } catch (error: any) {
       console.error("Payment processing error:", error);
@@ -501,19 +502,19 @@ export default function StudentBookingView() {
 
         {/* Payment Summary */}
         <CollapsibleSection title="Payment Summary" icon={CreditCard}>
-          <InfoRow label={`${unitLabel} Price (${durationLabel})`} value={`₹${Number(seatPrice).toFixed(2)}`} />
-          {lockerIncluded && <InfoRow label="Locker" value={`₹${Number(lockerPrice).toFixed(2)}`} />}
-          {securityDeposit > 0 && <InfoRow label="Security Deposit" value={`₹${securityDeposit.toFixed(2)}`} />}
+          <InfoRow label={`${unitLabel} Price (${durationLabel})`} value={formatCurrency(seatPrice)} />
+          {lockerIncluded && <InfoRow label="Locker" value={formatCurrency(lockerPrice)} />}
+          {securityDeposit > 0 && <InfoRow label="Security Deposit" value={formatCurrency(securityDeposit)} />}
           {discountAmount > 0 && (
-            <InfoRow label="Discount" value={<span className="text-green-600">-₹{Number(discountAmount).toFixed(2)}</span>} />
+            <InfoRow label="Discount" value={<span className="text-green-600">-{formatCurrency(discountAmount)}</span>} />
           )}
-          <InfoRow label="Total Price" value={<span className="font-bold">₹{Number(totalPrice).toFixed(2)}</span>} />
-          <InfoRow label="Total Paid" value={<span className="text-green-600">₹{totalPaid.toFixed(2)}</span>} />
+          <InfoRow label="Total Price" value={<span className="font-bold">{formatCurrency(totalPrice)}</span>} />
+          <InfoRow label="Total Paid" value={<span className="text-green-600">{formatCurrency(totalPaid)}</span>} />
           <InfoRow
             label="Due Remaining"
             value={
               <span className={dueRemaining > 0 ? "text-destructive font-bold" : "text-green-600"}>
-                ₹{dueRemaining.toFixed(2)}
+                {formatCurrency(dueRemaining)}
               </span>
             }
           />
@@ -539,7 +540,7 @@ export default function StudentBookingView() {
                     Processing...
                   </>
                 ) : (
-                  `Pay Due ₹${dueRemaining.toFixed(2)}`
+                  `Pay Due ${formatCurrency(dueRemaining)}`
                 )}
               </Button>
             </div>
@@ -555,7 +556,7 @@ export default function StudentBookingView() {
               {receipts.map((r) => (
                 <div key={r.id} className="border rounded-xl p-2.5 bg-muted/30">
                   <div className="flex justify-between items-center">
-                    <span className="text-[12px] font-semibold text-foreground">₹{Number(r.amount).toFixed(2)}</span>
+                    <span className="text-[12px] font-semibold text-foreground">{formatCurrency(Number(r.amount))}</span>
                     <span className="text-[10px] text-muted-foreground">{safeFmt(r.created_at, "dd MMM yyyy")}</span>
                   </div>
                   <div className="flex gap-2 mt-1">
