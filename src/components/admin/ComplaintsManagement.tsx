@@ -50,6 +50,7 @@ const getLocation = (c: any) => {
 };
 
 const ComplaintsManagement = () => {
+  const { user: authUser } = useAuth();
   const [complaints, setComplaints] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewTab, setViewTab] = useState<'pending' | 'resolved'>('pending');
