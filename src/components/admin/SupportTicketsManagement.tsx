@@ -24,6 +24,7 @@ const statusBadge: Record<string, string> = {
 };
 
 const SupportTicketsManagement = () => {
+  const { user } = useAuth();
   const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('all');
@@ -31,14 +32,11 @@ const SupportTicketsManagement = () => {
   const [selected, setSelected] = useState<any>(null);
   const [newStatus, setNewStatus] = useState('');
   const [saving, setSaving] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState('');
 
   useEffect(() => { loadTickets(); }, []);
 
   const loadTickets = async () => {
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) setCurrentUserId(user.id);
     const { data } = await supabase.from('support_tickets').select('*, profiles:user_id(name, email, phone)').order('created_at', { ascending: false });
     setTickets((data as any[]) || []);
     setLoading(false);
