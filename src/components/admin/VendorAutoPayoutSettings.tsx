@@ -284,7 +284,7 @@ const VendorAutoPayoutSettings: React.FC = () => {
                       {vendor.autoPayoutSettings.manualRequestCharges.enabled ? (
                         <div className="text-sm">
                           {vendor.autoPayoutSettings.manualRequestCharges.chargeType === 'fixed' 
-                            ? `₹${vendor.autoPayoutSettings.manualRequestCharges.chargeValue}`
+                            ? formatCurrency(Number(vendor.autoPayoutSettings.manualRequestCharges.chargeValue) || 0)
                             : `${vendor.autoPayoutSettings.manualRequestCharges.chargeValue}%`
                           }
                         </div>
