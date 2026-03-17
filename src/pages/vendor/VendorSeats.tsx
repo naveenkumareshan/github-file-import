@@ -220,7 +220,7 @@ const VendorSeats: React.FC = () => {
   // Attendance presence dots - auto-refresh every 30s
   useEffect(() => {
     const fetchAttendance = async () => {
-      const cabinIds = cabins.map(c => c._id);
+      const cabinIds = selectedCabinId !== 'all' ? [selectedCabinId] : cabins.map(c => c._id);
       if (cabinIds.length === 0) return;
       const set = await attendanceService.getAllPropertiesAttendanceToday(cabinIds);
       setAttendanceSet(set);
@@ -228,7 +228,7 @@ const VendorSeats: React.FC = () => {
     fetchAttendance();
     const interval = setInterval(fetchAttendance, 30000);
     return () => clearInterval(interval);
-  }, [cabins]);
+  }, [cabins, selectedCabinId]);
 
   // Resolve custom payment method labels from bookings & receipts
   useEffect(() => {
