@@ -603,15 +603,15 @@ const StudentDashboard: React.FC = () => {
                                   <div className="grid grid-cols-3 gap-2 text-xs">
                                     <div>
                                       <p className="text-muted-foreground text-[10px]">Total Fee</p>
-                                      <p className="font-medium">₹{Number(due.total_fee).toLocaleString()}</p>
+                                      <p className="font-medium">{formatCurrency(Number(due.total_fee))}</p>
                                     </div>
                                     <div>
                                       <p className="text-muted-foreground text-[10px]">Paid</p>
-                                      <p className="font-medium text-emerald-600">₹{(Number(due.advance_paid) + Number(due.paid_amount)).toLocaleString()}</p>
+                                      <p className="font-medium text-emerald-600">{formatCurrency(Number(due.advance_paid) + Number(due.paid_amount))}</p>
                                     </div>
                                     <div>
                                       <p className="text-muted-foreground text-[10px]">Due Amount</p>
-                                      <p className="font-semibold text-red-600">₹{Math.max(0, remaining).toLocaleString()}</p>
+                                      <p className="font-semibold text-red-600">{formatCurrency(Math.max(0, remaining))}</p>
                                     </div>
                                   </div>
                                   <div className="flex justify-between text-xs text-muted-foreground">
