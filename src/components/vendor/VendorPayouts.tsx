@@ -497,7 +497,7 @@ const VendorPayouts: React.FC = () => {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-lg font-semibold">₹{payout.netAmount.toLocaleString()}</p>
+                    <p className="text-lg font-semibold">{formatCurrency(payout.netAmount)}</p>
                     {/* <p className="text-sm text-red-600">Commission: ₹{payout.commission.toLocaleString()}</p> */}
                     <p className="text-sm text-muted-foreground">
                       {payout.processedAt ? `Processed ${new Date(payout.processedAt).toLocaleDateString()}` : 'Pending'}
