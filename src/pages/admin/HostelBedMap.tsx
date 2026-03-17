@@ -246,7 +246,7 @@ const HostelBedMap: React.FC = () => {
   // Attendance presence dots - auto-refresh every 30s
   useEffect(() => {
     const fetchAttendance = async () => {
-      const hostelIds = hostels.map(h => h.id);
+      const hostelIds = selectedHostelId !== 'all' ? [selectedHostelId] : hostels.map(h => h.id);
       if (hostelIds.length === 0) return;
       const set = await attendanceService.getAllPropertiesAttendanceToday(hostelIds);
       setAttendanceSet(set);
@@ -254,7 +254,7 @@ const HostelBedMap: React.FC = () => {
     fetchAttendance();
     const interval = setInterval(fetchAttendance, 30000);
     return () => clearInterval(interval);
-  }, [hostels]);
+  }, [hostels, selectedHostelId]);
 
   // Fetch hostel floors when hostels load or selected hostel changes
   useEffect(() => {
