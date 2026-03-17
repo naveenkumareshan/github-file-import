@@ -26,12 +26,12 @@ const statusBadge: Record<string, string> = {
 
 const SupportPage = () => {
   const navigate = useNavigate();
+  const { user: authUser } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
-  const [currentUserId, setCurrentUserId] = useState('');
   const [adminWhatsapp, setAdminWhatsapp] = useState('');
 
   const [formData, setFormData] = useState({
