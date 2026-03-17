@@ -27,6 +27,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { bookingsService } from "@/api/bookingsService";
 import { RazorpayCheckout } from "@/components/payment/RazorpayCheckout";
 import { BookingDuration } from "@/types/BookingTypes";
+import { formatCurrency } from "@/utils/currency";
 import { CalendarIcon, AlertCircle, X, TicketPercent, Clock, ChevronDown } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {

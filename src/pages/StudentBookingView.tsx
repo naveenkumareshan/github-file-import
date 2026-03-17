@@ -10,6 +10,7 @@ import { adminBookingsService } from '@/api/adminBookingsService';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { AlertCircle, ArrowLeft, Calendar, User, MapPin, CreditCard, AlertTriangle } from 'lucide-react';
+import { formatCurrency } from '@/utils/currency';
 
 export default function AdminBookingView() {
   const { bookingId } = useParams<{ bookingId: string }>();
