@@ -232,5 +232,3 @@ export const vendorService = {
   }
 };
 
-/** @deprecated Use partnerService instead */
-export const partnerService = vendorService;

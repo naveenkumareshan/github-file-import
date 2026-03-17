@@ -34,7 +34,7 @@ import {
   vendorSeatsService, VendorSeat, VendorCabin, StudentProfile, PartnerBookingData, BlockHistoryEntry,
 } from '@/api/vendorSeatsService';
 import { Textarea } from '@/components/ui/textarea';
-import { useVendorEmployeePermissions } from '@/hooks/useVendorEmployeePermissions';
+import { usePartnerEmployeePermissions } from '@/hooks/useVendorEmployeePermissions';
 import { DuePaymentHistory } from '@/components/booking/DuePaymentHistory';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';

@@ -15,7 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { DashboardStatistics } from "@/components/admin/DashboardStatistics";
 import { UserSessionsManagement } from "@/components/admin/UserSessionsManagement";
 import { useSearchParams } from 'react-router-dom';
-import { useVendorEmployeePermissions } from "@/hooks/useVendorEmployeePermissions";
+import { usePartnerEmployeePermissions } from "@/hooks/useVendorEmployeePermissions";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 const AdminDashboard: React.FC = () => {

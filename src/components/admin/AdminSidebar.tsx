@@ -16,7 +16,7 @@ import {
   SidebarFooter,
 } from '@/components/ui/sidebar';
 import { useAuth } from '@/contexts/AuthContext';
-import { useVendorEmployeePermissions } from '@/hooks/useVendorEmployeePermissions';
+import { usePartnerEmployeePermissions } from '@/hooks/useVendorEmployeePermissions';
 import { usePartnerPropertyTypes } from '@/hooks/usePartnerPropertyTypes';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';

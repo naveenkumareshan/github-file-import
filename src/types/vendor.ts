@@ -32,5 +32,3 @@ export interface PartnerBooking {
   createdAt: string;
 }
 
-/** @deprecated Use PartnerBooking instead */
-export type VendorBooking = PartnerBooking;
