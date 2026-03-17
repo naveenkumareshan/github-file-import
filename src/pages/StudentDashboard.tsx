@@ -406,7 +406,7 @@ const StudentDashboard: React.FC = () => {
                           <div>
                             <p className="text-sm text-muted-foreground">Pending Dues</p>
                             <h3 className={`text-2xl font-bold mt-1 ${hasOverdue ? 'text-red-600' : ''}`}>
-                              ₹{totalDueAmount.toLocaleString()}
+                              {formatCurrency(totalDueAmount)}
                             </h3>
                           </div>
                           <div className={`h-12 w-12 rounded-full flex items-center justify-center ${hasOverdue ? 'bg-red-100 dark:bg-red-900' : 'bg-orange-100 dark:bg-orange-900'}`}>
