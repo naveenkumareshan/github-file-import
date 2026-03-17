@@ -502,19 +502,19 @@ export default function StudentBookingView() {
 
         {/* Payment Summary */}
         <CollapsibleSection title="Payment Summary" icon={CreditCard}>
-          <InfoRow label={`${unitLabel} Price (${durationLabel})`} value={`₹${Number(seatPrice).toFixed(2)}`} />
-          {lockerIncluded && <InfoRow label="Locker" value={`₹${Number(lockerPrice).toFixed(2)}`} />}
-          {securityDeposit > 0 && <InfoRow label="Security Deposit" value={`₹${securityDeposit.toFixed(2)}`} />}
+          <InfoRow label={`${unitLabel} Price (${durationLabel})`} value={formatCurrency(seatPrice)} />
+          {lockerIncluded && <InfoRow label="Locker" value={formatCurrency(lockerPrice)} />}
+          {securityDeposit > 0 && <InfoRow label="Security Deposit" value={formatCurrency(securityDeposit)} />}
           {discountAmount > 0 && (
-            <InfoRow label="Discount" value={<span className="text-green-600">-₹{Number(discountAmount).toFixed(2)}</span>} />
+            <InfoRow label="Discount" value={<span className="text-green-600">-{formatCurrency(discountAmount)}</span>} />
           )}
-          <InfoRow label="Total Price" value={<span className="font-bold">₹{Number(totalPrice).toFixed(2)}</span>} />
-          <InfoRow label="Total Paid" value={<span className="text-green-600">₹{totalPaid.toFixed(2)}</span>} />
+          <InfoRow label="Total Price" value={<span className="font-bold">{formatCurrency(totalPrice)}</span>} />
+          <InfoRow label="Total Paid" value={<span className="text-green-600">{formatCurrency(totalPaid)}</span>} />
           <InfoRow
             label="Due Remaining"
             value={
               <span className={dueRemaining > 0 ? "text-destructive font-bold" : "text-green-600"}>
-                ₹{dueRemaining.toFixed(2)}
+                {formatCurrency(dueRemaining)}
               </span>
             }
           />
