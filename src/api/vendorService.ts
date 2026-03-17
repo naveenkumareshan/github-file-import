@@ -213,7 +213,7 @@ export const vendorService = {
     }
   },
 
-  updateEmployee: async (employeeId: string, employeeData: Partial<VendorEmployee>) => {
+  updateEmployee: async (employeeId: string, employeeData: Partial<PartnerEmployee>) => {
     try {
       const response = await axios.put(`/vendor/employees/${employeeId}`, employeeData);
       return { success: true, data: response.data };
