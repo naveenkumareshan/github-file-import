@@ -703,7 +703,7 @@ export function AdminSidebar() {
                       <SidebarMenuSubButton
                         asChild
                         isActive={isActive}
-                        className={isActive ? "border-l-2 border-primary bg-primary/8 text-primary font-medium" : "hover:bg-muted/60"}
+                        className={isActive ? "bg-primary text-primary-foreground font-medium rounded-md shadow-sm [&>a]:text-primary-foreground" : "hover:bg-muted/60 transition-all duration-200"}
                       >
                         <Link to={subItem.url || '#'} className="flex items-center gap-2.5 pl-2">
                           <subItem.icon className="h-3.5 w-3.5 flex-shrink-0" />
