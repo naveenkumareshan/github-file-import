@@ -258,11 +258,11 @@ export const BookingsList = ({
               </p>
               <div className="text-right">
                 {booking.originalPrice && booking.appliedCoupon ? (
-                  <span className="text-[10px] text-muted-foreground line-through mr-1">₹{booking.originalPrice.toLocaleString()}</span>
+                  <span className="text-[10px] text-muted-foreground line-through mr-1">{formatCurrency(booking.originalPrice)}</span>
                 ) : null}
-                <div className="text-[12px] font-bold text-primary">Price: ₹{((booking.totalPrice || 0) - (booking.lockerPrice || 0)).toLocaleString()}</div>
+                <div className="text-[12px] font-bold text-primary">Price: {formatCurrency((booking.totalPrice || 0) - (booking.lockerPrice || 0))}</div>
                 {(booking.lockerPrice || 0) > 0 && (
-                  <div className="text-[10px] text-muted-foreground">Locker: ₹{booking.lockerPrice.toLocaleString()}</div>
+                  <div className="text-[10px] text-muted-foreground">Locker: {formatCurrency(booking.lockerPrice)}</div>
                 )}
               </div>
             </div>
