@@ -278,7 +278,7 @@ const VendorPayouts: React.FC = () => {
                   <div className="p-3 bg-blue-50 rounded-lg">
                     <p className="text-sm font-medium">Selected Bookings Amount</p>
                     <p className="text-xl font-bold text-blue-600">
-                      ₹{calculateSelectedAmount().toLocaleString()}
+                      {formatCurrency(calculateSelectedAmount())}
                     </p>
                   </div>
                 )}
