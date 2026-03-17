@@ -105,6 +105,7 @@ const StudentExcelImport = () => {
   // ── Download template ───────────────────────────────────
 
   const downloadTemplate = async () => {
+    const ExcelJS = (await import('exceljs')).default;
     const wb = new ExcelJS.Workbook();
     const ws = wb.addWorksheet('Students');
 
