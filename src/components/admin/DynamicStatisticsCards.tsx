@@ -6,6 +6,7 @@ import { BarChart, TrendingUp, AlertCircle, UserCheck } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { adminBookingsService } from '@/api/adminBookingsService';
 import { useAuth } from '@/contexts/AuthContext';
+import { formatCurrency } from '@/utils/currency';
 
 export function DynamicStatisticsCards() {
   const { user } = useAuth();
