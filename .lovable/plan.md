@@ -1,71 +1,58 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+## Plan: Enhance Student Scan & Attendance History
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+### What's changing
 
-## Changes
+**1. Scan result shows richer booking information**
+- Update the `mark_qr_attendance` RPC to return additional fields: `booking_start_date`, `booking_end_date`, `booking_duration` (for reading room/hostel), and `meal_type` (for mess)
+- The RPC already returns `meal_type` for mess but the frontend ignores it
+- Update `MarkAttendanceResult` interface to include: `meal_type`, `booking_start_date`, `booking_end_date`, `booking_duration`
+- Update `ScanAttendance.tsx` success card to display:
+  - Booking validity period (e.g., "01 Mar – 31 Mar 2026")
+  - Booking duration type (daily/weekly/monthly)
+  - For mess: show meal type badge (Breakfast/Lunch/Dinner) and "already marked for this meal" message
+  - For hostel: show room-bed label
+  - Date of attendance
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+**2. RPC enhancement — return booking dates + only consider active bookings**
+- Modify `mark_qr_attendance` to also return `booking_start_date` and `booking_end_date` from the matched booking
+- The RPC already only considers current bookings (checks `start_date <= CURRENT_DATE AND end_date >= CURRENT_DATE`), so expired bookings are already excluded — no change needed there
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+**3. Attendance History — add type filter buttons (Hostel, Reading Room, Mess)**
+- Add 3 toggle filter buttons at the top of `AttendanceHistory.tsx`: "All", "Reading Room", "Hostel", "Mess"
+- Filter displayed records by `property_type`
+- Also enrich mess attendance records with mess partner names (currently only cabins and hostels are looked up)
+- Show the property type badge correctly for mess entries (currently only shows "Room" or "Hostel")
+- Include mess attendance from `mess_attendance` table in the history, or rely on the existing `property_attendance` entries for mess (the RPC already inserts into `property_attendance` for mess)
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+### Files to modify
+- **SQL migration**: Update `mark_qr_attendance` to return `booking_start_date`, `booking_end_date`, `booking_duration` in the response jsonb
+- **`src/api/attendanceService.ts`**: Add `meal_type`, `booking_start_date`, `booking_end_date`, `booking_duration` to `MarkAttendanceResult`
+- **`src/pages/student/ScanAttendance.tsx`**: Enhanced success card with booking details, meal type badge, date display
+- **`src/pages/student/AttendanceHistory.tsx`**: Add filter buttons (All/Reading Room/Hostel/Mess), enrich mess property names, fix type badge for mess
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+### Technical details
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
+**RPC changes** — add to the return jsonb objects:
+```sql
+-- For reading_room and hostel returns:
+'booking_start_date', b.start_date,
+'booking_end_date', b.end_date,
+'booking_duration', b.booking_duration  -- (reading room only)
 
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
+-- For mess, already returns meal_type — just add:
+'booking_start_date', ms.start_date,
+'booking_end_date', ms.end_date
+```
 
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
+**AttendanceHistory filter** — simple state-based filter:
+```tsx
+const [typeFilter, setTypeFilter] = useState<string>('all');
+// Filter buttons: All | Reading Room | Hostel | Mess
+// Applied before pagination
+const filtered = typeFilter === 'all' ? records : records.filter(r => r.property_type === typeFilter);
+```
 
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
-
-**Reviews section**: Shown below the booking flow (not in a tab)
-
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
-
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
-
-## File Summary
-
-| File | Change |
-|------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+**Mess name enrichment** — in `fetchRecords`, add lookup for mess partner names alongside cabins and hostels.
 
