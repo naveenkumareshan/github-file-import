@@ -64,26 +64,26 @@ const AttendanceHistory: React.FC = () => {
     const nameMap = new Map<string, string>();
 
     // Fetch names in parallel
-    const namePromises: Promise<void>[] = [];
+    const namePromises: Promise<any>[] = [];
     if (cabinIds.length > 0) {
       namePromises.push(
         supabase.from('cabins').select('id, name').in('id', cabinIds).then(({ data: cabins }) => {
           (cabins || []).forEach((c: any) => nameMap.set(c.id, c.name));
-        })
+        }) as Promise<any>
       );
     }
     if (hostelIds.length > 0) {
       namePromises.push(
         supabase.from('hostels').select('id, name').in('id', hostelIds).then(({ data: hostels }) => {
           (hostels || []).forEach((h: any) => nameMap.set(h.id, h.name));
-        })
+        }) as Promise<any>
       );
     }
     if (messIds.length > 0) {
       namePromises.push(
         supabase.from('mess_partners').select('id, name').in('id', messIds).then(({ data: messes }) => {
           (messes || []).forEach((m: any) => nameMap.set(m.id, m.name));
-        })
+        }) as Promise<any>
       );
     }
     await Promise.all(namePromises);
