@@ -122,13 +122,13 @@ const PartnerWithUs: React.FC = () => {
       <section className="relative overflow-hidden bg-gradient-to-br from-primary/5 via-background to-secondary/5 py-16 px-4">
         <div className="max-w-4xl mx-auto text-center space-y-6">
           <Badge className="bg-secondary/10 text-secondary border-secondary/20 text-sm px-4 py-1">
-            Trusted by 100+ Partners across India
+            🇮🇳 India's First Complete Student Living Ecosystem
           </Badge>
           <h1 className="text-3xl md:text-5xl font-bold text-foreground leading-tight">
-            Grow Your <span className="text-primary">Student Housing</span> Business
+            India's First <span className="text-primary">All-in-One Platform</span> for Student Living
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Whether you run a reading room, hostel, PG, mess, or laundry — InhaleStays gives you the tools to automate bookings, collect payments, and delight students.
+            The only platform in India that unifies reading rooms, hostels, PGs, mess, and laundry — so you can automate bookings, collect payments, and delight students from a single dashboard.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <Button size="lg" onClick={scrollToForm} className="gap-2 w-full sm:w-auto">
