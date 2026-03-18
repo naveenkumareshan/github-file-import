@@ -120,6 +120,7 @@ const PartnerEnquiries: React.FC = () => {
         <div>
           <h1 className="text-xl font-bold text-foreground">Partner Enquiries</h1>
           <p className="text-sm text-muted-foreground">Manage demo requests from potential partners</p>
+          <PartnerLinkCopy />
         </div>
         <div className="flex items-center gap-2">
           <Badge className="bg-blue-100 text-blue-800">{filtered.length} total</Badge>
