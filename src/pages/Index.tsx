@@ -7,6 +7,7 @@ import {
   BookOpen, Hotel, Wifi, Shield, Clock, Coffee,
   Star, Users, ChevronRight, Leaf, CheckCircle,
   ClipboardList, Shirt, BookMarked, UtensilsCrossed,
+  Download, Smartphone,
 } from 'lucide-react';
 
 const WHY_FEATURES = [
@@ -194,125 +195,192 @@ const AuthenticatedHome: React.FC<{ user: any }> = ({ user }) => {
 };
 
 /* ─── Public/guest marketing view ───────────────────────────────────── */
-const GuestHome: React.FC = () => {
-  const greeting = (() => {
-    const h = new Date().getHours();
-    if (h < 12) return 'Good morning';
-    if (h < 17) return 'Good afternoon';
-    return 'Good evening';
-  })();
+const SERVICES = [
+  { icon: BookOpen, title: 'Reading Rooms', desc: 'Premium study spaces with AC, WiFi & ergonomic seating.', to: '/cabins', gradient: 'from-brand-blue to-brand-blue-light' },
+  { icon: Hotel, title: 'Hostels', desc: 'Comfortable PG & hostel stays near your campus.', to: '/hostels', gradient: 'from-brand-teal to-brand-teal-light' },
+  { icon: UtensilsCrossed, title: 'Mess & Food', desc: 'Hygienic, home-style meals at affordable prices.', to: '/mess', gradient: 'from-brand-green to-brand-green-light' },
+  { icon: Shirt, title: 'Laundry', desc: 'Doorstep laundry pickup & delivery service.', to: '/laundry', gradient: 'from-purple-500 to-pink-400' },
+];
 
+const WHY_FEATURES_FULL = [
+  { icon: BookOpen, title: 'Premium Spaces', desc: 'Quiet, well-equipped rooms designed for focused studying.', border: 'border-l-brand-blue', gradient: 'from-brand-blue to-brand-blue-light' },
+  { icon: Shield, title: 'Safe & Secure', desc: '24/7 CCTV surveillance and secure biometric access control.', border: 'border-l-brand-green', gradient: 'from-brand-green to-brand-green-light' },
+  { icon: Clock, title: 'Open 24/7', desc: 'Study any time — our spaces are always accessible.', border: 'border-l-brand-teal', gradient: 'from-brand-teal to-brand-teal-light' },
+  { icon: Wifi, title: 'High-Speed WiFi', desc: 'Blazing fast internet at every desk and room.', border: 'border-l-purple-500', gradient: 'from-purple-500 to-pink-400' },
+  { icon: Coffee, title: 'Modern Amenities', desc: 'Ergonomic furniture, charging points & refreshment zones.', border: 'border-l-orange-500', gradient: 'from-orange-500 to-amber-400' },
+];
+
+const GuestHome: React.FC = () => {
   return (
     <div className="flex flex-col bg-background">
-      {/* Hero */}
-      <section className="relative bg-gradient-to-br from-primary via-primary/90 to-accent/80 text-primary-foreground px-3 pt-4 pb-8 overflow-hidden">
-        <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/3 blur-2xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-32 h-32 bg-secondary/20 rounded-full translate-y-1/2 -translate-x-1/4 blur-xl pointer-events-none" />
+      {/* ── Hero Section ── */}
+      <section className="relative bg-gradient-hero text-white px-4 pt-8 pb-12 overflow-hidden">
+        {/* Floating blobs */}
+        <div className="absolute top-6 right-0 w-56 h-56 bg-brand-teal/20 rounded-full blur-3xl animate-float pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-40 h-40 bg-brand-green/15 rounded-full blur-2xl animate-float pointer-events-none" style={{ animationDelay: '1.5s' }} />
+        <div className="absolute top-1/2 left-1/3 w-28 h-28 bg-brand-blue-light/10 rounded-full blur-2xl pointer-events-none" />
 
         <div className="relative max-w-lg mx-auto">
-          <div className="flex items-center gap-2 mb-2">
-            <img src={inhalestaysLogo} alt="InhaleStays" className="w-7 h-7 object-contain bg-white rounded-lg p-0.5" />
-            <p className="text-primary-foreground/80 text-[13px] font-medium">{greeting} 👋</p>
+          {/* Badge */}
+          <div className="inline-flex items-center gap-1.5 bg-white/15 backdrop-blur-sm rounded-full px-3 py-1 mb-4 animate-fade-in">
+            <Leaf className="w-3.5 h-3.5 text-brand-green-light" />
+            <span className="text-[11px] font-semibold tracking-wide uppercase">India's First Student Ecosystem</span>
           </div>
 
-          <h1 className="text-xl font-bold leading-tight mb-1.5">Your Perfect Study Space</h1>
-          <p className="text-primary-foreground/75 text-[12px] mb-4 max-w-xs">
-            Book reading rooms &amp; hostels designed for focused study and comfort.
+          <div className="flex items-center gap-2 mb-3">
+            <img src={inhalestaysLogo} alt="InhaleStays" className="w-9 h-9 object-contain bg-white rounded-xl p-0.5 shadow-lg" />
+            <span className="font-bold text-lg">InhaleStays</span>
+          </div>
+
+          <h1 className="text-2xl font-bold leading-tight mb-2 animate-fade-in">
+            Your Complete<br />Student Living App
+          </h1>
+          <p className="text-white/75 text-[13px] mb-5 max-w-xs leading-relaxed">
+            Reading rooms, hostels, mess & laundry — everything a student needs, in one app.
           </p>
 
-          <div className="flex gap-2 mb-5">
-            {[{ label: '500+', sub: 'Students' }, { label: '50+', sub: 'Rooms' }, { label: '24/7', sub: 'Access' }].map((s) => (
-              <div key={s.sub} className="flex-1 bg-white/10 rounded-xl py-2 text-center">
-                <p className="font-bold text-[13px] leading-none">{s.label}</p>
-                <p className="text-primary-foreground/70 text-[10px] mt-0.5">{s.sub}</p>
+          {/* App download buttons */}
+          <div className="flex gap-2.5 mb-6">
+            <a href="#" className="flex items-center gap-2 bg-white text-brand-navy rounded-xl px-4 py-2.5 shadow-brand hover:scale-105 transition-all duration-300">
+              <Download className="w-4 h-4" />
+              <div className="text-left">
+                <p className="text-[9px] leading-none text-brand-navy/60">Download on</p>
+                <p className="text-[12px] font-bold leading-tight">App Store</p>
               </div>
-            ))}
+            </a>
+            <a href="#" className="flex items-center gap-2 bg-white text-brand-navy rounded-xl px-4 py-2.5 shadow-brand hover:scale-105 transition-all duration-300">
+              <Smartphone className="w-4 h-4" />
+              <div className="text-left">
+                <p className="text-[9px] leading-none text-brand-navy/60">Get it on</p>
+                <p className="text-[12px] font-bold leading-tight">Google Play</p>
+              </div>
+            </a>
           </div>
 
-          <div className="grid grid-cols-2 gap-2.5">
-            <Link to="/cabins" className="block">
-              <div className="bg-white text-primary rounded-2xl p-3 flex flex-col items-center gap-1.5 shadow-lg active:scale-95 transition-transform">
-                <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
-                  <BookOpen className="w-5 h-5 text-primary" />
-                </div>
-                <span className="font-semibold text-[12px] text-center leading-tight">Book Reading Room</span>
-                <ChevronRight className="w-3.5 h-3.5 text-primary/60" />
-              </div>
-            </Link>
-            <Link to="/hostels" className="block">
-              <div className="bg-secondary text-secondary-foreground rounded-2xl p-3 flex flex-col items-center gap-1.5 shadow-lg active:scale-95 transition-transform">
-                <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                  <Hotel className="w-5 h-5" />
-                </div>
-                <span className="font-semibold text-[12px] text-center leading-tight">Find a Hostel</span>
-                <ChevronRight className="w-3.5 h-3.5 text-secondary-foreground/60" />
-              </div>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Why Choose Us — auto carousel */}
-      <section className="px-3 py-4 bg-background">
-        <div className="max-w-lg mx-auto">
-          <div className="flex items-center gap-1.5 mb-3">
-            <Leaf className="w-3.5 h-3.5 text-primary" />
-            <h2 className="font-semibold text-[15px] text-foreground">Why InhaleStays?</h2>
-          </div>
-          <WhyCarousel />
-        </div>
-      </section>
-
-      {/* How It Works */}
-      <section className="px-3 py-4 bg-muted/40">
-        <div className="max-w-lg mx-auto">
-          <div className="flex items-center gap-1.5 mb-3">
-            <Users className="w-3.5 h-3.5 text-secondary" />
-            <h2 className="font-semibold text-[15px] text-foreground">How It Works</h2>
-          </div>
-          <div className="flex gap-2.5 overflow-x-auto pb-2 -mx-3 px-3 scrollbar-hide">
+          {/* Stats */}
+          <div className="flex gap-2">
             {[
-              { step: '1', title: 'Choose a Room', desc: 'Browse reading rooms or hostels near you.', from: 'from-primary', to: 'to-primary/60' },
-              { step: '2', title: 'Select Your Seat', desc: 'Pick your favourite spot from the layout.', from: 'from-secondary', to: 'to-secondary/60' },
-              { step: '3', title: 'Confirm & Enjoy', desc: 'Pay, receive confirmation, and arrive!', from: 'from-accent', to: 'to-accent/60' },
+              { label: '500+', sub: 'Students', bg: 'bg-brand-blue/30' },
+              { label: '50+', sub: 'Rooms', bg: 'bg-brand-green/30' },
+              { label: '24/7', sub: 'Access', bg: 'bg-brand-teal/30' },
             ].map((s) => (
-              <Card key={s.step} className="flex-shrink-0 w-40 border-0 shadow-sm bg-card">
-                <CardContent className="p-3 flex flex-col gap-2">
-                  <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${s.from} ${s.to} flex items-center justify-center text-primary-foreground font-bold text-[13px] shadow-sm`}>
-                    {s.step}
-                  </div>
-                  <p className="font-semibold text-[12px] text-foreground">{s.title}</p>
-                  <p className="text-muted-foreground text-[11px] leading-relaxed">{s.desc}</p>
-                </CardContent>
-              </Card>
+              <div key={s.sub} className={`flex-1 ${s.bg} backdrop-blur-sm rounded-xl py-2.5 text-center border border-white/10`}>
+                <p className="font-bold text-[15px] leading-none">{s.label}</p>
+                <p className="text-white/70 text-[10px] mt-0.5">{s.sub}</p>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section className="px-3 py-4 bg-background">
+      {/* ── Our Services ── */}
+      <section className="px-4 py-6 bg-background">
+        <div className="max-w-lg mx-auto">
+          <div className="flex items-center gap-1.5 mb-1">
+            <ClipboardList className="w-4 h-4 text-brand-blue" />
+            <h2 className="font-bold text-[16px] text-foreground">Our Services</h2>
+          </div>
+          <p className="text-muted-foreground text-[12px] mb-4">Everything you need, all in one place.</p>
+
+          <div className="grid grid-cols-2 gap-3">
+            {SERVICES.map((s) => (
+              <Link key={s.title} to={s.to} className="block">
+                <div className={`relative bg-gradient-to-br ${s.gradient} rounded-2xl p-4 text-white shadow-brand hover:scale-105 transition-all duration-300 overflow-hidden min-h-[130px] flex flex-col justify-between`}>
+                  <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/3 translate-x-1/3 blur-xl pointer-events-none" />
+                  <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center mb-2">
+                    <s.icon className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-[13px] leading-tight">{s.title}</p>
+                    <p className="text-white/80 text-[10px] mt-0.5 leading-snug">{s.desc}</p>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Why InhaleStays ── */}
+      <section className="px-4 py-6 bg-gradient-subtle">
+        <div className="max-w-lg mx-auto">
+          <div className="flex items-center gap-1.5 mb-1">
+            <Leaf className="w-4 h-4 text-brand-green" />
+            <h2 className="font-bold text-[16px] text-foreground">Why InhaleStays?</h2>
+          </div>
+          <p className="text-muted-foreground text-[12px] mb-4">Trusted by hundreds of students across India.</p>
+
+          <div className="space-y-2.5">
+            {WHY_FEATURES_FULL.map((f) => (
+              <div key={f.title} className={`flex items-center gap-3 bg-card rounded-2xl p-3.5 border-l-4 ${f.border} shadow-card hover:shadow-card-hover hover:scale-[1.02] transition-all duration-300`}>
+                <div className={`w-10 h-10 bg-gradient-to-br ${f.gradient} rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm`}>
+                  <f.icon className="w-4.5 h-4.5 text-white" />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-semibold text-[13px] text-foreground">{f.title}</p>
+                  <p className="text-muted-foreground text-[11px] leading-relaxed">{f.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── How It Works ── */}
+      <section className="px-4 py-6 bg-background">
+        <div className="max-w-lg mx-auto">
+          <div className="flex items-center gap-1.5 mb-1">
+            <Users className="w-4 h-4 text-brand-teal" />
+            <h2 className="font-bold text-[16px] text-foreground">How It Works</h2>
+          </div>
+          <p className="text-muted-foreground text-[12px] mb-4">Get started in 3 simple steps.</p>
+
+          <div className="relative space-y-3">
+            {/* Connecting line */}
+            <div className="absolute left-[22px] top-6 bottom-6 w-0.5 bg-gradient-to-b from-brand-blue via-brand-teal to-brand-green" />
+
+            {[
+              { step: '1', title: 'Choose a Service', desc: 'Browse reading rooms, hostels, mess or laundry near you.', gradient: 'from-brand-blue to-brand-blue-light' },
+              { step: '2', title: 'Select & Customize', desc: 'Pick your seat, room, meal plan or laundry package.', gradient: 'from-brand-teal to-brand-teal-light' },
+              { step: '3', title: 'Confirm & Enjoy', desc: 'Pay securely, get confirmation, and start using!', gradient: 'from-brand-green to-brand-green-light' },
+            ].map((s) => (
+              <div key={s.step} className="relative flex items-start gap-3.5 pl-0">
+                <div className={`relative z-10 w-11 h-11 bg-gradient-to-br ${s.gradient} rounded-xl flex items-center justify-center text-white font-bold text-[14px] shadow-brand flex-shrink-0`}>
+                  {s.step}
+                </div>
+                <div className="bg-card rounded-2xl p-3.5 flex-1 shadow-card border">
+                  <p className="font-semibold text-[13px] text-foreground">{s.title}</p>
+                  <p className="text-muted-foreground text-[11px] leading-relaxed mt-0.5">{s.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Testimonials ── */}
+      <section className="px-4 py-6 bg-gradient-subtle">
         <div className="max-w-lg mx-auto">
           <div className="flex items-center gap-1.5 mb-3">
-            <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
-            <h2 className="font-semibold text-[15px] text-foreground">What Students Say</h2>
+            <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+            <h2 className="font-bold text-[16px] text-foreground">What Students Say</h2>
           </div>
-          <div className="flex gap-2.5 overflow-x-auto pb-2 -mx-3 px-3 scrollbar-hide">
+          <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
             {[
-              { name: 'Arjun Patel', role: 'Engineering Student', initial: 'A', review: 'Perfect quiet environment for studying. Booking is super easy!', color: 'bg-primary' },
-              { name: 'Priya Sharma', role: 'CA Aspirant', initial: 'P', review: 'Amazing WiFi speed. Using InhaleStays for 6 months now!', color: 'bg-secondary' },
-              { name: 'Rahul Kumar', role: 'Medical Student', initial: 'R', review: 'Clean, comfortable, affordable. 24/7 access is perfect.', color: 'bg-accent' },
+              { name: 'Arjun Patel', role: 'Engineering Student', initial: 'A', review: 'Perfect quiet environment for studying. Booking is super easy!', gradient: 'from-brand-blue to-brand-blue-light', border: 'border-t-brand-blue' },
+              { name: 'Priya Sharma', role: 'CA Aspirant', initial: 'P', review: 'Amazing WiFi speed. Using InhaleStays for 6 months now!', gradient: 'from-brand-green to-brand-green-light', border: 'border-t-brand-green' },
+              { name: 'Rahul Kumar', role: 'Medical Student', initial: 'R', review: 'Clean, comfortable, affordable. 24/7 access is perfect.', gradient: 'from-brand-teal to-brand-teal-light', border: 'border-t-brand-teal' },
             ].map((t) => (
-              <Card key={t.name} className="flex-shrink-0 w-56 border-0 shadow-sm bg-card">
-                <CardContent className="p-3 flex flex-col gap-1.5">
+              <Card key={t.name} className={`flex-shrink-0 w-60 border-0 border-t-4 ${t.border} shadow-card bg-card`}>
+                <CardContent className="p-4 flex flex-col gap-2">
                   <div className="flex">
-                    {[...Array(5)].map((_, i) => <Star key={i} className="w-3 h-3 text-yellow-400 fill-yellow-400" />)}
+                    {[...Array(5)].map((_, i) => <Star key={i} className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />)}
                   </div>
-                  <p className="text-muted-foreground text-[11px] leading-relaxed">"{t.review}"</p>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <div className={`w-7 h-7 ${t.color} rounded-lg flex items-center justify-center text-primary-foreground text-[10px] font-bold`}>{t.initial}</div>
+                  <p className="text-muted-foreground text-[12px] leading-relaxed italic">"{t.review}"</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className={`w-9 h-9 bg-gradient-to-br ${t.gradient} rounded-xl flex items-center justify-center text-white text-[12px] font-bold shadow-sm`}>{t.initial}</div>
                     <div>
-                      <p className="text-[11px] font-semibold text-foreground">{t.name}</p>
+                      <p className="text-[12px] font-semibold text-foreground">{t.name}</p>
                       <p className="text-[10px] text-muted-foreground">{t.role}</p>
                     </div>
                   </div>
@@ -323,15 +391,48 @@ const GuestHome: React.FC = () => {
         </div>
       </section>
 
-      {/* Bottom CTA */}
-      <section className="px-3 py-6 bg-gradient-to-br from-primary to-primary/80 text-primary-foreground">
-        <div className="max-w-lg mx-auto text-center space-y-3">
-          <CheckCircle className="w-8 h-8 mx-auto text-secondary" />
-          <h2 className="font-bold text-base">Ready to get started?</h2>
-          <p className="text-primary-foreground/75 text-[12px]">Join hundreds of students who trust InhaleStays for their study space.</p>
+      {/* ── Download App CTA ── */}
+      <section className="relative bg-gradient-to-br from-brand-green via-brand-teal to-brand-blue text-white px-4 py-8 overflow-hidden">
+        <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-3xl animate-float pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-brand-navy/20 rounded-full blur-2xl pointer-events-none" />
+
+        <div className="relative max-w-lg mx-auto text-center">
+          <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+            <Smartphone className="w-8 h-8" />
+          </div>
+          <h2 className="font-bold text-lg mb-1">Download the App</h2>
+          <p className="text-white/80 text-[12px] mb-5 max-w-xs mx-auto">Get the full InhaleStays experience on your phone. Available on iOS & Android.</p>
+
+          <div className="flex justify-center gap-3">
+            <a href="#" className="flex items-center gap-2 bg-white text-brand-navy rounded-xl px-5 py-3 shadow-brand-lg hover:scale-105 transition-all duration-300">
+              <Download className="w-4 h-4" />
+              <div className="text-left">
+                <p className="text-[9px] leading-none text-brand-navy/60">Download on</p>
+                <p className="text-[13px] font-bold leading-tight">App Store</p>
+              </div>
+            </a>
+            <a href="#" className="flex items-center gap-2 bg-white text-brand-navy rounded-xl px-5 py-3 shadow-brand-lg hover:scale-105 transition-all duration-300">
+              <Smartphone className="w-4 h-4" />
+              <div className="text-left">
+                <p className="text-[9px] leading-none text-brand-navy/60">Get it on</p>
+                <p className="text-[13px] font-bold leading-tight">Google Play</p>
+              </div>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Footer CTA ── */}
+      <section className="relative bg-gradient-to-br from-brand-navy to-primary text-white px-4 py-8 overflow-hidden">
+        <div className="absolute top-0 left-1/4 w-32 h-32 bg-brand-teal/15 rounded-full blur-2xl pointer-events-none" />
+
+        <div className="relative max-w-lg mx-auto text-center space-y-3">
+          <CheckCircle className="w-9 h-9 mx-auto text-brand-green-light" />
+          <h2 className="font-bold text-lg">Ready to get started?</h2>
+          <p className="text-white/75 text-[12px]">Join hundreds of students who trust InhaleStays for their study space & living needs.</p>
           <Link to="/cabins">
-            <Button className="bg-white text-primary hover:bg-white/90 rounded-xl px-6 py-3 text-[13px] font-semibold shadow-lg w-full max-w-xs mx-auto">
-              Explore Reading Rooms <ChevronRight className="w-3.5 h-3.5 ml-1" />
+            <Button className="bg-white text-brand-navy hover:bg-white/90 rounded-xl px-6 py-3 text-[13px] font-bold shadow-brand-lg w-full max-w-xs mx-auto mt-2 hover:scale-105 transition-all duration-300">
+              Explore Services <ChevronRight className="w-4 h-4 ml-1" />
             </Button>
           </Link>
         </div>
