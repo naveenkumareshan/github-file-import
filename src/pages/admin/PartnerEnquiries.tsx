@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Phone, Mail, MapPin, Search, Building, Hotel, UtensilsCrossed, Shirt, Loader2, ExternalLink } from 'lucide-react';
+import { Phone, Mail, MapPin, Search, Building, Hotel, UtensilsCrossed, Shirt, Loader2, ExternalLink, Copy, Check } from 'lucide-react';
 import { format } from 'date-fns';
 
 const STATUS_OPTIONS = ['new', 'contacted', 'follow_up', 'converted', 'closed'] as const;
