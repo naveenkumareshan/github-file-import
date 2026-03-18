@@ -11,15 +11,15 @@ import { toast } from '@/hooks/use-toast';
 import {
   Phone, ArrowRight, CheckCircle2, Building, Hotel, UtensilsCrossed, Shirt,
   Users, MapPin, TrendingUp, BarChart2, Shield, Clock, Zap, Star,
-  Smartphone, CreditCard, ClipboardCheck, Bell, ChevronDown
+  Smartphone, CreditCard, ClipboardCheck, Bell, ChevronDown, Sparkles
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const PROPERTY_TYPES = [
-  { key: 'reading_room', label: 'Reading Room', icon: Building, color: 'bg-primary/10 text-primary' },
-  { key: 'hostel', label: 'Hostel / PG', icon: Hotel, color: 'bg-secondary/10 text-secondary' },
-  { key: 'mess', label: 'Mess / Food', icon: UtensilsCrossed, color: 'bg-orange-100 text-orange-700' },
-  { key: 'laundry', label: 'Laundry', icon: Shirt, color: 'bg-purple-100 text-purple-700' },
+  { key: 'reading_room', label: 'Reading Room', icon: Building, gradient: 'from-brand-blue to-brand-blue-light' },
+  { key: 'hostel', label: 'Hostel / PG', icon: Hotel, gradient: 'from-brand-green to-brand-teal' },
+  { key: 'mess', label: 'Mess / Food', icon: UtensilsCrossed, gradient: 'from-orange-500 to-amber-400' },
+  { key: 'laundry', label: 'Laundry', icon: Shirt, gradient: 'from-purple-600 to-pink-500' },
 ];
 
 const FEATURES: Record<string, { title: string; desc: string; icon: React.ComponentType<any> }[]> = {
@@ -50,14 +50,14 @@ const FEATURES: Record<string, { title: string; desc: string; icon: React.Compon
 };
 
 const PROCESS_STEPS = [
-  { step: '01', title: 'Request a Demo', desc: 'Fill the form below with your details' },
-  { step: '02', title: 'We Call You', desc: 'Our team reaches out within 24 hours' },
-  { step: '03', title: 'Setup & Onboard', desc: 'We configure your property in under 48 hours' },
-  { step: '04', title: 'Go Live', desc: 'Start managing bookings and collecting payments' },
+  { step: '01', title: 'Request a Demo', desc: 'Fill the form below with your details', color: 'from-brand-blue to-brand-blue-light' },
+  { step: '02', title: 'We Call You', desc: 'Our team reaches out within 24 hours', color: 'from-brand-green to-brand-green-light' },
+  { step: '03', title: 'Setup & Onboard', desc: 'We configure your property in under 48 hours', color: 'from-brand-teal to-brand-teal-light' },
+  { step: '04', title: 'Go Live', desc: 'Start managing bookings and collecting payments', color: 'from-orange-500 to-amber-400' },
 ];
 
 const FAQS = [
-  { q: 'How much does it cost to partner?', a: 'We offer flexible	    plans starting from free. Contact us for a custom quote based on your property size and needs.' },
+  { q: 'How much does it cost to partner?', a: 'We offer flexible plans starting from free. Contact us for a custom quote based on your property size and needs.' },
   { q: 'How long does setup take?', a: 'Typically under 48 hours. We handle the complete setup — rooms, seats, pricing, and payment configuration.' },
   { q: 'Do I need technical knowledge?', a: 'Not at all! Our platform is designed for non-technical users. We also provide training and ongoing support.' },
   { q: 'Can I manage multiple properties?', a: 'Yes! You can manage reading rooms, hostels, mess, and laundry — all from one dashboard.' },
@@ -66,6 +66,53 @@ const FAQS = [
 ];
 
 const PHONE_NUMBER = '+919876543210';
+
+const STATS = [
+  { value: '100+', label: 'Active Partners', bg: 'from-brand-blue to-brand-blue-light', icon: Users },
+  { value: '25+', label: 'Cities', bg: 'from-brand-green to-brand-green-light', icon: MapPin },
+  { value: '10,000+', label: 'Students Served', bg: 'from-brand-teal to-brand-teal-light', icon: Star },
+  { value: '₹2Cr+', label: 'Revenue Processed', bg: 'from-orange-500 to-amber-400', icon: TrendingUp },
+];
+
+const WHY_ITEMS = [
+  {
+    icon: Star,
+    title: "India's First Student Ecosystem",
+    desc: "The only platform built exclusively for the Indian student housing market — covering reading rooms, hostels, mess, and laundry under one roof.",
+    border: 'border-l-brand-blue',
+    iconBg: 'from-brand-blue to-brand-blue-light',
+  },
+  {
+    icon: MapPin,
+    title: "Built for Bharat",
+    desc: "Designed for Indian workflows: UPI payments, WhatsApp notifications, and pricing models that match how Indian students live.",
+    border: 'border-l-brand-green',
+    iconBg: 'from-brand-green to-brand-green-light',
+  },
+  {
+    icon: Zap,
+    title: "End-to-End, Not Piecemeal",
+    desc: "No more juggling spreadsheets, WhatsApp groups, and cash registers. One dashboard to manage everything.",
+    border: 'border-l-brand-teal',
+    iconBg: 'from-brand-teal to-brand-teal-light',
+  },
+  {
+    icon: Smartphone,
+    title: "Student-First Experience",
+    desc: "Students discover, book, pay, and manage their stay from their phone — the way Gen Z expects.",
+    border: 'border-l-purple-500',
+    iconBg: 'from-purple-500 to-pink-500',
+  },
+];
+
+const COMMON_FEATURES = [
+  { icon: BarChart2, title: 'Reports & Analytics', desc: 'Revenue, occupancy, and booking reports' },
+  { icon: Bell, title: 'Notifications', desc: 'WhatsApp & email alerts for bookings' },
+  { icon: Shield, title: 'Secure Payments', desc: 'Razorpay integration with settlement tracking' },
+  { icon: Users, title: 'Employee Management', desc: 'Role-based access for your team' },
+  { icon: Smartphone, title: 'Mobile First', desc: 'Works perfectly on any device' },
+  { icon: Zap, title: 'Instant Setup', desc: 'Go live within 48 hours' },
+];
 
 const PartnerWithUs: React.FC = () => {
   const formRef = useRef<HTMLDivElement>(null);
@@ -119,22 +166,41 @@ const PartnerWithUs: React.FC = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-primary/5 via-background to-secondary/5 py-16 px-4">
-        <div className="max-w-4xl mx-auto text-center space-y-6">
-          <Badge className="bg-secondary/10 text-secondary border-secondary/20 text-sm px-4 py-1">
+      <section className="relative overflow-hidden bg-gradient-hero py-20 md:py-28 px-4">
+        {/* Decorative blobs */}
+        <div className="absolute top-10 left-10 w-72 h-72 bg-brand-teal/20 rounded-full blur-3xl animate-float" />
+        <div className="absolute bottom-10 right-10 w-96 h-96 bg-brand-green/15 rounded-full blur-3xl animate-float" style={{ animationDelay: '1.5s' }} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-brand-blue-light/10 rounded-full blur-3xl" />
+
+        <div className="max-w-4xl mx-auto text-center space-y-8 relative z-10">
+          <Badge className="bg-white/15 text-white border-white/25 text-sm px-5 py-1.5 backdrop-blur-sm animate-fade-in">
+            <Sparkles className="h-3.5 w-3.5 mr-1.5" />
             🇮🇳 India's First Complete Student Living Ecosystem
           </Badge>
-          <h1 className="text-3xl md:text-5xl font-bold text-foreground leading-tight">
-            India's First <span className="text-primary">All-in-One Platform</span> for Student Living
+          <h1 className="text-4xl md:text-6xl font-bold text-white leading-tight animate-fade-in">
+            India's First{' '}
+            <span className="bg-gradient-to-r from-brand-teal-light via-brand-green-light to-brand-teal bg-clip-text text-transparent">
+              All-in-One Platform
+            </span>
+            <br />for Student Living
           </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-lg md:text-xl text-white/80 max-w-2xl mx-auto animate-fade-in">
             The only platform in India that unifies reading rooms, hostels, PGs, mess, and laundry — so you can automate bookings, collect payments, and delight students from a single dashboard.
           </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Button size="lg" onClick={scrollToForm} className="gap-2 w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in">
+            <Button
+              size="lg"
+              onClick={scrollToForm}
+              className="gap-2 w-full sm:w-auto bg-white text-brand-navy hover:bg-white/90 font-semibold text-base px-8 shadow-brand-lg hover-lift"
+            >
               Request a Demo <ArrowRight className="h-4 w-4" />
             </Button>
-            <Button size="lg" variant="outline" asChild className="gap-2 w-full sm:w-auto">
+            <Button
+              size="lg"
+              variant="outline"
+              asChild
+              className="gap-2 w-full sm:w-auto border-white/40 text-white hover:bg-white/15 backdrop-blur-sm text-base px-8"
+            >
               <a href={`tel:${PHONE_NUMBER}`}>
                 <Phone className="h-4 w-4" /> Call Us Now
               </a>
@@ -144,66 +210,49 @@ const PartnerWithUs: React.FC = () => {
       </section>
 
       {/* Stats */}
-      <section className="py-12 px-4 border-b">
-        <div className="max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-          {[
-            { value: '100+', label: 'Active Partners' },
-            { value: '25+', label: 'Cities' },
-            { value: '10,000+', label: 'Students Served' },
-            { value: '₹2Cr+', label: 'Revenue Processed' },
-          ].map(s => (
-            <div key={s.label}>
-              <p className="text-2xl md:text-3xl font-bold text-primary">{s.value}</p>
-              <p className="text-sm text-muted-foreground mt-1">{s.label}</p>
+      <section className="py-14 px-4 -mt-10 relative z-20">
+        <div className="max-w-4xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4">
+          {STATS.map((s, i) => (
+            <div
+              key={s.label}
+              className={`bg-gradient-to-br ${s.bg} rounded-2xl p-5 text-center text-white shadow-brand hover-lift animate-fade-in`}
+              style={{ animationDelay: `${i * 0.1}s` }}
+            >
+              <s.icon className="h-6 w-6 mx-auto mb-2 opacity-70" />
+              <p className="text-2xl md:text-3xl font-bold">{s.value}</p>
+              <p className="text-sm opacity-85 mt-1">{s.label}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* Why InhaleStays */}
-      <section className="py-16 px-4 bg-muted/30">
-        <div className="max-w-4xl mx-auto space-y-8">
-          <div className="text-center space-y-2">
-            <Badge className="bg-primary/10 text-primary border-primary/20 text-sm px-4 py-1">
+      <section className="py-16 px-4">
+        <div className="max-w-4xl mx-auto space-y-10">
+          <div className="text-center space-y-3">
+            <Badge className="bg-gradient-to-r from-brand-blue to-brand-teal text-white border-0 text-sm px-5 py-1.5">
               Why InhaleStays?
             </Badge>
-            <h2 className="text-2xl md:text-3xl font-bold text-foreground">
-              India's Only End-to-End Student Ecosystem
+            <h2 className="text-2xl md:text-4xl font-bold text-foreground">
+              India's Only <span className="gradient-text">End-to-End</span> Student Ecosystem
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              No other platform in India covers the entire student living journey — from study spaces to food to laundry. Here's what makes us different.
+              No other platform in India covers the entire student living journey — from study spaces to food to laundry.
             </p>
           </div>
           <div className="grid sm:grid-cols-2 gap-5">
-            {[
-              {
-                icon: Star,
-                title: "India's First Student Ecosystem",
-                desc: "The only platform built exclusively for the Indian student housing market — covering reading rooms, hostels, mess, and laundry under one roof.",
-              },
-              {
-                icon: MapPin,
-                title: "Built for Bharat",
-                desc: "Designed for Indian workflows: UPI payments, WhatsApp notifications, and pricing models that match how Indian students live.",
-              },
-              {
-                icon: Zap,
-                title: "End-to-End, Not Piecemeal",
-                desc: "No more juggling spreadsheets, WhatsApp groups, and cash registers. One dashboard to manage everything.",
-              },
-              {
-                icon: Smartphone,
-                title: "Student-First Experience",
-                desc: "Students discover, book, pay, and manage their stay from their phone — the way Gen Z expects.",
-              },
-            ].map((item, i) => (
-              <Card key={i} className="border-border/50">
-                <CardContent className="p-5 flex gap-4 items-start">
-                  <div className="p-2 rounded-lg bg-secondary/10 shrink-0">
-                    <item.icon className="h-5 w-5 text-secondary" />
+            {WHY_ITEMS.map((item, i) => (
+              <Card
+                key={i}
+                className={`border-l-4 ${item.border} shadow-card hover:shadow-card-hover transition-all duration-300 hover:scale-[1.02] animate-fade-in`}
+                style={{ animationDelay: `${i * 0.1}s` }}
+              >
+                <CardContent className="p-6 flex gap-4 items-start">
+                  <div className={`p-2.5 rounded-xl bg-gradient-to-br ${item.iconBg} shrink-0`}>
+                    <item.icon className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-foreground">{item.title}</h3>
+                    <h3 className="font-semibold text-foreground text-base">{item.title}</h3>
                     <p className="text-sm text-muted-foreground mt-1">{item.desc}</p>
                   </div>
                 </CardContent>
@@ -214,23 +263,26 @@ const PartnerWithUs: React.FC = () => {
       </section>
 
       {/* Features */}
-      <section className="py-16 px-4">
-        <div className="max-w-4xl mx-auto space-y-8">
-          <div className="text-center space-y-2">
-            <h2 className="text-2xl md:text-3xl font-bold text-foreground">
-              Everything You Need, In One Platform
+      <section className="py-16 px-4 bg-gradient-subtle">
+        <div className="max-w-4xl mx-auto space-y-10">
+          <div className="text-center space-y-3">
+            <h2 className="text-2xl md:text-4xl font-bold text-foreground">
+              Everything You Need, <span className="gradient-text">In One Platform</span>
             </h2>
             <p className="text-muted-foreground">Select your property type to see relevant features</p>
           </div>
 
-          <div className="flex flex-wrap justify-center gap-2">
+          <div className="flex flex-wrap justify-center gap-3">
             {PROPERTY_TYPES.map(pt => (
               <Button
                 key={pt.key}
-                variant={featureFilter === pt.key ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setFeatureFilter(pt.key)}
-                className="gap-2"
+                className={`gap-2 transition-all duration-300 ${
+                  featureFilter === pt.key
+                    ? `bg-gradient-to-r ${pt.gradient} text-white border-0 shadow-brand scale-105`
+                    : 'bg-white text-muted-foreground border border-border hover:shadow-card'
+                }`}
               >
                 <pt.icon className="h-4 w-4" /> {pt.label}
               </Button>
@@ -238,33 +290,41 @@ const PartnerWithUs: React.FC = () => {
           </div>
 
           <div className="grid sm:grid-cols-2 gap-4">
-            {FEATURES[featureFilter]?.map((f, i) => (
-              <Card key={i} className="border-border/50">
-                <CardContent className="p-5 flex gap-4 items-start">
-                  <div className="p-2 rounded-lg bg-primary/10 shrink-0">
-                    <f.icon className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground">{f.title}</h3>
-                    <p className="text-sm text-muted-foreground mt-1">{f.desc}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+            {FEATURES[featureFilter]?.map((f, i) => {
+              const pt = PROPERTY_TYPES.find(p => p.key === featureFilter)!;
+              return (
+                <Card
+                  key={i}
+                  className="border-t-4 border-t-transparent shadow-card hover:shadow-card-hover transition-all duration-300 hover:scale-[1.02] animate-fade-in overflow-hidden"
+                  style={{
+                    borderTopColor: featureFilter === 'reading_room' ? '#1E5A8A'
+                      : featureFilter === 'hostel' ? '#6BBF59'
+                      : featureFilter === 'mess' ? '#f97316'
+                      : '#a855f7',
+                    animationDelay: `${i * 0.08}s`,
+                  }}
+                >
+                  <CardContent className="p-5 flex gap-4 items-start">
+                    <div className={`p-2.5 rounded-xl bg-gradient-to-br ${pt.gradient} shrink-0`}>
+                      <f.icon className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-foreground">{f.title}</h3>
+                      <p className="text-sm text-muted-foreground mt-1">{f.desc}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
 
           {/* Common features */}
           <div className="grid sm:grid-cols-3 gap-4 pt-4">
-            {[
-              { icon: BarChart2, title: 'Reports & Analytics', desc: 'Revenue, occupancy, and booking reports' },
-              { icon: Bell, title: 'Notifications', desc: 'WhatsApp & email alerts for bookings' },
-              { icon: Shield, title: 'Secure Payments', desc: 'Razorpay integration with settlement tracking' },
-              { icon: Users, title: 'Employee Management', desc: 'Role-based access for your team' },
-              { icon: Smartphone, title: 'Mobile First', desc: 'Works perfectly on any device' },
-              { icon: Zap, title: 'Instant Setup', desc: 'Go live within 48 hours' },
-            ].map((f, i) => (
-              <div key={i} className="flex gap-3 items-start p-3">
-                <f.icon className="h-5 w-5 text-secondary shrink-0 mt-0.5" />
+            {COMMON_FEATURES.map((f, i) => (
+              <div key={i} className="flex gap-3 items-start p-4 rounded-xl bg-white shadow-card hover:shadow-card-hover transition-all duration-300 hover:scale-[1.02]">
+                <div className="p-2 rounded-lg bg-gradient-brand shrink-0">
+                  <f.icon className="h-4 w-4 text-white" />
+                </div>
                 <div>
                   <p className="font-medium text-foreground text-sm">{f.title}</p>
                   <p className="text-xs text-muted-foreground">{f.desc}</p>
@@ -276,18 +336,27 @@ const PartnerWithUs: React.FC = () => {
       </section>
 
       {/* How it Works */}
-      <section className="py-16 px-4 bg-muted/30">
-        <div className="max-w-4xl mx-auto space-y-8">
-          <h2 className="text-2xl md:text-3xl font-bold text-center text-foreground">
-            How It Works
-          </h2>
-          <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-6">
+      <section className="py-16 px-4">
+        <div className="max-w-4xl mx-auto space-y-10">
+          <div className="text-center space-y-3">
+            <h2 className="text-2xl md:text-4xl font-bold text-foreground">
+              How It <span className="gradient-text">Works</span>
+            </h2>
+            <p className="text-muted-foreground">Get started in just 4 simple steps</p>
+          </div>
+          <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-6 relative">
+            {/* Connecting line (desktop only) */}
+            <div className="hidden md:block absolute top-10 left-[12%] right-[12%] h-0.5 bg-gradient-to-r from-brand-blue via-brand-green to-brand-teal opacity-30" />
             {PROCESS_STEPS.map((s, i) => (
-              <div key={i} className="text-center space-y-2">
-                <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto text-lg font-bold">
+              <div
+                key={i}
+                className="text-center space-y-3 relative animate-fade-in"
+                style={{ animationDelay: `${i * 0.15}s` }}
+              >
+                <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${s.color} text-white flex items-center justify-center mx-auto text-lg font-bold shadow-brand relative z-10`}>
                   {s.step}
                 </div>
-                <h3 className="font-semibold text-foreground">{s.title}</h3>
+                <h3 className="font-semibold text-foreground text-base">{s.title}</h3>
                 <p className="text-sm text-muted-foreground">{s.desc}</p>
               </div>
             ))}
@@ -296,18 +365,27 @@ const PartnerWithUs: React.FC = () => {
       </section>
 
       {/* Demo Form */}
-      <section className="py-16 px-4" ref={formRef} id="demo-form">
-        <div className="max-w-lg mx-auto space-y-6">
-          <div className="text-center space-y-2">
-            <h2 className="text-2xl md:text-3xl font-bold text-foreground">
-              Request a Free Demo
+      <section className="py-16 px-4 relative overflow-hidden" ref={formRef} id="demo-form">
+        {/* Background decoration */}
+        <div className="absolute inset-0 bg-gradient-to-br from-brand-blue/5 via-transparent to-brand-teal/5" />
+        <div className="absolute top-0 right-0 w-72 h-72 bg-brand-green/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-72 h-72 bg-brand-blue/10 rounded-full blur-3xl" />
+
+        <div className="max-w-lg mx-auto space-y-6 relative z-10">
+          <div className="text-center space-y-3">
+            <Badge className="bg-gradient-to-r from-brand-green to-brand-teal text-white border-0 text-sm px-5 py-1.5">
+              Free Demo
+            </Badge>
+            <h2 className="text-2xl md:text-4xl font-bold text-foreground">
+              Request a <span className="gradient-text">Free Demo</span>
             </h2>
             <p className="text-muted-foreground text-sm">
               Fill in your details and we'll get back to you within 24 hours
             </p>
           </div>
 
-          <Card>
+          <Card className="shadow-brand-lg border-t-4 border-t-brand-blue overflow-hidden">
+            <div className="h-2 bg-gradient-brand w-full" />
             <CardContent className="p-6">
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
@@ -318,6 +396,7 @@ const PartnerWithUs: React.FC = () => {
                     placeholder="Your full name"
                     maxLength={100}
                     required
+                    className="mt-1"
                   />
                 </div>
                 <div>
@@ -328,6 +407,7 @@ const PartnerWithUs: React.FC = () => {
                     placeholder="10-digit mobile number"
                     maxLength={15}
                     required
+                    className="mt-1"
                   />
                 </div>
                 <div>
@@ -338,6 +418,7 @@ const PartnerWithUs: React.FC = () => {
                     onChange={e => setFormData(p => ({ ...p, email: e.target.value }))}
                     placeholder="your@email.com"
                     maxLength={255}
+                    className="mt-1"
                   />
                 </div>
                 <div>
@@ -347,20 +428,21 @@ const PartnerWithUs: React.FC = () => {
                     onChange={e => setFormData(p => ({ ...p, city: e.target.value }))}
                     placeholder="Which city are you based in?"
                     maxLength={100}
+                    className="mt-1"
                   />
                 </div>
                 <div>
                   <label className="text-sm font-medium text-foreground">Property Type(s) *</label>
-                  <div className="flex flex-wrap gap-2 mt-1.5">
+                  <div className="flex flex-wrap gap-2 mt-2">
                     {PROPERTY_TYPES.map(pt => (
                       <button
                         key={pt.key}
                         type="button"
                         onClick={() => toggleType(pt.key)}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm border transition-colors ${
+                        className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium border transition-all duration-300 ${
                           selectedTypes.includes(pt.key)
-                            ? 'bg-primary text-primary-foreground border-primary'
-                            : 'bg-background text-muted-foreground border-border hover:border-primary/50'
+                            ? `bg-gradient-to-r ${pt.gradient} text-white border-transparent shadow-brand scale-105`
+                            : 'bg-background text-muted-foreground border-border hover:border-primary/50 hover:shadow-card'
                         }`}
                       >
                         <pt.icon className="h-3.5 w-3.5" /> {pt.label}
@@ -376,9 +458,14 @@ const PartnerWithUs: React.FC = () => {
                     placeholder="Tell us about your property or requirements..."
                     maxLength={1000}
                     rows={3}
+                    className="mt-1"
                   />
                 </div>
-                <Button type="submit" className="w-full gap-2" disabled={submitting}>
+                <Button
+                  type="submit"
+                  className="w-full gap-2 bg-gradient-brand hover:opacity-90 text-white font-semibold text-base py-3 shadow-brand hover-lift"
+                  disabled={submitting}
+                >
                   {submitting ? 'Submitting...' : 'Request Demo'}
                   {!submitting && <ArrowRight className="h-4 w-4" />}
                 </Button>
@@ -389,16 +476,24 @@ const PartnerWithUs: React.FC = () => {
       </section>
 
       {/* FAQ */}
-      <section className="py-16 px-4 bg-muted/30">
-        <div className="max-w-2xl mx-auto space-y-6">
-          <h2 className="text-2xl font-bold text-center text-foreground">
-            Frequently Asked Questions
-          </h2>
-          <Accordion type="single" collapsible className="w-full">
+      <section className="py-16 px-4 bg-gradient-subtle">
+        <div className="max-w-2xl mx-auto space-y-8">
+          <div className="text-center space-y-3">
+            <h2 className="text-2xl md:text-4xl font-bold text-foreground">
+              Frequently Asked <span className="gradient-text">Questions</span>
+            </h2>
+          </div>
+          <Accordion type="single" collapsible className="w-full space-y-3">
             {FAQS.map((faq, i) => (
-              <AccordionItem key={i} value={`faq-${i}`}>
-                <AccordionTrigger className="text-left">{faq.q}</AccordionTrigger>
-                <AccordionContent>{faq.a}</AccordionContent>
+              <AccordionItem
+                key={i}
+                value={`faq-${i}`}
+                className="bg-white rounded-xl border shadow-card px-5 data-[state=open]:shadow-card-hover transition-shadow duration-300"
+              >
+                <AccordionTrigger className="text-left font-medium hover:text-brand-blue transition-colors">
+                  {faq.q}
+                </AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">{faq.a}</AccordionContent>
               </AccordionItem>
             ))}
           </Accordion>
@@ -406,22 +501,33 @@ const PartnerWithUs: React.FC = () => {
       </section>
 
       {/* Footer CTA */}
-      <section className="py-12 px-4 bg-primary text-primary-foreground">
-        <div className="max-w-2xl mx-auto text-center space-y-4">
-          <h2 className="text-2xl font-bold">Ready to Transform Your Business?</h2>
-          <p className="opacity-90">Join 100+ partners who trust InhaleStays to manage their properties</p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Button size="lg" variant="secondary" onClick={scrollToForm} className="gap-2 w-full sm:w-auto">
+      <section className="relative overflow-hidden py-16 px-4 bg-gradient-hero text-white">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-brand-teal/20 rounded-full blur-3xl animate-float" />
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-brand-green/15 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }} />
+        <div className="max-w-2xl mx-auto text-center space-y-5 relative z-10">
+          <h2 className="text-3xl md:text-4xl font-bold">Ready to Transform Your Business?</h2>
+          <p className="text-white/80 text-lg">Join 100+ partners who trust InhaleStays to manage their properties</p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Button
+              size="lg"
+              onClick={scrollToForm}
+              className="gap-2 w-full sm:w-auto bg-white text-brand-navy hover:bg-white/90 font-semibold px-8 shadow-brand-lg hover-lift"
+            >
               Get Started Free <ArrowRight className="h-4 w-4" />
             </Button>
-            <Button size="lg" variant="outline" asChild className="gap-2 w-full sm:w-auto border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10">
+            <Button
+              size="lg"
+              variant="outline"
+              asChild
+              className="gap-2 w-full sm:w-auto border-white/30 text-white hover:bg-white/15 backdrop-blur-sm px-8"
+            >
               <a href={`tel:${PHONE_NUMBER}`}>
                 <Phone className="h-4 w-4" /> {PHONE_NUMBER}
               </a>
             </Button>
           </div>
-          <p className="text-sm opacity-70 pt-2">
-            Already a partner? <Link to="/partner/login" className="underline">Sign in</Link>
+          <p className="text-sm text-white/60 pt-2">
+            Already a partner? <Link to="/partner/login" className="underline text-white/80 hover:text-white">Sign in</Link>
           </p>
         </div>
       </section>
