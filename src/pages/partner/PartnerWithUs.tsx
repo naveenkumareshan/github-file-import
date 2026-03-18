@@ -122,13 +122,13 @@ const PartnerWithUs: React.FC = () => {
       <section className="relative overflow-hidden bg-gradient-to-br from-primary/5 via-background to-secondary/5 py-16 px-4">
         <div className="max-w-4xl mx-auto text-center space-y-6">
           <Badge className="bg-secondary/10 text-secondary border-secondary/20 text-sm px-4 py-1">
-            Trusted by 100+ Partners across India
+            🇮🇳 India's First Complete Student Living Ecosystem
           </Badge>
           <h1 className="text-3xl md:text-5xl font-bold text-foreground leading-tight">
-            Grow Your <span className="text-primary">Student Housing</span> Business
+            India's First <span className="text-primary">All-in-One Platform</span> for Student Living
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Whether you run a reading room, hostel, PG, mess, or laundry — InhaleStays gives you the tools to automate bookings, collect payments, and delight students.
+            The only platform in India that unifies reading rooms, hostels, PGs, mess, and laundry — so you can automate bookings, collect payments, and delight students from a single dashboard.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <Button size="lg" onClick={scrollToForm} className="gap-2 w-full sm:w-auto">
@@ -157,6 +157,59 @@ const PartnerWithUs: React.FC = () => {
               <p className="text-sm text-muted-foreground mt-1">{s.label}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Why InhaleStays */}
+      <section className="py-16 px-4 bg-muted/30">
+        <div className="max-w-4xl mx-auto space-y-8">
+          <div className="text-center space-y-2">
+            <Badge className="bg-primary/10 text-primary border-primary/20 text-sm px-4 py-1">
+              Why InhaleStays?
+            </Badge>
+            <h2 className="text-2xl md:text-3xl font-bold text-foreground">
+              India's Only End-to-End Student Ecosystem
+            </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              No other platform in India covers the entire student living journey — from study spaces to food to laundry. Here's what makes us different.
+            </p>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-5">
+            {[
+              {
+                icon: Star,
+                title: "India's First Student Ecosystem",
+                desc: "The only platform built exclusively for the Indian student housing market — covering reading rooms, hostels, mess, and laundry under one roof.",
+              },
+              {
+                icon: MapPin,
+                title: "Built for Bharat",
+                desc: "Designed for Indian workflows: UPI payments, WhatsApp notifications, and pricing models that match how Indian students live.",
+              },
+              {
+                icon: Zap,
+                title: "End-to-End, Not Piecemeal",
+                desc: "No more juggling spreadsheets, WhatsApp groups, and cash registers. One dashboard to manage everything.",
+              },
+              {
+                icon: Smartphone,
+                title: "Student-First Experience",
+                desc: "Students discover, book, pay, and manage their stay from their phone — the way Gen Z expects.",
+              },
+            ].map((item, i) => (
+              <Card key={i} className="border-border/50">
+                <CardContent className="p-5 flex gap-4 items-start">
+                  <div className="p-2 rounded-lg bg-secondary/10 shrink-0">
+                    <item.icon className="h-5 w-5 text-secondary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">{item.title}</h3>
+                    <p className="text-sm text-muted-foreground mt-1">{item.desc}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       </section>
 
