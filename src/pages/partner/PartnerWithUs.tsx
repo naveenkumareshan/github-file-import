@@ -160,6 +160,59 @@ const PartnerWithUs: React.FC = () => {
         </div>
       </section>
 
+      {/* Why InhaleStays */}
+      <section className="py-16 px-4 bg-muted/30">
+        <div className="max-w-4xl mx-auto space-y-8">
+          <div className="text-center space-y-2">
+            <Badge className="bg-primary/10 text-primary border-primary/20 text-sm px-4 py-1">
+              Why InhaleStays?
+            </Badge>
+            <h2 className="text-2xl md:text-3xl font-bold text-foreground">
+              India's Only End-to-End Student Ecosystem
+            </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              No other platform in India covers the entire student living journey — from study spaces to food to laundry. Here's what makes us different.
+            </p>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-5">
+            {[
+              {
+                icon: Star,
+                title: "India's First Student Ecosystem",
+                desc: "The only platform built exclusively for the Indian student housing market — covering reading rooms, hostels, mess, and laundry under one roof.",
+              },
+              {
+                icon: MapPin,
+                title: "Built for Bharat",
+                desc: "Designed for Indian workflows: UPI payments, WhatsApp notifications, and pricing models that match how Indian students live.",
+              },
+              {
+                icon: Zap,
+                title: "End-to-End, Not Piecemeal",
+                desc: "No more juggling spreadsheets, WhatsApp groups, and cash registers. One dashboard to manage everything.",
+              },
+              {
+                icon: Smartphone,
+                title: "Student-First Experience",
+                desc: "Students discover, book, pay, and manage their stay from their phone — the way Gen Z expects.",
+              },
+            ].map((item, i) => (
+              <Card key={i} className="border-border/50">
+                <CardContent className="p-5 flex gap-4 items-start">
+                  <div className="p-2 rounded-lg bg-secondary/10 shrink-0">
+                    <item.icon className="h-5 w-5 text-secondary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground">{item.title}</h3>
+                    <p className="text-sm text-muted-foreground mt-1">{item.desc}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Features */}
       <section className="py-16 px-4">
         <div className="max-w-4xl mx-auto space-y-8">
