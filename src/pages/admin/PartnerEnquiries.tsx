@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
+import { getPublicAppUrl } from '@/utils/appUrl';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Phone, Mail, MapPin, Search, Building, Hotel, UtensilsCrossed, Shirt, Loader2, ExternalLink } from 'lucide-react';
+import { Phone, Mail, MapPin, Search, Building, Hotel, UtensilsCrossed, Shirt, Loader2, ExternalLink, Copy, Check } from 'lucide-react';
 import { format } from 'date-fns';
 
 const STATUS_OPTIONS = ['new', 'contacted', 'follow_up', 'converted', 'closed'] as const;
@@ -53,6 +54,28 @@ interface Enquiry {
   created_at: string;
   updated_at: string;
 }
+
+const PartnerLinkCopy: React.FC = () => {
+  const [copied, setCopied] = useState(false);
+  const url = `${getPublicAppUrl()}/partner-with-us`;
+  const handleCopy = () => {
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    toast({ title: 'Link copied to clipboard!' });
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <div className="flex items-center gap-2 mt-1">
+      <span className="text-xs text-muted-foreground truncate max-w-[280px]">{url}</span>
+      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleCopy}>
+        {copied ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+      </Button>
+      <Button size="icon" variant="ghost" className="h-6 w-6" asChild>
+        <a href={url} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-3 w-3" /></a>
+      </Button>
+    </div>
+  );
+};
 
 const PartnerEnquiries: React.FC = () => {
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
@@ -119,6 +142,7 @@ const PartnerEnquiries: React.FC = () => {
         <div>
           <h1 className="text-xl font-bold text-foreground">Partner Enquiries</h1>
           <p className="text-sm text-muted-foreground">Manage demo requests from potential partners</p>
+          <PartnerLinkCopy />
         </div>
         <div className="flex items-center gap-2">
           <Badge className="bg-blue-100 text-blue-800">{filtered.length} total</Badge>
