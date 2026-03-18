@@ -28,7 +28,7 @@ export function RevenueChart({ data, loading }: Props) {
         <CardTitle className="text-sm font-semibold text-primary">Monthly Revenue</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-[200px] w-full">
+        <div className="h-[250px] w-full overflow-hidden">
           {loading ? (
             <div className="space-y-2">
               <Skeleton className="h-4 w-full" />
