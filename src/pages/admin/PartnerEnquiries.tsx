@@ -55,6 +55,28 @@ interface Enquiry {
   updated_at: string;
 }
 
+const PartnerLinkCopy: React.FC = () => {
+  const [copied, setCopied] = useState(false);
+  const url = `${getPublicAppUrl()}/partner-with-us`;
+  const handleCopy = () => {
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    toast({ title: 'Link copied to clipboard!' });
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <div className="flex items-center gap-2 mt-1">
+      <span className="text-xs text-muted-foreground truncate max-w-[280px]">{url}</span>
+      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={handleCopy}>
+        {copied ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+      </Button>
+      <Button size="icon" variant="ghost" className="h-6 w-6" asChild>
+        <a href={url} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-3 w-3" /></a>
+      </Button>
+    </div>
+  );
+};
+
 const PartnerEnquiries: React.FC = () => {
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
   const [loading, setLoading] = useState(true);
