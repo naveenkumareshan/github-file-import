@@ -86,7 +86,7 @@ const PartnerMoreMenu: React.FC<MoreMenuProps> = ({ open, onOpenChange }) => {
         { title: 'Expiring Bookings', url: `${prefix}/expiring-bookings`, icon: Clock, permission: 'view_bookings' },
         { title: 'Receipts', url: `${prefix}/receipts`, icon: CreditCard, permission: 'view_receipts' },
         { title: 'Key Deposits', url: `${prefix}/deposits-restrictions`, icon: Wallet, permission: 'view_key_deposits' },
-        { title: 'Activity Log', url: `${prefix}/booking-activity-log`, icon: Activity, permission: 'view_bookings' },
+        { title: 'Activity Log', url: `${prefix}/booking-activity-log?type=cabin`, icon: Activity, permission: 'view_bookings' },
       ],
     },
     {
