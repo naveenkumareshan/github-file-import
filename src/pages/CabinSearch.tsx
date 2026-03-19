@@ -5,13 +5,13 @@ import { reviewsService } from '@/api/reviewsService';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Search, SlidersHorizontal, X, MapPin } from 'lucide-react';
+import { SlidersHorizontal, MapPin } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LocationSelector } from '@/components/forms/LocationSelector';
 import { Label } from '@/components/ui/label';
 import { useSponsoredListings } from '@/hooks/useSponsoredListings';
+import { MarketplaceHeader, FilterOption } from '@/components/marketplace/MarketplaceHeader';
 
 const CabinSearchResults = lazy(() =>
   import("@/components/search/CabinSearchResults").then((m) => ({ default: m.CabinSearchResults }))
