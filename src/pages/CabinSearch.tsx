@@ -189,70 +189,36 @@ const CabinSearch = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Compact search header */}
-      <div className="sticky top-0 z-10 bg-background border-b border-border px-3 py-2.5">
-        <div className="max-w-lg lg:max-w-5xl mx-auto">
-          <h1 className="text-[17px] font-semibold mb-2">Reading Rooms</h1>
-          <div className="flex gap-2">
-            {/* Search bar */}
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground h-3.5 w-3.5" />
-              <Input
-                placeholder="Search rooms, areas..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleQuickSearch()}
-                className="pl-8 h-9 text-[13px] rounded-xl"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => { setSearchQuery(''); handleSearch({ ...activeFilters, query: '' }); }}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2"
-                >
-                  <X className="h-3.5 w-3.5 text-muted-foreground" />
-                </button>
-              )}
-            </div>
-
-            {/* Filter pill */}
-            <button
-              onClick={() => { setDraftFilters(activeFilters); setFiltersOpen(true); }}
-              className={`flex items-center gap-1.5 px-3 h-9 rounded-xl border text-[12px] font-medium transition-colors flex-shrink-0 ${
-                activeFilterCount > 0
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'bg-card text-foreground border-border'
-              }`}
-            >
-              <SlidersHorizontal className="h-3.5 w-3.5" />
-              Filters
-              {activeFilterCount > 0 && (
-                <span className="bg-white/20 text-[10px] font-bold px-1 rounded-full">{activeFilterCount}</span>
-              )}
-            </button>
-          </div>
-
-          {/* Active filter chips */}
-          {(activeFilters.category && activeFilters.category !== 'all' || activeFilters.cityId) && (
-            <div className="flex gap-1.5 mt-2 flex-wrap">
-              {activeFilters.category && activeFilters.category !== 'all' && (
-                <Badge variant="secondary" className="text-[10px] gap-1 cursor-pointer" onClick={() => {
-                  const f = { ...activeFilters, category: '' };
-                  setActiveFilters(f); handleSearch(f);
-                }}>
-                  {activeFilters.category} <X className="h-2.5 w-2.5" />
-                </Badge>
-              )}
-              {activeFilters.cityId && (
-                <Badge variant="secondary" className="text-[10px] gap-1 cursor-pointer" onClick={() => {
-                  const f = { ...activeFilters, cityId: '', areaId: '' };
-                  setActiveFilters(f); handleSearch(f);
-                }}>
-                  <MapPin className="h-2.5 w-2.5" /> Location <X className="h-2.5 w-2.5" />
-                </Badge>
-              )}
-            </div>
+      {/* Unified Marketplace Header */}
+      <MarketplaceHeader
+        title="Reading Rooms"
+        searchPlaceholder="Search rooms, areas..."
+        searchQuery={searchQuery}
+        onSearchChange={(val) => setSearchQuery(val)}
+        filters={categoryFilters}
+        activeFilter={activeFilters.category || 'all'}
+        onFilterChange={(id) => {
+          const f = { ...activeFilters, category: id };
+          setActiveFilters(f);
+          handleSearch(f);
+        }}
+      />
+      {/* Extra filter button below header */}
+      <div className="px-3 pt-2 max-w-lg lg:max-w-5xl mx-auto">
+        <button
+          onClick={() => { setDraftFilters(activeFilters); setFiltersOpen(true); }}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[11px] font-medium transition-colors ${
+            activeFilterCount > 0
+              ? 'bg-primary text-primary-foreground border-primary'
+              : 'bg-card text-foreground border-border hover:bg-muted'
+          }`}
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5" />
+          Advanced Filters
+          {activeFilterCount > 0 && (
+            <span className="bg-white/20 text-[10px] font-bold px-1 rounded-full">{activeFilterCount}</span>
           )}
-        </div>
+        </button>
       </div>
 
       {/* Results */}
