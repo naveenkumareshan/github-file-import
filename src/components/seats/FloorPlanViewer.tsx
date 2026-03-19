@@ -141,14 +141,12 @@ export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
   // Tight bounding box of all seats
   const bounds = useMemo(() => {
     if (seats.length === 0) return { x: 0, y: 0, w: roomWidth, h: roomHeight };
-    const halfW = seatW / 2;
-    const halfH = seatH / 2;
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (const s of seats) {
-      minX = Math.min(minX, s.position.x - halfW);
-      minY = Math.min(minY, s.position.y - halfH);
-      maxX = Math.max(maxX, s.position.x + halfW);
-      maxY = Math.max(maxY, s.position.y + halfH);
+      minX = Math.min(minX, s.position.x);
+      minY = Math.min(minY, s.position.y);
+      maxX = Math.max(maxX, s.position.x + seatW);
+      maxY = Math.max(maxY, s.position.y + seatH);
     }
     return {
       x: minX - PAD,
