@@ -271,10 +271,10 @@ export default function BookingActivityLog() {
     <div className="flex flex-col gap-4">
       <div>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-          <span>Admin Panel</span><span>/</span><span className="text-foreground font-medium">Activity Log</span>
+          <span>Admin Panel</span><span>/</span><span className="text-foreground font-medium">{typeFilter === 'cabin' ? 'Reading Room' : typeFilter === 'hostel' ? 'Hostel' : 'Activity Log'}</span>
         </div>
-        <h1 className="text-lg font-semibold tracking-tight">Booking Activity Log</h1>
-        <p className="text-muted-foreground text-xs mt-0.5">Audit trail of all booking lifecycle events — cancellations, releases, transfers, and date changes.</p>
+        <h1 className="text-lg font-semibold tracking-tight">{pageTitle}</h1>
+        <p className="text-muted-foreground text-xs mt-0.5">{pageDesc}</p>
       </div>
 
       <div className="flex flex-wrap gap-2">

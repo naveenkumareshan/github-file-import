@@ -300,7 +300,7 @@ export function AdminSidebar() {
       }] : []) as MenuItem[],
       {
         title: 'Activity Log',
-        url: `${routePrefix}/booking-activity-log`,
+        url: `${routePrefix}/booking-activity-log?type=hostel`,
         icon: Activity,
         roles: ['admin', 'vendor', 'vendor_employee'],
         permissions: ['view_hostel_bookings']
