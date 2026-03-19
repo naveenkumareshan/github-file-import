@@ -249,6 +249,7 @@ function App() {
               <Route path="banks" element={<BankManagement />} />
               <Route path="property-attendance" element={<PropertyAttendance />} />
               <Route path="partner-enquiries" element={<PartnerEnquiries />} />
+              <Route path="lead-overview" element={<AdminLeadOverview />} />
             </Route>
 
             {/* ── Partner routes (alias for vendor/host admin panel) ── */}
