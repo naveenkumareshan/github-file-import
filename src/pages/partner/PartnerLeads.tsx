@@ -248,10 +248,10 @@ const PartnerLeads: React.FC = () => {
           <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
         </div>
       ) : view === 'kanban' ? (
-        <LeadKanbanBoard
+      <LeadKanbanBoard
           leads={filtered}
           onStatusChange={handleStatusChange}
-          onLeadClick={(lead) => setSelectedLead(lead)}
+          onLeadClick={(lead) => setSelectedLead(lead as Lead)}
         />
       ) : (
         <div className="space-y-2">
