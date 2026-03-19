@@ -91,20 +91,27 @@ export const CabinSearchResults = ({
           const cabinId = cabin.id || cabin._id;
           const cabinSlug = (cabin as any).serial_number || cabinId;
           const imgSrc = cabin.imageSrc || cabin.image_url || '/placeholder.svg';
+          const locationStr = [
+            cabin.location?.area?.name || cabin.area,
+            cabin.location?.city?.name || cabin.city,
+          ].filter(Boolean).join(', ');
+
           return (
-          <Link
-            to={`/book-seat/${cabinSlug}`}
-            key={`${cabinId}-${idx}`}
-            className="block"
-            onClick={() => { if (cabin.sponsoredListingId && onTrackClick) onTrackClick(cabin.sponsoredListingId); }}
-          >
-            <div
-              className={`relative flex gap-3 p-3 bg-card rounded-2xl border hover:shadow-sm transition-all active:scale-[0.99] ${
-                cabin.sponsoredTier === 'featured' ? 'border-amber-300 bg-amber-50/30' :
-                cabin.sponsoredTier === 'inline_sponsored' ? 'border-blue-300 bg-blue-50/20' :
-                'border-border hover:border-primary/30'
-              }`}
-              ref={cabin.sponsoredListingId ? (el: HTMLDivElement | null) => {
+            <MarketplaceCard
+              key={`${cabinId}-${idx}`}
+              image={getImageUrl(imgSrc) || '/placeholder.svg'}
+              name={cabin.name}
+              location={locationStr}
+              rating={cabin.averageRating}
+              reviewCount={cabin.reviewCount}
+              tags={cabin.amenities}
+              price={`₹${cabin.price}`}
+              priceLabel="/mo"
+              badge={cabin.category.charAt(0).toUpperCase() + cabin.category.slice(1)}
+              badgeVariant={getCategoryBadgeVariant(cabin.category)}
+              ctaLabel="Book"
+              sponsoredTier={cabin.sponsoredTier as any}
+              sponsoredRef={cabin.sponsoredListingId ? (el: HTMLDivElement | null) => {
                 if (el && onTrackImpression) {
                   const observer = new IntersectionObserver(([entry]) => {
                     if (entry.isIntersecting) { onTrackImpression(cabin.sponsoredListingId!); observer.disconnect(); }
@@ -112,84 +119,16 @@ export const CabinSearchResults = ({
                   observer.observe(el);
                 }
               } : undefined}
-            >
-              {/* Sponsored badges */}
-              {cabin.sponsoredTier === 'featured' && (
-                <span className="absolute top-1.5 right-1.5 text-[9px] font-bold bg-amber-500 text-white px-1.5 py-0.5 rounded-md z-10">Featured</span>
-              )}
-              {cabin.sponsoredTier === 'inline_sponsored' && (
-                <span className="absolute top-1.5 right-1.5 text-[9px] font-bold bg-blue-500 text-white px-1.5 py-0.5 rounded-md z-10">Sponsored</span>
-              )}
-              {/* Image */}
-              <div className="relative flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden bg-muted">
-                <img
-                  src={getImageUrl(imgSrc) || '/placeholder.svg'}
-                  alt={cabin.name}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
-                {/* Category badge */}
-                <span className={`absolute top-1 left-1 text-[9px] font-bold text-white px-1.5 py-0.5 rounded-md ${getCategoryColor(cabin.category)}`}>
-                  {cabin.category.charAt(0).toUpperCase() + cabin.category.slice(1)}
+              onClick={() => {
+                if (cabin.sponsoredListingId && onTrackClick) onTrackClick(cabin.sponsoredListingId);
+                navigate(`/book-seat/${cabinSlug}`);
+              }}
+              extraContent={cabin.distance ? (
+                <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                  {cabin.distance.toFixed(1)}km away
                 </span>
-                {/* Rating / New badge */}
-                {(cabin.reviewCount && cabin.reviewCount > 0) ? (
-                  <span className="absolute top-1 right-1 flex items-center gap-0.5 text-[9px] font-bold bg-white/90 text-foreground px-1.5 py-0.5 rounded-md shadow-sm">
-                    <Star className="h-2.5 w-2.5 text-yellow-500 fill-yellow-500" />
-                    {(cabin.averageRating || 0).toFixed(1)}
-                    <span className="text-muted-foreground font-normal">({cabin.reviewCount})</span>
-                  </span>
-                ) : (
-                  <span className="absolute top-1 right-1 text-[9px] font-bold bg-green-500 text-white px-1.5 py-0.5 rounded-md">
-                    New
-                  </span>
-                )}
-                {/* Distance badge */}
-                {cabin.distance && (
-                  <span className="absolute bottom-1 right-1 text-[9px] bg-black/60 text-white px-1.5 py-0.5 rounded-md">
-                    {cabin.distance.toFixed(1)}km
-                  </span>
-                )}
-              </div>
-
-              {/* Content */}
-              <div className="flex-1 min-w-0 flex flex-col justify-between">
-                <div>
-                  <h3 className="text-[13px] font-semibold text-foreground leading-tight truncate">{cabin.name}</h3>
-                  <div className="flex items-center gap-0.5 mt-0.5">
-                    <MapPin className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                    <span className="text-[11px] text-muted-foreground truncate">
-                      {cabin.location?.area ? cabin.location.area.name + ', ' : (cabin.area ? cabin.area + ', ' : '')}{cabin.location?.city?.name || cabin.city || ''}
-                    </span>
-                  </div>
-
-                  {/* Amenity tags */}
-                  {cabin.amenities?.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-1.5">
-                      {cabin.amenities.slice(0, 3).map((amenity, idx) => (
-                        <span key={idx} className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded-md">
-                          {amenity}
-                        </span>
-                      ))}
-                      {cabin.amenities.length > 3 && (
-                        <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded-md">
-                          +{cabin.amenities.length - 3}
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Footer row */}
-                <div className="flex items-center justify-between mt-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[13px] font-bold text-primary">₹{cabin.price}<span className="text-[10px] font-normal text-muted-foreground">/mo</span></span>
-                  </div>
-                  <span className="text-[11px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-lg">Book</span>
-                </div>
-              </div>
-            </div>
-          </Link>
+              ) : undefined}
+            />
           );
         })}
       </div>

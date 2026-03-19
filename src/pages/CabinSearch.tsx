@@ -185,6 +185,13 @@ const CabinSearch = () => {
     setDraftFilters(defaultFilters);
   };
 
+  const categoryFilters: FilterOption[] = [
+    { id: 'all', label: 'All Rooms' },
+    { id: 'standard', label: 'Standard' },
+    { id: 'premium', label: 'Premium' },
+    { id: 'luxury', label: 'Luxury' },
+  ];
+
   // Initial load handled by debouncedQuery useEffect above
 
   return (
