@@ -1,56 +1,71 @@
 
-Diagnosis (what is actually broken)
-- You are right: the student marketplace is still inconsistent.
-- I verified runtime pages:
-  - `/cabins` = full-width vertical list cards.
-  - `/hostels`, `/mess`, `/laundry` = desktop grid cards (3 columns on large screens).
-- This mismatch comes from different list containers in each page (`space-y` vs `grid`), not from missing data.
-- Also, required quick actions (Save/Call/Map) are mostly not wired, and top chips are not unified (each page uses different chip logic).
 
-Implementation plan to fix it fully
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-1) Enforce one shared listing layout pattern (all categories)
-- Keep a single card orientation everywhere: horizontal card (left image, right content).
-- Replace all page-level grid wrappers with one consistent list wrapper (`space-y-2.5`) so Reading Rooms, Hostels, Mess, Laundry render identically on desktop and mobile.
-- Files: `CabinSearchResults.tsx`, `Hostels.tsx`, `MessMarketplace.tsx`, `Laundry.tsx`.
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
-2) Standardize top section across all pages
-- Update `MarketplaceHeader` to support:
-  - common chips: `All`, `Nearby`, `Popular`, `Budget`
-  - filter button action slot (for advanced/service-specific filters)
-- Keep category-specific filtering inside filter panel/drawer, not in primary chip row.
-- Files: `MarketplaceHeader.tsx`, `CabinSearch.tsx`, `Hostels.tsx`, `MessMarketplace.tsx`, `Laundry.tsx`.
+## Changes
 
-3) Make quick actions truly reusable and visible
-- In `MarketplaceCard`, show quick actions consistently (not hover-only on desktop).
-- Wire handlers from each page:
-  - Save (local bookmark state for now),
-  - Call (`tel:` when phone exists),
-  - Map (open Google Maps query from coordinates/address).
-- Files: `MarketplaceCard.tsx` + all 4 listing pages (data mapping per category).
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-4) Normalize card content mapping per category
-- Reading Rooms: name, rating/count, area+city, amenities, monthly price, seats left (if available), CTA “Book Now”.
-- Hostels: same structure; remove overlapping extra content issue in bottom row; CTA “View Rooms”.
-- Mess: same structure; food badge + package/starting price; CTA “View Menu”.
-- Laundry: same structure; service area + delivery/ops tags; CTA “View Details”.
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-5) Unify empty/loading states
-- Use one empty pattern with friendly illustration + CTA “Become a Partner”.
-- Use same skeleton count/spacing across all pages.
-- Files: `MarketplaceEmpty.tsx`, `MarketplaceSkeleton.tsx`, all 4 listing pages.
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
 
-6) Final visual QA (so you don’t burn more credits)
-- Validate in preview on:
-  - `/cabins`, `/hostels`, `/mess`, `/laundry`
-  - desktop (1106x720) and mobile viewport
-- Confirm:
-  - identical card/list structure,
-  - same header behavior/chips,
-  - no text overlap,
-  - quick actions visible and working.
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
 
-Technical details
-- No backend/database changes required.
-- This is a frontend-only refactor: shared component behavior + page-level mapping cleanup.
-- Main root-cause fix is replacing mixed `grid`/`list` containers with one unified listing container and one shared header behavior.
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
+
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
+
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
+
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
+
+**Reviews section**: Shown below the booking flow (not in a tab)
+
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
+
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
+
+## File Summary
+
+| File | Change |
+|------|--------|
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
+
