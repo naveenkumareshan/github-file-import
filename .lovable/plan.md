@@ -1,29 +1,37 @@
 
 
-## Fix: "Leads CRM" Not Visible in Partner Sidebar
+## Fix: Activity Log Showing Mixed Booking Types
 
-### Root Cause
-The "Leads CRM" link is inside the **Operations** section of `PartnerMoreMenu.tsx` (line 76). That section has `show: can('view_operations')` — meaning the **entire section is hidden** if the partner/employee doesn't have the `view_operations` permission. Since Leads CRM has no permission requirement of its own, it should always be visible.
+### Problem
+Both the Reading Room and Hostel sidebar/menu entries link to the same `/booking-activity-log` route. The `BookingActivityLog` component fetches **all** logs without filtering by `booking_type`, so hostel logs appear under reading room and vice versa.
 
-### Fix
+### Solution
+Use a URL query parameter (`?type=cabin` or `?type=hostel`) to scope the activity log by booking type.
 
-**`src/components/partner/PartnerMoreMenu.tsx`** — Move "Leads CRM" out of the Operations section into its own always-visible section, or add it to a section that's always shown (e.g., create a new "CRM" section with `show: true`).
+### Changes
 
-Specifically:
-1. Remove `{ title: 'Leads CRM', url: '/partner/leads', icon: UserPlus }` from the Operations section
-2. Add a new section above Operations:
-```
-{
-  title: 'CRM',
-  show: true,
-  items: [
-    { title: 'Leads CRM', url: '/partner/leads', icon: UserPlus },
-  ],
-}
-```
+**1. Update sidebar/menu links to pass `?type=` query param**
 
-This ensures the Leads link is always visible regardless of permissions.
+- `src/components/admin/AdminSidebar.tsx`
+  - Reading Room activity log link: `/booking-activity-log?type=cabin`
+  - Hostel activity log link: `/booking-activity-log?type=hostel`
+
+- `src/components/partner/PartnerMoreMenu.tsx`
+  - Reading Room section: `/booking-activity-log?type=cabin`
+  - Hostel section: `/booking-activity-log?type=hostel`
+
+**2. Update `src/pages/admin/BookingActivityLog.tsx` to read and apply the type filter**
+
+- Read `type` from `useSearchParams()` (values: `cabin`, `hostel`, or absent for all)
+- Apply `.eq('booking_type', type)` filter to the query when `type` is present
+- Update breadcrumb/header to show "Reading Room Activity Log" or "Hostel Activity Log" accordingly
+- Add a booking type toggle (Cabin / Hostel / All) so users can switch without going back to sidebar
+
+**3. Update `src/hooks/usePartnerNavPreferences.ts`**
+- Change activity-log URL to default to `/partner/booking-activity-log` (no type filter — shows all, which is fine for the general nav entry)
 
 ### Files Modified
-- `src/components/partner/PartnerMoreMenu.tsx`
+- `src/components/admin/AdminSidebar.tsx` — add `?type=cabin` / `?type=hostel` to URLs
+- `src/components/partner/PartnerMoreMenu.tsx` — same URL param additions
+- `src/pages/admin/BookingActivityLog.tsx` — read query param, filter by `booking_type`
 
