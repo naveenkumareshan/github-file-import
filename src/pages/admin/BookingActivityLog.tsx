@@ -70,6 +70,8 @@ const formatDetails = (details: any) => {
 };
 
 export default function BookingActivityLog() {
+  const [searchParams] = useSearchParams();
+  const typeFilter = searchParams.get('type'); // 'cabin' | 'hostel' | null
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -79,9 +81,16 @@ export default function BookingActivityLog() {
   const [activityFilter, setActivityFilter] = useState('all');
   const [isAdmin, setIsAdmin] = useState(false);
 
+  const pageTitle = typeFilter === 'cabin' ? 'Reading Room Activity Log' : typeFilter === 'hostel' ? 'Hostel Activity Log' : 'Booking Activity Log';
+  const pageDesc = typeFilter === 'cabin'
+    ? 'Audit trail of reading room booking events — cancellations, releases, transfers, and date changes.'
+    : typeFilter === 'hostel'
+    ? 'Audit trail of hostel booking events — cancellations, releases, transfers, and date changes.'
+    : 'Audit trail of all booking lifecycle events — cancellations, releases, transfers, and date changes.';
+
   useEffect(() => {
     fetchLogs();
-  }, [currentPage, activityFilter, searchQuery]);
+  }, [currentPage, activityFilter, searchQuery, typeFilter]);
 
   const fetchLogs = async () => {
     try {
