@@ -1,18 +1,24 @@
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { hostelService } from '@/api/hostelService';
-import { MapPin, Hotel, Star, Utensils, Search } from 'lucide-react';
+import { Hotel, Utensils } from 'lucide-react';
 import { formatCurrency } from '@/utils/currency';
 import { useSponsoredListings } from '@/hooks/useSponsoredListings';
+import { MarketplaceHeader, FilterOption } from '@/components/marketplace/MarketplaceHeader';
+import { MarketplaceCard } from '@/components/marketplace/MarketplaceCard';
+import { MarketplaceSkeleton } from '@/components/marketplace/MarketplaceSkeleton';
+import { MarketplaceEmpty } from '@/components/marketplace/MarketplaceEmpty';
 
-const genderFilters = [
-  { id: 'all', label: 'All' },
+const genderFilters: FilterOption[] = [
+  { id: 'all', label: 'All', icon: <Hotel className="h-3 w-3" /> },
   { id: 'Male', label: 'Male' },
   { id: 'Female', label: 'Female' },
   { id: 'Co-ed', label: 'Co-ed' },
-] as const;
+];
+
+const genderBadge: Record<string, string> = { Male: 'M', Female: 'F', 'Co-ed': 'Co' };
 
 export default function Hostels() {
   const [hostels, setHostels] = useState<any[]>([]);
@@ -23,7 +29,6 @@ export default function Hostels() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Determine dominant city from loaded hostels for sponsored targeting
   const dominantCityId = React.useMemo(() => {
     const cityCount: Record<string, number> = {};
     hostels.forEach(h => { if (h.city_id) cityCount[h.city_id] = (cityCount[h.city_id] || 0) + 1; });
@@ -36,208 +41,106 @@ export default function Hostels() {
   });
 
   useEffect(() => {
-    fetchHostels();
+    (async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await hostelService.getAllHostels();
+        setHostels(data || []);
+      } catch {
+        setError('No hostels available at the moment.');
+      } finally { setLoading(false); }
+    })();
   }, []);
 
-  const fetchHostels = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await hostelService.getAllHostels();
-      setHostels(data || []);
-    } catch (err: any) {
-      setError('No hostels available at the moment.');
-      console.error('Error fetching hostels:', err);
-    } finally { setLoading(false); }
-  };
-
-  const filteredHostels = hostels.filter(hostel => {
-    const matchesGender = genderFilter === 'all' || hostel.gender === genderFilter;
-    const query = searchQuery.toLowerCase().trim();
-    const matchesSearch = !query ||
-      hostel.name?.toLowerCase().includes(query) ||
-      hostel.areas?.name?.toLowerCase().includes(query) ||
-      hostel.cities?.name?.toLowerCase().includes(query);
+  const filtered = hostels.filter(h => {
+    const matchesGender = genderFilter === 'all' || h.gender === genderFilter;
+    const q = searchQuery.toLowerCase().trim();
+    const matchesSearch = !q || h.name?.toLowerCase().includes(q) || h.areas?.name?.toLowerCase().includes(q) || h.cities?.name?.toLowerCase().includes(q);
     return matchesGender && matchesSearch;
   });
 
-  // Merge sponsored listings into filtered results
-  const displayHostels = mergeListings(filteredHostels);
+  const displayHostels = mergeListings(filtered);
 
+  const getPrice = (h: any): string | undefined => {
+    if (h.starting_price > 0) return formatCurrency(h.starting_price);
+    const prices = h.hostel_rooms?.flatMap((r: any) => r.hostel_sharing_options?.map((o: any) => o.price_monthly) || []).filter((p: number) => p > 0) || [];
+    return prices.length > 0 ? formatCurrency(Math.min(...prices)) : undefined;
+  };
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Sticky header */}
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
-        <div className="px-3 pt-3 pb-2 max-w-lg lg:max-w-5xl mx-auto">
-          <h1 className="text-[16px] font-semibold mb-2 lg:text-xl">Hostels</h1>
+      <MarketplaceHeader
+        title="Hostels"
+        searchPlaceholder="Search hostels..."
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        filters={genderFilters}
+        activeFilter={genderFilter}
+        onFilterChange={setGenderFilter}
+      />
 
-          <div className="relative mb-2">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search hostels..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-8 pl-8 pr-3 rounded-xl border border-border bg-card text-[12px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-            />
-          </div>
-
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-            {genderFilters.map((g) => (
-              <button
-                key={g.id}
-                onClick={() => setGenderFilter(g.id)}
-                className={`flex-shrink-0 flex items-center gap-1 px-3 py-1 rounded-xl border text-[11px] font-medium transition-colors h-8 ${
-                  genderFilter === g.id
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-card text-foreground border-border hover:bg-muted'
-                }`}
-              >
-                {g.id === 'all' && <Hotel className="h-3 w-3" />}
-                {g.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Results */}
       <div className="px-3 py-3 max-w-lg lg:max-w-5xl mx-auto">
         {loading ? (
-          <div className="space-y-2.5">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="flex gap-3 p-3 bg-card rounded-2xl border border-border animate-pulse">
-                <div className="w-20 h-20 rounded-xl bg-muted flex-shrink-0" />
-                <div className="flex-1 space-y-2 py-1">
-                  <div className="h-3 bg-muted rounded w-3/4" />
-                  <div className="h-2.5 bg-muted rounded w-1/2" />
-                  <div className="h-2.5 bg-muted rounded w-1/3" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : error ? (
-          <div className="text-center py-12">
-            <p className="text-[14px] font-medium text-foreground mb-1">No Hostels Available</p>
-            <p className="text-[12px] text-muted-foreground">Check back later for new listings.</p>
-          </div>
+          <MarketplaceSkeleton />
+        ) : error && hostels.length === 0 ? (
+          <MarketplaceEmpty
+            icon={<Hotel className="h-8 w-8 text-muted-foreground" />}
+            title="No Hostels Available"
+            subtitle="Check back later for new listings."
+          />
         ) : displayHostels.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-[14px] font-medium text-foreground mb-1">No hostels found</p>
-            <p className="text-[12px] text-muted-foreground">
-              {genderFilter !== 'all' ? 'Try adjusting your filter' : 'No hostels available'}
-            </p>
-          </div>
+          <MarketplaceEmpty
+            icon={<Hotel className="h-8 w-8 text-muted-foreground" />}
+            title="No hostels found"
+            subtitle={genderFilter !== 'all' ? 'Try adjusting your filter.' : 'No hostels available.'}
+          />
         ) : (
-          <div>
+          <>
             <p className="text-[11px] text-muted-foreground mb-2.5">{displayHostels.length} hostels found</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
-            {displayHostels.map((hostel: any, idx: number) => (
-              <div
-                key={`${hostel.id}-${idx}`}
-                onClick={() => {
-                  if (hostel.sponsoredListingId) trackClick(hostel.sponsoredListingId);
-                  navigate(`/hostels/${hostel.serial_number || hostel.id}`);
-                }}
-                className={`relative flex gap-3 p-3 bg-card rounded-2xl border hover:shadow-sm transition-all active:scale-[0.99] cursor-pointer ${
-                  hostel.sponsoredTier === 'featured' ? 'border-amber-300 bg-amber-50/30' :
-                  hostel.sponsoredTier === 'inline_sponsored' ? 'border-blue-300 bg-blue-50/20' :
-                  'border-border hover:border-primary/30'
-                }`}
-                ref={hostel.sponsoredListingId ? (el: HTMLDivElement | null) => {
-                  if (el) {
-                    const observer = new IntersectionObserver(([entry]) => {
-                      if (entry.isIntersecting) { trackImpression(hostel.sponsoredListingId!); observer.disconnect(); }
-                    }, { threshold: 0.5 });
-                    observer.observe(el);
-                  }
-                } : undefined}
-              >
-                {/* Sponsored badge */}
-                {hostel.sponsoredTier === 'featured' && (
-                  <span className="absolute top-1.5 right-1.5 text-[9px] font-bold bg-amber-500 text-white px-1.5 py-0.5 rounded-md z-10">Featured</span>
-                )}
-                {hostel.sponsoredTier === 'inline_sponsored' && (
-                  <span className="absolute top-1.5 right-1.5 text-[9px] font-bold bg-blue-500 text-white px-1.5 py-0.5 rounded-md z-10">Sponsored</span>
-                )}
-                {/* Thumbnail */}
-                <div className="relative flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden bg-muted">
-                  {hostel.logo_image ? (
-                    <img src={hostel.logo_image} alt={hostel.name} className="w-full h-full object-cover" loading="lazy" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Hotel className="h-6 w-6 text-muted-foreground" />
-                    </div>
-                  )}
-                  {hostel.gender && (
-                    <span className="absolute top-1 left-1 text-[9px] font-bold bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded-md">
-                      {hostel.gender === 'Male' ? 'M' : hostel.gender === 'Female' ? 'F' : 'Co'}
-                    </span>
-                  )}
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 min-w-0 flex flex-col justify-between">
-                  <div>
-                    <h3 className="text-[13px] font-semibold text-foreground leading-tight truncate">{hostel.name}</h3>
-                    {(hostel.areas?.name || hostel.cities?.name) && (
-                      <div className="flex items-center gap-0.5 mt-0.5">
-                        <MapPin className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                        <span className="text-[11px] text-muted-foreground truncate">
-                          {hostel.areas?.name ? hostel.areas.name + ', ' : ''}{hostel.cities?.name || ''}
-                        </span>
-                      </div>
-                    )}
-                    {hostel.amenities?.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1.5">
-                        {hostel.amenities.slice(0, 3).map((a: string, i: number) => (
-                          <span key={i} className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded-md">
-                            {a.replace(/-/g, ' ')}
-                          </span>
-                        ))}
-                        {hostel.amenities.length > 3 && (
-                          <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded-md">+{hostel.amenities.length - 3}</span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex items-center justify-between mt-2">
-                    <div className="flex items-center gap-2">
-                      {hostel.average_rating > 0 ? (
-                        <span className="flex items-center gap-0.5 text-[11px] text-amber-600 font-medium">
-                          <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
-                          {hostel.average_rating.toFixed(1)}
-                          {hostel.review_count > 0 && <span className="text-muted-foreground">({hostel.review_count})</span>}
-                        </span>
-                      ) : (
-                        <span className="text-[10px] bg-accent text-accent-foreground px-1.5 py-0.5 rounded-md font-medium">New</span>
-                      )}
-                      {(() => {
-                        const startingPrice = hostel.starting_price > 0 ? hostel.starting_price : null;
-                        if (startingPrice) {
-                          return <span className="text-[11px] font-semibold text-foreground">From {formatCurrency(startingPrice)}/mo</span>;
-                        }
-                        const prices = hostel.hostel_rooms?.flatMap((r: any) => r.hostel_sharing_options?.map((o: any) => o.price_monthly) || []).filter((p: number) => p > 0) || [];
-                        const minPrice = prices.length > 0 ? Math.min(...prices) : null;
-                        return minPrice ? (
-                          <span className="text-[11px] font-semibold text-foreground">{formatCurrency(minPrice)}/mo</span>
-                        ) : null;
-                      })()}
-                      {hostel.food_enabled && (
-                        <span className="flex items-center gap-0.5 text-[10px] text-orange-600 font-medium">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {displayHostels.map((h: any, idx: number) => {
+                const price = getPrice(h);
+                return (
+                  <MarketplaceCard
+                    key={`${h.id}-${idx}`}
+                    image={h.logo_image}
+                    fallbackIcon={<Hotel className="h-8 w-8" />}
+                    name={h.name}
+                    location={[h.areas?.name, h.cities?.name].filter(Boolean).join(', ')}
+                    rating={h.average_rating}
+                    reviewCount={h.review_count}
+                    tags={h.amenities?.slice(0, 5).map((a: string) => a.replace(/-/g, ' '))}
+                    price={price ? `From ${price}` : undefined}
+                    priceLabel="/mo"
+                    badge={genderBadge[h.gender] || undefined}
+                    badgeVariant="secondary"
+                    ctaLabel="View Rooms"
+                    sponsoredTier={h.sponsoredTier || null}
+                    sponsoredRef={h.sponsoredListingId ? (el: HTMLDivElement | null) => {
+                      if (el) {
+                        const observer = new IntersectionObserver(([entry]) => {
+                          if (entry.isIntersecting) { trackImpression(h.sponsoredListingId!); observer.disconnect(); }
+                        }, { threshold: 0.5 });
+                        observer.observe(el);
+                      }
+                    } : undefined}
+                    onClick={() => {
+                      if (h.sponsoredListingId) trackClick(h.sponsoredListingId);
+                      navigate(`/hostels/${h.serial_number || h.id}`);
+                    }}
+                    extraContent={
+                      h.food_enabled ? (
+                        <span className="flex items-center gap-0.5 text-[10px] text-orange-600 dark:text-orange-400 font-medium">
                           <Utensils className="h-3 w-3" /> Food
                         </span>
-                      )}
-                    </div>
-                    <span className="text-[11px] font-semibold text-secondary bg-secondary/10 px-2 py-0.5 rounded-lg flex-shrink-0">View Rooms</span>
-                  </div>
-                </div>
-              </div>
-            ))}
+                      ) : undefined
+                    }
+                  />
+                );
+              })}
             </div>
-          </div>
+          </>
         )}
       </div>
     </div>
