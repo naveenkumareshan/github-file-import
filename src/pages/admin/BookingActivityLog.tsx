@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -69,6 +70,8 @@ const formatDetails = (details: any) => {
 };
 
 export default function BookingActivityLog() {
+  const [searchParams] = useSearchParams();
+  const typeFilter = searchParams.get('type'); // 'cabin' | 'hostel' | null
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -78,9 +81,16 @@ export default function BookingActivityLog() {
   const [activityFilter, setActivityFilter] = useState('all');
   const [isAdmin, setIsAdmin] = useState(false);
 
+  const pageTitle = typeFilter === 'cabin' ? 'Reading Room Activity Log' : typeFilter === 'hostel' ? 'Hostel Activity Log' : 'Booking Activity Log';
+  const pageDesc = typeFilter === 'cabin'
+    ? 'Audit trail of reading room booking events — cancellations, releases, transfers, and date changes.'
+    : typeFilter === 'hostel'
+    ? 'Audit trail of hostel booking events — cancellations, releases, transfers, and date changes.'
+    : 'Audit trail of all booking lifecycle events — cancellations, releases, transfers, and date changes.';
+
   useEffect(() => {
     fetchLogs();
-  }, [currentPage, activityFilter, searchQuery]);
+  }, [currentPage, activityFilter, searchQuery, typeFilter]);
 
   const fetchLogs = async () => {
     try {
@@ -103,6 +113,10 @@ export default function BookingActivityLog() {
       // Partner scoping — RLS handles it but we also filter explicitly
       if (!adminUser) {
         query = query.eq('property_owner_id', ownerId);
+      }
+
+      if (typeFilter === 'cabin' || typeFilter === 'hostel') {
+        query = query.eq('booking_type', typeFilter);
       }
 
       if (activityFilter !== 'all') {
@@ -257,10 +271,10 @@ export default function BookingActivityLog() {
     <div className="flex flex-col gap-4">
       <div>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
-          <span>Admin Panel</span><span>/</span><span className="text-foreground font-medium">Activity Log</span>
+          <span>Admin Panel</span><span>/</span><span className="text-foreground font-medium">{typeFilter === 'cabin' ? 'Reading Room' : typeFilter === 'hostel' ? 'Hostel' : 'Activity Log'}</span>
         </div>
-        <h1 className="text-lg font-semibold tracking-tight">Booking Activity Log</h1>
-        <p className="text-muted-foreground text-xs mt-0.5">Audit trail of all booking lifecycle events — cancellations, releases, transfers, and date changes.</p>
+        <h1 className="text-lg font-semibold tracking-tight">{pageTitle}</h1>
+        <p className="text-muted-foreground text-xs mt-0.5">{pageDesc}</p>
       </div>
 
       <div className="flex flex-wrap gap-2">
