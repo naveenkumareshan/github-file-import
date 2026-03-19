@@ -112,7 +112,7 @@ export const MarketplaceCard: React.FC<MarketplaceCardProps> = ({
               {name}
             </h3>
             {!sponsoredTier && (
-              <div className="flex items-center gap-1.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center gap-1.5 flex-shrink-0">
                 {onSave && (
                   <button
                     onClick={(e) => { e.stopPropagation(); onSave(e); }}

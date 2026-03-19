@@ -77,7 +77,7 @@ export default function MessMarketplace() {
               <p className="text-[11px] text-muted-foreground mb-2.5">
                 {filtered.length} mess{filtered.length !== 1 ? 'es' : ''} found
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="space-y-2.5">
                 {filtered.map((m: any) => {
                   const mainImage = m.logo_image || (m.images && m.images[0]) || '/placeholder.svg';
                   const fb = FOOD_BADGE[m.food_type];
