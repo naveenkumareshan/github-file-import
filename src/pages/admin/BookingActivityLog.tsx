@@ -115,6 +115,10 @@ export default function BookingActivityLog() {
         query = query.eq('property_owner_id', ownerId);
       }
 
+      if (typeFilter === 'cabin' || typeFilter === 'hostel') {
+        query = query.eq('booking_type', typeFilter);
+      }
+
       if (activityFilter !== 'all') {
         query = query.eq('activity_type', activityFilter);
       }
