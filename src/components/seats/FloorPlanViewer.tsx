@@ -36,8 +36,8 @@ interface FloorPlanViewerProps {
 }
 
 /* ─── helpers ─── */
-const SEAT_BASE_W = 36;
-const SEAT_BASE_H = 26;
+const SEAT_BASE_W = 32;
+const SEAT_BASE_H = 22;
 const PAD = 30; // padding around seat bounding box
 
 const getTouchDistance = (t: React.TouchEvent) => {
