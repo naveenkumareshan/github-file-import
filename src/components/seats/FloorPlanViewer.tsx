@@ -72,8 +72,8 @@ const MemoizedSeatButton = memo(({ seat, isSelected, onSelect, seatW, seatH }: S
         <button
           className={`absolute flex items-center justify-center rounded border font-bold transition-all ${seatClass}`}
           style={{
-            left: seat.position.x - seatW / 2,
-            top: seat.position.y - seatH / 2,
+            left: seat.position.x,
+            top: seat.position.y,
             width: seatW,
             height: seatH,
             fontSize: Math.max(8, seatW * 0.28),
