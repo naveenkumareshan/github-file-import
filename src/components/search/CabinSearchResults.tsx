@@ -1,10 +1,12 @@
 
 import React from 'react';
 import { getImageUrl } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MapPin, Star, Loader2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { MarketplaceCard } from '@/components/marketplace/MarketplaceCard';
+import { MarketplaceSkeleton } from '@/components/marketplace/MarketplaceSkeleton';
+import { MarketplaceEmpty } from '@/components/marketplace/MarketplaceEmpty';
 
 interface CabinResult {
   _id?: string;
