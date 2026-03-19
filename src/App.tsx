@@ -96,6 +96,8 @@ const LaundryPartnerDashboard = lazy(() => import("./pages/LaundryPartnerDashboa
 const ExpiringBookingsPage = lazy(() => import("./pages/admin/ExpiringBookingsPage"));
 const HostelExpiringBookingsPage = lazy(() => import("./pages/admin/HostelExpiringBookingsPage"));
 const PartnerEnquiries = lazy(() => import("./pages/admin/PartnerEnquiries"));
+const PartnerLeads = lazy(() => import("./pages/partner/PartnerLeads"));
+const AdminLeadOverview = lazy(() => import("./pages/admin/AdminLeadOverview"));
 const PartnerWithUs = lazy(() => import("./pages/partner/PartnerWithUs"));
 // Student / public pages
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
@@ -247,6 +249,7 @@ function App() {
               <Route path="banks" element={<BankManagement />} />
               <Route path="property-attendance" element={<PropertyAttendance />} />
               <Route path="partner-enquiries" element={<PartnerEnquiries />} />
+              <Route path="lead-overview" element={<AdminLeadOverview />} />
             </Route>
 
             {/* ── Partner routes (alias for vendor/host admin panel) ── */}
@@ -309,6 +312,7 @@ function App() {
               <Route path="hostel-expiring-bookings" element={<HostelExpiringBookingsPage />} />
               <Route path="banks" element={<BankManagement />} />
               <Route path="property-attendance" element={<PropertyAttendance />} />
+              <Route path="leads" element={<PartnerLeads />} />
             </Route>
 
             {/* ── Partner routes (formerly vendor/host) ── */}

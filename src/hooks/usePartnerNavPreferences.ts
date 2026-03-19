@@ -52,6 +52,7 @@ export const ALL_NAV_OPTIONS: NavItem[] = [
   { key: 'subscriptions', label: 'Subscriptions', url: '/partner/my-subscriptions', icon: 'Crown', category: 'vendor_only' },
   { key: 'profile', label: 'Profile', url: '/partner/profile', icon: 'User', category: 'vendor_only' },
   { key: 'activity-log', label: 'Activity Log', url: '/partner/booking-activity-log', icon: 'Activity', category: 'general', permission: 'view_bookings' },
+  { key: 'leads', label: 'Leads', url: '/partner/leads', icon: 'UserPlus', category: 'general' },
 ];
 
 function isItemValidForPropertyTypes(

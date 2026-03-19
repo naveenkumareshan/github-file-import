@@ -11,7 +11,7 @@ import {
   User, MapIcon, Wallet, Calendar, CreditCard, Activity, Clock,
   Bed, ClipboardCheck, Users, Plus, TicketPlus, Building, Star,
   BarChart2, Users2, MessageSquare, Megaphone, Crown, Shirt,
-  UtensilsCrossed, LogOut, Settings,
+  UtensilsCrossed, LogOut, Settings, UserPlus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import PartnerNavCustomizer from './PartnerNavCustomizer';
@@ -73,6 +73,7 @@ const PartnerMoreMenu: React.FC<MoreMenuProps> = ({ open, onOpenChange }) => {
       items: [
         { title: 'Operations Hub', url: `${prefix}/operations`, icon: ClipboardCheck, permission: 'view_operations' },
         { title: 'Business Performance', url: `${prefix}/business-performance`, icon: BarChart2, permission: 'view_reports' },
+        { title: 'Leads CRM', url: `${prefix}/leads`, icon: UserPlus },
       ],
     },
     {

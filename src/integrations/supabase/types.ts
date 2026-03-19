@@ -3277,6 +3277,92 @@ export type Database = {
         }
         Relationships: []
       }
+      partner_lead_notes: {
+        Row: {
+          created_at: string
+          id: string
+          lead_id: string
+          remark: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lead_id: string
+          remark: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lead_id?: string
+          remark?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_lead_notes_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "partner_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_lead_notes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_leads: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          name: string
+          partner_id: string
+          phone: string
+          serial_number: string | null
+          source: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          id?: string
+          name: string
+          partner_id: string
+          phone: string
+          serial_number?: string | null
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          name?: string
+          partner_id?: string
+          phone?: string
+          serial_number?: string | null
+          source?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_leads_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partner_ledger: {
         Row: {
           amount: number

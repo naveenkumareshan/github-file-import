@@ -125,6 +125,12 @@ export function AdminSidebar() {
       icon: BarChart2,
       roles: ['admin', 'vendor', 'vendor_employee'],
       permissions: ['view_reports']
+    },
+    {
+      title: 'Leads CRM',
+      url: `${routePrefix}/leads`,
+      icon: UserCheck,
+      roles: ['vendor', 'vendor_employee'],
     }
   ];
 
@@ -488,6 +494,7 @@ export function AdminSidebar() {
       roles: ['admin'],
       subItems: [
         { title: 'Enquiries', url: '/admin/partner-enquiries', icon: Phone, roles: ['admin'] },
+        { title: 'Lead Overview', url: '/admin/lead-overview', icon: BarChart2, roles: ['admin'] },
         { title: 'All Partners', url: '/admin/vendors', icon: UserCheck, roles: ['admin'] },
         { title: 'Property Approvals', url: '/admin/property-approvals', icon: ClipboardCheck, roles: ['admin'] },
         { title: 'Settlements', url: '/admin/settlements', icon: Wallet, roles: ['admin'] },
