@@ -1,106 +1,71 @@
 
 
-## Plan: Unified Marketplace Design System for Student Pages
+# Plan: Revamp Mess Detail Page — Hostel-Style UX
 
-### Problem
-All 4 student-facing listing pages (Reading Rooms, Hostels, Mess, Laundry) have nearly identical layouts but each implements its own inline card markup, header, filters, loading skeletons, and empty states -- creating visual inconsistency and code duplication.
+## Issues Identified
+1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
+2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
+3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
+4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
 
-### Solution
-Create a shared component library and refactor all 4 pages to use them.
+## Changes
 
----
+### 1. Database Migration
+- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
+- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
 
-### New Files to Create
+### 2. `src/utils/shareUtils.ts`
+- Add `generateMessShareText` function (parallel to hostel's share text generator)
 
-**1. `src/components/marketplace/MarketplaceCard.tsx`** -- Single reusable card component
+### 3. `src/pages/MessMarketplace.tsx`
+- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
+- Show starting price on each card (from `starting_price` or computed from min package price)
 
-```text
-┌──────────────────────────────────────────────┐
-│ ┌────────┐  Name                    ❤️ 📞 📍 │
-│ │        │  ⭐ 4.2 (128) · 2km away          │
-│ │ IMAGE  │  [WiFi] [AC] [Food] +2            │
-│ │ [BADGE]│  ₹2,500/mo    5 seats left        │
-│ └────────┘              [Book Now ▸]          │
-└──────────────────────────────────────────────┘
-```
+### 4. `src/pages/MessDetail.tsx` — Full Rewrite
+Replace the current tab + dialog approach with a hostel-style stepped booking flow:
 
-Props interface:
-- `image`, `name`, `location`, `rating`, `reviewCount`
-- `tags` (amenities/features array)
-- `price`, `priceLabel` (e.g. "/mo", "/kg")
-- `availability` (e.g. "5 seats left")
-- `badge` ("Top Rated" | "New" | "Most Booked" | food type | gender | category)
-- `badgeColor` (amber/green/blue/purple)
-- `ctaLabel` ("Book Now" | "View Rooms" | "View Menu" | "View")
-- `onClick`, `onSave`, `onCall`, `onMap`
-- `sponsoredTier` (for hostel sponsored listings)
+**Hero Section** (collapsible like hostels):
+- Image slider
+- Back button overlay
+- Name + Share button + Rating
+- Location
+- Info chips (food type, starting price, capacity)
+- Details & description card
+- "View Menu" button inside details card (weekly menu table in a dialog/modal)
+- Meal timings displayed inline
 
-Design:
-- Rounded-2xl card with soft shadow (`shadow-sm hover:shadow-md`)
-- Left image 96x96 with badge overlay
-- Quick action icons (heart, phone, map pin) top-right
-- Consistent 13px name, 11px meta, 10px tags typography
-- Green highlight for price, primary color CTA button
-- Mobile-first: horizontal card; `md:` vertical card option
+**Step 1: Select Meal Plan**
+- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
+- Filter available packages based on selected meal types
 
-**2. `src/components/marketplace/MarketplaceHeader.tsx`** -- Reusable sticky header
+**Step 2: Select Duration**
+- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
+- Duration count selector
+- Start date picker + computed end date
 
-Props:
-- `title` (string)
-- `searchPlaceholder` (string)
-- `searchQuery`, `onSearchChange`
-- `filters` (array of `{id, label, icon?}`)
-- `activeFilter`, `onFilterChange`
+**Step 3: Review & Pay**
+- Booking summary (mess name, meal plan, duration, dates)
+- Price breakdown
+- Terms checkbox
+- Pay button (creates subscription + receipt)
 
-Contains: search bar + filter chips in consistent layout.
+**Reviews section**: Shown below the booking flow (not in a tab)
 
-**3. `src/components/marketplace/MarketplaceSkeleton.tsx`** -- Reusable loading skeleton
+### 5. `src/components/admin/MessEditor.tsx`
+- Add `starting_price` field in Basic Information section
 
-Extracts the repeated 4-card pulse skeleton used identically across all pages.
+### 6. `src/api/messService.ts`
+- Add `getMessPartnerBySerialNumber` function for serial number lookup
+- Update `getMessPartnerById` for UUID lookup
 
-**4. `src/components/marketplace/MarketplaceEmpty.tsx`** -- Reusable empty state
+## File Summary
 
-Props: `icon`, `title`, `subtitle`, `ctaLabel?`, `ctaTo?`
-- Friendly illustration with optional "Become a Partner" CTA button
-
----
-
-### Files to Modify
-
-**5. `src/pages/Cabins.tsx`** -- Refactor to use shared components
-- Replace inline header with `<MarketplaceHeader>`
-- Replace `<CabinsGrid>` with `<MarketplaceCard>` mapping
-- Use `<MarketplaceSkeleton>` and `<MarketplaceEmpty>`
-- Map cabin data to MarketplaceCard props (badge = category, tags = amenities, cta = "Book Now")
-
-**6. `src/pages/Hostels.tsx`** -- Refactor to use shared components
-- Replace inline header/cards with shared components
-- Map hostel data: badge = gender, tags = amenities, price from starting_price, cta = "View Rooms"
-- Preserve sponsored listing logic (pass `sponsoredTier` prop)
-
-**7. `src/pages/MessMarketplace.tsx`** -- Refactor to use shared components
-- Map mess data: badge = food type (VEG/NON/MIX with color), tags from description, cta = "View Menu"
-
-**8. `src/pages/Laundry.tsx`** -- Refactor to use shared components
-- Map laundry data: tags = delivery time + operating hours, cta = "View"
-
-**9. `src/components/cabins/CabinsGrid.tsx`** -- Remove (no longer needed, logic moves into Cabins.tsx)
-
----
-
-### Design Rules
-
-- **Card radius**: `rounded-2xl` (16px)
-- **Shadows**: `shadow-sm` default, `shadow-md` on hover
-- **Typography**: Name 13px semibold, location 11px, tags 10px, price 12px semibold green
-- **Colors**: Blue = primary CTA, Purple badge = premium/luxury, Green badge = new/available, Amber = top rated
-- **Spacing**: `gap-4` between cards, `p-3` card padding
-- **Quick actions**: Heart (save), Phone (call), MapPin (directions) -- shown on hover/always on mobile
-- **Badges**: Absolute positioned on image -- "Top Rated", "New", "Most Booked", category/gender/food type
-- **Responsive**: Mobile = horizontal card (image left); Desktop grid = 3 columns
-
-### What Stays the Same
-- All existing data fetching logic, API calls, and filtering logic in each page
-- Route paths and navigation targets
-- Sponsored listing tracking in Hostels
+| File | Change |
+|------|--------|
+| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
+| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
+| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
+| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
+| `src/components/admin/MessEditor.tsx` | Add starting_price field |
+| `src/api/messService.ts` | Add serial number lookup function |
 
