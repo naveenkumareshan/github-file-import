@@ -73,6 +73,7 @@ const PartnerMoreMenu: React.FC<MoreMenuProps> = ({ open, onOpenChange }) => {
       items: [
         { title: 'Operations Hub', url: `${prefix}/operations`, icon: ClipboardCheck, permission: 'view_operations' },
         { title: 'Business Performance', url: `${prefix}/business-performance`, icon: BarChart2, permission: 'view_reports' },
+        { title: 'Leads CRM', url: `${prefix}/leads`, icon: UserPlus },
       ],
     },
     {

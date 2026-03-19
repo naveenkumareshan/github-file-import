@@ -61,6 +61,8 @@ const routeLabels: Record<string, string> = {
   "/partner/receipts": "Receipts",
   "/partner/laundry": "Laundry",
   "/partner/laundry-receipts": "Laundry Receipts",
+  "/partner/leads": "Leads CRM",
+  "/admin/lead-overview": "Lead Overview",
 };
 
 const getPageLabel = (pathname: string): string => {
