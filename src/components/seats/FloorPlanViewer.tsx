@@ -134,7 +134,7 @@ export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
   const fitScaleRef = useRef(1);
 
   // Responsive seat dimensions
-  const seatScale = isMobile ? 1.3 : 1.0;
+  const seatScale = isMobile ? 1.05 : 1.0;
   const seatW = Math.round(SEAT_BASE_W * seatScale);
   const seatH = Math.round(SEAT_BASE_H * seatScale);
 
