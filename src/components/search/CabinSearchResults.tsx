@@ -46,11 +46,11 @@ interface CabinSearchResultsProps {
   onTrackClick?: (listingId: string) => void;
 }
 
-const getCategoryColor = (category: string) => {
+const getCategoryBadgeVariant = (category: string): 'amber' | 'purple' | 'primary' => {
   switch (category) {
-    case 'luxury': return 'bg-amber-500';
-    case 'premium': return 'bg-purple-500';
-    default: return 'bg-blue-500';
+    case 'luxury': return 'amber';
+    case 'premium': return 'purple';
+    default: return 'primary';
   }
 };
 
