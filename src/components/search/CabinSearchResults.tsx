@@ -67,30 +67,18 @@ export const CabinSearchResults = ({
   onTrackClick,
 }: CabinSearchResultsProps) => {
 
+  const navigate = useNavigate();
+
   if (loading) {
-    return (
-      <div className="space-y-3">
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className="flex gap-3 p-3 bg-card rounded-2xl border border-border animate-pulse">
-            <div className="w-24 h-24 rounded-xl bg-muted flex-shrink-0" />
-            <div className="flex-1 space-y-2 py-1">
-              <div className="h-3 bg-muted rounded w-3/4" />
-              <div className="h-2.5 bg-muted rounded w-1/2" />
-              <div className="h-2.5 bg-muted rounded w-1/3" />
-              <div className="h-3 bg-muted rounded w-1/4 mt-2" />
-            </div>
-          </div>
-        ))}
-      </div>
-    );
+    return <MarketplaceSkeleton count={5} />;
   }
 
   if (cabins.length === 0) {
     return (
-      <div className="text-center py-16">
-        <p className="text-[14px] font-medium text-foreground mb-1">No reading rooms found</p>
-        <p className="text-[12px] text-muted-foreground">Try adjusting your filters or location.</p>
-      </div>
+      <MarketplaceEmpty
+        title="No reading rooms found"
+        subtitle="Try adjusting your filters or location."
+      />
     );
   }
 
