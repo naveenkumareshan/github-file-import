@@ -1,71 +1,111 @@
 
 
-# Plan: Revamp Mess Detail Page — Hostel-Style UX
+## Partner Lead CRM System - Implementation Plan
 
-## Issues Identified
-1. **UUID in URL**: Marketplace navigates to `/mess/{uuid}` instead of using `serial_number` (e.g., `IS-MESS-2026-00001`)
-2. **Detail page layout**: Current tab-based UI doesn't match hostel pattern (no share button, no rating display, no starting price, no info chips)
-3. **Booking flow**: Currently a simple "Subscribe" button with a dialog. Needs a step-based flow like hostels: Select Meal Type → Select Duration → Review & Pay
-4. **No starting price**: `mess_partners` has no `starting_price` field; marketplace shows no price
+### Current State
+- An existing `partner_enquiries` table stores leads from the public "Partner With Us" page (name, phone, email, city, property_types, message, status, admin_notes)
+- Admin-only view at `/admin/partner-enquiries` with basic status management
+- Partners have NO lead management capability -- this is the core gap
 
-## Changes
+### What We'll Build
 
-### 1. Database Migration
-- Add `starting_price` column to `mess_partners` (nullable numeric, default null)
-- Add `average_rating` and `review_count` columns to `mess_partners` (to display in detail page like hostels)
+A full Mini CRM for partners to track their own customer enquiries (students looking for PG/hostel/reading room/laundry/mess), plus an admin overview panel.
 
-### 2. `src/utils/shareUtils.ts`
-- Add `generateMessShareText` function (parallel to hostel's share text generator)
+---
 
-### 3. `src/pages/MessMarketplace.tsx`
-- Navigate to `/mess/${m.serial_number || m.id}` instead of UUID
-- Show starting price on each card (from `starting_price` or computed from min package price)
+### Database Changes (2 new tables, 1 migration)
 
-### 4. `src/pages/MessDetail.tsx` — Full Rewrite
-Replace the current tab + dialog approach with a hostel-style stepped booking flow:
+**Table: `partner_leads`**
+- `id` uuid PK
+- `partner_id` uuid FK → profiles(id) NOT NULL (the partner who owns this lead)
+- `name` text NOT NULL
+- `phone` text NOT NULL
+- `category` text NOT NULL (hostel, pg, reading_room, laundry, mess)
+- `source` text NOT NULL DEFAULT 'walk_in' (walk_in, app, call, referral)
+- `status` text NOT NULL DEFAULT 'new_lead' (new_lead, contacted, interested, visit_scheduled, converted, not_interested)
+- `serial_number` text (auto-generated via trigger)
+- `created_at`, `updated_at` timestamps
 
-**Hero Section** (collapsible like hostels):
-- Image slider
-- Back button overlay
-- Name + Share button + Rating
-- Location
-- Info chips (food type, starting price, capacity)
-- Details & description card
-- "View Menu" button inside details card (weekly menu table in a dialog/modal)
-- Meal timings displayed inline
+**Table: `partner_lead_notes`**
+- `id` uuid PK
+- `lead_id` uuid FK → partner_leads(id) ON DELETE CASCADE
+- `user_id` uuid FK → profiles(id) (who wrote the note)
+- `remark` text NOT NULL
+- `created_at` timestamp
 
-**Step 1: Select Meal Plan**
-- Pill-based selection: Breakfast, Lunch, Dinner, Lunch+Dinner, Full Day (all 3)
-- Filter available packages based on selected meal types
+**RLS Policies:**
+- Partners/employees can CRUD their own leads via `is_partner_or_employee_of(partner_id)`
+- Admins can SELECT all leads (for the admin overview panel)
 
-**Step 2: Select Duration**
-- Duration type toggle (Daily / Weekly / Monthly) — only show types that have matching packages
-- Duration count selector
-- Start date picker + computed end date
+**Realtime:** Enable realtime on `partner_leads` for live status updates.
 
-**Step 3: Review & Pay**
-- Booking summary (mess name, meal plan, duration, dates)
-- Price breakdown
-- Terms checkbox
-- Pay button (creates subscription + receipt)
+---
 
-**Reviews section**: Shown below the booking flow (not in a tab)
+### Frontend: Partner Side (4 new components)
 
-### 5. `src/components/admin/MessEditor.tsx`
-- Add `starting_price` field in Basic Information section
+**1. `src/pages/partner/PartnerLeads.tsx`** - Main leads page
+- Top stats row: Total Leads, Converted, Conversion %, Today's, This Week's, Pending Follow-ups
+- Toggle between **List View** (default) and **Kanban View**
+- Floating "+ Add Lead" FAB button (mobile-first)
+- Filters: status, category, date range
+- Search by name/phone
 
-### 6. `src/api/messService.ts`
-- Add `getMessPartnerBySerialNumber` function for serial number lookup
-- Update `getMessPartnerById` for UUID lookup
+**2. `src/components/partner/LeadKanbanBoard.tsx`** - Kanban view
+- 6 columns: New Lead → Contacted → Interested → Visit Scheduled → Converted → Not Interested
+- Drag-and-drop between columns (using native HTML drag API for zero dependencies)
+- Each card shows name, phone, category badge, source badge, time ago
+- Click card → opens detail sheet
 
-## File Summary
+**3. `src/components/partner/LeadDetailSheet.tsx`** - Lead detail (Sheet/Drawer)
+- Full lead info with click-to-call phone
+- Status dropdown to change stage
+- WhatsApp button with prefilled message: "Hi, this is from [Partner Name] regarding your enquiry"
+- Timeline-style notes section (newest first)
+- Add note input with timestamp
 
-| File | Change |
-|------|--------|
-| Database migration | Add `starting_price`, `average_rating`, `review_count` to `mess_partners` |
-| `src/utils/shareUtils.ts` | Add `generateMessShareText` |
-| `src/pages/MessMarketplace.tsx` | Use serial_number in URLs, show starting price |
-| `src/pages/MessDetail.tsx` | Full rewrite: hostel-style hero + 3-step booking flow |
-| `src/components/admin/MessEditor.tsx` | Add starting_price field |
-| `src/api/messService.ts` | Add serial number lookup function |
+**4. `src/components/partner/AddLeadDialog.tsx`** - Quick-add modal
+- Minimal fields: Name, Phone (required), Category dropdown, Source dropdown
+- Status defaults to "New Lead"
+- Submission in under 5 seconds -- auto-close on success
+
+---
+
+### Frontend: Admin Side (1 new component)
+
+**5. `src/pages/admin/AdminLeadOverview.tsx`** - Admin lead analytics
+- View all partner leads across the platform
+- Per-partner performance table: Partner Name, Total Leads, Converted, Conversion Rate %
+- Funnel visualization showing drop-off at each stage
+- Filter by date range
+
+---
+
+### Routing & Navigation Changes
+
+**`src/App.tsx`:**
+- Add `partner/leads` route under partner layout
+- Add `admin/lead-overview` route under admin layout
+
+**`src/hooks/usePartnerNavPreferences.ts`:**
+- Add `{ key: 'leads', label: 'Leads', url: '/partner/leads', icon: 'UserPlus', category: 'general' }` to `ALL_NAV_OPTIONS`
+
+**`src/components/partner/PartnerMoreMenu.tsx`:**
+- Add "Leads CRM" link under Operations section
+
+**`src/components/admin/AdminSidebar.tsx`:**
+- Add "Lead Overview" under the Partners section
+
+**`src/components/AdminLayout.tsx`:**
+- Add route labels for new pages
+
+---
+
+### Technical Details
+
+- All queries scoped via `partnerUserId` / `getEffectiveOwnerId` pattern (consistent with existing codebase)
+- Kanban drag uses `onDragStart`/`onDragOver`/`onDrop` with optimistic UI updates
+- Stats computed client-side from the leads array (no separate RPC needed for partner-level)
+- Admin overview uses a single query with profile join for partner names
+- Mobile-first: cards, soft shadows, rounded corners, matching existing SaaS design system
+- Real-time subscription on `partner_leads` table for live status changes
 
