@@ -182,7 +182,7 @@ export function AdminSidebar() {
       });
       readingRoomSubItems.push({
         title: 'Activity Log',
-        url: `${routePrefix}/booking-activity-log`,
+        url: `${routePrefix}/booking-activity-log?type=cabin`,
         icon: Activity,
         roles: ['admin', 'vendor', 'vendor_employee'],
         permissions: ['view_bookings']
