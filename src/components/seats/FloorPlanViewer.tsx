@@ -36,8 +36,8 @@ interface FloorPlanViewerProps {
 }
 
 /* ─── helpers ─── */
-const SEAT_BASE_W = 36;
-const SEAT_BASE_H = 26;
+const SEAT_BASE_W = 32;
+const SEAT_BASE_H = 22;
 const PAD = 30; // padding around seat bounding box
 
 const getTouchDistance = (t: React.TouchEvent) => {
@@ -72,8 +72,8 @@ const MemoizedSeatButton = memo(({ seat, isSelected, onSelect, seatW, seatH }: S
         <button
           className={`absolute flex items-center justify-center rounded border font-bold transition-all ${seatClass}`}
           style={{
-            left: seat.position.x - seatW / 2,
-            top: seat.position.y - seatH / 2,
+            left: seat.position.x,
+            top: seat.position.y,
             width: seatW,
             height: seatH,
             fontSize: Math.max(8, seatW * 0.28),
@@ -134,21 +134,19 @@ export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
   const fitScaleRef = useRef(1);
 
   // Responsive seat dimensions
-  const seatScale = isMobile ? 1.3 : 1.0;
+  const seatScale = isMobile ? 1.05 : 1.0;
   const seatW = Math.round(SEAT_BASE_W * seatScale);
   const seatH = Math.round(SEAT_BASE_H * seatScale);
 
   // Tight bounding box of all seats
   const bounds = useMemo(() => {
     if (seats.length === 0) return { x: 0, y: 0, w: roomWidth, h: roomHeight };
-    const halfW = seatW / 2;
-    const halfH = seatH / 2;
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (const s of seats) {
-      minX = Math.min(minX, s.position.x - halfW);
-      minY = Math.min(minY, s.position.y - halfH);
-      maxX = Math.max(maxX, s.position.x + halfW);
-      maxY = Math.max(maxY, s.position.y + halfH);
+      minX = Math.min(minX, s.position.x);
+      minY = Math.min(minY, s.position.y);
+      maxX = Math.max(maxX, s.position.x + seatW);
+      maxY = Math.max(maxY, s.position.y + seatH);
     }
     return {
       x: minX - PAD,
