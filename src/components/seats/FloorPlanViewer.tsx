@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect, memo } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo, memo } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   TooltipProvider, Tooltip, TooltipContent, TooltipTrigger,
@@ -6,7 +6,9 @@ import {
 import { ZoomIn, ZoomOut, Maximize } from 'lucide-react';
 import { format } from 'date-fns';
 import { getImageUrl, cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
+/* ─── types ─── */
 interface ViewerSeat {
   _id: string;
   id: string;
@@ -33,13 +35,30 @@ interface FloorPlanViewerProps {
   sections?: any[];
 }
 
+/* ─── helpers ─── */
+const SEAT_BASE_W = 36;
+const SEAT_BASE_H = 26;
+const PAD = 30; // padding around seat bounding box
+
+const getTouchDistance = (t: React.TouchEvent) => {
+  const [a, b] = [t.touches[0], t.touches[1]];
+  return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+};
+const getTouchCenter = (t: React.TouchEvent) => {
+  const [a, b] = [t.touches[0], t.touches[1]];
+  return { x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 };
+};
+
+/* ─── seat button (memoized) ─── */
 interface SeatButtonProps {
   seat: ViewerSeat;
   isSelected: boolean;
   onSelect?: (seat: ViewerSeat) => void;
+  seatW: number;
+  seatH: number;
 }
 
-const MemoizedSeatButton = memo(({ seat, isSelected, onSelect }: SeatButtonProps) => {
+const MemoizedSeatButton = memo(({ seat, isSelected, onSelect, seatW, seatH }: SeatButtonProps) => {
   const isBooked = !seat.isAvailable;
   const isFutureBooked = seat.isFutureBooked && !isBooked;
   let seatClass = 'bg-emerald-50 border-emerald-400 text-emerald-800 hover:bg-emerald-100 cursor-pointer';
@@ -51,12 +70,13 @@ const MemoizedSeatButton = memo(({ seat, isSelected, onSelect }: SeatButtonProps
     <Tooltip>
       <TooltipTrigger asChild>
         <button
-          className={`absolute flex items-center justify-center rounded border text-[10px] font-bold transition-all ${seatClass}`}
+          className={`absolute flex items-center justify-center rounded border font-bold transition-all ${seatClass}`}
           style={{
-            left: seat.position.x - 18,
-            top: seat.position.y - 13,
-            width: 36,
-            height: 26,
+            left: seat.position.x - seatW / 2,
+            top: seat.position.y - seatH / 2,
+            width: seatW,
+            height: seatH,
+            fontSize: Math.max(8, seatW * 0.28),
             zIndex: isSelected ? 20 : 10,
           }}
           onClick={e => {
@@ -81,16 +101,19 @@ const MemoizedSeatButton = memo(({ seat, isSelected, onSelect }: SeatButtonProps
       </TooltipContent>
     </Tooltip>
   );
-}, (prev, next) => 
+}, (prev, next) =>
   prev.seat._id === next.seat._id &&
   prev.seat.isAvailable === next.seat.isAvailable &&
   prev.seat.isFutureBooked === next.seat.isFutureBooked &&
   prev.isSelected === next.isSelected &&
-  prev.seat.price === next.seat.price
+  prev.seat.price === next.seat.price &&
+  prev.seatW === next.seatW &&
+  prev.seatH === next.seatH
 );
 
 MemoizedSeatButton.displayName = 'MemoizedSeatButton';
 
+/* ─── main component ─── */
 export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
   seats,
   roomWidth,
@@ -102,22 +125,65 @@ export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
   layoutImageOpacity = 30,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
   const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 20, y: 20 });
+  const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [containerSize, setContainerSize] = useState({ w: 0, h: 0 });
+  const fitScaleRef = useRef(1);
 
-  const handleZoomIn = () => setZoom(z => Math.min(z + 0.25, 3));
-  const handleZoomOut = () => setZoom(z => Math.max(z - 0.25, 0.25));
+  // Responsive seat dimensions
+  const seatScale = isMobile ? 1.3 : 1.0;
+  const seatW = Math.round(SEAT_BASE_W * seatScale);
+  const seatH = Math.round(SEAT_BASE_H * seatScale);
+
+  // Tight bounding box of all seats
+  const bounds = useMemo(() => {
+    if (seats.length === 0) return { x: 0, y: 0, w: roomWidth, h: roomHeight };
+    const halfW = seatW / 2;
+    const halfH = seatH / 2;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const s of seats) {
+      minX = Math.min(minX, s.position.x - halfW);
+      minY = Math.min(minY, s.position.y - halfH);
+      maxX = Math.max(maxX, s.position.x + halfW);
+      maxY = Math.max(maxY, s.position.y + halfH);
+    }
+    return {
+      x: minX - PAD,
+      y: minY - PAD,
+      w: maxX - minX + PAD * 2,
+      h: maxY - minY + PAD * 2,
+    };
+  }, [seats, seatW, seatH, roomWidth, roomHeight]);
+
+  // Clamp helper
+  const clampZoom = useCallback((z: number) => Math.min(Math.max(z, fitScaleRef.current), 3), []);
+
+  // Fit-to-screen: compute scale from bounds, apply 1.15x boost, center
   const handleFitToScreen = useCallback(() => {
-    if (!containerRef.current) return;
     const el = containerRef.current;
-    const scaleX = (el.clientWidth - 40) / roomWidth;
-    const scaleY = (el.clientHeight - 40) / roomHeight;
-    setZoom(Math.min(scaleX, scaleY, 1.5));
-    setPan({ x: 20, y: 20 });
-  }, [roomWidth, roomHeight]);
+    if (!el) return;
+    const cw = el.clientWidth;
+    const ch = el.clientHeight;
+    if (cw === 0 || ch === 0) return;
+
+    const fitScale = Math.min(cw / bounds.w, ch / bounds.h);
+    fitScaleRef.current = fitScale;
+    const newZoom = Math.min(fitScale * 1.15, 3);
+
+    // Center the bounding box
+    const panX = (cw - bounds.w * newZoom) / 2 - bounds.x * newZoom;
+    const panY = (ch - bounds.h * newZoom) / 2 - bounds.y * newZoom;
+
+    setZoom(newZoom);
+    setPan({ x: panX, y: panY });
+  }, [bounds]);
+
+  // Zoom buttons
+  const handleZoomIn = () => setZoom(z => clampZoom(z + 0.25));
+  const handleZoomOut = () => setZoom(z => clampZoom(z - 0.25));
 
   // Track container size
   useEffect(() => {
@@ -130,13 +196,13 @@ export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
     return () => ro.disconnect();
   }, []);
 
-  // Auto-fit on mount
+  // Auto-fit on mount + when seats change
   useEffect(() => {
     const timer = setTimeout(handleFitToScreen, 100);
     return () => clearTimeout(timer);
-  }, [handleFitToScreen]);
+  }, [handleFitToScreen, seats.length]);
 
-  // Mouse handlers
+  // ─── Mouse handlers ───
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsPanning(true);
     setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
@@ -147,34 +213,90 @@ export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
   };
   const handleMouseUp = () => setIsPanning(false);
 
-  // Touch handlers for mobile panning (no scroll-zoom)
-  const touchStartRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
+  // ─── Scroll-wheel zoom (desktop) ───
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    const el = containerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const cursorX = e.clientX - rect.left;
+    const cursorY = e.clientY - rect.top;
+
+    setZoom(prevZoom => {
+      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      const newZoom = clampZoom(prevZoom + delta);
+      const scale = newZoom / prevZoom;
+      setPan(p => ({
+        x: cursorX - (cursorX - p.x) * scale,
+        y: cursorY - (cursorY - p.y) * scale,
+      }));
+      return newZoom;
+    });
+  }, [clampZoom]);
+
+  // ─── Touch handlers (pan + pinch-to-zoom) ───
+  const touchRef = useRef<{
+    panX: number; panY: number;
+    startX: number; startY: number;
+    dist: number; zoom: number;
+    fingers: number;
+  } | null>(null);
 
   const handleTouchStart = (e: React.TouchEvent) => {
+    e.stopPropagation();
     if (e.touches.length === 1) {
-      e.stopPropagation();
-      const touch = e.touches[0];
-      touchStartRef.current = { x: touch.clientX, y: touch.clientY, panX: pan.x, panY: pan.y };
+      const t = e.touches[0];
+      touchRef.current = { startX: t.clientX, startY: t.clientY, panX: pan.x, panY: pan.y, dist: 0, zoom, fingers: 1 };
       setIsPanning(true);
+    } else if (e.touches.length === 2) {
+      const dist = getTouchDistance(e);
+      touchRef.current = { startX: 0, startY: 0, panX: pan.x, panY: pan.y, dist, zoom, fingers: 2 };
     }
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (!touchStartRef.current || e.touches.length !== 1) return;
     e.preventDefault();
     e.stopPropagation();
-    const touch = e.touches[0];
-    const dx = touch.clientX - touchStartRef.current.x;
-    const dy = touch.clientY - touchStartRef.current.y;
-    setPan({ x: touchStartRef.current.panX + dx, y: touchStartRef.current.panY + dy });
+    if (!touchRef.current) return;
+
+    if (e.touches.length === 1 && touchRef.current.fingers === 1) {
+      const t = e.touches[0];
+      setPan({
+        x: touchRef.current.panX + (t.clientX - touchRef.current.startX),
+        y: touchRef.current.panY + (t.clientY - touchRef.current.startY),
+      });
+    } else if (e.touches.length === 2) {
+      if (touchRef.current.fingers === 1) {
+        // switched from 1→2 fingers: re-init pinch
+        touchRef.current = { startX: 0, startY: 0, panX: pan.x, panY: pan.y, dist: getTouchDistance(e), zoom, fingers: 2 };
+        return;
+      }
+      const newDist = getTouchDistance(e);
+      const scale = newDist / touchRef.current.dist;
+      const newZoom = clampZoom(touchRef.current.zoom * scale);
+
+      const el = containerRef.current;
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        const center = getTouchCenter(e);
+        const cx = center.x - rect.left;
+        const cy = center.y - rect.top;
+        const zoomRatio = newZoom / touchRef.current.zoom;
+        setPan({
+          x: cx - (cx - touchRef.current.panX) * zoomRatio,
+          y: cy - (cy - touchRef.current.panY) * zoomRatio,
+        });
+      }
+      setZoom(newZoom);
+    }
   };
 
   const handleTouchEnd = () => {
-    touchStartRef.current = null;
+    touchRef.current = null;
     setIsPanning(false);
   };
 
-  // Minimap
+  // ─── Minimap ───
   const MINI_W = 120;
   const MINI_H = 90;
   const miniScale = Math.min(MINI_W / roomWidth, MINI_H / roomHeight);
@@ -187,22 +309,19 @@ export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
 
   const handleMinimapClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const clickY = e.clientY - rect.top;
-    const roomX = clickX / miniScale;
-    const roomY = clickY / miniScale;
-    const newPanX = -(roomX * zoom - containerSize.w / 2);
-    const newPanY = -(roomY * zoom - containerSize.h / 2);
-    setPan({ x: newPanX, y: newPanY });
+    const roomX = (e.clientX - rect.left) / miniScale;
+    const roomY = (e.clientY - rect.top) / miniScale;
+    setPan({
+      x: -(roomX * zoom - containerSize.w / 2),
+      y: -(roomY * zoom - containerSize.h / 2),
+    });
   };
 
   const resolvedLayoutImage = layoutImage ? getImageUrl(layoutImage) : null;
-
   const isStudentView = layoutImageOpacity >= 100;
 
   return (
     <div>
-      {/* Canvas */}
       <div
         ref={containerRef}
         className={cn(
@@ -214,11 +333,12 @@ export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onWheel={handleWheel}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Floating zoom controls */}
+        {/* Zoom controls */}
         <div className="absolute top-2 right-2 z-30 flex items-center gap-0.5 bg-background/70 backdrop-blur-sm rounded-md border border-border/50 px-1 py-0.5">
           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleZoomOut}><ZoomOut className="h-3 w-3" /></Button>
           <span className="text-[10px] w-8 text-center font-medium">{Math.round(zoom * 100)}%</span>
@@ -226,6 +346,7 @@ export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleFitToScreen}><Maximize className="h-3 w-3" /></Button>
         </div>
 
+        {/* Seat canvas */}
         <div
           className="absolute bg-background rounded shadow-sm"
           style={{
@@ -233,9 +354,9 @@ export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
             height: roomHeight,
             transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
             transformOrigin: '0 0',
+            willChange: 'transform',
           }}
         >
-          {/* Background layout image */}
           {resolvedLayoutImage && (
             <img
               src={resolvedLayoutImage}
@@ -252,6 +373,8 @@ export const FloorPlanViewer: React.FC<FloorPlanViewerProps> = ({
                 seat={seat}
                 isSelected={selectedSeat?._id === seat._id}
                 onSelect={onSeatSelect}
+                seatW={seatW}
+                seatH={seatH}
               />
             ))}
           </TooltipProvider>
