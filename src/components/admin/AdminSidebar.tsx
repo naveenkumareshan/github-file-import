@@ -125,6 +125,12 @@ export function AdminSidebar() {
       icon: BarChart2,
       roles: ['admin', 'vendor', 'vendor_employee'],
       permissions: ['view_reports']
+    },
+    {
+      title: 'Leads CRM',
+      url: `${routePrefix}/leads`,
+      icon: UserCheck,
+      roles: ['vendor', 'vendor_employee'],
     }
   ];
 
