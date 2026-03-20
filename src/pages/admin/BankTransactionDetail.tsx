@@ -86,7 +86,7 @@ const BankTransactionDetail: React.FC = () => {
         supabase.from('hostels').select('id').eq('created_by', ownerId),
         supabase.from('mess_partners').select('id').eq('user_id', ownerId),
         supabase.from('laundry_partners').select('id').eq('user_id', ownerId),
-        supabase.from('partner_payment_modes').select('id, label, mode_type').eq('partner_user_id', ownerId),
+        supabase.from('partner_payment_modes').select('id, label, mode_type, linked_bank_id').eq('partner_user_id', ownerId),
       ]);
 
       setPaymentModes((modesRes.data || []) as PaymentMode[]);
