@@ -24,6 +24,7 @@ interface PaymentMode {
   id: string;
   label: string;
   mode_type: string;
+  linked_bank_id: string | null;
 }
 
 const BankTransactionDetail: React.FC = () => {
