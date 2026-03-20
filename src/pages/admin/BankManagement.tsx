@@ -47,12 +47,18 @@ const BankManagement: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
 
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+
   useEffect(() => {
-    (async () => {
-      const { ownerId } = await getEffectiveOwnerId();
-      setPartnerId(ownerId);
-    })();
-  }, []);
+    if (isAdmin) {
+      setPartnerId('__admin__');
+    } else {
+      (async () => {
+        const { ownerId } = await getEffectiveOwnerId();
+        setPartnerId(ownerId);
+      })();
+    }
+  }, [isAdmin]);
 
   useEffect(() => {
     if (!partnerId) return;
@@ -63,11 +69,20 @@ const BankManagement: React.FC = () => {
     setLoading(true);
     try {
       // Get property IDs for all modules
+      // Admin sees ALL properties; partners see only their own
       const [cabinRes, hostelRes, messRes, laundryRes] = await Promise.all([
-        supabase.from('cabins').select('id').eq('created_by', partnerId),
-        supabase.from('hostels').select('id').eq('created_by', partnerId),
-        supabase.from('mess_partners').select('id').eq('user_id', partnerId),
-        supabase.from('laundry_partners').select('id').eq('user_id', partnerId),
+        isAdmin
+          ? supabase.from('cabins').select('id')
+          : supabase.from('cabins').select('id').eq('created_by', partnerId),
+        isAdmin
+          ? supabase.from('hostels').select('id')
+          : supabase.from('hostels').select('id').eq('created_by', partnerId),
+        isAdmin
+          ? supabase.from('mess_partners').select('id')
+          : supabase.from('mess_partners').select('id').eq('user_id', partnerId),
+        isAdmin
+          ? supabase.from('laundry_partners').select('id')
+          : supabase.from('laundry_partners').select('id').eq('user_id', partnerId),
       ]);
 
       const cabinIds = cabinRes.data?.map(c => c.id) || [];
@@ -91,9 +106,16 @@ const BankManagement: React.FC = () => {
           : Promise.resolve({ data: [] }),
       ];
 
+      const modesQuery = isAdmin
+        ? supabase.from('partner_payment_modes').select('id, label, mode_type, is_active, linked_bank_id')
+        : supabase.from('partner_payment_modes').select('id, label, mode_type, is_active, linked_bank_id').eq('partner_user_id', partnerId);
+      const handoverQuery = isAdmin
+        ? supabase.from('cash_handovers').select('*').eq('status', 'completed')
+        : supabase.from('cash_handovers').select('*').eq('partner_user_id', partnerId).eq('status', 'completed');
+
       const [modesRes, handoverRes, ...receiptResults] = await Promise.all([
-        supabase.from('partner_payment_modes').select('id, label, mode_type, is_active, linked_bank_id').eq('partner_user_id', partnerId),
-        supabase.from('cash_handovers').select('*').eq('partner_user_id', partnerId).eq('status', 'completed'),
+        modesQuery,
+        handoverQuery,
         ...receiptQueries,
       ]);
 

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Banknote, Building2, CreditCard, Globe } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
 import { formatCurrency } from '@/utils/currency';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -30,10 +31,13 @@ interface PaymentMode {
 const BankTransactionDetail: React.FC = () => {
   const { type, label } = useParams<{ type: string; label: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const decodedLabel = decodeURIComponent(label || '');
   const [receipts, setReceipts] = useState<ReceiptRow[]>([]);
   const [paymentModes, setPaymentModes] = useState<PaymentMode[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
 
   useEffect(() => {
     fetchData();
@@ -81,14 +85,28 @@ const BankTransactionDetail: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const { ownerId } = await getEffectiveOwnerId();
+      let ownerId = '';
+      if (!isAdmin) {
+        const result = await getEffectiveOwnerId();
+        ownerId = result.ownerId;
+      }
 
       const [cabinRes, hostelRes, messRes, laundryRes, modesRes] = await Promise.all([
-        supabase.from('cabins').select('id').eq('created_by', ownerId),
-        supabase.from('hostels').select('id').eq('created_by', ownerId),
-        supabase.from('mess_partners').select('id').eq('user_id', ownerId),
-        supabase.from('laundry_partners').select('id').eq('user_id', ownerId),
-        supabase.from('partner_payment_modes').select('id, label, mode_type, linked_bank_id').eq('partner_user_id', ownerId),
+        isAdmin
+          ? supabase.from('cabins').select('id')
+          : supabase.from('cabins').select('id').eq('created_by', ownerId),
+        isAdmin
+          ? supabase.from('hostels').select('id')
+          : supabase.from('hostels').select('id').eq('created_by', ownerId),
+        isAdmin
+          ? supabase.from('mess_partners').select('id')
+          : supabase.from('mess_partners').select('id').eq('user_id', ownerId),
+        isAdmin
+          ? supabase.from('laundry_partners').select('id')
+          : supabase.from('laundry_partners').select('id').eq('user_id', ownerId),
+        isAdmin
+          ? supabase.from('partner_payment_modes').select('id, label, mode_type, linked_bank_id')
+          : supabase.from('partner_payment_modes').select('id, label, mode_type, linked_bank_id').eq('partner_user_id', ownerId),
       ]);
 
       setPaymentModes((modesRes.data || []) as PaymentMode[]);
