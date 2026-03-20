@@ -237,27 +237,27 @@ export function usePartnerPerformance(filters: PerformanceFilters) {
             .in('hostel_id', filteredHostelIds).in('status', ['confirmed', 'checked_in'])
             .lte('start_date', todayStr).gte('end_date', todayStr)
           : Promise.resolve({ data: [] }),
-        // 4: RR receipts current period (with payment_method)
+        // 4: RR receipts current period (with booking join for locker split)
         filteredCabinIds.length > 0
-          ? supabase.from('receipts').select('amount, receipt_type, created_at, payment_method')
+          ? supabase.from('receipts').select('amount, receipt_type, created_at, payment_method, bookings(locker_included, locker_price, total_price)')
             .in('cabin_id', filteredCabinIds)
             .gte('created_at', currentStartStr).lte('created_at', currentEndStr + 'T23:59:59')
           : Promise.resolve({ data: [] }),
         // 5: RR receipts prev period
         filteredCabinIds.length > 0
-          ? supabase.from('receipts').select('amount, receipt_type, created_at, payment_method')
+          ? supabase.from('receipts').select('amount, receipt_type, created_at, payment_method, bookings(locker_included, locker_price, total_price)')
             .in('cabin_id', filteredCabinIds)
             .gte('created_at', prevStartStr).lte('created_at', prevEndStr + 'T23:59:59')
           : Promise.resolve({ data: [] }),
-        // 6: Hostel receipts current period
+        // 6: Hostel receipts current period (with booking join for security deposit split)
         filteredHostelIds.length > 0
-          ? supabase.from('hostel_receipts').select('amount, receipt_type, created_at, payment_method')
+          ? supabase.from('hostel_receipts').select('amount, receipt_type, created_at, payment_method, hostel_bookings:booking_id(security_deposit, total_price)')
             .in('hostel_id', filteredHostelIds)
             .gte('created_at', currentStartStr).lte('created_at', currentEndStr + 'T23:59:59')
           : Promise.resolve({ data: [] }),
         // 7: Hostel receipts prev period
         filteredHostelIds.length > 0
-          ? supabase.from('hostel_receipts').select('amount, receipt_type, created_at, payment_method')
+          ? supabase.from('hostel_receipts').select('amount, receipt_type, created_at, payment_method, hostel_bookings:booking_id(security_deposit, total_price)')
             .in('hostel_id', filteredHostelIds)
             .gte('created_at', prevStartStr).lte('created_at', prevEndStr + 'T23:59:59')
           : Promise.resolve({ data: [] }),
@@ -352,6 +352,43 @@ export function usePartnerPerformance(filters: PerformanceFilters) {
       const sumReceipts = (data: any[], type?: string) =>
         (data || []).filter(r => !type || r.receipt_type === type).reduce((s, r) => s + (r.amount || 0), 0);
 
+      // Split RR booking_payment receipts into seat vs locker portions
+      const splitRRReceipts = (data: any[]) => {
+        let seatTotal = 0;
+        let lockerTotal = 0;
+        (data || []).filter(r => r.receipt_type === 'booking_payment').forEach(r => {
+          const booking = r.bookings;
+          const amount = r.amount || 0;
+          if (booking && booking.locker_included && booking.locker_price > 0 && booking.total_price > 0) {
+            const lockerPortion = (booking.locker_price / booking.total_price) * amount;
+            lockerTotal += lockerPortion;
+            seatTotal += amount - lockerPortion;
+          } else {
+            seatTotal += amount;
+          }
+        });
+        return { seatTotal, lockerTotal };
+      };
+
+      // Split hostel booking_payment receipts into bed vs security deposit portions
+      const splitHostelReceipts = (data: any[]) => {
+        let bedTotal = 0;
+        let securityTotal = 0;
+        (data || []).filter(r => r.receipt_type === 'booking_payment').forEach(r => {
+          const booking = r.hostel_bookings;
+          const amount = r.amount || 0;
+          if (booking && booking.security_deposit > 0 && (booking.total_price + booking.security_deposit) > 0) {
+            const grandTotal = booking.total_price + booking.security_deposit;
+            const securityPortion = (booking.security_deposit / grandTotal) * amount;
+            securityTotal += securityPortion;
+            bedTotal += amount - securityPortion;
+          } else {
+            bedTotal += amount;
+          }
+        });
+        return { bedTotal, securityTotal };
+      };
+
       // Aggregate by payment method
       const aggregateByMethod = (data: any[]): CollectionsByMethod => {
         const result: CollectionsByMethod = {};
@@ -380,10 +417,13 @@ export function usePartnerPerformance(filters: PerformanceFilters) {
       for (const [k, v] of Object.entries(rrMethodPrev)) prevCollectionsByMethod[k] = (prevCollectionsByMethod[k] || 0) + v;
       for (const [k, v] of Object.entries(hMethodPrev)) prevCollectionsByMethod[k] = (prevCollectionsByMethod[k] || 0) + v;
 
-      const seatFees = sumReceipts(rrCurrent, 'booking_payment');
-      const bedFees = sumReceipts(hCurrent, 'booking_payment');
-      const lockerAmount = sumReceipts(rrCurrent, 'locker_payment');
-      const securityDeposit = sumReceipts(hCurrent, 'deposit') + sumReceipts(hCurrent, 'security_deposit');
+      // Current period splits
+      const rrSplit = splitRRReceipts(rrCurrent);
+      const hSplit = splitHostelReceipts(hCurrent);
+      const seatFees = Math.round(rrSplit.seatTotal);
+      const lockerAmount = Math.round(rrSplit.lockerTotal);
+      const bedFees = Math.round(hSplit.bedTotal);
+      const securityDeposit = Math.round(hSplit.securityTotal);
       const roomFees = seatFees + bedFees;
       const foodCollection = sumReceipts(hCurrent, 'food_payment');
       const depositCollection = securityDeposit;
@@ -393,10 +433,13 @@ export function usePartnerPerformance(filters: PerformanceFilters) {
       const depositsCollected = depositCollection;
       const totalCollections = totalRevenue;
 
-      const prevSeatFees = sumReceipts(rrPrev, 'booking_payment');
-      const prevBedFees = sumReceipts(hPrev, 'booking_payment');
-      const prevLockerAmount = sumReceipts(rrPrev, 'locker_payment');
-      const prevSecurityDeposit = sumReceipts(hPrev, 'deposit') + sumReceipts(hPrev, 'security_deposit');
+      // Previous period splits
+      const rrPrevSplit = splitRRReceipts(rrPrev);
+      const hPrevSplit = splitHostelReceipts(hPrev);
+      const prevSeatFees = Math.round(rrPrevSplit.seatTotal);
+      const prevLockerAmount = Math.round(rrPrevSplit.lockerTotal);
+      const prevBedFees = Math.round(hPrevSplit.bedTotal);
+      const prevSecurityDeposit = Math.round(hPrevSplit.securityTotal);
       const prevRoomFees = prevSeatFees + prevBedFees;
       const prevFoodCollection = sumReceipts(hPrev, 'food_payment');
       const prevDepositCollection = prevSecurityDeposit;
