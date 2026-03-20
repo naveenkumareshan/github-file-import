@@ -31,10 +31,13 @@ interface PaymentMode {
 const BankTransactionDetail: React.FC = () => {
   const { type, label } = useParams<{ type: string; label: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const decodedLabel = decodeURIComponent(label || '');
   const [receipts, setReceipts] = useState<ReceiptRow[]>([]);
   const [paymentModes, setPaymentModes] = useState<PaymentMode[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
 
   useEffect(() => {
     fetchData();
