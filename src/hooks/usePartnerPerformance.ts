@@ -489,7 +489,9 @@ export function usePartnerPerformance(filters: PerformanceFilters) {
       const prevDues = 0;
 
       // Monthly trends
-      const allReceipts12 = [...((rrReceipts12Res as any).data || []), ...((hReceipts12Res as any).data || [])];
+      const rrReceipts12 = (rrReceipts12Res as any).data || [];
+      const hReceipts12 = (hReceipts12Res as any).data || [];
+      const allReceipts12 = [...rrReceipts12, ...hReceipts12];
       const trendMap = new Map<string, MonthlyTrend>();
       for (let i = 11; i >= 0; i--) {
         const m = subMonths(currentStart, i);
@@ -501,8 +503,17 @@ export function usePartnerPerformance(filters: PerformanceFilters) {
         const entry = trendMap.get(key);
         if (entry) {
           entry.revenue += r.amount || 0;
-          if (r.receipt_type === 'deposit' || r.receipt_type === 'security_deposit') {
-            entry.deposits += r.amount || 0;
+          // Calculate deposit portions from booking lookups
+          if (r.receipt_type === 'booking_payment' && r.booking_id) {
+            const rrBooking = rrBookingMap.get(r.booking_id);
+            const hBooking = hBookingMap.get(r.booking_id);
+            if (rrBooking && rrBooking.locker_included && rrBooking.locker_price > 0 && rrBooking.total_price > 0) {
+              entry.deposits += (rrBooking.locker_price / rrBooking.total_price) * (r.amount || 0);
+            }
+            if (hBooking && hBooking.security_deposit > 0 && (hBooking.total_price + hBooking.security_deposit) > 0) {
+              const grandTotal = hBooking.total_price + hBooking.security_deposit;
+              entry.deposits += (hBooking.security_deposit / grandTotal) * (r.amount || 0);
+            }
           }
         }
       });
