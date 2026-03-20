@@ -383,7 +383,7 @@ export const PaymentModesManager: React.FC = () => {
                 <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">
                   <Smartphone className="h-3 w-3" /> UPI Accounts
                 </h4>
-                {renderModeList(upiModes, 'No UPI accounts added yet.')}
+                {renderModeList(upiModes, 'No UPI accounts added yet.', false, true)}
               </div>
             </div>
           )}
