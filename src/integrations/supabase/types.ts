@@ -621,6 +621,51 @@ export type Database = {
         }
         Relationships: []
       }
+      cash_handovers: {
+        Row: {
+          amount: number
+          completed_at: string | null
+          created_at: string
+          from_name: string
+          from_user_id: string
+          id: string
+          notes: string | null
+          otp_code: string
+          partner_user_id: string
+          status: string
+          to_name: string
+          to_user_id: string
+        }
+        Insert: {
+          amount?: number
+          completed_at?: string | null
+          created_at?: string
+          from_name?: string
+          from_user_id: string
+          id?: string
+          notes?: string | null
+          otp_code?: string
+          partner_user_id: string
+          status?: string
+          to_name?: string
+          to_user_id: string
+        }
+        Update: {
+          amount?: number
+          completed_at?: string | null
+          created_at?: string
+          from_name?: string
+          from_user_id?: string
+          id?: string
+          notes?: string | null
+          otp_code?: string
+          partner_user_id?: string
+          status?: string
+          to_name?: string
+          to_user_id?: string
+        }
+        Relationships: []
+      }
       cities: {
         Row: {
           created_at: string
@@ -5043,6 +5088,7 @@ export type Database = {
         Returns: number
       }
       generate_attendance_pin: { Args: { p_owner_id: string }; Returns: Json }
+      generate_handover_otp: { Args: never; Returns: string }
       generate_property_serial: {
         Args: {
           p_entity_code: string
@@ -5145,6 +5191,10 @@ export type Database = {
           msg_id: number
           read_ct: number
         }[]
+      }
+      verify_handover_otp: {
+        Args: { p_handover_id: string; p_otp: string }
+        Returns: Json
       }
     }
     Enums: {
