@@ -142,7 +142,7 @@ const BankManagement: React.FC = () => {
     const mode = modeLookup[method];
     if (mode) {
       if (mode.mode_type === 'cash') return 'cash';
-      if (mode.mode_type === 'bank') return 'bank';
+      if (mode.mode_type === 'bank_transfer') return 'bank';
       // UPI with linked_bank_id → treat as bank
       if (mode.mode_type === 'upi' && mode.linked_bank_id) return 'bank';
       if (mode.mode_type === 'upi') return 'upi';

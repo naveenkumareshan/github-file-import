@@ -156,6 +156,12 @@ export const PaymentModesManager: React.FC = () => {
     fetchModes();
   };
 
+  const handleLinkBank = async (modeId: string, bankId: string | null) => {
+    await supabase.from('partner_payment_modes').update({ linked_bank_id: bankId }).eq('id', modeId);
+    toast({ title: bankId ? 'Linked to bank' : 'Unlinked from bank' });
+    fetchModes();
+  };
+
   const bankModes = modes.filter(m => m.mode_type === 'bank_transfer');
   const cashModes = modes.filter(m => m.mode_type === 'cash');
   const upiModes = modes.filter(m => m.mode_type === 'upi');
@@ -184,55 +190,76 @@ export const PaymentModesManager: React.FC = () => {
 
   const showImageUpload = addTab === 'bank_transfer' || addTab === 'upi';
 
-  const renderModeList = (list: PaymentMode[], emptyMsg: string, showAssignee = false) => {
+  const renderModeList = (list: PaymentMode[], emptyMsg: string, showAssignee = false, showBankLink = false) => {
     if (list.length === 0) return <p className="text-xs text-muted-foreground py-2">{emptyMsg}</p>;
     return (
       <div className="space-y-1.5">
         {list.map(mode => (
-          <div key={mode.id} className="flex items-center justify-between border rounded p-2">
-            <div className="flex items-center gap-2 min-w-0 flex-wrap">
-              <span className="text-xs font-medium truncate">{mode.label}</span>
-              {mode.linked_bank_id && (
-                <Badge variant="outline" className="text-[9px] h-5 gap-0.5 shrink-0">
-                  <Link className="h-2.5 w-2.5" /> {getBankLabel(mode.linked_bank_id)}
-                </Badge>
-              )}
-              {showAssignee && (
-                <Badge variant="secondary" className="text-[9px] h-5 gap-0.5 shrink-0">
-                  <User className="h-2.5 w-2.5" /> {getAssigneeName(mode.assigned_employee_id)}
-                </Badge>
-              )}
-              {!mode.is_active && <Badge variant="secondary" className="text-[9px] h-5">Inactive</Badge>}
-            </div>
-            <div className="flex items-center gap-1.5 shrink-0">
-              {(mode.mode_type === 'bank_transfer' || mode.mode_type === 'upi') && (
-                <>
-                  {mode.details_image_url ? (
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setViewImageUrl(mode.details_image_url)}>
-                      <Eye className="h-3.5 w-3.5 text-primary" />
+          <div key={mode.id} className="flex flex-col border rounded p-2 gap-1.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                <span className="text-xs font-medium truncate">{mode.label}</span>
+                {mode.linked_bank_id && (
+                  <Badge variant="outline" className="text-[9px] h-5 gap-0.5 shrink-0">
+                    <Link className="h-2.5 w-2.5" /> {getBankLabel(mode.linked_bank_id)}
+                  </Badge>
+                )}
+                {showAssignee && (
+                  <Badge variant="secondary" className="text-[9px] h-5 gap-0.5 shrink-0">
+                    <User className="h-2.5 w-2.5" /> {getAssigneeName(mode.assigned_employee_id)}
+                  </Badge>
+                )}
+                {!mode.is_active && <Badge variant="secondary" className="text-[9px] h-5">Inactive</Badge>}
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {(mode.mode_type === 'bank_transfer' || mode.mode_type === 'upi') && (
+                  <>
+                    {mode.details_image_url ? (
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setViewImageUrl(mode.details_image_url)}>
+                        <Eye className="h-3.5 w-3.5 text-primary" />
+                      </Button>
+                    ) : null}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => {
+                        setReplacingModeId(mode.id);
+                        replaceFileRef.current?.click();
+                      }}
+                    >
+                      <ImageIcon className="h-3 w-3 text-muted-foreground" />
                     </Button>
-                  ) : null}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={() => {
-                      setReplacingModeId(mode.id);
-                      replaceFileRef.current?.click();
-                    }}
-                  >
-                    <ImageIcon className="h-3 w-3 text-muted-foreground" />
-                  </Button>
-                </>
-              )}
-              <Switch
-                checked={mode.is_active}
-                onCheckedChange={() => handleToggle(mode.id, mode.is_active)}
-              />
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(mode.id)}>
-                <Trash2 className="h-3 w-3" />
-              </Button>
+                  </>
+                )}
+                <Switch
+                  checked={mode.is_active}
+                  onCheckedChange={() => handleToggle(mode.id, mode.is_active)}
+                />
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(mode.id)}>
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
             </div>
+            {showBankLink && (
+              <div className="flex items-center gap-2">
+                <Label className="text-[10px] text-muted-foreground whitespace-nowrap">Linked Bank:</Label>
+                <Select
+                  value={mode.linked_bank_id || 'none'}
+                  onValueChange={(val) => handleLinkBank(mode.id, val === 'none' ? null : val)}
+                >
+                  <SelectTrigger className="h-7 text-[10px] flex-1">
+                    <SelectValue placeholder="Not linked" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none" className="text-xs">Not linked</SelectItem>
+                    {bankModes.filter(b => b.is_active).map(b => (
+                      <SelectItem key={b.id} value={b.id} className="text-xs">{b.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -356,7 +383,7 @@ export const PaymentModesManager: React.FC = () => {
                 <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">
                   <Smartphone className="h-3 w-3" /> UPI Accounts
                 </h4>
-                {renderModeList(upiModes, 'No UPI accounts added yet.')}
+                {renderModeList(upiModes, 'No UPI accounts added yet.', false, true)}
               </div>
             </div>
           )}
