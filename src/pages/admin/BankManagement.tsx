@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Building2, Wallet, TrendingUp, Banknote, CreditCard, ChevronDown, ChevronRight } from 'lucide-react';
+import { Building2, Banknote, CreditCard, ChevronDown, ChevronRight, Globe } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { getEffectiveOwnerId } from '@/utils/getEffectiveOwnerId';
@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { isCashMethod } from '@/utils/paymentMethodLabels';
+import { useNavigate } from 'react-router-dom';
 
 interface ReceiptRow {
   amount: number;
@@ -19,6 +20,7 @@ interface ReceiptRow {
   created_at: string;
   serial_number: string | null;
   user_id: string;
+  source: string;
 }
 
 interface PaymentMode {
@@ -34,10 +36,9 @@ interface GroupedBalance {
   receipts: ReceiptRow[];
 }
 
-const RECEIPT_TABLES = ['receipts', 'hostel_receipts', 'mess_receipts', 'laundry_receipts'] as const;
-
 const BankManagement: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [partnerId, setPartnerId] = useState('');
   const [allReceipts, setAllReceipts] = useState<ReceiptRow[]>([]);
   const [paymentModes, setPaymentModes] = useState<PaymentMode[]>([]);
@@ -60,38 +61,32 @@ const BankManagement: React.FC = () => {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      // Fetch receipts from all 4 tables
-      const ownerField: Record<string, string> = {
-        receipts: 'partner_user_id',
-        hostel_receipts: 'hostel_id',
-        mess_receipts: 'mess_id',
-        laundry_receipts: 'partner_id',
-      };
-
-      // For hostel/mess/laundry we need property IDs first
+      // Get property IDs for all modules
       const [cabinRes, hostelRes, messRes, laundryRes] = await Promise.all([
-        Promise.resolve(null), // receipts use partner_user_id directly
+        supabase.from('cabins').select('id').eq('created_by', partnerId),
         supabase.from('hostels').select('id').eq('created_by', partnerId),
         supabase.from('mess_partners').select('id').eq('user_id', partnerId),
         supabase.from('laundry_partners').select('id').eq('user_id', partnerId),
       ]);
 
+      const cabinIds = cabinRes.data?.map(c => c.id) || [];
       const hostelIds = hostelRes.data?.map(h => h.id) || [];
       const messIds = messRes.data?.map(m => m.id) || [];
       const laundryIds = laundryRes.data?.map(l => l.id) || [];
 
-      const selectCols = 'amount, payment_method, collected_by_name, created_at, serial_number, user_id';
-
+      // Different select columns per table
       const receiptQueries = [
-        supabase.from('receipts' as any).select(selectCols).eq('partner_user_id', partnerId),
+        cabinIds.length > 0
+          ? supabase.from('receipts' as any).select('amount, payment_method, collected_by_name, created_at, serial_number, user_id').in('cabin_id', cabinIds)
+          : Promise.resolve({ data: [] }),
         hostelIds.length > 0
-          ? supabase.from('hostel_receipts' as any).select(selectCols).in('hostel_id', hostelIds)
+          ? supabase.from('hostel_receipts' as any).select('amount, payment_method, collected_by_name, created_at, serial_number, user_id').in('hostel_id', hostelIds)
           : Promise.resolve({ data: [] }),
         messIds.length > 0
-          ? supabase.from('mess_receipts' as any).select(selectCols).in('mess_id', messIds)
+          ? supabase.from('mess_receipts' as any).select('amount, payment_method, created_at, serial_number, user_id').in('mess_id', messIds)
           : Promise.resolve({ data: [] }),
         laundryIds.length > 0
-          ? supabase.from('laundry_receipts' as any).select(selectCols).in('partner_id', laundryIds)
+          ? supabase.from('laundry_receipts' as any).select('amount, payment_method, created_at, serial_number, user_id').in('partner_id', laundryIds)
           : Promise.resolve({ data: [] }),
       ];
 
@@ -104,11 +99,24 @@ const BankManagement: React.FC = () => {
       setPaymentModes((modesRes.data || []) as PaymentMode[]);
       setHandovers(handoverRes.data || []);
 
+      const sourceLabels = ['Reading Room', 'Hostel', 'Mess', 'Laundry'];
       const combined: ReceiptRow[] = [];
-      for (const res of receiptResults) {
+      receiptResults.forEach((res, idx) => {
         const data = (res as any).data;
-        if (data) combined.push(...(data as ReceiptRow[]));
-      }
+        if (data) {
+          data.forEach((r: any) => {
+            combined.push({
+              amount: r.amount,
+              payment_method: r.payment_method,
+              collected_by_name: r.collected_by_name || null,
+              created_at: r.created_at,
+              serial_number: r.serial_number,
+              user_id: r.user_id,
+              source: sourceLabels[idx],
+            });
+          });
+        }
+      });
       setAllReceipts(combined);
     } catch (err) {
       console.error('Error fetching bank data:', err);
@@ -117,7 +125,6 @@ const BankManagement: React.FC = () => {
     }
   };
 
-  // Build mode lookup
   const modeLookup = useMemo(() => {
     const map: Record<string, PaymentMode> = {};
     paymentModes.forEach(m => {
@@ -126,8 +133,9 @@ const BankManagement: React.FC = () => {
     return map;
   }, [paymentModes]);
 
-  const resolveType = (method: string): 'cash' | 'bank' | 'upi' => {
+  const resolveType = (method: string): 'cash' | 'bank' | 'upi' | 'online' => {
     if (isCashMethod(method)) return 'cash';
+    if (method === 'online') return 'online';
     if (method === 'bank_transfer') return 'bank';
     if (method === 'upi') return 'upi';
     const mode = modeLookup[method];
@@ -141,13 +149,14 @@ const BankManagement: React.FC = () => {
 
   const resolveLabel = (method: string): string => {
     if (isCashMethod(method)) return 'Cash';
+    if (method === 'online') return 'Online';
     if (method === 'bank_transfer') return 'Bank Transfer';
     if (method === 'upi') return 'UPI';
     const mode = modeLookup[method];
     return mode?.label || method;
   };
 
-  // Cash balances: group by collected_by_name, adjusted for handovers
+  // Cash balances: group by collected_by_name
   const cashBalances = useMemo(() => {
     const cashReceipts = allReceipts.filter(r => resolveType(r.payment_method) === 'cash');
     const byPerson: Record<string, { total: number; receipts: ReceiptRow[] }> = {};
@@ -158,9 +167,6 @@ const BankManagement: React.FC = () => {
       byPerson[person].total += Number(r.amount) || 0;
       byPerson[person].receipts.push(r);
     });
-
-    // Note: Handover adjustments would need user-name mapping.
-    // For now show raw collected amounts + handover history in operations
 
     return Object.entries(byPerson)
       .map(([label, v]) => ({ label, total: v.total, receipts: v.receipts }))
@@ -201,12 +207,37 @@ const BankManagement: React.FC = () => {
       .sort((a, b) => b.total - a.total);
   }, [allReceipts, modeLookup]);
 
+  // Online balances
+  const onlineBalances = useMemo(() => {
+    const onlineReceipts = allReceipts.filter(r => resolveType(r.payment_method) === 'online');
+    const byMode: Record<string, { total: number; receipts: ReceiptRow[] }> = {};
+
+    onlineReceipts.forEach(r => {
+      const label = r.collected_by_name || 'Online';
+      if (!byMode[label]) byMode[label] = { total: 0, receipts: [] };
+      byMode[label].total += Number(r.amount) || 0;
+      byMode[label].receipts.push(r);
+    });
+
+    return Object.entries(byMode)
+      .map(([label, v]) => ({ label, total: v.total, receipts: v.receipts }))
+      .sort((a, b) => b.total - a.total);
+  }, [allReceipts, modeLookup]);
+
   const totalCash = useMemo(() => cashBalances.reduce((s, b) => s + b.total, 0), [cashBalances]);
   const totalBank = useMemo(() => bankBalances.reduce((s, b) => s + b.total, 0), [bankBalances]);
   const totalUpi = useMemo(() => upiBalances.reduce((s, b) => s + b.total, 0), [upiBalances]);
+  const totalOnline = useMemo(() => onlineBalances.reduce((s, b) => s + b.total, 0), [onlineBalances]);
 
   const toggleRow = (key: string) => {
     setExpandedRows(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  // Determine route prefix
+  const routePrefix = window.location.pathname.startsWith('/partner') ? '/partner' : '/admin';
+
+  const handleRowClick = (type: string, label: string) => {
+    navigate(`${routePrefix}/banks/${type}/${encodeURIComponent(label)}`);
   };
 
   const renderBalanceGroup = (balances: GroupedBalance[], type: string, icon: React.ReactNode) => {
@@ -221,8 +252,11 @@ const BankManagement: React.FC = () => {
           const isOpen = expandedRows[key] || false;
           return (
             <Collapsible key={key} open={isOpen} onOpenChange={() => toggleRow(key)}>
-              <CollapsibleTrigger className="w-full">
-                <div className="flex items-center justify-between border rounded-lg p-3 hover:bg-muted/50 transition-colors cursor-pointer">
+              <div className="flex items-center border rounded-lg hover:bg-muted/50 transition-colors">
+                <div
+                  className="flex-1 flex items-center justify-between p-3 cursor-pointer"
+                  onClick={() => handleRowClick(type, b.label)}
+                >
                   <div className="flex items-center gap-3">
                     <div className="h-8 w-8 rounded bg-primary/10 flex items-center justify-center">
                       {icon}
@@ -232,12 +266,12 @@ const BankManagement: React.FC = () => {
                       <p className="text-xs text-muted-foreground">{b.receipts.length} transactions</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="text-sm font-semibold">{formatCurrency(b.total)}</Badge>
-                    {isOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-                  </div>
+                  <Badge variant="secondary" className="text-sm font-semibold">{formatCurrency(b.total)}</Badge>
                 </div>
-              </CollapsibleTrigger>
+                <CollapsibleTrigger className="p-3 hover:bg-muted/30 rounded-r-lg">
+                  {isOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                </CollapsibleTrigger>
+              </div>
               <CollapsibleContent>
                 <div className="border border-t-0 rounded-b-lg overflow-hidden">
                   <div className="max-h-60 overflow-y-auto">
@@ -246,21 +280,32 @@ const BankManagement: React.FC = () => {
                         <tr>
                           <th className="text-left p-2 font-medium">Date</th>
                           <th className="text-left p-2 font-medium">Serial</th>
+                          <th className="text-left p-2 font-medium">Source</th>
                           <th className="text-right p-2 font-medium">Amount</th>
                         </tr>
                       </thead>
                       <tbody>
                         {b.receipts
                           .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                          .slice(0, 10)
                           .map((r, idx) => (
                             <tr key={idx} className="border-t">
                               <td className="p-2">
                                 {new Date(r.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}
                               </td>
                               <td className="p-2 text-muted-foreground">{r.serial_number || '-'}</td>
+                              <td className="p-2 text-muted-foreground">{r.source}</td>
                               <td className="p-2 text-right font-medium">{formatCurrency(Number(r.amount))}</td>
                             </tr>
                           ))}
+                        {b.receipts.length > 10 && (
+                          <tr className="border-t">
+                            <td colSpan={4} className="p-2 text-center text-muted-foreground cursor-pointer hover:text-foreground"
+                              onClick={() => handleRowClick(type, b.label)}>
+                              View all {b.receipts.length} transactions →
+                            </td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -280,20 +325,20 @@ const BankManagement: React.FC = () => {
           <Building2 className="h-6 w-6" /> Bank Management
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          View cash, bank & UPI balances with full transaction lists.
+          View cash, bank, UPI & online balances with full transaction lists.
         </p>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <Card className="border-green-500/30 bg-green-500/5">
           <CardContent className="p-4 flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-green-500/10 flex items-center justify-center">
               <Banknote className="h-5 w-5 text-green-600" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Cash Collected</p>
-              {loading ? <Skeleton className="h-6 w-24 mt-1" /> : <p className="text-xl font-bold text-green-600">{formatCurrency(totalCash)}</p>}
+              <p className="text-xs text-muted-foreground">Cash</p>
+              {loading ? <Skeleton className="h-6 w-24 mt-1" /> : <p className="text-lg font-bold text-green-600">{formatCurrency(totalCash)}</p>}
             </div>
           </CardContent>
         </Card>
@@ -303,8 +348,8 @@ const BankManagement: React.FC = () => {
               <Building2 className="h-5 w-5 text-blue-600" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Bank Total</p>
-              {loading ? <Skeleton className="h-6 w-24 mt-1" /> : <p className="text-xl font-bold text-blue-600">{formatCurrency(totalBank)}</p>}
+              <p className="text-xs text-muted-foreground">Bank</p>
+              {loading ? <Skeleton className="h-6 w-24 mt-1" /> : <p className="text-lg font-bold text-blue-600">{formatCurrency(totalBank)}</p>}
             </div>
           </CardContent>
         </Card>
@@ -314,8 +359,19 @@ const BankManagement: React.FC = () => {
               <CreditCard className="h-5 w-5 text-purple-600" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">UPI Total</p>
-              {loading ? <Skeleton className="h-6 w-24 mt-1" /> : <p className="text-xl font-bold text-purple-600">{formatCurrency(totalUpi)}</p>}
+              <p className="text-xs text-muted-foreground">UPI</p>
+              {loading ? <Skeleton className="h-6 w-24 mt-1" /> : <p className="text-lg font-bold text-purple-600">{formatCurrency(totalUpi)}</p>}
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-orange-500/30 bg-orange-500/5">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-orange-500/10 flex items-center justify-center">
+              <Globe className="h-5 w-5 text-orange-600" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Online</p>
+              {loading ? <Skeleton className="h-6 w-24 mt-1" /> : <p className="text-lg font-bold text-orange-600">{formatCurrency(totalOnline)}</p>}
             </div>
           </CardContent>
         </Card>
@@ -327,6 +383,7 @@ const BankManagement: React.FC = () => {
           <TabsTrigger value="cash" className="gap-1.5"><Banknote className="h-3.5 w-3.5" />Cash</TabsTrigger>
           <TabsTrigger value="bank" className="gap-1.5"><Building2 className="h-3.5 w-3.5" />Bank</TabsTrigger>
           <TabsTrigger value="upi" className="gap-1.5"><CreditCard className="h-3.5 w-3.5" />UPI</TabsTrigger>
+          <TabsTrigger value="online" className="gap-1.5"><Globe className="h-3.5 w-3.5" />Online</TabsTrigger>
         </TabsList>
 
         <TabsContent value="cash">
@@ -370,6 +427,21 @@ const BankManagement: React.FC = () => {
               {loading ? (
                 <div className="space-y-3">{[1,2].map(i => <Skeleton key={i} className="h-14 w-full" />)}</div>
               ) : renderBalanceGroup(upiBalances, 'upi', <CreditCard className="h-4 w-4 text-purple-600" />)}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="online">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Globe className="h-4 w-4" /> Online Payments
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="space-y-3">{[1,2].map(i => <Skeleton key={i} className="h-14 w-full" />)}</div>
+              ) : renderBalanceGroup(onlineBalances, 'online', <Globe className="h-4 w-4 text-orange-600" />)}
             </CardContent>
           </Card>
         </TabsContent>

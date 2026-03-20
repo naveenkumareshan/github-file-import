@@ -92,6 +92,7 @@ const ScanAttendance = lazy(() => import("./pages/student/ScanAttendance"));
 const LaunchingSoonGuard = lazy(() => import("./components/student/LaunchingSoonGuard"));
 const AttendanceHistory = lazy(() => import("./pages/student/AttendanceHistory"));
 const BankManagement = lazy(() => import("./pages/admin/BankManagement"));
+const BankTransactionDetail = lazy(() => import("./pages/admin/BankTransactionDetail"));
 const LaundryPartnerDashboard = lazy(() => import("./pages/LaundryPartnerDashboard"));
 const ExpiringBookingsPage = lazy(() => import("./pages/admin/ExpiringBookingsPage"));
 const HostelExpiringBookingsPage = lazy(() => import("./pages/admin/HostelExpiringBookingsPage"));
@@ -247,6 +248,7 @@ function App() {
               <Route path="expiring-bookings" element={<ExpiringBookingsPage />} />
               <Route path="hostel-expiring-bookings" element={<HostelExpiringBookingsPage />} />
               <Route path="banks" element={<BankManagement />} />
+              <Route path="banks/:type/:label" element={<BankTransactionDetail />} />
               <Route path="property-attendance" element={<PropertyAttendance />} />
               <Route path="partner-enquiries" element={<PartnerEnquiries />} />
               <Route path="lead-overview" element={<AdminLeadOverview />} />
@@ -311,6 +313,7 @@ function App() {
               <Route path="expiring-bookings" element={<ExpiringBookingsPage />} />
               <Route path="hostel-expiring-bookings" element={<HostelExpiringBookingsPage />} />
               <Route path="banks" element={<BankManagement />} />
+              <Route path="banks/:type/:label" element={<BankTransactionDetail />} />
               <Route path="property-attendance" element={<PropertyAttendance />} />
               <Route path="leads" element={<PartnerLeads />} />
             </Route>
