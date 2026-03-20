@@ -1,39 +1,33 @@
 
 
-## Merge UPI Transactions into Linked Bank Accounts
+## Fix Bank Management Display + Add UPI-to-Bank Linking
 
-### What's Changing
+### Root Cause: Critical Bug
 
-UPI is just a payment channel tied to a bank account. When a UPI mode has a `linked_bank_id` pointing to a bank_transfer mode, its transactions should appear under that bank account's balance — not as a separate UPI entry. The separate UPI tab will remain only for UPI modes that are **not** linked to any bank.
+In `BankManagement.tsx` line 145 and `BankTransactionDetail.tsx` line 58, the code checks:
+```
+if (mode.mode_type === 'bank') return 'bank';
+```
+But the actual `mode_type` stored in the database is `'bank_transfer'`, not `'bank'`. This causes ALL bank account transactions to fall through to the default `'cash'` category, making bank/UPI tabs appear empty.
 
-The `linked_bank_id` column already exists on `partner_payment_modes` and the PaymentModesManager already lets partners link UPI modes to banks. The only change needed is in how `BankManagement.tsx` groups and displays receipts.
+### Fix 1: Correct mode_type check (both files)
 
-### Changes
+**`src/pages/admin/BankManagement.tsx`** line 145:
+- Change `mode.mode_type === 'bank'` → `mode.mode_type === 'bank_transfer'`
 
-**File: `src/pages/admin/BankManagement.tsx`**
+**`src/pages/admin/BankTransactionDetail.tsx`** line 58:
+- Change `mode.mode_type` check to use `'bank_transfer'` instead of just returning `mode.mode_type` directly (which returns `'bank_transfer'` not `'bank'`)
 
-1. **Expand `PaymentMode` interface** to include `linked_bank_id: string | null`
+### Fix 2: Add UPI-to-Bank linking for existing UPI modes
 
-2. **Fetch `linked_bank_id`** in the payment modes query (add it to the select)
+**`src/components/vendor/PaymentModesManager.tsx`**:
+- Add a "Link to Bank" dropdown/button on each UPI mode row in the list
+- When a UPI mode doesn't have a `linked_bank_id`, show a small Select dropdown to pick a bank
+- When linked, show the link badge (already exists) plus an "Unlink" option
+- On change, update `partner_payment_modes.linked_bank_id` via supabase update
 
-3. **Update `modeLookup`** to include `linked_bank_id` data
-
-4. **New grouping logic** — replace the separate `resolveType`-based grouping with a unified approach:
-   - For UPI receipts where the UPI mode has a `linked_bank_id`: resolve the linked bank mode's label and group under that bank
-   - For UPI receipts where no `linked_bank_id`: keep in UPI tab as before
-   - Bank and Cash remain unchanged
-
-5. **Merge `bankBalances` computation**: When computing bank balances, also include UPI receipts whose mode has a `linked_bank_id` pointing to a bank_transfer mode. The bank row will show combined total (bank + UPI) and all transactions together.
-
-6. **Update `upiBalances`**: Only include UPI receipts whose mode does NOT have a `linked_bank_id`
-
-7. **Update totals**: `totalBank` will now include linked-UPI amounts; `totalUpi` only shows unlinked UPI
-
-8. **Detail page consistency**: The `BankTransactionDetail.tsx` page uses the same grouping logic, so the label-based navigation will work correctly since linked UPI receipts will be grouped under the bank label
-
-### Summary
-- 1 file edited: `src/pages/admin/BankManagement.tsx`
-- UPI transactions with `linked_bank_id` merge into their parent bank's balance and transaction list
-- Unlinked UPI modes continue showing in the UPI tab
-- Historical/old transactions are automatically corrected since this is a display-layer change
+### Files Changed
+- `src/pages/admin/BankManagement.tsx` — fix `mode_type` comparison
+- `src/pages/admin/BankTransactionDetail.tsx` — fix `mode_type` comparison  
+- `src/components/vendor/PaymentModesManager.tsx` — add inline bank-linking UI for existing UPI modes
 
