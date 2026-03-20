@@ -372,12 +372,12 @@ export function usePartnerPerformance(filters: PerformanceFilters) {
       const sumReceipts = (data: any[], type?: string) =>
         (data || []).filter(r => !type || r.receipt_type === type).reduce((s, r) => s + (r.amount || 0), 0);
 
-      // Split RR booking_payment receipts into seat vs locker portions
+      // Split RR booking_payment receipts into seat vs locker portions using manual lookup
       const splitRRReceipts = (data: any[]) => {
         let seatTotal = 0;
         let lockerTotal = 0;
         (data || []).filter(r => r.receipt_type === 'booking_payment').forEach(r => {
-          const booking = r.bookings;
+          const booking = r.booking_id ? rrBookingMap.get(r.booking_id) : null;
           const amount = r.amount || 0;
           if (booking && booking.locker_included && booking.locker_price > 0 && booking.total_price > 0) {
             const lockerPortion = (booking.locker_price / booking.total_price) * amount;
@@ -390,12 +390,12 @@ export function usePartnerPerformance(filters: PerformanceFilters) {
         return { seatTotal, lockerTotal };
       };
 
-      // Split hostel booking_payment receipts into bed vs security deposit portions
+      // Split hostel booking_payment receipts into bed vs security deposit portions using manual lookup
       const splitHostelReceipts = (data: any[]) => {
         let bedTotal = 0;
         let securityTotal = 0;
         (data || []).filter(r => r.receipt_type === 'booking_payment').forEach(r => {
-          const booking = r.hostel_bookings;
+          const booking = r.booking_id ? hBookingMap.get(r.booking_id) : null;
           const amount = r.amount || 0;
           if (booking && booking.security_deposit > 0 && (booking.total_price + booking.security_deposit) > 0) {
             const grandTotal = booking.total_price + booking.security_deposit;
