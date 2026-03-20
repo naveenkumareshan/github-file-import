@@ -1,4 +1,13 @@
-## ✅ Fixed: Separate Locker & Security Deposit from Seat/Bed Fees
+## ✅ Cash Handover System + Bank/Cash Balance Pages
 
-### Solution Applied
-Replaced broken PostgREST joins (no FK exists) with manual JS-side lookup maps. All receipts now use `booking_id` to look up the associated booking's locker/security data and split amounts proportionally. This works for all periods including backdated/historical data.
+### Feature 1: Cash Handover (Operations Hub)
+- `cash_handovers` table with OTP, RLS using `is_partner_or_employee_of`
+- `generate_handover_otp()` and `verify_handover_otp()` DB functions
+- CashHandoverTab in Operations page with Send/Incoming/Pending/History tabs
+- Flow: Sender initiates → Receiver sees OTP + amount + sender name → Receiver reads OTP to sender → Sender enters OTP to confirm
+
+### Feature 2: Bank Management Rewrite
+- Fetches ALL receipts (not just reconciled) from 4 receipt tables
+- Groups by Cash (per collector), Bank (per mode), UPI (per mode)
+- Expandable rows with full transaction lists (date, serial, amount)
+- Summary cards showing totals for Cash, Bank, UPI
