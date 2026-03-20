@@ -156,6 +156,12 @@ export const PaymentModesManager: React.FC = () => {
     fetchModes();
   };
 
+  const handleLinkBank = async (modeId: string, bankId: string | null) => {
+    await supabase.from('partner_payment_modes').update({ linked_bank_id: bankId }).eq('id', modeId);
+    toast({ title: bankId ? 'Linked to bank' : 'Unlinked from bank' });
+    fetchModes();
+  };
+
   const bankModes = modes.filter(m => m.mode_type === 'bank_transfer');
   const cashModes = modes.filter(m => m.mode_type === 'cash');
   const upiModes = modes.filter(m => m.mode_type === 'upi');
