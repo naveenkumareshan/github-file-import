@@ -106,9 +106,16 @@ const BankManagement: React.FC = () => {
           : Promise.resolve({ data: [] }),
       ];
 
+      const modesQuery = isAdmin
+        ? supabase.from('partner_payment_modes').select('id, label, mode_type, is_active, linked_bank_id')
+        : supabase.from('partner_payment_modes').select('id, label, mode_type, is_active, linked_bank_id').eq('partner_user_id', partnerId);
+      const handoverQuery = isAdmin
+        ? supabase.from('cash_handovers').select('*').eq('status', 'completed')
+        : supabase.from('cash_handovers').select('*').eq('partner_user_id', partnerId).eq('status', 'completed');
+
       const [modesRes, handoverRes, ...receiptResults] = await Promise.all([
-        supabase.from('partner_payment_modes').select('id, label, mode_type, is_active, linked_bank_id').eq('partner_user_id', partnerId),
-        supabase.from('cash_handovers').select('*').eq('partner_user_id', partnerId).eq('status', 'completed'),
+        modesQuery,
+        handoverQuery,
         ...receiptQueries,
       ]);
 
