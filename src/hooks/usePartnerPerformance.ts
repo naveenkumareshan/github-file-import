@@ -215,6 +215,26 @@ export function usePartnerPerformance(filters: PerformanceFilters) {
         ? hostelIds.filter(id => id === filters.propertyId)
         : (filters.propertyType === 'reading_room' ? [] : hostelIds);
 
+      // Fetch all RR bookings and hostel bookings for manual join (no FK exists for PostgREST)
+      const [rrBookingsLookupRes, hBookingsLookupRes] = await Promise.all([
+        filteredCabinIds.length > 0
+          ? supabase.from('bookings').select('id, locker_included, locker_price, total_price').in('cabin_id', filteredCabinIds)
+          : Promise.resolve({ data: [] }),
+        filteredHostelIds.length > 0
+          ? supabase.from('hostel_bookings').select('id, security_deposit, total_price').in('hostel_id', filteredHostelIds)
+          : Promise.resolve({ data: [] }),
+      ]);
+
+      const rrBookingMap = new Map<string, { locker_included: boolean; locker_price: number; total_price: number }>();
+      ((rrBookingsLookupRes as any).data || []).forEach((b: any) => {
+        rrBookingMap.set(b.id, { locker_included: b.locker_included, locker_price: b.locker_price || 0, total_price: b.total_price || 0 });
+      });
+
+      const hBookingMap = new Map<string, { security_deposit: number; total_price: number }>();
+      ((hBookingsLookupRes as any).data || []).forEach((b: any) => {
+        hBookingMap.set(b.id, { security_deposit: b.security_deposit || 0, total_price: b.total_price || 0 });
+      });
+
       const queries = await Promise.all([
         // 0: Seats count
         filteredCabinIds.length > 0
@@ -237,27 +257,27 @@ export function usePartnerPerformance(filters: PerformanceFilters) {
             .in('hostel_id', filteredHostelIds).in('status', ['confirmed', 'checked_in'])
             .lte('start_date', todayStr).gte('end_date', todayStr)
           : Promise.resolve({ data: [] }),
-        // 4: RR receipts current period (with booking join for locker split)
+        // 4: RR receipts current period
         filteredCabinIds.length > 0
-          ? supabase.from('receipts').select('amount, receipt_type, created_at, payment_method, bookings(locker_included, locker_price, total_price)')
+          ? supabase.from('receipts').select('amount, receipt_type, created_at, payment_method, booking_id')
             .in('cabin_id', filteredCabinIds)
             .gte('created_at', currentStartStr).lte('created_at', currentEndStr + 'T23:59:59')
           : Promise.resolve({ data: [] }),
         // 5: RR receipts prev period
         filteredCabinIds.length > 0
-          ? supabase.from('receipts').select('amount, receipt_type, created_at, payment_method, bookings(locker_included, locker_price, total_price)')
+          ? supabase.from('receipts').select('amount, receipt_type, created_at, payment_method, booking_id')
             .in('cabin_id', filteredCabinIds)
             .gte('created_at', prevStartStr).lte('created_at', prevEndStr + 'T23:59:59')
           : Promise.resolve({ data: [] }),
-        // 6: Hostel receipts current period (with booking join for security deposit split)
+        // 6: Hostel receipts current period
         filteredHostelIds.length > 0
-          ? supabase.from('hostel_receipts').select('amount, receipt_type, created_at, payment_method, hostel_bookings:booking_id(security_deposit, total_price)')
+          ? supabase.from('hostel_receipts').select('amount, receipt_type, created_at, payment_method, booking_id')
             .in('hostel_id', filteredHostelIds)
             .gte('created_at', currentStartStr).lte('created_at', currentEndStr + 'T23:59:59')
           : Promise.resolve({ data: [] }),
         // 7: Hostel receipts prev period
         filteredHostelIds.length > 0
-          ? supabase.from('hostel_receipts').select('amount, receipt_type, created_at, payment_method, hostel_bookings:booking_id(security_deposit, total_price)')
+          ? supabase.from('hostel_receipts').select('amount, receipt_type, created_at, payment_method, booking_id')
             .in('hostel_id', filteredHostelIds)
             .gte('created_at', prevStartStr).lte('created_at', prevEndStr + 'T23:59:59')
           : Promise.resolve({ data: [] }),
@@ -278,13 +298,13 @@ export function usePartnerPerformance(filters: PerformanceFilters) {
           : Promise.resolve({ data: [] }),
         // 11: RR receipts 12 months
         filteredCabinIds.length > 0
-          ? supabase.from('receipts').select('amount, receipt_type, created_at')
+          ? supabase.from('receipts').select('amount, receipt_type, created_at, booking_id')
             .in('cabin_id', filteredCabinIds)
             .gte('created_at', trend12Start)
           : Promise.resolve({ data: [] }),
         // 12: Hostel receipts 12 months
         filteredHostelIds.length > 0
-          ? supabase.from('hostel_receipts').select('amount, receipt_type, created_at')
+          ? supabase.from('hostel_receipts').select('amount, receipt_type, created_at, booking_id')
             .in('hostel_id', filteredHostelIds)
             .gte('created_at', trend12Start)
           : Promise.resolve({ data: [] }),
