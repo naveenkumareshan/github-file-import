@@ -248,6 +248,7 @@ function App() {
               <Route path="expiring-bookings" element={<ExpiringBookingsPage />} />
               <Route path="hostel-expiring-bookings" element={<HostelExpiringBookingsPage />} />
               <Route path="banks" element={<BankManagement />} />
+              <Route path="banks/:type/:label" element={<BankTransactionDetail />} />
               <Route path="property-attendance" element={<PropertyAttendance />} />
               <Route path="partner-enquiries" element={<PartnerEnquiries />} />
               <Route path="lead-overview" element={<AdminLeadOverview />} />
