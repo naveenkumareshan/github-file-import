@@ -215,6 +215,26 @@ export function usePartnerPerformance(filters: PerformanceFilters) {
         ? hostelIds.filter(id => id === filters.propertyId)
         : (filters.propertyType === 'reading_room' ? [] : hostelIds);
 
+      // Fetch all RR bookings and hostel bookings for manual join (no FK exists for PostgREST)
+      const [rrBookingsLookupRes, hBookingsLookupRes] = await Promise.all([
+        filteredCabinIds.length > 0
+          ? supabase.from('bookings').select('id, locker_included, locker_price, total_price').in('cabin_id', filteredCabinIds)
+          : Promise.resolve({ data: [] }),
+        filteredHostelIds.length > 0
+          ? supabase.from('hostel_bookings').select('id, security_deposit, total_price').in('hostel_id', filteredHostelIds)
+          : Promise.resolve({ data: [] }),
+      ]);
+
+      const rrBookingMap = new Map<string, { locker_included: boolean; locker_price: number; total_price: number }>();
+      ((rrBookingsLookupRes as any).data || []).forEach((b: any) => {
+        rrBookingMap.set(b.id, { locker_included: b.locker_included, locker_price: b.locker_price || 0, total_price: b.total_price || 0 });
+      });
+
+      const hBookingMap = new Map<string, { security_deposit: number; total_price: number }>();
+      ((hBookingsLookupRes as any).data || []).forEach((b: any) => {
+        hBookingMap.set(b.id, { security_deposit: b.security_deposit || 0, total_price: b.total_price || 0 });
+      });
+
       const queries = await Promise.all([
         // 0: Seats count
         filteredCabinIds.length > 0
@@ -237,27 +257,27 @@ export function usePartnerPerformance(filters: PerformanceFilters) {
             .in('hostel_id', filteredHostelIds).in('status', ['confirmed', 'checked_in'])
             .lte('start_date', todayStr).gte('end_date', todayStr)
           : Promise.resolve({ data: [] }),
-        // 4: RR receipts current period (with booking join for locker split)
+        // 4: RR receipts current period
         filteredCabinIds.length > 0
-          ? supabase.from('receipts').select('amount, receipt_type, created_at, payment_method, bookings(locker_included, locker_price, total_price)')
+          ? supabase.from('receipts').select('amount, receipt_type, created_at, payment_method, booking_id')
             .in('cabin_id', filteredCabinIds)
             .gte('created_at', currentStartStr).lte('created_at', currentEndStr + 'T23:59:59')
           : Promise.resolve({ data: [] }),
         // 5: RR receipts prev period
         filteredCabinIds.length > 0
-          ? supabase.from('receipts').select('amount, receipt_type, created_at, payment_method, bookings(locker_included, locker_price, total_price)')
+          ? supabase.from('receipts').select('amount, receipt_type, created_at, payment_method, booking_id')
             .in('cabin_id', filteredCabinIds)
             .gte('created_at', prevStartStr).lte('created_at', prevEndStr + 'T23:59:59')
           : Promise.resolve({ data: [] }),
-        // 6: Hostel receipts current period (with booking join for security deposit split)
+        // 6: Hostel receipts current period
         filteredHostelIds.length > 0
-          ? supabase.from('hostel_receipts').select('amount, receipt_type, created_at, payment_method, hostel_bookings:booking_id(security_deposit, total_price)')
+          ? supabase.from('hostel_receipts').select('amount, receipt_type, created_at, payment_method, booking_id')
             .in('hostel_id', filteredHostelIds)
             .gte('created_at', currentStartStr).lte('created_at', currentEndStr + 'T23:59:59')
           : Promise.resolve({ data: [] }),
         // 7: Hostel receipts prev period
         filteredHostelIds.length > 0
-          ? supabase.from('hostel_receipts').select('amount, receipt_type, created_at, payment_method, hostel_bookings:booking_id(security_deposit, total_price)')
+          ? supabase.from('hostel_receipts').select('amount, receipt_type, created_at, payment_method, booking_id')
             .in('hostel_id', filteredHostelIds)
             .gte('created_at', prevStartStr).lte('created_at', prevEndStr + 'T23:59:59')
           : Promise.resolve({ data: [] }),
@@ -278,13 +298,13 @@ export function usePartnerPerformance(filters: PerformanceFilters) {
           : Promise.resolve({ data: [] }),
         // 11: RR receipts 12 months
         filteredCabinIds.length > 0
-          ? supabase.from('receipts').select('amount, receipt_type, created_at')
+          ? supabase.from('receipts').select('amount, receipt_type, created_at, booking_id')
             .in('cabin_id', filteredCabinIds)
             .gte('created_at', trend12Start)
           : Promise.resolve({ data: [] }),
         // 12: Hostel receipts 12 months
         filteredHostelIds.length > 0
-          ? supabase.from('hostel_receipts').select('amount, receipt_type, created_at')
+          ? supabase.from('hostel_receipts').select('amount, receipt_type, created_at, booking_id')
             .in('hostel_id', filteredHostelIds)
             .gte('created_at', trend12Start)
           : Promise.resolve({ data: [] }),
@@ -352,12 +372,12 @@ export function usePartnerPerformance(filters: PerformanceFilters) {
       const sumReceipts = (data: any[], type?: string) =>
         (data || []).filter(r => !type || r.receipt_type === type).reduce((s, r) => s + (r.amount || 0), 0);
 
-      // Split RR booking_payment receipts into seat vs locker portions
+      // Split RR booking_payment receipts into seat vs locker portions using manual lookup
       const splitRRReceipts = (data: any[]) => {
         let seatTotal = 0;
         let lockerTotal = 0;
         (data || []).filter(r => r.receipt_type === 'booking_payment').forEach(r => {
-          const booking = r.bookings;
+          const booking = r.booking_id ? rrBookingMap.get(r.booking_id) : null;
           const amount = r.amount || 0;
           if (booking && booking.locker_included && booking.locker_price > 0 && booking.total_price > 0) {
             const lockerPortion = (booking.locker_price / booking.total_price) * amount;
@@ -370,12 +390,12 @@ export function usePartnerPerformance(filters: PerformanceFilters) {
         return { seatTotal, lockerTotal };
       };
 
-      // Split hostel booking_payment receipts into bed vs security deposit portions
+      // Split hostel booking_payment receipts into bed vs security deposit portions using manual lookup
       const splitHostelReceipts = (data: any[]) => {
         let bedTotal = 0;
         let securityTotal = 0;
         (data || []).filter(r => r.receipt_type === 'booking_payment').forEach(r => {
-          const booking = r.hostel_bookings;
+          const booking = r.booking_id ? hBookingMap.get(r.booking_id) : null;
           const amount = r.amount || 0;
           if (booking && booking.security_deposit > 0 && (booking.total_price + booking.security_deposit) > 0) {
             const grandTotal = booking.total_price + booking.security_deposit;
@@ -469,7 +489,9 @@ export function usePartnerPerformance(filters: PerformanceFilters) {
       const prevDues = 0;
 
       // Monthly trends
-      const allReceipts12 = [...((rrReceipts12Res as any).data || []), ...((hReceipts12Res as any).data || [])];
+      const rrReceipts12 = (rrReceipts12Res as any).data || [];
+      const hReceipts12 = (hReceipts12Res as any).data || [];
+      const allReceipts12 = [...rrReceipts12, ...hReceipts12];
       const trendMap = new Map<string, MonthlyTrend>();
       for (let i = 11; i >= 0; i--) {
         const m = subMonths(currentStart, i);
@@ -481,8 +503,17 @@ export function usePartnerPerformance(filters: PerformanceFilters) {
         const entry = trendMap.get(key);
         if (entry) {
           entry.revenue += r.amount || 0;
-          if (r.receipt_type === 'deposit' || r.receipt_type === 'security_deposit') {
-            entry.deposits += r.amount || 0;
+          // Calculate deposit portions from booking lookups
+          if (r.receipt_type === 'booking_payment' && r.booking_id) {
+            const rrBooking = rrBookingMap.get(r.booking_id);
+            const hBooking = hBookingMap.get(r.booking_id);
+            if (rrBooking && rrBooking.locker_included && rrBooking.locker_price > 0 && rrBooking.total_price > 0) {
+              entry.deposits += (rrBooking.locker_price / rrBooking.total_price) * (r.amount || 0);
+            }
+            if (hBooking && hBooking.security_deposit > 0 && (hBooking.total_price + hBooking.security_deposit) > 0) {
+              const grandTotal = hBooking.total_price + hBooking.security_deposit;
+              entry.deposits += (hBooking.security_deposit / grandTotal) * (r.amount || 0);
+            }
           }
         }
       });
