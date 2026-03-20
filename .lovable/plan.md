@@ -1,37 +1,47 @@
 
 
-## Fix: Activity Log Showing Mixed Booking Types
+## Fix: Separate Locker & Security Deposit from Seat/Bed Fees in Business Performance
 
 ### Problem
-Both the Reading Room and Hostel sidebar/menu entries link to the same `/booking-activity-log` route. The `BookingActivityLog` component fetches **all** logs without filtering by `booking_type`, so hostel logs appear under reading room and vice versa.
+All reading room receipts are stored with `receipt_type: 'booking_payment'` — there is no separate `locker_payment` type. Similarly, all hostel receipts are `booking_payment` — no separate `security_deposit` type. This means:
+- **Seat Fees** currently includes locker deposit amounts
+- **Bed Fees** currently includes security deposit amounts
+- **Locker Amount** and **Security Deposit** show ₹0 because the receipt_types `locker_payment`/`deposit`/`security_deposit` don't exist
+
+### Root Cause
+When bookings are created, a single `booking_payment` receipt is generated for the full collected amount. The locker/security breakdown only exists on the booking records (`bookings.locker_price`, `hostel_bookings.security_deposit`).
 
 ### Solution
-Use a URL query parameter (`?type=cabin` or `?type=hostel`) to scope the activity log by booking type.
+Join receipts with their bookings to proportionally split amounts:
+- **RR receipts**: Join `receipts` → `bookings` to get `locker_included`, `locker_price`, `total_price`. For each receipt, calculate:
+  - `locker_portion = (locker_price / total_price) * receipt_amount` (if locker_included)
+  - `seat_portion = receipt_amount - locker_portion`
+- **Hostel receipts**: Join `hostel_receipts` → `hostel_bookings` to get `security_deposit`, `total_price`. For each receipt:
+  - `grand_total = total_price + security_deposit`
+  - `security_portion = (security_deposit / grand_total) * receipt_amount`
+  - `bed_portion = receipt_amount - security_portion`
 
 ### Changes
 
-**1. Update sidebar/menu links to pass `?type=` query param**
+**`src/hooks/usePartnerPerformance.ts`**
 
-- `src/components/admin/AdminSidebar.tsx`
-  - Reading Room activity log link: `/booking-activity-log?type=cabin`
-  - Hostel activity log link: `/booking-activity-log?type=hostel`
+1. Update receipt queries (indices 4, 5, 6, 7) to include booking join:
+   - RR: `.select('amount, receipt_type, created_at, payment_method, bookings(locker_included, locker_price, total_price)')`
+   - Hostel: `.select('amount, receipt_type, created_at, payment_method, hostel_bookings(security_deposit, total_price)')`
 
-- `src/components/partner/PartnerMoreMenu.tsx`
-  - Reading Room section: `/booking-activity-log?type=cabin`
-  - Hostel section: `/booking-activity-log?type=hostel`
+2. Replace simple `sumReceipts` calls with new proportional split logic:
+   ```
+   // For RR booking_payment receipts:
+   seatFees = sum of seat portions (receipt_amount - locker portion)
+   lockerAmount = sum of locker portions
+   
+   // For Hostel booking_payment receipts:
+   bedFees = sum of bed portions (receipt_amount - security portion)
+   securityDeposit = sum of security portions
+   ```
 
-**2. Update `src/pages/admin/BookingActivityLog.tsx` to read and apply the type filter**
-
-- Read `type` from `useSearchParams()` (values: `cabin`, `hostel`, or absent for all)
-- Apply `.eq('booking_type', type)` filter to the query when `type` is present
-- Update breadcrumb/header to show "Reading Room Activity Log" or "Hostel Activity Log" accordingly
-- Add a booking type toggle (Cabin / Hostel / All) so users can switch without going back to sidebar
-
-**3. Update `src/hooks/usePartnerNavPreferences.ts`**
-- Change activity-log URL to default to `/partner/booking-activity-log` (no type filter — shows all, which is fine for the general nav entry)
+3. Apply same logic to prev-period calculations and the 12-month trend data (queries 11, 12).
 
 ### Files Modified
-- `src/components/admin/AdminSidebar.tsx` — add `?type=cabin` / `?type=hostel` to URLs
-- `src/components/partner/PartnerMoreMenu.tsx` — same URL param additions
-- `src/pages/admin/BookingActivityLog.tsx` — read query param, filter by `booking_type`
+- `src/hooks/usePartnerPerformance.ts` — join receipts with bookings, split amounts proportionally
 
