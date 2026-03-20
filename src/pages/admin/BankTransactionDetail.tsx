@@ -53,7 +53,10 @@ const BankTransactionDetail: React.FC = () => {
     if (method === 'bank_transfer') return 'bank';
     if (method === 'upi') return 'upi';
     const mode = modeLookup[method];
-    if (mode) return mode.mode_type;
+    if (mode) {
+      if (mode.mode_type === 'upi' && mode.linked_bank_id) return 'bank';
+      return mode.mode_type;
+    }
     return 'cash';
   };
 
