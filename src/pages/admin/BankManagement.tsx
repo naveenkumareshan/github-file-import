@@ -156,7 +156,15 @@ const BankManagement: React.FC = () => {
     if (method === 'bank_transfer') return 'Bank Transfer';
     if (method === 'upi') return 'UPI';
     const mode = modeLookup[method];
-    return mode?.label || method;
+    if (mode) {
+      // UPI linked to a bank → use the bank's label
+      if (mode.mode_type === 'upi' && mode.linked_bank_id) {
+        const bankMode = modeLookup[`custom_${mode.linked_bank_id}`];
+        return bankMode?.label || mode.label;
+      }
+      return mode.label;
+    }
+    return method;
   };
 
   // Cash balances: group by collected_by_name
