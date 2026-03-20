@@ -28,6 +28,7 @@ interface PaymentMode {
   label: string;
   mode_type: string;
   is_active: boolean;
+  linked_bank_id: string | null;
 }
 
 interface GroupedBalance {
