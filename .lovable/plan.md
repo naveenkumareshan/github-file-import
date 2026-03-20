@@ -1,46 +1,39 @@
 
 
-## Fix Bank Management: Empty Pages + Add Transaction Detail View
+## Merge UPI Transactions into Linked Bank Accounts
 
-### Problems Found
+### What's Changing
 
-1. **`receipts` query returns 400**: The code filters by `partner_user_id` but that column doesn't exist on `receipts`. It should filter by `cabin_id` using cabin IDs (same pattern as hostel/mess/laundry).
+UPI is just a payment channel tied to a bank account. When a UPI mode has a `linked_bank_id` pointing to a bank_transfer mode, its transactions should appear under that bank account's balance — not as a separate UPI entry. The separate UPI tab will remain only for UPI modes that are **not** linked to any bank.
 
-2. **`mess_receipts` and `laundry_receipts` queries return 400**: The code selects `collected_by_name` but that column doesn't exist on these tables. Need to select only columns that exist per table.
-
-3. **`online` payment method miscategorized**: Receipts with `payment_method = 'online'` fall through to `cash` in `resolveType`. They should be categorized as "Online" (separate from cash/bank/UPI).
-
-4. **No detail page**: Clicking a person/bank name should open a dedicated page showing all transactions (credits) and a closing balance.
+The `linked_bank_id` column already exists on `partner_payment_modes` and the PaymentModesManager already lets partners link UPI modes to banks. The only change needed is in how `BankManagement.tsx` groups and displays receipts.
 
 ### Changes
 
 **File: `src/pages/admin/BankManagement.tsx`**
 
-1. Fix receipt fetching:
-   - Add cabin IDs query: `cabins.select('id').eq('created_by', partnerId)`
-   - Filter `receipts` by `cabin_id IN cabinIds` instead of `partner_user_id`
-   - Use different select columns per table — `collected_by_name` only for `receipts` and `hostel_receipts`; for `mess_receipts`/`laundry_receipts` use available columns and default `collected_by_name` to null
+1. **Expand `PaymentMode` interface** to include `linked_bank_id: string | null`
 
-2. Fix `resolveType` to handle `online` as its own category (or map to `bank`):
-   - Add `if (method === 'online') return 'bank'` — online payments represent digital credits
+2. **Fetch `linked_bank_id`** in the payment modes query (add it to the select)
 
-3. Convert each balance row to a clickable link that navigates to a detail page
+3. **Update `modeLookup`** to include `linked_bank_id` data
 
-4. Add an "All" tab to show the combined view
+4. **New grouping logic** — replace the separate `resolveType`-based grouping with a unified approach:
+   - For UPI receipts where the UPI mode has a `linked_bank_id`: resolve the linked bank mode's label and group under that bank
+   - For UPI receipts where no `linked_bank_id`: keep in UPI tab as before
+   - Bank and Cash remain unchanged
 
-**New File: `src/pages/admin/BankTransactionDetail.tsx`**
+5. **Merge `bankBalances` computation**: When computing bank balances, also include UPI receipts whose mode has a `linked_bank_id` pointing to a bank_transfer mode. The bank row will show combined total (bank + UPI) and all transactions together.
 
-- Route: `/admin/banks/:type/:label` (e.g., `/admin/banks/cash/Ashok`)
-- Shows: Full transaction list (all credits) for that person/bank/UPI account
-- Columns: Date, Serial Number, Receipt Type, Student Name, Amount
-- Footer: Closing Balance (sum of all credits)
-- Back button to return to Bank Management
+6. **Update `upiBalances`**: Only include UPI receipts whose mode does NOT have a `linked_bank_id`
 
-**File: `src/App.tsx` (or routing file)**
-- Add route for the new detail page
+7. **Update totals**: `totalBank` will now include linked-UPI amounts; `totalUpi` only shows unlinked UPI
+
+8. **Detail page consistency**: The `BankTransactionDetail.tsx` page uses the same grouping logic, so the label-based navigation will work correctly since linked UPI receipts will be grouped under the bank label
 
 ### Summary
-- 3 query bugs fixed (wrong column names)
-- Online payments properly categorized
-- Click-through detail pages with full transaction lists and closing balances
+- 1 file edited: `src/pages/admin/BankManagement.tsx`
+- UPI transactions with `linked_bank_id` merge into their parent bank's balance and transaction list
+- Unlinked UPI modes continue showing in the UPI tab
+- Historical/old transactions are automatically corrected since this is a display-layer change
 
