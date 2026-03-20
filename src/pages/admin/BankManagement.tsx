@@ -28,6 +28,7 @@ interface PaymentMode {
   label: string;
   mode_type: string;
   is_active: boolean;
+  linked_bank_id: string | null;
 }
 
 interface GroupedBalance {
@@ -91,7 +92,7 @@ const BankManagement: React.FC = () => {
       ];
 
       const [modesRes, handoverRes, ...receiptResults] = await Promise.all([
-        supabase.from('partner_payment_modes').select('id, label, mode_type, is_active').eq('partner_user_id', partnerId),
+        supabase.from('partner_payment_modes').select('id, label, mode_type, is_active, linked_bank_id').eq('partner_user_id', partnerId),
         supabase.from('cash_handovers').select('*').eq('partner_user_id', partnerId).eq('status', 'completed'),
         ...receiptQueries,
       ]);
@@ -142,6 +143,8 @@ const BankManagement: React.FC = () => {
     if (mode) {
       if (mode.mode_type === 'cash') return 'cash';
       if (mode.mode_type === 'bank') return 'bank';
+      // UPI with linked_bank_id → treat as bank
+      if (mode.mode_type === 'upi' && mode.linked_bank_id) return 'bank';
       if (mode.mode_type === 'upi') return 'upi';
     }
     return 'cash';
@@ -153,7 +156,15 @@ const BankManagement: React.FC = () => {
     if (method === 'bank_transfer') return 'Bank Transfer';
     if (method === 'upi') return 'UPI';
     const mode = modeLookup[method];
-    return mode?.label || method;
+    if (mode) {
+      // UPI linked to a bank → use the bank's label
+      if (mode.mode_type === 'upi' && mode.linked_bank_id) {
+        const bankMode = modeLookup[`custom_${mode.linked_bank_id}`];
+        return bankMode?.label || mode.label;
+      }
+      return mode.label;
+    }
+    return method;
   };
 
   // Cash balances: group by collected_by_name

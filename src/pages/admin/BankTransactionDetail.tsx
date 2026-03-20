@@ -24,6 +24,7 @@ interface PaymentMode {
   id: string;
   label: string;
   mode_type: string;
+  linked_bank_id: string | null;
 }
 
 const BankTransactionDetail: React.FC = () => {
@@ -52,7 +53,10 @@ const BankTransactionDetail: React.FC = () => {
     if (method === 'bank_transfer') return 'bank';
     if (method === 'upi') return 'upi';
     const mode = modeLookup[method];
-    if (mode) return mode.mode_type;
+    if (mode) {
+      if (mode.mode_type === 'upi' && mode.linked_bank_id) return 'bank';
+      return mode.mode_type;
+    }
     return 'cash';
   };
 
@@ -62,7 +66,14 @@ const BankTransactionDetail: React.FC = () => {
     if (method === 'bank_transfer') return 'Bank Transfer';
     if (method === 'upi') return 'UPI';
     const mode = modeLookup[method];
-    return mode?.label || method;
+    if (mode) {
+      if (mode.mode_type === 'upi' && mode.linked_bank_id) {
+        const bankMode = modeLookup[`custom_${mode.linked_bank_id}`];
+        return bankMode?.label || mode.label;
+      }
+      return mode.label;
+    }
+    return method;
   };
 
   const fetchData = async () => {
@@ -75,7 +86,7 @@ const BankTransactionDetail: React.FC = () => {
         supabase.from('hostels').select('id').eq('created_by', ownerId),
         supabase.from('mess_partners').select('id').eq('user_id', ownerId),
         supabase.from('laundry_partners').select('id').eq('user_id', ownerId),
-        supabase.from('partner_payment_modes').select('id, label, mode_type').eq('partner_user_id', ownerId),
+        supabase.from('partner_payment_modes').select('id, label, mode_type, linked_bank_id').eq('partner_user_id', ownerId),
       ]);
 
       setPaymentModes((modesRes.data || []) as PaymentMode[]);
